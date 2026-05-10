@@ -19,6 +19,15 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Development Set Up — World-Class Overhaul
+//
+// Industry-standard Development Environment Setup page covering three
+// methodology paradigms: Waterfall, Hybrid, and Agile. Content is based on
+// PMI PMBOK 7th Ed., IEEE 830, ISO/IEC 12207, SAFe 6.0, Disciplined Agile
+// Delivery (DAD), and Leffingwell's Agile Software Requirements.
+// ─────────────────────────────────────────────────────────────────────────────
+
 class DevelopmentSetUpScreen extends StatefulWidget {
   const DevelopmentSetUpScreen({super.key});
 
@@ -27,14 +36,24 @@ class DevelopmentSetUpScreen extends StatefulWidget {
 }
 
 class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
+  // ── Methodology selection ──────────────────────────────────────────────
+  String _selectedMethodology = 'Hybrid'; // Waterfall | Hybrid | Agile
+
+  // ── Section-level status & summaries ───────────────────────────────────
   final TextEditingController _envSummaryController = TextEditingController();
   final TextEditingController _buildSummaryController = TextEditingController();
   final TextEditingController _toolingSummaryController =
+      TextEditingController();
+  final TextEditingController _qualitySummaryController =
+      TextEditingController();
+  final TextEditingController _securitySummaryController =
       TextEditingController();
 
   final List<_SetupChecklistItem> _envChecklist = [];
   final List<_SetupChecklistItem> _buildChecklist = [];
   final List<_SetupChecklistItem> _toolingChecklist = [];
+  final List<_SetupChecklistItem> _qualityChecklist = [];
+  final List<_SetupChecklistItem> _securityChecklist = [];
 
   final _Debouncer _saveDebounce = _Debouncer();
 
@@ -46,6 +65,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
   String _envStatus = 'Not started';
   String _buildStatus = 'Not started';
   String _toolingStatus = 'Not started';
+  String _qualityStatus = 'Not started';
+  String _securityStatus = 'Not started';
 
   final List<String> _sectionStatusOptions = const [
     'Not started',
@@ -107,6 +128,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     _envSummaryController.addListener(_scheduleSave);
     _buildSummaryController.addListener(_scheduleSave);
     _toolingSummaryController.addListener(_scheduleSave);
+    _qualitySummaryController.addListener(_scheduleSave);
+    _securitySummaryController.addListener(_scheduleSave);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = ProjectDataInherited.maybeOf(context);
       final projectId = provider?.projectData.projectId;
@@ -123,9 +146,13 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     _envSummaryController.dispose();
     _buildSummaryController.dispose();
     _toolingSummaryController.dispose();
+    _qualitySummaryController.dispose();
+    _securitySummaryController.dispose();
     _saveDebounce.dispose();
     super.dispose();
   }
+
+  // ── Helper methods ─────────────────────────────────────────────────────
 
   List<String> _ownerOptions(ProjectDataModel projectData) {
     final names = <String>{
@@ -157,139 +184,311 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     return name.isNotEmpty ? name : 'Current Design Package';
   }
 
-  List<_SetupChecklistItem> _defaultEnvChecklist(ProjectDataModel projectData) {
-    final owners = _ownerOptions(projectData);
-    final hasTechContext = projectData.technologyInventory.isNotEmpty;
-    final hasStakeholders = projectData.stakeholderEntries.isNotEmpty;
+  // ── Default checklist items (methodology-aware) ────────────────────────
+
+  List<_SetupChecklistItem> _defaultEnvChecklist(ProjectDataModel pd) {
+    final owners = _ownerOptions(pd);
+    final isWaterfall = _selectedMethodology == 'Waterfall';
+    final isAgile = _selectedMethodology == 'Agile';
     return [
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-env-dev',
-        title: 'Provision controlled development workspace',
+        title: isWaterfall
+            ? 'Provision complete Development environment with full stack'
+            : isAgile
+                ? 'Provision minimal viable Dev environment for Sprint 1'
+                : 'Provision Dev workspace on AWS Server',
         owner: owners.first,
-        targetDate: _nextDateLabel(2),
-        status: hasTechContext ? 'Done' : 'In progress',
-        notes:
-            'Repository, developer workstation standards, package registry, secrets access, local runbook, and onboarding path are available to approved team members.',
+        targetDate: _nextDateLabel(isWaterfall ? 5 : isAgile ? 1 : 2),
+        status: pd.technologyInventory.isNotEmpty ? 'Done' : 'In progress',
+        notes: isWaterfall
+            ? 'Waterfall requires all environments fully provisioned before any development phase begins (PMBOK 7th Ed., Section 4.2).'
+            : isAgile
+                ? 'Agile favours a minimal environment that evolves with each sprint; start with just enough to code and test.'
+                : 'Access URL and seed credentials for the core delivery team.',
       ),
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-env-stage',
-        title: 'Prepare integration and staging environment parity',
+        title: isWaterfall
+            ? 'Provision Staging environment mirroring Production'
+            : isAgile
+                ? 'Set up lightweight staging for continuous demo'
+                : 'Prepare staging handoff environment',
         owner: owners.length > 1 ? owners[1] : owners.first,
-        targetDate: _nextDateLabel(4),
-        status: projectData.designDeliverablesData.register.isNotEmpty
+        targetDate: _nextDateLabel(isWaterfall ? 7 : isAgile ? 3 : 4),
+        status: pd.designDeliverablesData.register.isNotEmpty
             ? 'In progress'
             : 'Not started',
-        notes:
-            'Configuration, feature flags, test data, service endpoints, observability, and approval checkpoints match the intended release path.',
+        notes: isWaterfall
+            ? 'Staging must be an exact mirror of production for validation before the single deployment window.'
+            : isAgile
+                ? 'Agile teams deploy to staging every sprint; it should be lightweight and automated.'
+                : 'Mirror integrations and configuration needed for smoke tests.',
       ),
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-env-site',
-        title: 'Confirm field, vendor, and physical site readiness',
+        title: isWaterfall
+            ? 'Complete site infrastructure and facility readiness'
+            : isAgile
+                ? 'Confirm basic site access for iteration zero'
+                : 'Confirm physical site access, venue keys, and site fencing',
         owner: owners.length > 2 ? owners[2] : owners.first,
-        targetDate: _nextDateLabel(5),
-        status: hasStakeholders ? 'In progress' : 'Not started',
-        notes:
-            'Site access, permits, safety induction, keys, network drops, devices, vendor contacts, and escalation route are controlled like digital environments.',
+        targetDate: _nextDateLabel(isWaterfall ? 10 : isAgile ? 2 : 5),
+        status: pd.stakeholderEntries.isNotEmpty
+            ? 'In progress'
+            : 'Not started',
+        notes: isWaterfall
+            ? 'All physical infrastructure must be signed off before development start per phase-gate governance.'
+            : isAgile
+                ? 'Just-in-time site access for early iterations; refine as scope clarifies.'
+                : 'Track physical access constraints alongside digital environments.',
       ),
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-env-prod',
-        title: 'Define production access and release guardrails',
+        title: isWaterfall
+            ? 'Provision Production environment with full HA/DR'
+            : isAgile
+                ? 'Define Production deployment target and rollback strategy'
+                : 'Configure Production environment with promotion gates',
         owner: owners.first,
-        targetDate: _nextDateLabel(7),
+        targetDate: _nextDateLabel(isWaterfall ? 12 : isAgile ? 5 : 7),
         status: 'Not started',
-        notes:
-            'Least-privilege access, change windows, rollback authority, release approvers, support handover, and emergency access are documented before implementation.',
+        notes: isWaterfall
+            ? 'Production must be ready before system integration testing begins.'
+            : isAgile
+                ? 'Agile favours continuous deployment to production; start with automated rollback capability.'
+                : 'Production environment with controlled promotion from staging.',
       ),
     ];
   }
 
-  List<_SetupChecklistItem> _defaultBuildChecklist(
-      ProjectDataModel projectData) {
-    final owners = _ownerOptions(projectData);
+  List<_SetupChecklistItem> _defaultBuildChecklist(ProjectDataModel pd) {
+    final owners = _ownerOptions(pd);
+    final isWaterfall = _selectedMethodology == 'Waterfall';
+    final isAgile = _selectedMethodology == 'Agile';
     return [
       _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-build-build',
-        title: 'Establish canonical build and artifact provenance',
+        id: '${DateTime.now().microsecondsSinceEpoch}-build-ci',
+        title: isWaterfall
+            ? 'Configure complete CI pipeline with all quality gates'
+            : isAgile
+                ? 'Set up basic CI with fast feedback loop'
+                : 'Configure build validation and artifact packaging',
         owner: owners.first,
-        targetDate: _nextDateLabel(3),
+        targetDate: _nextDateLabel(isWaterfall ? 4 : isAgile ? 1 : 3),
         status: _architectureNodeCount > 0 ? 'In progress' : 'Not started',
-        notes:
-            'Builds are reproducible, versioned, signed where required, linked to source commits, and stored in an approved artifact registry.',
+        notes: isWaterfall
+            ? 'Full CI pipeline with code analysis, unit tests, integration tests, and compliance checks before merge.'
+            : isAgile
+                ? 'Fast CI (under 10 min) with unit tests and linting; add integration tests incrementally.'
+                : 'Ensure generated artifacts are consistent with design deliverables.',
       ),
       _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-build-test',
-        title: 'Prepare automated quality and smoke test gates',
+        id: '${DateTime.now().microsecondsSinceEpoch}-build-cd',
+        title: isWaterfall
+            ? 'Define CD pipeline with phase-gate approvals'
+            : isAgile
+                ? 'Set up continuous deployment to staging'
+                : 'Prepare smoke tests and mock scenario validation',
         owner: owners.length > 1 ? owners[1] : owners.first,
-        targetDate: _nextDateLabel(4),
-        status: projectData.planningRequirementItems.isNotEmpty
+        targetDate: _nextDateLabel(isWaterfall ? 6 : isAgile ? 2 : 4),
+        status: pd.planningRequirementItems.isNotEmpty
             ? 'In progress'
             : 'Not started',
-        notes:
-            'Unit, integration, contract, accessibility, security, performance, and operational smoke checks have clear pass/fail criteria.',
+        notes: isWaterfall
+            ? 'CD must enforce formal sign-off gates aligned with waterfall phase transitions.'
+            : isAgile
+                ? 'Automated deployment to staging on every green build; production follows sprint review approval.'
+                : 'Cover API endpoint fixtures and venue readiness scenarios.',
       ),
       _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-build-deploy',
-        title: 'Define deployment, promotion, and rollback workflow',
+        id: '${DateTime.now().microsecondsSinceEpoch}-build-rollback',
+        title: isWaterfall
+            ? 'Establish rollback procedures with change control board'
+            : isAgile
+                ? 'Implement feature flags and automated rollback'
+                : 'Define deploy promotion and rollback checkpoints',
         owner: owners.length > 2 ? owners[2] : owners.first,
-        targetDate: _nextDateLabel(6),
+        targetDate: _nextDateLabel(isWaterfall ? 8 : isAgile ? 3 : 6),
         status: 'Not started',
-        notes:
-            'Promotion rules, manual approvals, release notes, rollback steps, database changes, feature flags, and incident communications are rehearsed.',
-      ),
-      _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-build-metrics',
-        title: 'Instrument delivery metrics and operational telemetry',
-        owner: owners.first,
-        targetDate: _nextDateLabel(8),
-        status: 'Not started',
-        notes:
-            'Lead time, deployment frequency, change failure, recovery time, build health, test pass rate, SLOs, alerts, and logs are visible.',
+        notes: isWaterfall
+            ? 'Rollback requires CCB approval; document rollback criteria per deliverable.'
+            : isAgile
+                ? 'Feature flags allow instant rollback without redeployment; essential for continuous delivery.'
+                : 'Include approvals for both digital and physical releases.',
       ),
     ];
   }
 
-  List<_SetupChecklistItem> _defaultToolingChecklist(
-      ProjectDataModel projectData) {
-    final owners = _ownerOptions(projectData);
+  List<_SetupChecklistItem> _defaultToolingChecklist(ProjectDataModel pd) {
+    final owners = _ownerOptions(pd);
+    final isWaterfall = _selectedMethodology == 'Waterfall';
+    final isAgile = _selectedMethodology == 'Agile';
     return [
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-tool-ide',
-        title: 'Developer tools, repository access, and onboarding pack',
+        title: isWaterfall
+            ? 'Standardize IDE and enforce coding standards across team'
+            : isAgile
+                ? 'Set up IDE with shared extensions and linting'
+                : 'IDE and Git Repo access',
         owner: owners.first,
-        targetDate: _nextDateLabel(1),
+        targetDate: _nextDateLabel(isWaterfall ? 3 : isAgile ? 1 : 1),
         status: 'Done',
-        notes:
-            'IDE setup, repository permissions, branch policy, commit signing, code review rules, and first-run instructions are verified.',
+        notes: isWaterfall
+            ? 'All team members must use the same IDE configuration to ensure consistency per coding standards.'
+            : isAgile
+                ? 'Agile teams self-organize around tooling; shared linting ensures code consistency.'
+                : 'Developer workspace access and repository permissions verified.',
       ),
       _SetupChecklistItem(
         id: '${DateTime.now().microsecondsSinceEpoch}-tool-ci',
-        title: 'CI/CD runners, security scanners, and package signing',
+        title: isWaterfall
+            ? 'Procure and configure all project management and ALM tools'
+            : isAgile
+                ? 'Set up agile board (Jira/Azure DevOps) with initial backlog'
+                : 'Automation runner and package signing',
         owner: owners.length > 1 ? owners[1] : owners.first,
-        targetDate: _nextDateLabel(3),
+        targetDate: _nextDateLabel(isWaterfall ? 4 : isAgile ? 1 : 3),
         status: 'In progress',
-        notes:
-            'Build runners, SAST/SCA/secrets scans, dependency cache, package signing, registry permissions, and service credentials are governed.',
+        notes: isWaterfall
+            ? 'Full ALM suite: requirements management, traceability matrix, test management, and defect tracking.'
+            : isAgile
+                ? 'Agile board with product backlog, sprint board, and burndown chart; minimal setup for sprint 1.'
+                : 'CI tokens, package registry, and deployment secrets staged.',
       ),
       _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-tool-crane',
-        title: 'Specialist equipment and field tooling availability',
+        id: '${DateTime.now().microsecondsSinceEpoch}-tool-equip',
+        title: isWaterfall
+            ? 'Complete equipment procurement and calibration'
+            : isAgile
+                ? 'Confirm essential equipment availability for first sprint'
+                : 'Crane and site rigging availability',
         owner: owners.length > 2 ? owners[2] : owners.first,
-        targetDate: _nextDateLabel(5),
+        targetDate: _nextDateLabel(isWaterfall ? 8 : isAgile ? 3 : 5),
         status: 'Not started',
-        notes:
-            'Devices, test kits, network equipment, site safety assets, lifting/rigging tools, vendor tools, and calibration evidence are assigned.',
-      ),
-      _SetupChecklistItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}-tool-support',
-        title: 'Support model, knowledge base, and escalation routes',
-        owner: owners.first,
-        targetDate: _nextDateLabel(6),
-        status: 'Not started',
-        notes:
-            'Runbooks, environment ownership, contact rota, incident channels, service desk categories, and handover artefacts are ready.',
+        notes: isWaterfall
+            ? 'All physical equipment must be procured, calibrated, and documented before construction/development phase.'
+            : isAgile
+                ? 'Just-enough equipment for the current sprint scope; expand as backlog items demand.'
+                : 'Physical tooling readiness tracked with the same governance standard.',
       ),
     ];
   }
+
+  List<_SetupChecklistItem> _defaultQualityChecklist(ProjectDataModel pd) {
+    final owners = _ownerOptions(pd);
+    final isWaterfall = _selectedMethodology == 'Waterfall';
+    final isAgile = _selectedMethodology == 'Agile';
+    return [
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-q-dor',
+        title: isWaterfall
+            ? 'Define phase entry and exit criteria'
+            : isAgile
+                ? 'Establish Definition of Ready (DoR) for backlog items'
+                : 'Define quality gate criteria for each phase',
+        owner: owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 3 : isAgile ? 1 : 2),
+        status: 'In progress',
+        notes: isWaterfall
+            ? 'Each phase has formal entry/exit criteria with required sign-offs per PMBOK quality management.'
+            : isAgile
+                ? 'DoR ensures backlog items are sufficiently refined before sprint planning; team-owned.'
+                : 'Quality gates combine phase-gate rigor with sprint-level flexibility.',
+      ),
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-q-dod',
+        title: isWaterfall
+            ? 'Establish acceptance criteria and test strategy'
+            : isAgile
+                ? 'Establish Definition of Done (DoD) for sprint increments'
+                : 'Define acceptance criteria with dual governance',
+        owner: owners.length > 1 ? owners[1] : owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 4 : isAgile ? 1 : 3),
+        status: 'Not started',
+        notes: isWaterfall
+            ? 'Formal test strategy document covering unit, integration, system, and UAT phases.'
+            : isAgile
+                ? 'DoD is team-agreed, includes code review, test coverage, documentation; evolves over sprints.'
+                : 'Acceptance criteria per deliverable; DoD per sprint increment.',
+      ),
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-q-review',
+        title: isWaterfall
+            ? 'Configure formal review and approval workflows'
+            : isAgile
+                ? 'Set up sprint review and retrospective cadence'
+                : 'Configure review gates and sprint ceremonies',
+        owner: owners.length > 2 ? owners[2] : owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 5 : isAgile ? 2 : 4),
+        status: 'Not started',
+        notes: isWaterfall
+            ? 'Peer reviews, technical reviews, and management reviews at each phase boundary.'
+            : isAgile
+                ? 'Sprint review for stakeholder feedback; retrospective for continuous improvement.'
+                : 'Phase-gate reviews for infrastructure; sprint reviews for feature delivery.',
+      ),
+    ];
+  }
+
+  List<_SetupChecklistItem> _defaultSecurityChecklist(ProjectDataModel pd) {
+    final owners = _ownerOptions(pd);
+    final isWaterfall = _selectedMethodology == 'Waterfall';
+    final isAgile = _selectedMethodology == 'Agile';
+    return [
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-sec-access',
+        title: isWaterfall
+            ? 'Complete RBAC matrix and access control provisioning'
+            : isAgile
+                ? 'Set up basic team access and SSH key management'
+                : 'Configure role-based access with escalation paths',
+        owner: owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 5 : isAgile ? 1 : 3),
+        status: 'In progress',
+        notes: isWaterfall
+            ? 'Full role-based access control matrix covering all environments before development starts.'
+            : isAgile
+                ? 'Start with team-level access; refine roles as the team self-organizes.'
+                : 'Formal RBAC for infrastructure; flexible team access for development.',
+      ),
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-sec-compliance',
+        title: isWaterfall
+            ? 'Complete security and compliance audit baseline'
+            : isAgile
+                ? 'Set up automated security scanning in CI pipeline'
+                : 'Conduct compliance gap assessment and CI security scan',
+        owner: owners.length > 1 ? owners[1] : owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 6 : isAgile ? 2 : 4),
+        status: 'Not started',
+        notes: isWaterfall
+            ? 'Full security audit (OWASP, NIST) and compliance baseline established before coding begins.'
+            : isAgile
+                ? 'Shift-left security: SAST/DAST in CI pipeline from sprint 1.'
+                : 'Compliance baseline upfront (waterfall); iterative security hardening (agile).',
+      ),
+      _SetupChecklistItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-sec-secrets',
+        title: isWaterfall
+            ? 'Establish secrets management and key rotation policy'
+            : isAgile
+                ? 'Configure secrets manager for CI/CD pipelines'
+                : 'Set up secrets management with rotation schedule',
+        owner: owners.length > 2 ? owners[2] : owners.first,
+        targetDate: _nextDateLabel(isWaterfall ? 6 : isAgile ? 2 : 4),
+        status: 'Not started',
+        notes: isWaterfall
+            ? 'All secrets, API keys, and certificates managed through vault with documented rotation policy.'
+            : isAgile
+                ? 'Secrets in environment variables or vault; never in code; automated rotation.'
+                : 'Central secrets management with policy-driven rotation.',
+      ),
+    ];
+  }
+
+  // ── Seed defaults ──────────────────────────────────────────────────────
 
   void _seedDefaultsIfNeeded(ProjectDataModel projectData) {
     var changed = false;
@@ -306,6 +505,14 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       _toolingChecklist.addAll(_defaultToolingChecklist(projectData));
       changed = true;
     }
+    if (_qualityChecklist.isEmpty) {
+      _qualityChecklist.addAll(_defaultQualityChecklist(projectData));
+      changed = true;
+    }
+    if (_securityChecklist.isEmpty) {
+      _securityChecklist.addAll(_defaultSecurityChecklist(projectData));
+      changed = true;
+    }
     if (_envSummaryController.text.trim().isEmpty) {
       _envSummaryController.text =
           'Prepare development, integration, staging, production, and field workspaces for ${_defaultProjectLabel(projectData)} with access control, configuration parity, test data, observability, and evidence for the selected delivery model.';
@@ -318,7 +525,17 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     }
     if (_toolingSummaryController.text.trim().isEmpty) {
       _toolingSummaryController.text =
-          'Verify that engineering tools, collaboration channels, licenses, credentials, field equipment, support contacts, and runbooks are available before development execution starts.';
+          'Verify licensing, ownership, and operating readiness for software tooling and physical equipment.';
+      changed = true;
+    }
+    if (_qualitySummaryController.text.trim().isEmpty) {
+      _qualitySummaryController.text =
+          'Establish quality gates, Definition of Ready/Done, and review cadences appropriate for the chosen methodology.';
+      changed = true;
+    }
+    if (_securitySummaryController.text.trim().isEmpty) {
+      _securitySummaryController.text =
+          'Configure access controls, compliance baselines, and secrets management before development begins.';
       changed = true;
     }
     if (_envStatus == 'Not started') {
@@ -333,6 +550,14 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       _toolingStatus = 'In progress';
       changed = true;
     }
+    if (_qualityStatus == 'Not started') {
+      _qualityStatus = 'In progress';
+      changed = true;
+    }
+    if (_securityStatus == 'Not started') {
+      _securityStatus = 'In progress';
+      changed = true;
+    }
 
     if (changed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -340,6 +565,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       });
     }
   }
+
+  // ── Navigation ────────────────────────────────────────────────────────
 
   void _navigateToTechnicalAlignment() {
     Navigator.push(
@@ -364,6 +591,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
+  // ── Build ──────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -375,13 +604,20 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       envStatus: _envStatus,
       buildStatus: _buildStatus,
       toolingStatus: _toolingStatus,
+      qualityStatus: _qualityStatus,
+      securityStatus: _securityStatus,
       envSummary: _envSummaryController.text,
       buildSummary: _buildSummaryController.text,
       toolingSummary: _toolingSummaryController.text,
+      qualitySummary: _qualitySummaryController.text,
+      securitySummary: _securitySummaryController.text,
       envChecklist: _envChecklist,
       buildChecklist: _buildChecklist,
       toolingChecklist: _toolingChecklist,
+      qualityChecklist: _qualityChecklist,
+      securityChecklist: _securityChecklist,
       architectureNodeCount: _architectureNodeCount,
+      methodology: _selectedMethodology,
     );
 
     return ResponsiveScaffold(
@@ -401,17 +637,27 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                 children: [
                   if (_isLoading) const LinearProgressIndicator(minHeight: 2),
                   if (_isLoading) const SizedBox(height: 16),
-                  _buildReadinessHubHeader(
-                    isMobile: isMobile,
-                    projectData: projectData,
-                    snapshot: snapshot,
-                  ),
+                  _buildHeroHeader(isMobile: isMobile, snapshot: snapshot),
                   const SizedBox(height: 24),
-                  _buildTopSection(snapshot, isMobile),
+                  _buildMethodologySelector(snapshot),
+                  const SizedBox(height: 24),
+                  _buildMethodologyComparisonTable(snapshot),
+                  const SizedBox(height: 24),
+                  _buildEnvironmentSection(snapshot, isMobile),
                   const SizedBox(height: 20),
-                  _buildMiddleSection(snapshot, isMobile),
+                  _buildPipelineSection(snapshot, isMobile),
                   const SizedBox(height: 20),
-                  _buildOperationalReadinessGrid(snapshot),
+                  _buildToolingSection(snapshot),
+                  const SizedBox(height: 20),
+                  _buildQualityGatesSection(snapshot),
+                  const SizedBox(height: 20),
+                  _buildSecuritySection(snapshot),
+                  const SizedBox(height: 20),
+                  _buildRepositorySection(snapshot),
+                  const SizedBox(height: 20),
+                  _buildTestDataSection(snapshot),
+                  const SizedBox(height: 20),
+                  _buildChannelsSection(snapshot),
                   const SizedBox(height: 20),
                   _buildSmokeTestSection(snapshot),
                   const SizedBox(height: 20),
@@ -432,14 +678,17 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildReadinessHubHeader({
+  // ══════════════════════════════════════════════════════════════════════════
+  // HERO HEADER
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildHeroHeader({
     required bool isMobile,
-    required ProjectDataModel projectData,
     required _DevelopmentSetupSnapshot snapshot,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -470,7 +719,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Development Readiness Control Center',
+                      'Development Environment Setup',
                       style: TextStyle(
                         fontSize: isMobile ? 24 : 28,
                         fontWeight: FontWeight.w800,
@@ -480,7 +729,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Development Set Up for ${_defaultProjectLabel(projectData)}. This hub proves that people, environments, repositories, pipelines, test data, security controls, field access, and release governance are ready for waterfall gates, hybrid increments, and agile flow.',
+                      'Prepare environments, tooling, pipelines, quality gates, and security baselines so execution can start without blockers. Content aligns with PMI PMBOK 7th Ed., ISO/IEC 12207, and SAFe 6.0 standards for $_selectedMethodology methodology.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.84),
@@ -563,13 +812,15 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             runSpacing: 10,
             children: [
               _buildMetricPill(
-                  'Provisioned Spaces', '${snapshot.provisionedSpaces}/3'),
-              _buildMetricPill('Active Tools', '${snapshot.activeLicenses}'),
+                  'Provisioned Spaces', '${snapshot.provisionedSpaces}/4'),
+              _buildMetricPill('Licensed Tools', '${snapshot.activeLicenses}'),
               _buildMetricPill('Channels Ready', '${snapshot.invitedChannels}'),
               _buildMetricPill(
                   'Readiness Gates', '${_setupReadinessGates.length}'),
               _buildMetricPill(
                   'Architecture Nodes', '${snapshot.architectureNodeCount}'),
+              _buildMetricPill(
+                  'Methodology', _selectedMethodology, highlight: true),
             ],
           ),
         ],
@@ -577,367 +828,163 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildTopSection(_DevelopmentSetupSnapshot snapshot, bool isMobile) {
-    return Column(
-      children: [
-        _buildDeliveryModelSetupMatrix(),
-        const SizedBox(height: 20),
-        _buildSetupReadinessGateTable(),
-        const SizedBox(height: 20),
-        _buildEnvironmentProvisioningCard(snapshot),
-        const SizedBox(height: 20),
-        _buildRepositoryCard(snapshot),
-      ],
-    );
-  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // METHODOLOGY SELECTOR
+  // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMiddleSection(
-      _DevelopmentSetupSnapshot snapshot, bool isMobile) {
-    return Column(
-      children: [
-        _buildDevSecOpsControlTable(),
-        const SizedBox(height: 20),
-        _buildToolingCard(snapshot),
-        const SizedBox(height: 20),
-        _buildPipelineCard(snapshot),
-      ],
-    );
-  }
-
-  Widget _buildOperationalReadinessGrid(_DevelopmentSetupSnapshot snapshot) {
-    return Column(
-      children: [
-        _buildEvidenceAndMetricsTable(),
-        const SizedBox(height: 20),
-        _buildTestDataCard(snapshot),
-        const SizedBox(height: 20),
-        _buildChannelsCard(snapshot),
-        const SizedBox(height: 20),
-        _buildSecurityCard(snapshot),
-      ],
-    );
-  }
-
-  Widget _buildDeliveryModelSetupMatrix() {
+  Widget _buildMethodologySelector(_DevelopmentSetupSnapshot snapshot) {
     return _buildDashboardPanel(
-      title: 'Delivery Model Setup Standard',
+      title: 'Development Methodology',
       subtitle:
-          'Defines what Development Set Up must contain for predictive, hybrid, agile, flow-based, and scaled delivery models.',
+          'Select the delivery methodology to tailor setup requirements. Each methodology dictates different environment provisioning, quality gates, and tooling expectations per industry standards.',
       icon: Icons.account_tree_outlined,
-      child: _buildReadOnlyDataTable(
-        columns: const [
-          _ReadOnlyColumn('Model', 180),
-          _ReadOnlyColumn('Setup Emphasis', 320),
-          _ReadOnlyColumn('Required Development Setup Evidence', 430),
-          _ReadOnlyColumn('Operating Cadence', 260),
-          _ReadOnlyColumn('Exit Criteria', 320),
-        ],
-        rows: _deliveryModelSetupStandards
-            .map(
-              (item) => [
-                item.model,
-                item.emphasis,
-                item.evidence,
-                item.cadence,
-                item.exitCriteria,
-              ],
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildSetupReadinessGateTable() {
-    return _buildDashboardPanel(
-      title: 'Development Setup Readiness Gate',
-      subtitle:
-          'Stage-gate quality for day-one development, regardless of whether execution is waterfall, hybrid, or agile.',
-      icon: Icons.fact_check_outlined,
-      child: _buildReadOnlyDataTable(
-        columns: const [
-          _ReadOnlyColumn('Gate', 220),
-          _ReadOnlyColumn('What Must Be True', 440),
-          _ReadOnlyColumn('Evidence', 360),
-          _ReadOnlyColumn('Primary Owner', 180),
-          _ReadOnlyColumn('Decision', 150),
-        ],
-        rows: _setupReadinessGates
-            .map(
-              (item) => [
-                item.gate,
-                item.standard,
-                item.evidence,
-                item.owner,
-                item.decision,
-              ],
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildDevSecOpsControlTable() {
-    return _buildDashboardPanel(
-      title: 'DevSecOps And Toolchain Controls',
-      subtitle:
-          'Minimum controls for reliable delivery, secure software development, and audit-ready tooling.',
-      icon: Icons.security_outlined,
-      child: _buildReadOnlyDataTable(
-        columns: const [
-          _ReadOnlyColumn('Control Area', 230),
-          _ReadOnlyColumn('Setup Requirement', 430),
-          _ReadOnlyColumn('Automation / Tooling Evidence', 360),
-          _ReadOnlyColumn('Risk If Missing', 300),
-        ],
-        rows: _devSecOpsControls
-            .map(
-              (item) => [
-                item.area,
-                item.requirement,
-                item.evidence,
-                item.risk,
-              ],
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildEvidenceAndMetricsTable() {
-    return _buildDashboardPanel(
-      title: 'Evidence, Metrics, And Operational Handover',
-      subtitle:
-          'Connects setup work to measurable delivery capability and production/service readiness.',
-      icon: Icons.insights_outlined,
-      child: _buildReadOnlyDataTable(
-        columns: const [
-          _ReadOnlyColumn('Evidence Object', 240),
-          _ReadOnlyColumn('Why It Matters', 390),
-          _ReadOnlyColumn('Metric / Signal', 270),
-          _ReadOnlyColumn('Waterfall Evidence', 280),
-          _ReadOnlyColumn('Agile / Hybrid Evidence', 300),
-        ],
-        rows: _setupEvidenceRows
-            .map(
-              (item) => [
-                item.object,
-                item.why,
-                item.metric,
-                item.waterfallEvidence,
-                item.agileEvidence,
-              ],
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyDataTable({
-    required List<_ReadOnlyColumn> columns,
-    required List<List<String>> rows,
-  }) {
-    final totalWidth = columns.fold<double>(
-      0,
-      (total, column) => total + column.width,
-    );
-
-    return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: totalWidth,
-          child: Column(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 700;
+              if (isNarrow) {
+                return Column(
                   children: [
-                    for (final column in columns)
-                      SizedBox(
-                        width: column.width,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          child: Text(
-                            column.label.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                        ),
-                      ),
+                    _buildMethodologyCard(
+                      'Waterfall',
+                      'Sequential, phase-gated delivery. All environments and tooling must be fully provisioned before development begins. Best for fixed-scope, regulatory-heavy projects.',
+                      Icons.timeline,
+                      const Color(0xFF2563EB),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMethodologyCard(
+                      'Hybrid',
+                      'Combines waterfall rigour for infrastructure with agile flexibility for feature delivery. Core environments upfront; development evolves iteratively.',
+                      Icons.merge_type_outlined,
+                      const Color(0xFF7C3AED),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMethodologyCard(
+                      'Agile',
+                      'Iterative, incremental delivery. Minimal viable environment for Sprint 1; tooling and infrastructure evolve with each iteration. Best for adaptive scope.',
+                      Icons.autorenew_outlined,
+                      const Color(0xFF16A34A),
+                    ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              for (int rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
-                Container(
-                  decoration: BoxDecoration(
-                    color: rowIndex.isEven
-                        ? Colors.white
-                        : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildMethodologyCard(
+                      'Waterfall',
+                      'Sequential, phase-gated delivery. All environments and tooling must be fully provisioned before development begins. Best for fixed-scope, regulatory-heavy projects.',
+                      Icons.timeline,
+                      const Color(0xFF2563EB),
+                    ),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (int cellIndex = 0;
-                          cellIndex < columns.length;
-                          cellIndex++)
-                        SizedBox(
-                          width: columns[cellIndex].width,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            child: cellIndex == columns.length - 1 &&
-                                    _isDecisionLabel(rows[rowIndex][cellIndex])
-                                ? Align(
-                                    alignment: Alignment.topLeft,
-                                    child: _buildStatusTag(
-                                      rows[rowIndex][cellIndex],
-                                      _decisionColor(rows[rowIndex][cellIndex]),
-                                    ),
-                                  )
-                                : Text(
-                                    rows[rowIndex][cellIndex],
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      height: 1.45,
-                                      fontWeight: cellIndex == 0
-                                          ? FontWeight.w800
-                                          : FontWeight.w500,
-                                      color: cellIndex == 0
-                                          ? const Color(0xFF0F172A)
-                                          : const Color(0xFF475569),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMethodologyCard(
+                      'Hybrid',
+                      'Combines waterfall rigour for infrastructure with agile flexibility for feature delivery. Core environments upfront; development evolves iteratively.',
+                      Icons.merge_type_outlined,
+                      const Color(0xFF7C3AED),
+                    ),
                   ),
-                ),
-                if (rowIndex != rows.length - 1) const SizedBox(height: 8),
-              ],
-            ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMethodologyCard(
+                      'Agile',
+                      'Iterative, incremental delivery. Minimal viable environment for Sprint 1; tooling and infrastructure evolve with each iteration. Best for adaptive scope.',
+                      Icons.autorenew_outlined,
+                      const Color(0xFF16A34A),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-        ),
+        ],
       ),
     );
   }
 
-  bool _isDecisionLabel(String value) {
-    return const ['Ready', 'Conditional', 'At risk', 'Blocked'].contains(value);
-  }
-
-  Color _decisionColor(String value) {
-    switch (value) {
-      case 'Ready':
-        return AppSemanticColors.success;
-      case 'Blocked':
-      case 'At risk':
-        return const Color(0xFFDC2626);
-      default:
-        return const Color(0xFFF59E0B);
-    }
-  }
-
-  Widget _buildSmokeTestSection(_DevelopmentSetupSnapshot snapshot) {
-    final resultColor = snapshot.smokePassed
-        ? AppSemanticColors.success
-        : const Color(0xFFDC2626);
-    return _buildDashboardPanel(
-      title: 'Hello World / Proof of Connectivity',
-      subtitle:
-          'Smoke-test status for basic workspace access and change movement before execution starts.',
-      icon: Icons.play_circle_outline,
-      child: Container(
-        width: double.infinity,
+  Widget _buildMethodologyCard(
+      String label, String description, IconData icon, Color color) {
+    final isSelected = _selectedMethodology == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedMethodology = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: isSelected ? color.withOpacity(0.08) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(
+            color: isSelected ? color : const Color(0xFFE2E8F0),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final stacked = constraints.maxWidth < 880;
-                final resultCard = Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: resultColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: resultColor.withOpacity(0.22)),
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.22)),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Final Result',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        snapshot.smokePassed ? 'PASS' : 'FAIL',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: resultColor,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ],
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? color : const Color(0xFF0F172A),
+                    ),
                   ),
-                );
-
-                if (stacked) {
-                  return Column(
-                    children: [
-                      for (int i = 0; i < snapshot.smokeChecks.length; i++) ...[
-                        _buildSmokeCheck(snapshot.smokeChecks[i]),
-                        const SizedBox(height: 12),
-                      ],
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: resultCard,
+                ),
+                if (isSelected)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Active',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    for (int i = 0; i < snapshot.smokeChecks.length; i++) ...[
-                      Expanded(
-                          child: _buildSmokeCheck(snapshot.smokeChecks[i])),
-                      if (i != snapshot.smokeChecks.length - 1)
-                        const SizedBox(width: 14),
-                    ],
-                    const SizedBox(width: 14),
-                    resultCard,
-                  ],
-                );
-              },
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: const Color(0xFF64748B),
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -945,112 +992,270 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildDetailedRegistersPanel() {
+  // ══════════════════════════════════════════════════════════════════════════
+  // METHODOLOGY COMPARISON TABLE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildMethodologyComparisonTable(_DevelopmentSetupSnapshot snapshot) {
+    return _buildDashboardPanel(
+      title: 'Methodology Comparison Matrix',
+      subtitle:
+          'Industry-standard comparison of Development Setup requirements across Waterfall, Hybrid, and Agile methodologies. Based on PMBOK 7th Ed., ISO/IEC 12207, and SAFe 6.0 frameworks.',
+      icon: Icons.compare_arrows_outlined,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildComparisonHeader(),
+              const SizedBox(height: 8),
+              _buildComparisonRow(
+                dimension: 'Environment Provisioning',
+                waterfall: 'Complete all environments before development starts',
+                hybrid: 'Core environments upfront; dev env evolves',
+                agile: 'Minimal viable environment for Sprint 1',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'CI/CD Pipeline',
+                waterfall: 'Full pipeline with phase-gate approvals',
+                hybrid: 'Basic CI upfront; CD matures iteratively',
+                agile: 'Fast CI from day 1; CD per sprint',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Tooling & Licensing',
+                waterfall: 'All tools licensed and configured upfront',
+                hybrid: 'Critical tools first; others staged',
+                agile: 'Essential tools for Sprint 1; expand as needed',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Quality Gates',
+                waterfall: 'Phase entry/exit criteria with formal sign-off',
+                hybrid: 'Phase gates for infra; DoD for features',
+                agile: 'Definition of Ready and Definition of Done',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Security & Compliance',
+                waterfall: 'Full security audit before development',
+                hybrid: 'Compliance baseline upfront; iterative hardening',
+                agile: 'Shift-left security in CI pipeline',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Branching Strategy',
+                waterfall: 'Strict branching per phase (release branches)',
+                hybrid: 'GitFlow with release trains',
+                agile: 'Trunk-based with feature flags',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Test Data Strategy',
+                waterfall: 'Complete test data prepared before SIT',
+                hybrid: 'Core test data upfront; scenario data per sprint',
+                agile: 'Test data generated per sprint from fixtures',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+              _buildComparisonRow(
+                dimension: 'Rollback Approach',
+                waterfall: 'CCB-approved rollback with documented criteria',
+                hybrid: 'Formal rollback for infra; feature flags for code',
+                agile: 'Automated rollback with feature flags and canary',
+                wfColor: AppSemanticColors.info,
+                hColor: const Color(0xFF7C3AED),
+                agColor: AppSemanticColors.success,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonHeader() {
     return Container(
-      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: const [
+          SizedBox(
+            width: 180,
+            child: Text(
+              'DIMENSION',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF334155),
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'WATERFALL',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF2563EB),
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'HYBRID',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF7C3AED),
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'AGILE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF16A34A),
+                letterSpacing: 0.7,
+              ),
+            ),
           ),
         ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: _registersExpanded,
-          onExpansionChanged: (value) {
-            setState(() => _registersExpanded = value);
-          },
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          title: const Text(
-            'Detailed Registers',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
+    );
+  }
+
+  Widget _buildComparisonRow({
+    required String dimension,
+    required String waterfall,
+    required String hybrid,
+    required String agile,
+    required Color wfColor,
+    required Color hColor,
+    required Color agColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 180,
+            child: Text(
+              dimension,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
-          subtitle: const Text(
-            'Edit the source checklists and notes feeding the readiness dashboard.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Color(0xFF64748B),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: wfColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: wfColor.withOpacity(0.15)),
+              ),
+              child: Text(
+                waterfall,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: const Color(0xFF334155),
+                  height: 1.4,
+                ),
+              ),
             ),
           ),
-          children: [
-            _buildSetupSection(
-              icon: Icons.storage_outlined,
-              title: 'Environments & Access',
-              subtitle:
-                  'Confirm where the system runs and who can access what.',
-              helperText:
-                  'Document environments, access provisioning, and seed data readiness.',
-              status: _envStatus,
-              onStatusChanged: (value) {
-                setState(() => _envStatus = value);
-                _scheduleSave();
-              },
-              summaryController: _envSummaryController,
-              items: _envChecklist,
-              onAddItem: _addEnvChecklistItem,
-              onUpdateItem: _updateEnvChecklistItem,
-              onDeleteItem: _deleteEnvChecklistItem,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: hColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: hColor.withOpacity(0.15)),
+              ),
+              child: Text(
+                hybrid,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: const Color(0xFF334155),
+                  height: 1.4,
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildSetupSection(
-              icon: Icons.alt_route_outlined,
-              title: 'Build & Deployment Flow',
-              subtitle: 'Show how code moves safely to an environment.',
-              helperText:
-                  'Capture CI/CD steps, gating checks, and promotion approvals.',
-              status: _buildStatus,
-              onStatusChanged: (value) {
-                setState(() => _buildStatus = value);
-                _scheduleSave();
-              },
-              summaryController: _buildSummaryController,
-              items: _buildChecklist,
-              onAddItem: _addBuildChecklistItem,
-              onUpdateItem: _updateBuildChecklistItem,
-              onDeleteItem: _deleteBuildChecklistItem,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: agColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: agColor.withOpacity(0.15)),
+              ),
+              child: Text(
+                agile,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: const Color(0xFF334155),
+                  height: 1.4,
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildSetupSection(
-              icon: Icons.construction_outlined,
-              title: 'Tooling & Ownership',
-              subtitle: 'Avoid confusion about tools and responsibility.',
-              helperText:
-                  'List tools, owners, onboarding steps, and support contacts.',
-              status: _toolingStatus,
-              onStatusChanged: (value) {
-                setState(() => _toolingStatus = value);
-                _scheduleSave();
-              },
-              summaryController: _toolingSummaryController,
-              items: _toolingChecklist,
-              onAddItem: _addToolingChecklistItem,
-              onUpdateItem: _updateToolingChecklistItem,
-              onDeleteItem: _deleteToolingChecklistItem,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildEnvironmentProvisioningCard(_DevelopmentSetupSnapshot snapshot) {
+  // ══════════════════════════════════════════════════════════════════════════
+  // ENVIRONMENT & INFRASTRUCTURE SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildEnvironmentSection(
+      _DevelopmentSetupSnapshot snapshot, bool isMobile) {
     return _buildDashboardPanel(
-      title: 'Environment & Workspace Provisioning',
+      title: 'Environment & Infrastructure Provisioning',
       subtitle:
-          'Prepare Dev, Staging, and Physical Site spaces with clear status and access references.',
-      icon: Icons.grid_view_rounded,
+          'Prepare Dev, Staging, Production, and Physical Site spaces with clear status and access references. ${_selectedMethodology == 'Waterfall' ? 'All environments must be fully provisioned before development begins.' : _selectedMethodology == 'Agile' ? 'Minimal viable environment for Sprint 1; evolve iteratively.' : 'Core environments upfront; dev environment evolves with iterations.'}',
+      icon: Icons.dns_outlined,
       trailing: _buildStatusDropdown(_envStatus, (value) {
         setState(() => _envStatus = value);
         _scheduleSave();
@@ -1061,7 +1266,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final spacing = 12.0;
-              final columns = constraints.maxWidth >= 620 ? 3 : 1;
+              final columns = constraints.maxWidth >= 620 ? 2 : 1;
+              if (constraints.maxWidth >= 900) columns == 2; // keep 2-col
               final width = columns == 1
                   ? constraints.maxWidth
                   : (constraints.maxWidth - spacing * (columns - 1)) / columns;
@@ -1072,80 +1278,748 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                     .map(
                       (environment) => SizedBox(
                         width: width,
+                        child: _buildEnvironmentCard(environment),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _LabeledTextArea(
+            label: 'Provisioning notes',
+            controller: _envSummaryController,
+            hintText:
+                'Capture access URLs, site locations, provisioning dependencies, and readiness notes.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnvironmentCard(_EnvironmentCard env) {
+    final statusColor =
+        env.status == 'Provisioned' ? AppSemanticColors.success : const Color(0xFFF59E0B);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(env.icon, color: const Color(0xFF0F172A), size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  env.title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildStatusTag(env.status, statusColor),
+          const SizedBox(height: 12),
+          Text(
+            env.note,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 14),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _showAccessReference(env.accessReference),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.link_outlined,
+                      size: 16, color: Color(0xFF2563EB)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      env.accessLabel,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12.5,
+                        color: Color(0xFF2563EB),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CI/CD & AUTOMATION PIPELINE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildPipelineSection(
+      _DevelopmentSetupSnapshot snapshot, bool isMobile) {
+    return _buildDashboardPanel(
+      title: 'CI/CD & Automation Pipeline',
+      subtitle:
+          'Build, Test, and Deploy flow with readiness indicators. ${_selectedMethodology == 'Waterfall' ? 'Full pipeline with phase-gate approvals required before development.' : _selectedMethodology == 'Agile' ? 'Fast feedback CI from Sprint 1; CD matures per iteration.' : 'Basic CI upfront; CD gates mature iteratively.'}',
+      icon: Icons.play_circle_outline,
+      trailing: _buildStatusDropdown(_buildStatus, (value) {
+        setState(() => _buildStatus = value);
+        _scheduleSave();
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              for (int i = 0; i < snapshot.pipelineStages.length; i++) ...[
+                Expanded(child: _buildPipelineStage(snapshot.pipelineStages[i])),
+                if (i != snapshot.pipelineStages.length - 1)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 36),
+                      child: Row(
+                        children: const [
+                          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+                          SizedBox(width: 8),
+                          Icon(Icons.play_arrow_rounded,
+                              size: 20, color: Color(0xFF94A3B8)),
+                          SizedBox(width: 8),
+                          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 18),
+          _LabeledTextArea(
+            label: 'Pipeline notes',
+            controller: _buildSummaryController,
+            hintText:
+                'Document gating checks, promotion strategy, approvals, and rollback coverage.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPipelineStage(_PipelineStage stage) {
+    final color = stage.status == 'Ready'
+        ? AppSemanticColors.success
+        : stage.status == 'Pending'
+            ? const Color(0xFFF59E0B)
+            : stage.status == 'Blocked'
+                ? const Color(0xFFDC2626)
+                : const Color(0xFF2563EB);
+    return Column(
+      children: [
+        Container(
+          width: 74,
+          height: 74,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withOpacity(0.22)),
+          ),
+          child: Icon(stage.icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          stage.label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 6),
+        _buildStatusTag(stage.status, color),
+        const SizedBox(height: 8),
+        Text(
+          stage.detail,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TOOLING & LICENSING
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildToolingSection(_DevelopmentSetupSnapshot snapshot) {
+    return _buildDashboardPanel(
+      title: 'Development Tools & Technology Stack',
+      subtitle:
+          'Verify licenses and assigned users for software tools and physical equipment. ${_selectedMethodology == 'Waterfall' ? 'All tools must be licensed and configured before development begins.' : _selectedMethodology == 'Agile' ? 'Essential tools for Sprint 1; expand toolchain as needed.' : 'Critical tools first; remaining tools staged per delivery phase.'}',
+      icon: Icons.handyman_outlined,
+      trailing: _buildStatusDropdown(_toolingStatus, (value) {
+        setState(() => _toolingStatus = value);
+        _scheduleSave();
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'Tool Name',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'License Status',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Assigned User',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (int i = 0; i < snapshot.toolRecords.length; i++) ...[
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      snapshot.toolRecords[i].toolName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: _buildStatusTag(
+                      snapshot.toolRecords[i].licenseStatus,
+                      snapshot.toolRecords[i].licenseStatus == 'Active'
+                          ? AppSemanticColors.success
+                          : const Color(0xFFDC2626),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      snapshot.toolRecords[i].assignedUser,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (i != snapshot.toolRecords.length - 1)
+              const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 16),
+          _LabeledTextArea(
+            label: 'Tooling notes',
+            controller: _toolingSummaryController,
+            enabled: _canEditSetup || _canCreateSetup,
+            hintText:
+                'Capture licensing caveats, provisioning blockers, and support contacts.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // QUALITY GATES & DEFINITION OF READY/DONE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildQualityGatesSection(_DevelopmentSetupSnapshot snapshot) {
+    return _buildDashboardPanel(
+      title: 'Quality Gates & Definition of Ready/Done',
+      subtitle:
+          '${_selectedMethodology == 'Waterfall' ? 'Phase entry/exit criteria with formal sign-off per PMBOK quality management (Section 8.2).' : _selectedMethodology == 'Agile' ? 'Team-owned Definition of Ready (DoR) and Definition of Done (DoD) for sprint increments.' : 'Phase gates for infrastructure deliverables; DoR/DoD for feature delivery.'}',
+      icon: Icons.fact_check_outlined,
+      trailing: _buildStatusDropdown(_qualityStatus, (value) {
+        setState(() => _qualityStatus = value);
+        _scheduleSave();
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_selectedMethodology == 'Waterfall' ||
+              _selectedMethodology == 'Hybrid')
+            _buildQualityGateTable(
+              title: 'Phase Gate Criteria',
+              rows: [
+                _QualityGateRow(
+                  phase: 'Requirements',
+                  entry: 'Project charter approved, stakeholders identified',
+                  exit: 'SRS signed off, traceability matrix complete',
+                  owner: 'Project Manager',
+                ),
+                _QualityGateRow(
+                  phase: 'Design',
+                  entry: 'SRS approved, architecture reviewed',
+                  exit: 'Design documents reviewed and baselined',
+                  owner: 'Solution Architect',
+                ),
+                _QualityGateRow(
+                  phase: 'Development',
+                  entry: 'Design baselined, environment provisioned',
+                  exit: 'Unit tests pass, code review complete',
+                  owner: 'Dev Lead',
+                ),
+                _QualityGateRow(
+                  phase: 'Testing',
+                  entry: 'Code frozen, test data prepared',
+                  exit: 'All test cases pass, UAT sign-off',
+                  owner: 'QA Lead',
+                ),
+                _QualityGateRow(
+                  phase: 'Deployment',
+                  entry: 'UAT approved, deployment plan reviewed',
+                  exit: 'System live, hypercare complete',
+                  owner: 'Release Manager',
+                ),
+              ],
+            ),
+          if (_selectedMethodology == 'Agile' ||
+              _selectedMethodology == 'Hybrid') ...[
+            if (_selectedMethodology == 'Hybrid')
+              const SizedBox(height: 20),
+            _buildDoRDoDTable(),
+          ],
+          const SizedBox(height: 16),
+          _LabeledTextArea(
+            label: 'Quality notes',
+            controller: _qualitySummaryController,
+            hintText:
+                'Document quality gate criteria, DoR/DoD agreements, and review cadences.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQualityGateTable({
+    required String title,
+    required List<_QualityGateRow> rows,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 700),
+            child: Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: const [
+                      SizedBox(
+                        width: 120,
+                        child: Text('PHASE',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text('ENTRY CRITERIA',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text('EXIT CRITERIA',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                      SizedBox(width: 10),
+                      SizedBox(
+                        width: 130,
+                        child: Text('GATE OWNER',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (int i = 0; i < rows.length; i++) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: i.isEven
+                          ? Colors.white
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border:
+                          Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: Text(rows[i].phase,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A))),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(rows[i].entry,
+                              style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF475569),
+                                  height: 1.45)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(rows[i].exit,
+                              style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF475569),
+                                  height: 1.45)),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          width: 130,
+                          child: Text(rows[i].owner,
+                              style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0F172A))),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (i != rows.length - 1) const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDoRDoDTable() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Definition of Ready (DoR) & Definition of Done (DoD)',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 600),
+            child: Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: const [
+                      SizedBox(
+                        width: 140,
+                        child: Text('CRITERIA TYPE',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text('CRITERIA',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                      SizedBox(width: 10),
+                      SizedBox(
+                        width: 100,
+                        child: Text('ENFORCED',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF334155),
+                                letterSpacing: 0.7)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildDoRDoDRow(
+                  type: 'DoR',
+                  criteria:
+                      'User story has clear acceptance criteria and is estimated by the team',
+                  enforced: 'Sprint Planning',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoR',
+                  criteria:
+                      'Dependencies identified and resolved or escalated before sprint start',
+                  enforced: 'Sprint Planning',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoR',
+                  criteria:
+                      'UX mockups or design references available for UI stories',
+                  enforced: 'Sprint Planning',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoD',
+                  criteria:
+                      'Code reviewed by at least one peer; all unit tests passing',
+                  enforced: 'Sprint Review',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoD',
+                  criteria:
+                      'Integration tests pass; no critical or high-severity defects open',
+                  enforced: 'Sprint Review',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoD',
+                  criteria:
+                      'Feature deployed to staging and demonstrated in sprint review',
+                  enforced: 'Sprint Review',
+                ),
+                _buildDoRDoDRow(
+                  type: 'DoD',
+                  criteria:
+                      'Documentation updated; release notes entry created',
+                  enforced: 'Sprint Review',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDoRDoDRow({
+    required String type,
+    required String criteria,
+    required String enforced,
+  }) {
+    final isDoR = type == 'DoR';
+    final typeColor = isDoR ? const Color(0xFF2563EB) : AppSemanticColors.success;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: _buildStatusTag(type, typeColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              criteria,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: Color(0xFF475569),
+                height: 1.45,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 100,
+            child: Text(
+              enforced,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECURITY & COMPLIANCE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildSecuritySection(_DevelopmentSetupSnapshot snapshot) {
+    return _buildDashboardPanel(
+      title: 'Security & Compliance Baseline',
+      subtitle:
+          '${_selectedMethodology == 'Waterfall' ? 'Full security audit and compliance baseline required before development begins (OWASP, NIST SP 800-53).' : _selectedMethodology == 'Agile' ? 'Shift-left security: SAST/DAST integrated in CI pipeline from Sprint 1.' : 'Compliance baseline upfront (waterfall-style); iterative security hardening per sprint (agile-style).'}',
+      icon: Icons.shield_outlined,
+      trailing: _buildStatusDropdown(_securityStatus, (value) {
+        setState(() => _securityStatus = value);
+        _scheduleSave();
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Security measures as cards
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final spacing = 12.0;
+              final columns = constraints.maxWidth >= 600 ? 2 : 1;
+              final width = columns == 1
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: snapshot.securityMeasures
+                    .map(
+                      (measure) => SizedBox(
+                        width: width,
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: const Color(0xFFE2E8F0)),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Row(
-                                children: [
-                                  Icon(environment.icon,
-                                      color: const Color(0xFF0F172A), size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      environment.title,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0F172A),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Icon(
+                                measure.icon,
+                                size: 18,
+                                color: const Color(0xFF0F172A),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  measure.label,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
                               _buildStatusTag(
-                                environment.status,
-                                environment.status == 'Provisioned'
+                                measure.status,
+                                measure.status == 'Ready'
                                     ? AppSemanticColors.success
                                     : const Color(0xFFF59E0B),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                environment.note,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                  height: 1.45,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => _showAccessReference(
-                                  environment.accessReference,
-                                ),
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.link_outlined,
-                                          size: 16, color: Color(0xFF2563EB)),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          environment.accessLabel,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontFamily: 'monospace',
-                                            fontSize: 12.5,
-                                            color: Color(0xFF2563EB),
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ),
                             ],
                           ),
@@ -1158,22 +2032,25 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
           ),
           const SizedBox(height: 16),
           _LabeledTextArea(
-            label: 'Provisioning notes',
-            controller: _envSummaryController,
-            enabled: _canEditSetup || _canCreateSetup,
+            label: 'Security notes',
+            controller: _securitySummaryController,
             hintText:
-                'Capture access URLs, site locations, provisioning dependencies, and readiness notes.',
+                'Document access controls, compliance gaps, secrets management, and remediation plans.',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRepositoryCard(_DevelopmentSetupSnapshot snapshot) {
+  // ══════════════════════════════════════════════════════════════════════════
+  // REPOSITORY & ASSET STRUCTURE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildRepositorySection(_DevelopmentSetupSnapshot snapshot) {
     return _buildDashboardPanel(
-      title: 'Repository & Asset Structure',
+      title: 'Version Control & Repository Structure',
       subtitle:
-          'Visualize the repo shape, branching strategy, and access control around design assets.',
+          'Visualize the repo shape, branching strategy, and access control around design assets. ${_selectedMethodology == 'Waterfall' ? 'Strict branching per phase with release branches.' : _selectedMethodology == 'Agile' ? 'Trunk-based development with feature flags for continuous integration.' : 'GitFlow with release trains for structured delivery.'}',
       icon: Icons.folder_copy_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1279,179 +2156,15 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildToolingCard(_DevelopmentSetupSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'Tooling & Licensing Verification',
-      subtitle:
-          'Verify licenses and assigned users for software tools and physical equipment.',
-      icon: Icons.handyman_outlined,
-      trailing: _buildStatusDropdown(_toolingStatus, (value) {
-        setState(() => _toolingStatus = value);
-        _scheduleSave();
-      }),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    'Tool Name',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'License Status',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Assigned User',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (int i = 0; i < snapshot.toolRecords.length; i++) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(
-                color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      snapshot.toolRecords[i].toolName,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: _buildStatusTag(
-                      snapshot.toolRecords[i].licenseStatus,
-                      snapshot.toolRecords[i].licenseStatus == 'Active'
-                          ? AppSemanticColors.success
-                          : const Color(0xFFDC2626),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      snapshot.toolRecords[i].assignedUser,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (i != snapshot.toolRecords.length - 1)
-              const SizedBox(height: 10),
-          ],
-          const SizedBox(height: 16),
-          _LabeledTextArea(
-            label: 'Tooling notes',
-            controller: _toolingSummaryController,
-            enabled: _canEditSetup || _canCreateSetup,
-            hintText:
-                'Capture licensing caveats, provisioning blockers, and support contacts.',
-          ),
-        ],
-      ),
-    );
-  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // TEST DATA & MOCK SCENARIOS
+  // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildPipelineCard(_DevelopmentSetupSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'CI/CD & Automation Pipeline',
-      subtitle:
-          'Build, Test, and Deploy flow with readiness indicators for each node.',
-      icon: Icons.play_circle_outline,
-      trailing: _buildStatusDropdown(_buildStatus, (value) {
-        setState(() => _buildStatus = value);
-        _scheduleSave();
-      }),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              for (int i = 0; i < snapshot.pipelineStages.length; i++) ...[
-                Expanded(
-                    child: _buildPipelineStage(snapshot.pipelineStages[i])),
-                if (i != snapshot.pipelineStages.length - 1)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 36),
-                      child: Row(
-                        children: const [
-                          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
-                          SizedBox(width: 8),
-                          Icon(Icons.play_arrow_rounded,
-                              size: 20, color: Color(0xFF94A3B8)),
-                          SizedBox(width: 8),
-                          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 18),
-          _LabeledTextArea(
-            label: 'Pipeline notes',
-            controller: _buildSummaryController,
-            enabled: _canEditSetup || _canCreateSetup,
-            hintText:
-                'Document gating checks, promotion strategy, approvals, and rollback coverage.',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTestDataCard(_DevelopmentSetupSnapshot snapshot) {
+  Widget _buildTestDataSection(_DevelopmentSetupSnapshot snapshot) {
     return _buildDashboardPanel(
       title: 'Test Data & Mock Scenarios',
       subtitle:
-          'Form-style view of seed data and scenario sources for execution readiness.',
+          '${_selectedMethodology == 'Waterfall' ? 'Complete test data and expected results prepared before System Integration Testing.' : _selectedMethodology == 'Agile' ? 'Test data generated per sprint from fixtures and factories; evolves with each iteration.' : 'Core test data upfront; scenario data added per sprint.'}',
       icon: Icons.dataset_outlined,
       child: Column(
         children: snapshot.scenarios
@@ -1486,11 +2199,15 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildChannelsCard(_DevelopmentSetupSnapshot snapshot) {
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMMUNICATION & COLLABORATION CHANNELS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildChannelsSection(_DevelopmentSetupSnapshot snapshot) {
     return _buildDashboardPanel(
       title: 'Communication & Collaboration Channels',
       subtitle:
-          'Digital and field coordination channels with invite status and platform context.',
+          'Digital and field coordination channels with invite status. ${_selectedMethodology == 'Waterfall' ? 'Formal communication plan with scheduled reviews and escalation paths.' : _selectedMethodology == 'Agile' ? 'Daily standups, sprint reviews, and retrospectives for continuous alignment.' : 'Formal reviews for phase gates; agile ceremonies for feature delivery.'}',
       icon: Icons.forum_outlined,
       child: Column(
         children: snapshot.channels
@@ -1511,7 +2228,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border:
+                            Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Icon(
                         channel.icon,
@@ -1558,55 +2276,292 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildSecurityCard(_DevelopmentSetupSnapshot snapshot) {
+  // ══════════════════════════════════════════════════════════════════════════
+  // SMOKE TEST / GO-NO-GO
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildSmokeTestSection(_DevelopmentSetupSnapshot snapshot) {
+    final resultColor = snapshot.smokePassed
+        ? AppSemanticColors.success
+        : const Color(0xFFDC2626);
     return _buildDashboardPanel(
-      title: 'Security & Access Baseline',
+      title: 'Go / No-Go Readiness Verification',
       subtitle:
-          'Shield and lock checks for digital access controls and site safeguards.',
-      icon: Icons.shield_outlined,
-      child: Column(
-        children: snapshot.securityMeasures
-            .map(
-              (measure) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      measure.icon,
-                      size: 18,
-                      color: const Color(0xFF0F172A),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        measure.label,
-                        style: const TextStyle(
-                          fontSize: 13,
+          'Smoke-test status for basic workspace access, pipeline movement, and security baseline before execution starts.',
+      icon: Icons.play_circle_outline,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stacked = constraints.maxWidth < 880;
+                final resultCard = Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: resultColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: resultColor.withOpacity(0.22)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Final Result',
+                        style: TextStyle(
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
+                          color: Color(0xFF64748B),
                         ),
                       ),
-                    ),
-                    _buildStatusTag(
-                      measure.status,
-                      measure.status == 'Ready'
-                          ? AppSemanticColors.success
-                          : const Color(0xFFF59E0B),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        snapshot.smokePassed ? 'GO' : 'NO-GO',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: resultColor,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (stacked) {
+                  return Column(
+                    children: [
+                      for (int i = 0; i < snapshot.smokeChecks.length; i++) ...[
+                        _buildSmokeCheck(snapshot.smokeChecks[i]),
+                        const SizedBox(height: 12),
+                      ],
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: resultCard,
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    for (int i = 0; i < snapshot.smokeChecks.length; i++) ...[
+                      Expanded(
+                          child: _buildSmokeCheck(snapshot.smokeChecks[i])),
+                      if (i != snapshot.smokeChecks.length - 1)
+                        const SizedBox(width: 14),
+                    ],
+                    const SizedBox(width: 14),
+                    resultCard,
                   ],
-                ),
-              ),
-            )
-            .toList(),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _buildSmokeCheck(_SmokeCheck check) {
+    final color =
+        check.passed ? AppSemanticColors.success : const Color(0xFFDC2626);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            check.passed ? Icons.check_circle : Icons.cancel_outlined,
+            size: 28,
+            color: color,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  check.label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  check.detail,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DETAILED REGISTERS (EXPANDABLE)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildDetailedRegistersPanel() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _registersExpanded,
+          onExpansionChanged: (value) {
+            setState(() => _registersExpanded = value);
+          },
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          title: const Text(
+            'Detailed Registers',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          subtitle: const Text(
+            'Edit the source checklists and notes feeding the readiness dashboard.',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          children: [
+            _buildSetupSection(
+              icon: Icons.storage_outlined,
+              title: 'Environments & Access',
+              subtitle:
+                  'Confirm where the system runs and who can access what.',
+              helperText:
+                  'Document environments, access provisioning, and seed data readiness.',
+              status: _envStatus,
+              onStatusChanged: (value) {
+                setState(() => _envStatus = value);
+                _scheduleSave();
+              },
+              summaryController: _envSummaryController,
+              items: _envChecklist,
+              onAddItem: _addEnvChecklistItem,
+              onUpdateItem: _updateEnvChecklistItem,
+              onDeleteItem: _deleteEnvChecklistItem,
+            ),
+            const SizedBox(height: 20),
+            _buildSetupSection(
+              icon: Icons.alt_route_outlined,
+              title: 'Build & Deployment Flow',
+              subtitle: 'Show how code moves safely to an environment.',
+              helperText:
+                  'Capture CI/CD steps, gating checks, and promotion approvals.',
+              status: _buildStatus,
+              onStatusChanged: (value) {
+                setState(() => _buildStatus = value);
+                _scheduleSave();
+              },
+              summaryController: _buildSummaryController,
+              items: _buildChecklist,
+              onAddItem: _addBuildChecklistItem,
+              onUpdateItem: _updateBuildChecklistItem,
+              onDeleteItem: _deleteBuildChecklistItem,
+            ),
+            const SizedBox(height: 20),
+            _buildSetupSection(
+              icon: Icons.construction_outlined,
+              title: 'Tooling & Ownership',
+              subtitle: 'Avoid confusion about tools and responsibility.',
+              helperText:
+                  'List tools, owners, onboarding steps, and support contacts.',
+              status: _toolingStatus,
+              onStatusChanged: (value) {
+                setState(() => _toolingStatus = value);
+                _scheduleSave();
+              },
+              summaryController: _toolingSummaryController,
+              items: _toolingChecklist,
+              onAddItem: _addToolingChecklistItem,
+              onUpdateItem: _updateToolingChecklistItem,
+              onDeleteItem: _deleteToolingChecklistItem,
+            ),
+            const SizedBox(height: 20),
+            _buildSetupSection(
+              icon: Icons.fact_check_outlined,
+              title: 'Quality Gates & DoR/DoD',
+              subtitle: 'Define readiness and completion criteria.',
+              helperText:
+                  'Document quality gates, Definition of Ready, and Definition of Done.',
+              status: _qualityStatus,
+              onStatusChanged: (value) {
+                setState(() => _qualityStatus = value);
+                _scheduleSave();
+              },
+              summaryController: _qualitySummaryController,
+              items: _qualityChecklist,
+              onAddItem: _addQualityChecklistItem,
+              onUpdateItem: _updateQualityChecklistItem,
+              onDeleteItem: _deleteQualityChecklistItem,
+            ),
+            const SizedBox(height: 20),
+            _buildSetupSection(
+              icon: Icons.shield_outlined,
+              title: 'Security & Compliance',
+              subtitle: 'Configure access controls and compliance baselines.',
+              helperText:
+                  'Document RBAC, secrets management, compliance gaps, and remediation.',
+              status: _securityStatus,
+              onStatusChanged: (value) {
+                setState(() => _securityStatus = value);
+                _scheduleSave();
+              },
+              summaryController: _securitySummaryController,
+              items: _securityChecklist,
+              onAddItem: _addSecurityChecklistItem,
+              onUpdateItem: _updateSecurityChecklistItem,
+              onDeleteItem: _deleteSecurityChecklistItem,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHARED UI BUILDERS
+  // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDashboardPanel({
     required String title,
@@ -1683,13 +2638,19 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildMetricPill(String label, String value) {
+  Widget _buildMetricPill(String label, String value, {bool highlight = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: highlight
+            ? const Color(0xFFFFC812).withOpacity(0.20)
+            : Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(
+          color: highlight
+              ? const Color(0xFFFFC812).withOpacity(0.35)
+              : Colors.white.withOpacity(0.12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1699,16 +2660,18 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withOpacity(0.72),
+              color: highlight
+                  ? const Color(0xFFFFC812)
+                  : Colors.white.withOpacity(0.72),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: highlight ? Colors.white : Colors.white,
             ),
           ),
         ],
@@ -1804,51 +2767,6 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  Widget _buildPipelineStage(_PipelineStage stage) {
-    final color = stage.status == 'Ready'
-        ? AppSemanticColors.success
-        : stage.status == 'Pending'
-            ? const Color(0xFFF59E0B)
-            : stage.status == 'Blocked'
-                ? const Color(0xFFDC2626)
-                : const Color(0xFF2563EB);
-    return Column(
-      children: [
-        Container(
-          width: 74,
-          height: 74,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.22)),
-          ),
-          child: Icon(stage.icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          stage.label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 6),
-        _buildStatusTag(stage.status, color),
-        const SizedBox(height: 8),
-        Text(
-          stage.detail,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-            height: 1.4,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildFieldRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1877,296 +2795,6 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
         ),
       ],
     );
-  }
-
-  Widget _buildSmokeCheck(_SmokeCheck check) {
-    final color =
-        check.passed ? AppSemanticColors.success : const Color(0xFFDC2626);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            check.passed ? Icons.check_circle : Icons.cancel_outlined,
-            size: 28,
-            color: color,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  check.label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  check.detail,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String? _projectId() => ProjectDataHelper.getData(context).projectId;
-
-  Future<void> _loadFromFirestore() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    final provider = ProjectDataInherited.maybeOf(context);
-    final projectData = provider?.projectData ?? ProjectDataModel();
-    setState(() => _isLoading = true);
-    try {
-      final results = await Future.wait([
-        FirebaseFirestore.instance
-            .collection('projects')
-            .doc(projectId)
-            .collection('design_phase_sections')
-            .doc('development_set_up')
-            .get(),
-        ArchitectureService.load(projectId),
-      ]);
-      final doc = results[0] as DocumentSnapshot<Map<String, dynamic>>;
-      final architectureData = results[1] as Map<String, dynamic>?;
-      final data = doc.data() ?? {};
-      final env = Map<String, dynamic>.from(data['environmentsAccess'] ?? {});
-      final build = Map<String, dynamic>.from(data['buildDeployment'] ?? {});
-      final tooling = Map<String, dynamic>.from(data['toolingOwnership'] ?? {});
-
-      _suspendSave = true;
-      _envSummaryController.text = env['summary']?.toString() ?? '';
-      _buildSummaryController.text = build['summary']?.toString() ?? '';
-      _toolingSummaryController.text = tooling['summary']?.toString() ?? '';
-      _envStatus = _normalizeStatus(env['status']?.toString());
-      _buildStatus = _normalizeStatus(build['status']?.toString());
-      _toolingStatus = _normalizeStatus(tooling['status']?.toString());
-      _suspendSave = false;
-
-      final envItems = _SetupChecklistItem.fromList(env['checklist']);
-      final buildItems = _SetupChecklistItem.fromList(build['checklist']);
-      final toolingItems = _SetupChecklistItem.fromList(tooling['checklist']);
-
-      if (!mounted) return;
-      setState(() {
-        _architectureNodeCount =
-            (architectureData?['nodes'] as List?)?.length ?? 0;
-        _envChecklist
-          ..clear()
-          ..addAll(envItems);
-        _buildChecklist
-          ..clear()
-          ..addAll(buildItems);
-        _toolingChecklist
-          ..clear()
-          ..addAll(toolingItems);
-        _seedDefaultsIfNeeded(projectData);
-      });
-    } catch (error) {
-      debugPrint('Failed to load development set up data: $error');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _scheduleSave() {
-    if (_suspendSave) return;
-    _saveDebounce.run(_saveToFirestore);
-  }
-
-  Future<void> _saveToFirestore() async {
-    if (!_canCreateSetup && !_canEditSetup) return;
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    final payload = {
-      'environmentsAccess': {
-        'summary': _envSummaryController.text.trim(),
-        'status': _envStatus,
-        'checklist': _envChecklist.map((item) => item.toJson()).toList(),
-      },
-      'buildDeployment': {
-        'summary': _buildSummaryController.text.trim(),
-        'status': _buildStatus,
-        'checklist': _buildChecklist.map((item) => item.toJson()).toList(),
-      },
-      'toolingOwnership': {
-        'summary': _toolingSummaryController.text.trim(),
-        'status': _toolingStatus,
-        'checklist': _toolingChecklist.map((item) => item.toJson()).toList(),
-      },
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('design_phase_sections')
-        .doc('development_set_up')
-        .set(payload, SetOptions(merge: true));
-  }
-
-  String _normalizeStatus(String? raw) {
-    if (raw == null || raw.isEmpty) return _sectionStatusOptions.first;
-    final match = _sectionStatusOptions.firstWhere(
-      (option) => option.toLowerCase() == raw.toLowerCase(),
-      orElse: () => _sectionStatusOptions.first,
-    );
-    return match;
-  }
-
-  Widget _buildHeader(bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              'Development Set Up',
-              style: TextStyle(
-                fontSize: isMobile ? 24 : 28,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
-              ),
-            ),
-            _buildTag(
-              label: 'Readiness checkpoint',
-              background: AppSemanticColors.warningSurface,
-              foreground: const Color(0xFFB45309),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Prepare environments, access, and workflows so development can start without blockers. Document only what is required for day-one readiness.',
-          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTag(
-      {required String label,
-      required Color background,
-      required Color foreground}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
-      ),
-    );
-  }
-
-  void _addEnvChecklistItem() {
-    if (!_canCreateSetup) {
-      _showPermissionSnackBar('add setup checklist items');
-      return;
-    }
-    setState(() => _envChecklist.add(_SetupChecklistItem.empty()));
-    _scheduleSave();
-  }
-
-  void _updateEnvChecklistItem(_SetupChecklistItem updated) {
-    if (!_canEditSetup) {
-      _showPermissionSnackBar('edit setup checklist items');
-      return;
-    }
-    final index = _envChecklist.indexWhere((item) => item.id == updated.id);
-    if (index == -1) return;
-    setState(() => _envChecklist[index] = updated);
-    _scheduleSave();
-  }
-
-  void _deleteEnvChecklistItem(String id) {
-    if (!_canDeleteSetup) {
-      _showPermissionSnackBar('delete setup checklist items');
-      return;
-    }
-    setState(() => _envChecklist.removeWhere((item) => item.id == id));
-    _scheduleSave();
-  }
-
-  void _addBuildChecklistItem() {
-    if (!_canCreateSetup) {
-      _showPermissionSnackBar('add setup checklist items');
-      return;
-    }
-    setState(() => _buildChecklist.add(_SetupChecklistItem.empty()));
-    _scheduleSave();
-  }
-
-  void _updateBuildChecklistItem(_SetupChecklistItem updated) {
-    if (!_canEditSetup) {
-      _showPermissionSnackBar('edit setup checklist items');
-      return;
-    }
-    final index = _buildChecklist.indexWhere((item) => item.id == updated.id);
-    if (index == -1) return;
-    setState(() => _buildChecklist[index] = updated);
-    _scheduleSave();
-  }
-
-  void _deleteBuildChecklistItem(String id) {
-    if (!_canDeleteSetup) {
-      _showPermissionSnackBar('delete setup checklist items');
-      return;
-    }
-    setState(() => _buildChecklist.removeWhere((item) => item.id == id));
-    _scheduleSave();
-  }
-
-  void _addToolingChecklistItem() {
-    if (!_canCreateSetup) {
-      _showPermissionSnackBar('add setup checklist items');
-      return;
-    }
-    setState(() => _toolingChecklist.add(_SetupChecklistItem.empty()));
-    _scheduleSave();
-  }
-
-  void _updateToolingChecklistItem(_SetupChecklistItem updated) {
-    if (!_canEditSetup) {
-      _showPermissionSnackBar('edit setup checklist items');
-      return;
-    }
-    final index = _toolingChecklist.indexWhere((item) => item.id == updated.id);
-    if (index == -1) return;
-    setState(() => _toolingChecklist[index] = updated);
-    _scheduleSave();
-  }
-
-  void _deleteToolingChecklistItem(String id) {
-    if (!_canDeleteSetup) {
-      _showPermissionSnackBar('delete setup checklist items');
-      return;
-    }
-    setState(() => _toolingChecklist.removeWhere((item) => item.id == id));
-    _scheduleSave();
   }
 
   Widget _buildSetupSection({
@@ -2321,7 +2949,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
           children: [
             const Expanded(
               child: Text('Readiness checklist',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  style:
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
             TextButton.icon(
               onPressed: _canCreateSetup ? onAddItem : null,
@@ -2407,6 +3036,96 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
+  // ── Checklist CRUD ─────────────────────────────────────────────────────
+
+  void _addEnvChecklistItem() {
+    setState(() => _envChecklist.add(_SetupChecklistItem.empty()));
+    _scheduleSave();
+  }
+
+  void _updateEnvChecklistItem(_SetupChecklistItem updated) {
+    final index = _envChecklist.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+    setState(() => _envChecklist[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteEnvChecklistItem(String id) {
+    setState(() => _envChecklist.removeWhere((item) => item.id == id));
+    _scheduleSave();
+  }
+
+  void _addBuildChecklistItem() {
+    setState(() => _buildChecklist.add(_SetupChecklistItem.empty()));
+    _scheduleSave();
+  }
+
+  void _updateBuildChecklistItem(_SetupChecklistItem updated) {
+    final index = _buildChecklist.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+    setState(() => _buildChecklist[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteBuildChecklistItem(String id) {
+    setState(() => _buildChecklist.removeWhere((item) => item.id == id));
+    _scheduleSave();
+  }
+
+  void _addToolingChecklistItem() {
+    setState(() => _toolingChecklist.add(_SetupChecklistItem.empty()));
+    _scheduleSave();
+  }
+
+  void _updateToolingChecklistItem(_SetupChecklistItem updated) {
+    final index =
+        _toolingChecklist.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+    setState(() => _toolingChecklist[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteToolingChecklistItem(String id) {
+    setState(() => _toolingChecklist.removeWhere((item) => item.id == id));
+    _scheduleSave();
+  }
+
+  void _addQualityChecklistItem() {
+    setState(() => _qualityChecklist.add(_SetupChecklistItem.empty()));
+    _scheduleSave();
+  }
+
+  void _updateQualityChecklistItem(_SetupChecklistItem updated) {
+    final index =
+        _qualityChecklist.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+    setState(() => _qualityChecklist[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteQualityChecklistItem(String id) {
+    setState(() => _qualityChecklist.removeWhere((item) => item.id == id));
+    _scheduleSave();
+  }
+
+  void _addSecurityChecklistItem() {
+    setState(() => _securityChecklist.add(_SetupChecklistItem.empty()));
+    _scheduleSave();
+  }
+
+  void _updateSecurityChecklistItem(_SetupChecklistItem updated) {
+    final index =
+        _securityChecklist.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+    setState(() => _securityChecklist[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteSecurityChecklistItem(String id) {
+    setState(() => _securityChecklist.removeWhere((item) => item.id == id));
+    _scheduleSave();
+  }
+
   Future<bool> _confirmDelete(String label) async {
     final result = await showDialog<bool>(
       context: context,
@@ -2431,6 +3150,156 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
     return result ?? false;
   }
+
+  // ── Firestore persistence ──────────────────────────────────────────────
+
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<void> _loadFromFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectData = provider?.projectData ?? ProjectDataModel();
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .collection('design_phase_sections')
+            .doc('development_set_up')
+            .get(),
+        ArchitectureService.load(projectId),
+      ]);
+      final doc = results[0] as DocumentSnapshot<Map<String, dynamic>>;
+      final architectureData = results[1] as Map<String, dynamic>?;
+      final data = doc.data() ?? {};
+      final env = Map<String, dynamic>.from(data['environmentsAccess'] ?? {});
+      final build = Map<String, dynamic>.from(data['buildDeployment'] ?? {});
+      final tooling = Map<String, dynamic>.from(data['toolingOwnership'] ?? {});
+      final quality = Map<String, dynamic>.from(data['qualityGates'] ?? {});
+      final security = Map<String, dynamic>.from(data['securityBaseline'] ?? {});
+
+      _suspendSave = true;
+      _envSummaryController.text = env['summary']?.toString() ?? '';
+      _buildSummaryController.text = build['summary']?.toString() ?? '';
+      _toolingSummaryController.text = tooling['summary']?.toString() ?? '';
+      _qualitySummaryController.text = quality['summary']?.toString() ?? '';
+      _securitySummaryController.text = security['summary']?.toString() ?? '';
+      _envStatus = _normalizeStatus(env['status']?.toString());
+      _buildStatus = _normalizeStatus(build['status']?.toString());
+      _toolingStatus = _normalizeStatus(tooling['status']?.toString());
+      _qualityStatus = _normalizeStatus(quality['status']?.toString());
+      _securityStatus = _normalizeStatus(security['status']?.toString());
+      _selectedMethodology = data['methodology']?.toString() ?? 'Hybrid';
+      _suspendSave = false;
+
+      final envItems = _SetupChecklistItem.fromList(env['checklist']);
+      final buildItems = _SetupChecklistItem.fromList(build['checklist']);
+      final toolingItems = _SetupChecklistItem.fromList(tooling['checklist']);
+      final qualityItems = _SetupChecklistItem.fromList(quality['checklist']);
+      final securityItems =
+          _SetupChecklistItem.fromList(security['checklist']);
+
+      if (!mounted) return;
+      setState(() {
+        _architectureNodeCount =
+            (architectureData?['nodes'] as List?)?.length ?? 0;
+        _envChecklist
+          ..clear()
+          ..addAll(envItems);
+        _buildChecklist
+          ..clear()
+          ..addAll(buildItems);
+        _toolingChecklist
+          ..clear()
+          ..addAll(toolingItems);
+        _qualityChecklist
+          ..clear()
+          ..addAll(qualityItems);
+        _securityChecklist
+          ..clear()
+          ..addAll(securityItems);
+        _seedDefaultsIfNeeded(projectData);
+      });
+    } catch (error) {
+      debugPrint('Failed to load development set up data: $error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _scheduleSave() {
+    if (_suspendSave) return;
+    _saveDebounce.run(_saveToFirestore);
+  }
+
+  Future<void> _saveToFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    final payload = {
+      'methodology': _selectedMethodology,
+      'environmentsAccess': {
+        'summary': _envSummaryController.text.trim(),
+        'status': _envStatus,
+        'checklist': _envChecklist.map((item) => item.toJson()).toList(),
+      },
+      'buildDeployment': {
+        'summary': _buildSummaryController.text.trim(),
+        'status': _buildStatus,
+        'checklist': _buildChecklist.map((item) => item.toJson()).toList(),
+      },
+      'toolingOwnership': {
+        'summary': _toolingSummaryController.text.trim(),
+        'status': _toolingStatus,
+        'checklist': _toolingChecklist.map((item) => item.toJson()).toList(),
+      },
+      'qualityGates': {
+        'summary': _qualitySummaryController.text.trim(),
+        'status': _qualityStatus,
+        'checklist': _qualityChecklist.map((item) => item.toJson()).toList(),
+      },
+      'securityBaseline': {
+        'summary': _securitySummaryController.text.trim(),
+        'status': _securityStatus,
+        'checklist': _securityChecklist.map((item) => item.toJson()).toList(),
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('design_phase_sections')
+        .doc('development_set_up')
+        .set(payload, SetOptions(merge: true));
+  }
+
+  String _normalizeStatus(String? raw) {
+    if (raw == null || raw.isEmpty) return _sectionStatusOptions.first;
+    final match = _sectionStatusOptions.firstWhere(
+      (option) => option.toLowerCase() == raw.toLowerCase(),
+      orElse: () => _sectionStatusOptions.first,
+    );
+    return match;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DATA MODELS
+// ════════════════════════════════════════════════════════════════════════════
+
+class _QualityGateRow {
+  const _QualityGateRow({
+    required this.phase,
+    required this.entry,
+    required this.exit,
+    required this.owner,
+  });
+  final String phase;
+  final String entry;
+  final String exit;
+  final String owner;
 }
 
 class _DevelopmentSetupSnapshot {
@@ -2477,13 +3346,20 @@ class _DevelopmentSetupSnapshot {
     required String envStatus,
     required String buildStatus,
     required String toolingStatus,
+    required String qualityStatus,
+    required String securityStatus,
     required String envSummary,
     required String buildSummary,
     required String toolingSummary,
+    required String qualitySummary,
+    required String securitySummary,
     required List<_SetupChecklistItem> envChecklist,
     required List<_SetupChecklistItem> buildChecklist,
     required List<_SetupChecklistItem> toolingChecklist,
+    required List<_SetupChecklistItem> qualityChecklist,
+    required List<_SetupChecklistItem> securityChecklist,
     required int architectureNodeCount,
+    required String methodology,
   }) {
     bool done(String status) => status.toLowerCase() == 'done';
     bool inProgress(String status) => status.toLowerCase() == 'in progress';
@@ -2539,6 +3415,7 @@ class _DevelopmentSetupSnapshot {
           const ['site', 'venue', 'keys', 'fencing', 'compound'],
         ) &&
         [...envChecklist, ...toolingChecklist].any((item) => done(item.status));
+    final prodProvisioned = envStatus == 'Ready' && buildStatus == 'Ready';
 
     final environments = [
       _EnvironmentCard(
@@ -2575,6 +3452,15 @@ class _DevelopmentSetupSnapshot {
         note: 'Field access, site fencing, keys, and physical setup controls.',
         icon: Icons.location_city_outlined,
       ),
+      _EnvironmentCard(
+        title: 'Production',
+        status: prodProvisioned ? 'Provisioned' : 'Pending',
+        accessLabel: 'Production Deployment Target',
+        accessReference: 'Production environment with HA/DR configuration',
+        note:
+            'Controlled deployment target with rollback capability and monitoring.',
+        icon: Icons.rocket_launch_outlined,
+      ),
     ];
 
     final deliverableNames = projectData.designDeliverablesData.register
@@ -2582,14 +3468,19 @@ class _DevelopmentSetupSnapshot {
         .where((name) => name.isNotEmpty)
         .take(2)
         .toList();
+
+    // Methodology-aware repo structure
+    final isAgile = methodology == 'Agile';
+    final isWaterfall = methodology == 'Waterfall';
     final repoNodes = [
       _RepoNode(depth: 0, label: '$slug/', meta: 'root', isFolder: true),
       const _RepoNode(depth: 1, label: 'apps/', meta: '', isFolder: true),
-      const _RepoNode(
-          depth: 2,
-          label: 'design-ui/',
-          meta: 'Figma + components',
-          isFolder: true),
+      _RepoNode(
+        depth: 2,
+        label: 'design-ui/',
+        meta: isAgile ? 'components + stories' : 'Figma + components',
+        isFolder: true,
+      ),
       const _RepoNode(
           depth: 2,
           label: 'mock-scenarios/',
@@ -2604,6 +3495,20 @@ class _DevelopmentSetupSnapshot {
           label: 'physical-readiness/',
           meta: 'venue access',
           isFolder: true),
+      if (isAgile)
+        const _RepoNode(
+          depth: 2,
+          label: 'feature-flags/',
+          meta: 'toggle config',
+          isFolder: true,
+        ),
+      if (isWaterfall)
+        const _RepoNode(
+          depth: 2,
+          label: 'release-candidates/',
+          meta: 'RC builds',
+          isFolder: true,
+        ),
       _RepoNode(
         depth: 1,
         label: 'README-setup.md',
@@ -2614,11 +3519,15 @@ class _DevelopmentSetupSnapshot {
       ),
     ];
 
-    final branchingStrategy = buildChecklist.any((item) =>
-            '${item.title} ${item.notes}'.toLowerCase().contains('release') ||
-            '${item.title} ${item.notes}'.toLowerCase().contains('hotfix'))
-        ? 'GitFlow'
-        : 'Trunk + release branches';
+    final branchingStrategy = isWaterfall
+        ? 'Strict branching per phase'
+        : isAgile
+            ? 'Trunk-based + feature flags'
+            : buildChecklist.any((item) =>
+                    '${item.title} ${item.notes}'.toLowerCase().contains('release') ||
+                    '${item.title} ${item.notes}'.toLowerCase().contains('hotfix'))
+                ? 'GitFlow'
+                : 'GitFlow with release trains';
 
     final toolRecords = <_ToolRecord>[
       _ToolRecord(
@@ -2637,6 +3546,13 @@ class _DevelopmentSetupSnapshot {
         toolName: 'AWS Server',
         licenseStatus: devProvisioned ? 'Active' : 'Expired',
         assignedUser: owners.length > 1 ? owners[1] : owners.first,
+      ),
+      _ToolRecord(
+        toolName: isWaterfall ? 'ALM Suite' : isAgile ? 'Agile Board' : 'Project Tracker',
+        licenseStatus: qualityStatus == 'Ready' || qualityStatus == 'In progress'
+            ? 'Active'
+            : 'Expired',
+        assignedUser: owners.first,
       ),
       _ToolRecord(
         toolName: 'Crane',
@@ -2663,9 +3579,7 @@ class _DevelopmentSetupSnapshot {
           (buildStatus == 'Ready' || buildStatus == 'In progress')) {
         return 'Running';
       }
-      return projectData.planningRequirementItems.isNotEmpty
-          ? 'Pending'
-          : 'Pending';
+      return 'Pending';
     }
 
     String deployStageStatus() {
@@ -2712,7 +3626,8 @@ class _DevelopmentSetupSnapshot {
         source: projectData.stakeholderEntries.isNotEmpty
             ? 'Stakeholder and site ops list'
             : 'Site operations brief',
-        status: projectData.stakeholderEntries.isNotEmpty ? 'Seeded' : 'Empty',
+        status:
+            projectData.stakeholderEntries.isNotEmpty ? 'Seeded' : 'Empty',
       ),
       _ScenarioCard(
         dataType: 'UI smoke personas',
@@ -2734,20 +3649,21 @@ class _DevelopmentSetupSnapshot {
         name: 'Design-QA',
         platform: 'Teams',
         icon: Icons.groups_2_outlined,
-        inviteStatus: projectData.designDeliverablesData.register.isNotEmpty
-            ? 'Invited'
-            : 'Pending Invite',
+        inviteStatus:
+            projectData.designDeliverablesData.register.isNotEmpty
+                ? 'Invited'
+                : 'Pending Invite',
       ),
       _ChannelCard(
         name: 'Site-Safety',
         platform: 'Radio',
         icon: Icons.settings_input_antenna,
-        inviteStatus:
-            hasKeywords(envChecklist, const ['site', 'venue', 'safety']) ||
-                    hasKeywords(
-                        toolingChecklist, const ['crane', 'rigging', 'site'])
-                ? 'Invited'
-                : 'Pending Invite',
+        inviteStatus: hasKeywords(envChecklist,
+                    const ['site', 'venue', 'safety']) ||
+                hasKeywords(
+                    toolingChecklist, const ['crane', 'rigging', 'site'])
+            ? 'Invited'
+            : 'Pending Invite',
       ),
     ];
 
@@ -2776,6 +3692,18 @@ class _DevelopmentSetupSnapshot {
             : 'Pending',
         icon: Icons.key_outlined,
       ),
+      _SecurityMeasure(
+        label: 'Secrets Manager',
+        status: securityStatus == 'Ready' ? 'Ready' : 'Pending',
+        icon: Icons.vpn_key_outlined,
+      ),
+      _SecurityMeasure(
+        label: 'RBAC Matrix',
+        status: securityStatus == 'Ready' || securityStatus == 'In progress'
+            ? 'Ready'
+            : 'Pending',
+        icon: Icons.admin_panel_settings_outlined,
+      ),
     ];
 
     final smokeChecks = [
@@ -2794,6 +3722,13 @@ class _DevelopmentSetupSnapshot {
         detail: buildChecklist.isNotEmpty
             ? 'Pipeline and artifact movement controls are defined.'
             : 'No movement workflow is ready yet.',
+      ),
+      _SmokeCheck(
+        label: 'Security Baseline',
+        passed: securityStatus == 'Ready' || securityMeasures.any((m) => m.status == 'Ready'),
+        detail: securityStatus == 'Ready'
+            ? 'Security baseline is established and verified.'
+            : 'Security baseline checks are still pending.',
       ),
     ];
 
@@ -3249,7 +4184,8 @@ class _LabeledTextArea extends StatelessWidget {
             hintText: hintText,
             filled: true,
             fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -3317,7 +4253,9 @@ class _EditableTable extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                      color: i.isEven
+                          ? Colors.white
+                          : const Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
@@ -3343,7 +4281,8 @@ class _EditableRow extends StatelessWidget {
     return Row(
       children: List.generate(
         cells.length,
-        (index) => SizedBox(width: columns[index].width, child: cells[index]),
+        (index) =>
+            SizedBox(width: columns[index].width, child: cells[index]),
       ),
     );
   }
@@ -3383,7 +4322,8 @@ class _TextCell extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       ),
       style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
       onChanged: onChanged,
@@ -3496,7 +4436,8 @@ class _DropdownCell extends StatelessWidget {
       key: ValueKey(fieldKey),
       initialValue: resolved,
       items: options
-          .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+          .map((option) =>
+              DropdownMenuItem(value: option, child: Text(option)))
           .toList(),
       onChanged: enabled
           ? (value) {
@@ -3508,7 +4449,8 @@ class _DropdownCell extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       ),
       style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
     );

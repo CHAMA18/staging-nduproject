@@ -50,7 +50,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isGeneratingSchedule = false;
   bool _autoImportAttempted = false;
   bool _notesExpanded = false;
-
   String? _selectedTaskId;
   String? _hoveredTaskId;
   int _selectedMainTab =
@@ -1197,6 +1196,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         .where((id) => id.isNotEmpty)
         .toSet();
     final unlinkedWbsCandidates = <WorkItem>[];
+<<<<<<< HEAD
     void visitLeafNodes(List<WorkItem> nodes) {
       for (final node in nodes) {
         if (node.children.isEmpty) {
@@ -1206,11 +1206,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           }
         } else {
           visitLeafNodes(node.children);
+=======
+    void visitLevel3(List<WorkItem> nodes, int depth) {
+      for (final node in nodes) {
+        if (depth == 3 && !packageCandidateIds.contains(node.id)) {
+          unlinkedWbsCandidates.add(node);
+        }
+        if (depth < 3) {
+          visitLevel3(node.children, depth + 1);
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
         }
       }
     }
 
+<<<<<<< HEAD
     visitLeafNodes(data.wbsTree);
+=======
+    visitLevel3(data.wbsTree, 1);
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 
     final missingEstimateBasis = activities.where((activity) {
       final isCritical = cpm.activitiesById[activity.id]?.isCritical ?? false;
@@ -1228,6 +1241,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       milestones: data.keyMilestones,
       activities: activities,
     );
+<<<<<<< HEAD
     final specCoverageWarnings = _buildSpecCoverageWarnings(
       data: data,
       workPackages: data.workPackages,
@@ -1236,6 +1250,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     // Phase 5: Detect resource conflicts (same owner on overlapping packages)
     final resourceConflicts =
         IntegratedWorkPackageService.detectResourceConflicts(data.workPackages);
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 
     return _ScheduleValidationReport(
       taskCount: _activityRows.length,
@@ -1253,6 +1269,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       contractAlignmentWarnings: contractAlignmentWarnings,
       baselineVarianceWarnings: baselineVarianceWarnings,
       milestoneWarnings: milestoneWarnings,
+<<<<<<< HEAD
       specCoverageWarnings: specCoverageWarnings,
       resourceConflicts: resourceConflicts,
     );
@@ -1340,6 +1357,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return warnings;
   }
 
+=======
+    );
+  }
+
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
   List<_ResourceWarning> _buildResourceWarnings(
     List<ScheduleActivity> activities,
   ) {
@@ -1462,7 +1484,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _ContractAlignmentWarning(
             title: 'Contract ${entry.key}',
             detail:
+<<<<<<< HEAD
                 'Mapped across multiple WBS package candidates: ${entry.value.map((package) => package.title.isNotEmpty ? package.title : package.id).join(', ')}.',
+=======
+                'Mapped across multiple WBS Level 3 package candidates: ${entry.value.map((package) => package.title.isNotEmpty ? package.title : package.id).join(', ')}.',
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
           ),
         );
       }
@@ -1826,7 +1852,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             type: type,
             phase: 'execution',
             status: entry.status.toLowerCase() == 'complete'
+<<<<<<< HEAD
                 ? 'completed'
+=======
+                ? 'complete'
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                 : 'planned',
             wbsLevel2Title: entry.title,
           ));
@@ -1881,6 +1911,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
+<<<<<<< HEAD
     // Fix 1.2: Extract design specification rows from DesignPlanningDocument
     // so they can be linked into EWP deliverables with traceability.
     final designDoc = DesignPlanningDocument.fromProjectData(data);
@@ -1907,6 +1938,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (generated.isEmpty) {
       _showInfo('No WBS leaf node package candidates found.');
+=======
+    final generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
+      wbsTree: data.wbsTree,
+      methodology: _selectedMethodology,
+    );
+    if (generated.isEmpty) {
+      _showInfo('No WBS Level 3 package candidates found.');
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
       return;
     }
 
@@ -1918,6 +1957,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
+<<<<<<< HEAD
     // Count spec-linked deliverables for user info
     final specLinkedCount = newPackages
         .where((wp) => wp.packageClassification == IntegratedWorkPackageService.engineeringEwp)
@@ -1925,15 +1965,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         .where((d) => d.linkedSpecificationIds.isNotEmpty)
         .length;
 
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
     final shouldImport = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Generate Integrated Package Chains'),
         content: Text(
           'Found ${newPackages.length} new EWP, procurement, and execution '
+<<<<<<< HEAD
           'packages from WBS leaf nodes (all depths).'
           '${specLinkedCount > 0 ? "\n\n$specLinkedCount deliverable(s) linked to design specifications." : ""}'
           '\n\nGenerate them now?',
+=======
+          'packages from WBS Level 3 candidates. Generate them now?',
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
         ),
         actions: [
           TextButton(
@@ -1952,15 +1998,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await ProjectDataHelper.updateAndSave(
       context: context,
+<<<<<<< HEAD
       checkpoint: 'schedule',
+=======
+      checkpoint: 'planning_schedule',
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
       dataUpdater: (data) =>
           data.copyWith(workPackages: [...data.workPackages, ...newPackages]),
       showSnackbar: false,
     );
 
     setState(() {});
+<<<<<<< HEAD
     _showInfo('Generated ${newPackages.length} integrated work packages'
         '${specLinkedCount > 0 ? " with $specLinkedCount spec-linked deliverables" : ""}.');
+=======
+    _showInfo('Generated ${newPackages.length} integrated work packages.');
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
   }
 
   Future<void> _generateScheduleNetworkFromPackages() async {
@@ -2040,7 +2094,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     provider.updateField((data) => data.copyWith(keyMilestones: merged));
 
     final success =
+<<<<<<< HEAD
         await provider.saveToFirebase(checkpoint: 'schedule');
+=======
+        await provider.saveToFirebase(checkpoint: 'planning_schedule');
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
     if (!mounted) return;
     if (success) {
       _showInfo('Synced ${generated.length} schedule milestones.');
@@ -2930,6 +2988,33 @@ class _TimelineWorkspaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
+=======
+    const tabs = ['Gantt', 'List', 'Board'];
+    final isCompact = MediaQuery.sizeOf(context).width < 980;
+
+    final tabChips = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < tabs.length; i++)
+          ChoiceChip(
+            label: Text(tabs[i]),
+            selected: selectedTab == i,
+            onSelected: (_) => onTabChanged(i),
+            selectedColor: const Color(0xFFF59E0B),
+            labelStyle: TextStyle(
+              color: selectedTab == i
+                  ? const Color(0xFF111827)
+                  : const Color(0xFF4B5563),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+      ],
+    );
+
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
     final controls = Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -2942,6 +3027,28 @@ class _TimelineWorkspaceCard extends StatelessWidget {
             startDate == null
                 ? 'Start Date'
                 : 'Start: ${_formatDate(startDate!)}',
+<<<<<<< HEAD
+=======
+          ),
+        ),
+        Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppSemanticColors.border),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: timelineView == 'Months' ? timelineView : 'Months',
+              onChanged: onTimelineViewChanged,
+              isDense: true,
+              items: const [
+                DropdownMenuItem(value: 'Months', child: Text('Months')),
+              ],
+            ),
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
           ),
         ),
         OutlinedButton.icon(
@@ -3128,6 +3235,398 @@ class _SectionEmpty extends StatelessWidget {
   }
 }
 
+<<<<<<< HEAD
+=======
+// ignore: unused_element
+class _TimelineGantt extends StatelessWidget {
+  const _TimelineGantt({
+    required this.computed,
+    required this.selectedTaskId,
+    required this.hoveredTaskId,
+    required this.onTaskTap,
+    required this.onTaskHover,
+  });
+
+  final _ComputedSchedule computed;
+  final String? selectedTaskId;
+  final String? hoveredTaskId;
+  final ValueChanged<String?> onTaskTap;
+  final ValueChanged<String?> onTaskHover;
+
+  static const double _leftColumnWidth = 280;
+  static const double _chartHeightPerRow = 44;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = computed.minDate ?? DateTime.now();
+    final end = computed.maxDate ?? start;
+    final monthSegments = _generateMonthSegments(start, end);
+    final totalDays = end.difference(start).inDays + 1;
+    final timelineWidth = (totalDays * 2.6).clamp(800.0, 2400.0);
+    final pxPerDay = timelineWidth / totalDays;
+    final chartHeight = computed.items.length * _chartHeightPerRow + 32;
+    final totalChartWidth = _leftColumnWidth + timelineWidth + 2;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        width: totalChartWidth,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppSemanticColors.border),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: const BoxDecoration(
+                border:
+                    Border(bottom: BorderSide(color: AppSemanticColors.border)),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: _leftColumnWidth,
+                    child: Text(
+                      'Task',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: timelineWidth,
+                    child: SizedBox(
+                      height: 18,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: Row(
+                          children: monthSegments.map((segment) {
+                            final segmentWidth = segment.dayCount * pxPerDay;
+                            return SizedBox(
+                              width: segmentWidth,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    segment.label,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF374151),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: chartHeight,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _GanttGridPainter(
+                        leftColumnWidth: _leftColumnWidth,
+                        rowHeight: _chartHeightPerRow,
+                        rowCount: computed.items.length,
+                        monthSegments: monthSegments,
+                        pxPerDay: pxPerDay,
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _DependencyPainter(
+                        items: computed.items,
+                        leftColumnWidth: _leftColumnWidth,
+                        rowHeight: _chartHeightPerRow,
+                        startDate: start,
+                        pxPerDay: pxPerDay,
+                        selectedTaskId: selectedTaskId,
+                        hoveredTaskId: hoveredTaskId,
+                      ),
+                    ),
+                  ),
+                  for (int index = 0; index < computed.items.length; index++)
+                    _GanttRow(
+                      item: computed.items[index],
+                      index: index,
+                      startDate: start,
+                      leftColumnWidth: _leftColumnWidth,
+                      rowHeight: _chartHeightPerRow,
+                      pxPerDay: pxPerDay,
+                      isSelected: selectedTaskId == computed.items[index].id,
+                      onTap: () => onTaskTap(computed.items[index].id),
+                      onEnter: () => onTaskHover(computed.items[index].id),
+                      onExit: () => onTaskHover(null),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GanttRow extends StatelessWidget {
+  const _GanttRow({
+    required this.item,
+    required this.index,
+    required this.startDate,
+    required this.leftColumnWidth,
+    required this.rowHeight,
+    required this.pxPerDay,
+    required this.isSelected,
+    required this.onTap,
+    required this.onEnter,
+    required this.onExit,
+  });
+
+  final _ComputedItem item;
+  final int index;
+  final DateTime startDate;
+  final double leftColumnWidth;
+  final double rowHeight;
+  final double pxPerDay;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback onEnter;
+  final VoidCallback onExit;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = index * rowHeight + 6;
+    final leftOffset = item.startDate.difference(startDate).inDays * pxPerDay;
+    final durationDays = item.durationDays == 0 ? 1 : item.durationDays;
+    final width = (durationDays * pxPerDay).clamp(18.0, 600.0);
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: top,
+      height: rowHeight - 10,
+      child: Row(
+        children: [
+          SizedBox(
+            width: leftColumnWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  if (item.isCritical)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'CP',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFB91C1C),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned(
+                  left: leftOffset,
+                  top: 3,
+                  child: MouseRegion(
+                    onEnter: (_) => onEnter(),
+                    onExit: (_) => onExit(),
+                    child: GestureDetector(
+                      onTap: onTap,
+                      child: Container(
+                        height: rowHeight - 16,
+                        width: width,
+                        decoration: BoxDecoration(
+                          color: item.isCritical
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF3B82F6),
+                          borderRadius: BorderRadius.circular(8),
+                          border: isSelected
+                              ? Border.all(
+                                  color: const Color(0xFFF59E0B), width: 2)
+                              : null,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${(item.progress * 100).round()}%',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GanttGridPainter extends CustomPainter {
+  const _GanttGridPainter({
+    required this.leftColumnWidth,
+    required this.rowHeight,
+    required this.rowCount,
+    required this.monthSegments,
+    required this.pxPerDay,
+  });
+
+  final double leftColumnWidth;
+  final double rowHeight;
+  final int rowCount;
+  final List<_TimelineSegment> monthSegments;
+  final double pxPerDay;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rowPaint = Paint()
+      ..color = const Color(0xFFE5E7EB)
+      ..strokeWidth = 1;
+
+    for (int row = 0; row <= rowCount; row++) {
+      final y = row * rowHeight;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), rowPaint);
+    }
+
+    final dividerPaint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..strokeWidth = 1;
+
+    double x = leftColumnWidth;
+    canvas.drawLine(Offset(x, 0), Offset(x, size.height), dividerPaint);
+    for (final segment in monthSegments) {
+      x += segment.dayCount * pxPerDay;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), dividerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GanttGridPainter oldDelegate) => false;
+}
+
+class _DependencyPainter extends CustomPainter {
+  const _DependencyPainter({
+    required this.items,
+    required this.leftColumnWidth,
+    required this.rowHeight,
+    required this.startDate,
+    required this.pxPerDay,
+    required this.selectedTaskId,
+    required this.hoveredTaskId,
+  });
+
+  final List<_ComputedItem> items;
+  final double leftColumnWidth;
+  final double rowHeight;
+  final DateTime startDate;
+  final double pxPerDay;
+  final String? selectedTaskId;
+  final String? hoveredTaskId;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (selectedTaskId == null && hoveredTaskId == null) return;
+
+    final focusIds = <String>{};
+    if (selectedTaskId != null) focusIds.add(selectedTaskId!);
+    if (hoveredTaskId != null) focusIds.add(hoveredTaskId!);
+
+    final byId = {for (final item in items) item.id: item};
+
+    final paint = Paint()
+      ..color = const Color(0xFFF59E0B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    for (final targetId in focusIds) {
+      final target = byId[targetId];
+      if (target == null) continue;
+
+      final targetRow = items.indexWhere((element) => element.id == target.id);
+      final targetY = targetRow * rowHeight + (rowHeight / 2);
+      final targetX = leftColumnWidth +
+          target.startDate.difference(startDate).inDays * pxPerDay;
+
+      for (final predecessorId in target.predecessorIds) {
+        final predecessor = byId[predecessorId];
+        if (predecessor == null) continue;
+
+        final predecessorRow =
+            items.indexWhere((element) => element.id == predecessor.id);
+        final predecessorY = predecessorRow * rowHeight + (rowHeight / 2);
+        final predecessorWidth =
+            (predecessor.durationDays == 0 ? 1 : predecessor.durationDays) *
+                pxPerDay;
+        final predecessorX = leftColumnWidth +
+            predecessor.startDate.difference(startDate).inDays * pxPerDay +
+            predecessorWidth;
+
+        final path = Path()
+          ..moveTo(predecessorX, predecessorY)
+          ..lineTo(predecessorX + 12, predecessorY)
+          ..lineTo(predecessorX + 12, targetY)
+          ..lineTo(targetX, targetY);
+        canvas.drawPath(path, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DependencyPainter oldDelegate) {
+    return oldDelegate.selectedTaskId != selectedTaskId ||
+        oldDelegate.hoveredTaskId != hoveredTaskId ||
+        oldDelegate.items != items;
+  }
+}
+
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 class _TimelineList extends StatelessWidget {
   const _TimelineList({
     required this.rows,
@@ -3268,7 +3767,11 @@ class _TimelineList extends StatelessWidget {
                             value: null,
                             child: Text('None'),
                           ),
+<<<<<<< HEAD
                           ...uniquePredecessorCandidates.map((candidate) {
+=======
+                          ...predecessorCandidates.map((candidate) {
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                             final label =
                                 candidate.titleController.text.trim().isEmpty
                                     ? 'Untitled task'
@@ -4051,8 +4554,11 @@ class _ScheduleValidationReport {
     required this.contractAlignmentWarnings,
     required this.baselineVarianceWarnings,
     required this.milestoneWarnings,
+<<<<<<< HEAD
     required this.specCoverageWarnings,
     required this.resourceConflicts,
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
   });
 
   final int taskCount;
@@ -4066,8 +4572,11 @@ class _ScheduleValidationReport {
   final List<_ContractAlignmentWarning> contractAlignmentWarnings;
   final List<_BaselineVarianceWarning> baselineVarianceWarnings;
   final List<_MilestoneWarning> milestoneWarnings;
+<<<<<<< HEAD
   final List<_SpecCoverageWarning> specCoverageWarnings;
   final List<ResourceConflict> resourceConflicts;
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 }
 
 class _PackageWarning {
@@ -4114,6 +4623,7 @@ class _MilestoneWarning {
   final String detail;
 }
 
+<<<<<<< HEAD
 class _SpecCoverageWarning {
   const _SpecCoverageWarning({
     required this.title,
@@ -4124,6 +4634,8 @@ class _SpecCoverageWarning {
   final String detail;
 }
 
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 class _ScheduleValidationDialog extends StatelessWidget {
   const _ScheduleValidationDialog({required this.report});
 
@@ -4196,6 +4708,7 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     value: report.cpm.criticalPathIds.length.toString(),
                     color: const Color(0xFF7C3AED),
                   ),
+<<<<<<< HEAD
                   _ValidationStat(
                     label: 'Spec Coverage',
                     value: report.specCoverageWarnings.length.toString(),
@@ -4206,6 +4719,8 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     value: report.resourceConflicts.length.toString(),
                     color: const Color(0xFFEF4444),
                   ),
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                 ],
               ),
               const SizedBox(height: 16),
@@ -4232,8 +4747,13 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     .toList(),
               ),
               _ValidationSection(
+<<<<<<< HEAD
                 title: 'Unlinked WBS Leaf Candidates',
                 emptyText: 'All WBS leaf candidates are linked to packages.',
+=======
+                title: 'Unlinked WBS Level 3 Candidates',
+                emptyText: 'All WBS Level 3 candidates are linked to packages.',
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                 children: report.unlinkedWbsCandidates
                     .map((item) => _ValidationLine(
                           title: item.title.isNotEmpty ? item.title : item.id,
@@ -4297,6 +4817,7 @@ class _ScheduleValidationDialog extends StatelessWidget {
                         ))
                     .toList(),
               ),
+<<<<<<< HEAD
               _ValidationSection(
                 title: 'Design Specification Coverage',
                 emptyText:
@@ -4321,6 +4842,8 @@ class _ScheduleValidationDialog extends StatelessWidget {
                         ))
                     .toList(),
               ),
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
             ],
           ),
         ),
@@ -4811,6 +5334,7 @@ class _WorkPackagesTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+<<<<<<< HEAD
               if (onSearchChanged != null)
                 SizedBox(
                   width: 260,
@@ -4917,6 +5441,8 @@ class _WorkPackagesTab extends StatelessWidget {
                   ),
                 ),
               if (onSortChanged != null) const SizedBox(width: 8),
+=======
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
               if (onGeneratePackageChains != null)
                 FilledButton.icon(
                   onPressed: onGeneratePackageChains,
@@ -5015,10 +5541,14 @@ class _WorkPackageCardState extends State<_WorkPackageCard> {
         ? (wp.actualCost / wp.budgetedCost).clamp(0.0, 1.0)
         : 0.0;
     final readinessWarnings =
+<<<<<<< HEAD
         IntegratedWorkPackageService.validateReadiness(wp);
     final displayedActivities =
         _activitiesExpanded ? activities : activities.take(3).toList();
     final hasMore = activities.length > 3 && !_activitiesExpanded;
+=======
+        IntegratedWorkPackageService.validateReadiness(workPackage);
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -5086,7 +5616,11 @@ class _WorkPackageCardState extends State<_WorkPackageCard> {
                     ),
                   ),
                 ],
+<<<<<<< HEAD
                 if (widget.onEdit != null) ...[
+=======
+                if (onEdit != null) ...[
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),
@@ -5098,7 +5632,11 @@ class _WorkPackageCardState extends State<_WorkPackageCard> {
                   IconButton(
                     icon: const Icon(Icons.delete_outline,
                         size: 18, color: Color(0xFFEF4444)),
+<<<<<<< HEAD
                     onPressed: widget.onDelete,
+=======
+                    onPressed: onDelete,
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                     tooltip: 'Delete',
                   ),
               ],
@@ -5122,8 +5660,13 @@ class _WorkPackageCardState extends State<_WorkPackageCard> {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
+<<<<<<< HEAD
                   wp.owner.isNotEmpty
                       ? wp.owner
+=======
+                  workPackage.owner.isNotEmpty
+                      ? workPackage.owner
+>>>>>>> f3dfaf4 (Resolve merge conflicts and restore planning compile state)
                       : 'Unassigned',
                   style:
                       const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),

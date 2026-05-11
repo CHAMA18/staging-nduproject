@@ -490,25 +490,7 @@ class CharterFinancialSnapshot extends StatelessWidget {
   }
 
   String _extractTotalCost(ProjectDataModel data) {
-    double total = 0.0;
-    // Sum Allowances
-    for (var item in data.frontEndPlanning.allowanceItems) {
-      total += item.amount;
-    }
-    // Sum Contractors
-    for (var contractor in data.contractors) {
-      total += contractor.estimatedCost;
-    }
-    // Sum Vendors
-    for (var vendor in data.vendors) {
-      total += vendor.estimatedPrice;
-    }
-
-    if (total == 0 && data.costEstimateItems.isNotEmpty) {
-      // Fallback to old cost estimate items if new structures are empty
-      total =
-          data.costEstimateItems.fold(0.0, (sum, item) => sum + item.amount);
-    }
+    final total = ProjectDataHelper.getTotalEstimatedCostValue(data);
 
     if (total == 0) return 'TBD';
 
@@ -1015,9 +997,10 @@ class CharterFinancialOverview extends StatelessWidget {
       ProjectDataModel data) {
     final segments = <_CostBreakdownSegment>[];
 
-    final estimateItems = data.costEstimateItems
-        .where((item) => item.amount > 0)
-        .toList()
+    final estimateItems = ProjectDataHelper.getActiveCostEstimateItems(
+      data,
+      costState: 'forecast',
+    ).where((item) => item.amount > 0).toList()
       ..sort((a, b) => b.amount.compareTo(a.amount));
     if (estimateItems.isNotEmpty) {
       for (var i = 0; i < estimateItems.length && i < 6; i++) {
@@ -1694,7 +1677,10 @@ class CharterCostChart extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
 
-    final items = data!.costEstimateItems;
+    final items = ProjectDataHelper.getActiveCostEstimateItems(
+      data!,
+      costState: 'forecast',
+    );
     if (items.isEmpty) {
       return Container(
         height: 200,

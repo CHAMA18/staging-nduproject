@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/models/staffing_row.dart';
 import 'package:ndu_project/services/project_intelligence_service.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
@@ -773,7 +774,8 @@ class ProjectDataHelper {
       buf.writeln(budgetSummary.trim());
     }
 
-    if (scopeTrackingSummary != null && scopeTrackingSummary.trim().isNotEmpty) {
+    if (scopeTrackingSummary != null &&
+        scopeTrackingSummary.trim().isNotEmpty) {
       buf.writeln();
       buf.writeln('Scope Tracking:');
       buf.writeln(scopeTrackingSummary.trim());
@@ -936,6 +938,9 @@ class ProjectDataHelper {
     List<OwnerItem>? technicalDebtOwners,
     List<RiskRegisterItem>? riskRegisterItems,
     List<AllowanceItem>? allowanceItems,
+    List<StaffingRow>? staffingRows,
+    List<TechnologyPersonnelItem>? technologyPersonnelItems,
+    List<InfrastructurePlanningItem>? infrastructureItems,
     List<OpportunityItem>? opportunityItems,
     List<PlanningDashboardItem>? successCriteriaItems,
   }) {
@@ -971,6 +976,10 @@ class ProjectDataHelper {
       technicalDebtOwners: technicalDebtOwners ?? current.technicalDebtOwners,
       riskRegisterItems: riskRegisterItems ?? current.riskRegisterItems,
       allowanceItems: allowanceItems ?? current.allowanceItems,
+      staffingRows: staffingRows ?? current.staffingRows,
+      technologyPersonnelItems:
+          technologyPersonnelItems ?? current.technologyPersonnelItems,
+      infrastructureItems: infrastructureItems ?? current.infrastructureItems,
       opportunityItems: opportunityItems ?? current.opportunityItems,
       successCriteriaItems:
           successCriteriaItems ?? current.successCriteriaItems,
@@ -1037,11 +1046,47 @@ class ProjectDataHelper {
             0.0, (sum, o) => sum + _parseNumericValue(o.potentialCostSavings));
   }
 
+  /// Active cost estimate lines after state reconciliation.
+  static List<CostEstimateItem> getActiveCostEstimateItems(
+    ProjectDataModel data, {
+    String? costState,
+    bool includeBaseline = true,
+  }) {
+    final reconciled = _reconcileCostEstimateItems(data.costEstimateItems);
+    return reconciled.where((item) {
+      if (!includeBaseline && item.isBaseline) return false;
+      if (costState != null && item.costState != costState) return false;
+      return true;
+    }).toList();
+  }
+
+  static double getCostEstimateTotalByState(
+    ProjectDataModel data, {
+    required String costState,
+    bool includeBaseline = true,
+  }) {
+    return getActiveCostEstimateItems(
+      data,
+      costState: costState,
+      includeBaseline: includeBaseline,
+    ).fold<double>(0.0, (sum, item) => sum + item.amount);
+  }
+
+  static double getCombinedCostEstimateRollup(
+    ProjectDataModel data, {
+    bool includeBaseline = true,
+  }) {
+    return getActiveCostEstimateItems(
+      data,
+      includeBaseline: includeBaseline,
+    ).fold<double>(0.0, (sum, item) => sum + item.amount);
+  }
+
   /// Unified total estimated cost used by Project Charter.
   static double getTotalEstimatedCostValue(ProjectDataModel data) {
-    final directEstimateTotal = data.costEstimateItems
-        .fold<double>(0.0, (sum, item) => sum + item.amount);
-    if (directEstimateTotal > 0) return directEstimateTotal;
+    final forecastTotal =
+        getCostEstimateTotalByState(data, costState: 'forecast');
+    if (forecastTotal > 0) return forecastTotal;
 
     final operationalTotal = data.contractors
             .fold<double>(0.0, (sum, item) => sum + item.estimatedCost) +
@@ -1287,11 +1332,108 @@ class ProjectDataHelper {
             extra: allowance.notes.trim(),
           ),
           amount: allowance.amount,
-          costType: 'contingency',
+          costType: 'indirect',
+          source: 'planning_allowance',
+          costState: 'forecast',
+          estimatingMethod: 'top_down',
+          estimatingBasis: 'Auto-applied from allowance register',
+          contingencyAmount: allowance.amount,
+          reconciliationReference: 'allowance:${allowance.id}',
         ),
       );
     }
 
     return [...manualItems, ...autoItems];
+  }
+
+  static List<CostEstimateItem> _reconcileCostEstimateItems(
+      List<CostEstimateItem> items) {
+    final grouped = <String, List<CostEstimateItem>>{};
+    final passthrough = <CostEstimateItem>[];
+
+    for (final item in items) {
+      if (item.isBaseline || !_isAutoImportedCostSource(item.source)) {
+        passthrough.add(item);
+        continue;
+      }
+      final key = _reconciliationGroupKey(item);
+      if (key == null) {
+        passthrough.add(item);
+        continue;
+      }
+      grouped.putIfAbsent(key, () => <CostEstimateItem>[]).add(item);
+    }
+
+    final reconciled = <CostEstimateItem>[...passthrough];
+    for (final groupItems in grouped.values) {
+      final highestPriority = groupItems
+          .map(_costStatePriority)
+          .fold<int>(0, (highest, value) => value > highest ? value : highest);
+      reconciled.addAll(groupItems.where(
+        (item) => _costStatePriority(item) == highestPriority,
+      ));
+    }
+    return reconciled;
+  }
+
+  static bool _isAutoImportedCostSource(String source) {
+    const autoSources = {
+      'project_contractor',
+      'project_vendor',
+      'project_contract',
+      'project_procurement_item',
+      'project_procurement_actual',
+      'project_purchase_order',
+      'planning_allowance',
+      'risk_mitigation',
+      'project_work_package',
+      'project_work_package_actual',
+      'planning_staffing',
+      'planning_infrastructure',
+      'planning_technology',
+    };
+    return autoSources.contains(source);
+  }
+
+  static String? _reconciliationGroupKey(CostEstimateItem item) {
+    if (item.reconciliationReference.trim().isNotEmpty) {
+      return item.reconciliationReference.trim();
+    }
+    if (item.workPackageId.trim().isNotEmpty) {
+      return 'work_package:${item.workPackageId.trim()}';
+    }
+    if (item.contractId.trim().isNotEmpty) {
+      return 'contract:${item.contractId.trim()}';
+    }
+    final procurementId = _procurementRecordKey(item);
+    if (procurementId != null) {
+      return 'procurement:$procurementId';
+    }
+    return null;
+  }
+
+  static String? _procurementRecordKey(CostEstimateItem item) {
+    const prefixes = {
+      'src_procurement_actual_',
+      'src_procurement_',
+    };
+    for (final prefix in prefixes) {
+      if (item.id.startsWith(prefix)) {
+        return item.id.substring(prefix.length);
+      }
+    }
+    return null;
+  }
+
+  static int _costStatePriority(CostEstimateItem item) {
+    switch (item.costState) {
+      case 'actual':
+        return 3;
+      case 'committed':
+        return 2;
+      case 'forecast':
+      default:
+        return 1;
+    }
   }
 }

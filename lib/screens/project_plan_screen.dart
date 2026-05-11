@@ -991,8 +991,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
     _suspendBudgetSave = true;
 
     if (_budgetTotalController.text.trim().isEmpty) {
-      final total =
-          data.costEstimateItems.fold<double>(0, (acc, i) => acc + i.amount);
+      final total = ProjectDataHelper.getCostEstimateTotalByState(
+        data,
+        costState: 'forecast',
+      );
       if (total > 0) {
         _budgetTotalController.text = total.toStringAsFixed(2);
       }
@@ -1005,7 +1007,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
 
     if (_budgetBreakdown.isEmpty) {
       final entries = <_BudgetEntry>[];
-      for (final item in data.costEstimateItems) {
+      for (final item in ProjectDataHelper.getActiveCostEstimateItems(
+        data,
+        costState: 'forecast',
+      )) {
         if (item.title.trim().isEmpty && item.amount <= 0) continue;
         entries.add(_BudgetEntry(
           id: DateTime.now().microsecondsSinceEpoch.toString(),

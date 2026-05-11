@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -618,6 +619,14 @@ class _OrganizationStaffingPlanScreenState
     final statusController = TextEditingController(text: req.status);
     final startController = TextEditingController(text: req.startDate);
     final endController = TextEditingController(text: req.endDate);
+    final headcountController =
+        TextEditingController(text: req.headcount.toString());
+    final monthlyCostController = TextEditingController(
+        text: req.monthlyCost == 0 ? '' : req.monthlyCost.toStringAsFixed(2));
+    final plannedMonthsController = TextEditingController(
+        text:
+            req.plannedMonths == 0 ? '' : req.plannedMonths.toStringAsFixed(1));
+    final notesController = TextEditingController(text: req.notes);
     String empType = req.employmentType;
     String employeeType = req.employeeType;
 
@@ -634,6 +643,11 @@ class _OrganizationStaffingPlanScreenState
                     .staffingRequirements);
             updated[index] = req.copyWith(
               title: titleController.text.trim(),
+              headcount: int.tryParse(headcountController.text.trim()) ?? 1,
+              monthlyCost:
+                  double.tryParse(monthlyCostController.text.trim()) ?? 0,
+              plannedMonths:
+                  double.tryParse(plannedMonthsController.text.trim()) ?? 0,
               personName: personController.text.trim(),
               location: locationController.text.trim(),
               status: statusController.text.trim(),
@@ -641,6 +655,7 @@ class _OrganizationStaffingPlanScreenState
               endDate: endController.text.trim(),
               employmentType: empType,
               employeeType: employeeType,
+              notes: notesController.text.trim(),
             );
             Navigator.pop(dialogContext);
             await ProjectDataHelper.saveAndNavigate(
@@ -656,6 +671,36 @@ class _OrganizationStaffingPlanScreenState
             PremiumEditDialog.fieldLabel('Job Title'),
             PremiumEditDialog.textField(
                 controller: titleController, hint: 'e.g. Senior Developer'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Headcount'),
+                      PremiumEditDialog.textField(
+                          controller: headcountController, hint: '1'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Planned Months'),
+                      PremiumEditDialog.textField(
+                          controller: plannedMonthsController, hint: '6'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Monthly Cost'),
+            PremiumEditDialog.textField(
+                controller: monthlyCostController, hint: '2500'),
             const SizedBox(height: 16),
             PremiumEditDialog.fieldLabel('Person Name'),
             PremiumEditDialog.textField(
@@ -759,6 +804,11 @@ class _OrganizationStaffingPlanScreenState
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Cost / Sourcing Notes'),
+            PremiumEditDialog.textField(
+                controller: notesController,
+                hint: 'Assumptions, rate basis, sourcing notes'),
           ],
         ),
       ),
@@ -960,6 +1010,8 @@ class _StaffingPlanTable extends StatelessWidget {
       _StaffingColumnDef('Person', 180),
       _StaffingColumnDef('Location', 170),
       _StaffingColumnDef('Type', 170),
+      _StaffingColumnDef('Load', 140),
+      _StaffingColumnDef('Est. Cost', 150),
       _StaffingColumnDef('Status', 150),
       _StaffingColumnDef('Timeline', 180),
       _StaffingColumnDef('Actions', 110),
@@ -1052,6 +1104,7 @@ class _StaffingTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currency = NumberFormat.simpleCurrency(decimalDigits: 0);
     final cells = <Widget>[
       Center(
         child: Text(
@@ -1078,6 +1131,13 @@ class _StaffingTableRow extends StatelessWidget {
       ),
       _StaffingTextCell(
         '${requirement.employmentType} / ${requirement.employeeType}',
+      ),
+      _StaffingTextCell(
+        '${requirement.headcount} x ${requirement.plannedMonths.toStringAsFixed(1)} mo',
+      ),
+      _StaffingTextCell(
+        currency.format(requirement.estimatedTotal),
+        fontWeight: FontWeight.w700,
       ),
       Center(
         child: _StaffingStatusPill(

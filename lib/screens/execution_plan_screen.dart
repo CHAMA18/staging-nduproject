@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -4067,6 +4068,8 @@ class ExecutionPlanInfrastructurePlanScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 32),
                     const _InfrastructurePlanSection(),
+                    const SizedBox(height: 24),
+                    const _PlanningInfrastructureCostSection(),
                     const SizedBox(height: 56),
                   ],
                 ),
@@ -4165,6 +4168,298 @@ class _InfrastructurePlanSection extends StatelessWidget {
           _MobileInfrastructurePlanActions()
         else
           const _DesktopInfrastructurePlanActions(),
+      ],
+    );
+  }
+}
+
+class _PlanningInfrastructureCostSection extends StatefulWidget {
+  const _PlanningInfrastructureCostSection();
+
+  @override
+  State<_PlanningInfrastructureCostSection> createState() =>
+      _PlanningInfrastructureCostSectionState();
+}
+
+class _PlanningInfrastructureCostSectionState
+    extends State<_PlanningInfrastructureCostSection> {
+  Future<void> _editItem({
+    InfrastructurePlanningItem? existing,
+  }) async {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final summaryController =
+        TextEditingController(text: existing?.summary ?? '');
+    final detailsController =
+        TextEditingController(text: existing?.details ?? '');
+    final costController = TextEditingController(
+      text: existing == null || existing.potentialCost == 0
+          ? ''
+          : existing.potentialCost.toStringAsFixed(2),
+    );
+    final ownerController = TextEditingController(text: existing?.owner ?? '');
+    final statusController =
+        TextEditingController(text: existing?.status ?? 'Planned');
+
+    final result = await showDialog<InfrastructurePlanningItem>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing == null
+            ? 'Add Infrastructure Cost Item'
+            : 'Edit Infrastructure Cost Item'),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Item name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: summaryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Summary',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: detailsController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Details / assumptions',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: costController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Estimated cost',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ownerController,
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: statusController,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.of(dialogContext).pop(
+                InfrastructurePlanningItem(
+                  id: existing?.id ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  number: existing?.number ?? 0,
+                  name: name,
+                  summary: summaryController.text.trim(),
+                  details: detailsController.text.trim(),
+                  potentialCost:
+                      double.tryParse(costController.text.trim()) ?? 0,
+                  owner: ownerController.text.trim(),
+                  status: statusController.text.trim().isEmpty
+                      ? 'Planned'
+                      : statusController.text.trim(),
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null || !mounted) return;
+    final provider = ProjectDataInherited.of(context);
+    final current = List<InfrastructurePlanningItem>.from(
+      provider.projectData.planningInfrastructureItems,
+    );
+    final index = current.indexWhere((item) => item.id == result.id);
+    if (index == -1) {
+      current.add(result.copyWith(number: current.length + 1));
+    } else {
+      current[index] = result.copyWith(number: current[index].number);
+    }
+    provider.updateField(
+      (data) => data.copyWith(planningInfrastructureItems: current),
+    );
+    await provider.saveToFirebase(checkpoint: 'execution_infrastructure_plan');
+  }
+
+  Future<void> _deleteItem(String id) async {
+    final provider = ProjectDataInherited.of(context);
+    final current = List<InfrastructurePlanningItem>.from(
+      provider.projectData.planningInfrastructureItems,
+    )..removeWhere((item) => item.id == id);
+    provider.updateField(
+      (data) => data.copyWith(planningInfrastructureItems: current),
+    );
+    await provider.saveToFirebase(checkpoint: 'execution_infrastructure_plan');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ProjectDataInherited.of(context)
+        .projectData
+        .planningInfrastructureItems;
+    final currency = NumberFormat.simpleCurrency(decimalDigits: 0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Infrastructure Cost Register',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _editItem(),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Item'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Capture the structured infrastructure cost items that should feed the planning cost estimate before the project reaches the cost page.',
+          style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 16),
+        if (items.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: const Text(
+              'No infrastructure cost items yet. Add hosting, environments, network, tooling, migration, or platform costs here.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            ),
+          )
+        else
+          ...items.map((item) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name.trim().isEmpty
+                              ? 'Unnamed infrastructure item'
+                              : item.name.trim(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        if (item.summary.trim().isNotEmpty)
+                          Text(
+                            item.summary.trim(),
+                            style: const TextStyle(color: Color(0xFF374151)),
+                          ),
+                        if (item.details.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            item.details.trim(),
+                            style: const TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            Text(
+                              currency.format(item.potentialCost),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                            if (item.owner.trim().isNotEmpty)
+                              Text(
+                                'Owner: ${item.owner.trim()}',
+                                style:
+                                    const TextStyle(color: Color(0xFF4B5563)),
+                              ),
+                            Text(
+                              item.status.trim().isEmpty
+                                  ? 'Planned'
+                                  : item.status.trim(),
+                              style: const TextStyle(color: Color(0xFF4B5563)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _editItem(existing: item);
+                      } else if (value == 'delete') {
+                        _deleteItem(item.id);
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
   }

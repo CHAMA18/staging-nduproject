@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/services/integrated_work_package_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/schedule_cpm_service.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/design_planning_document.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
@@ -50,11 +50,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _autoImportAttempted = false;
   bool _notesExpanded = false;
 
-  int _selectedTab = 0;
   String _timelineView = 'Months';
   String? _selectedTaskId;
   String? _hoveredTaskId;
-  int _selectedMainTab = 0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
+  int _selectedMainTab =
+      0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
 
   @override
   void initState() {
@@ -214,13 +214,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   List<ScheduleActivity> _buildScheduleActivities() {
+    final data = ProjectDataHelper.getData(context, listen: false);
+    final existingById = {
+      for (final activity in data.scheduleActivities) activity.id: activity,
+    };
+    final workPackageById = {
+      for (final package in data.workPackages) package.id: package,
+    };
+    final preferredPackageByWbs = <String, WorkPackage>{};
+    for (final package in data.workPackages) {
+      final keys = {
+        package.sourceWbsLevel3Id,
+        package.wbsItemId,
+      }.where((key) => key.trim().isNotEmpty);
+      for (final key in keys) {
+        final existing = preferredPackageByWbs[key];
+        if (existing == null ||
+            _workPackageLinkRank(package) > _workPackageLinkRank(existing)) {
+          preferredPackageByWbs[key] = package;
+        }
+      }
+    }
+
     final computed =
         _computeSchedule(_activityRows, _scheduleStartDate ?? DateTime.now());
     final computedById = {
       for (final item in computed.items) item.id: item,
     };
 
-    return _activityRows.map((row) {
+    final rawActivities = _activityRows.map((row) {
+      final previous = existingById[row.id];
+      final linkedPackage = row.workPackageId.isNotEmpty
+          ? workPackageById[row.workPackageId]
+          : previous != null && previous.workPackageId.isNotEmpty
+              ? workPackageById[previous.workPackageId]
+              : preferredPackageByWbs[row.wbsId];
       final fallback = computedById[row.id];
       final startDateText = row.startDateController.text.trim().isNotEmpty
           ? row.startDateController.text.trim()
@@ -234,7 +262,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         wbsId: row.wbsId,
         title: row.titleController.text.trim(),
         durationDays: int.tryParse(row.durationController.text.trim()) ?? 5,
-        predecessorIds: row.predecessorId == null ? [] : [row.predecessorId!],
+        predecessorIds: row.normalizedDependencyIds,
+        dependencyIds: row.normalizedDependencyIds,
         isMilestone: row.isMilestone,
         status: row.status,
         priority: row.priority,
@@ -247,8 +276,67 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         dueDate: dueDateText,
         estimatedHours: double.tryParse(row.hoursController.text.trim()) ?? 0,
         milestone: row.milestoneController.text.trim(),
+        workPackageId: linkedPackage?.id ??
+            (row.workPackageId.isNotEmpty
+                ? row.workPackageId
+                : previous?.workPackageId ?? ''),
+        workPackageTitle: linkedPackage?.title ??
+            (row.workPackageTitle.isNotEmpty
+                ? row.workPackageTitle
+                : previous?.workPackageTitle ?? ''),
+        workPackageType: linkedPackage?.type ??
+            (row.workPackageType.isNotEmpty
+                ? row.workPackageType
+                : previous?.workPackageType ?? ''),
+        phase: linkedPackage?.phase ??
+            (row.phase.isNotEmpty ? row.phase : previous?.phase ?? ''),
+        wbsLevel2Id: linkedPackage?.wbsLevel2Id ??
+            (row.wbsLevel2Id.isNotEmpty
+                ? row.wbsLevel2Id
+                : previous?.wbsLevel2Id ?? ''),
+        wbsLevel2Title: linkedPackage?.wbsLevel2Title ??
+            (row.wbsLevel2Title.isNotEmpty
+                ? row.wbsLevel2Title
+                : previous?.wbsLevel2Title ?? ''),
+        contractId: row.contractId.isNotEmpty
+            ? row.contractId
+            : previous?.contractId ?? '',
+        vendorId: linkedPackage != null && linkedPackage.vendorIds.isNotEmpty
+            ? linkedPackage.vendorIds.first
+            : previous?.vendorId ?? '',
+        procurementStatus: previous?.procurementStatus ?? 'not_started',
+        procurementRfqDate: previous?.procurementRfqDate,
+        procurementAwardDate: previous?.procurementAwardDate,
+        contractStartDate: previous?.contractStartDate,
+        contractEndDate: previous?.contractEndDate,
+        budgetedCost:
+            linkedPackage?.budgetedCost ?? previous?.budgetedCost ?? 0,
+        actualCost: linkedPackage?.actualCost ?? previous?.actualCost ?? 0,
+        estimatingBasis: row.estimatingBasisController.text.trim(),
       );
     }).toList();
+
+    return ScheduleCpmService.applyToActivities(
+      activities: rawActivities,
+      projectStart: _scheduleStartDate ?? DateTime.now(),
+    );
+  }
+
+  int _workPackageLinkRank(WorkPackage package) {
+    switch (package.packageClassification) {
+      case IntegratedWorkPackageService.constructionCwp:
+      case IntegratedWorkPackageService.implementationWorkPackage:
+      case IntegratedWorkPackageService.agileIterationPackage:
+        return 3;
+      case IntegratedWorkPackageService.procurementPackage:
+        return 2;
+      case IntegratedWorkPackageService.engineeringEwp:
+        return 1;
+      default:
+        return package.type == 'construction' || package.type == 'execution'
+            ? 3
+            : 0;
+    }
   }
 
   List<Map<String, String>> _flattenWbsItems(List<WorkItem> items) {
@@ -441,6 +529,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         title: draft.title,
         durationDays: draft.durationDays,
         predecessorId: draft.predecessorId,
+        dependencyIds: draft.dependencyIds,
         isMilestone: draft.isMilestone,
         status: draft.status,
         priority: draft.priority,
@@ -450,6 +539,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         startDate: draft.startDate,
         dueDate: draft.dueDate,
         estimatedHours: draft.estimatedHours,
+        estimatingBasis: draft.estimatingBasis,
         milestone: draft.milestone,
         onChanged: _handleActivityChanged,
       ));
@@ -469,6 +559,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       row.titleController.text = draft.title;
       row.durationController.text = draft.durationDays.toString();
       row.predecessorId = draft.predecessorId;
+      row.dependencyIds = draft.dependencyIds;
       row.isMilestone = draft.isMilestone;
       row.status = draft.status;
       row.priority = draft.priority;
@@ -480,6 +571,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       row.dueDateController.text = draft.dueDate;
       row.hoursController.text =
           draft.estimatedHours <= 0 ? '' : draft.estimatedHours.toString();
+      row.estimatingBasisController.text = draft.estimatingBasis;
       row.milestoneController.text = draft.milestone;
     });
     _handleActivityChanged();
@@ -557,8 +649,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final hoursController = TextEditingController(
       text: row?.hoursController.text.trim() ?? '',
     );
+    final estimatingBasisController = TextEditingController(
+      text: row?.estimatingBasisController.text.trim() ?? '',
+    );
     final milestoneController = TextEditingController(
       text: row?.milestoneController.text.trim() ?? '',
+    );
+    final dependencyIdsController = TextEditingController(
+      text: row?.normalizedDependencyIds.join(', ') ?? '',
     );
 
     final result = await showDialog<_TaskDraft>(
@@ -577,7 +675,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       if (wbsItems.isNotEmpty)
                         DropdownButtonFormField<String>(
-                          value: selectedWbsRawId,
+                          initialValue: selectedWbsRawId,
                           decoration: const InputDecoration(
                             labelText: 'WBS Item (optional)',
                           ),
@@ -609,8 +707,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                     break;
                                   }
                                 }
-                                final title =
-                                    (selected?['title'] ?? '').trim();
+                                final title = (selected?['title'] ?? '').trim();
                                 final discipline =
                                     (selected?['discipline'] ?? '').trim();
                                 final deps = (selected?['dependencies'] ?? '')
@@ -626,22 +723,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   disciplineController.text = discipline;
                                 }
                                 predecessorId = null;
+                                final matchedDependencyIds = <String>[];
                                 for (final dep in deps) {
                                   final match =
                                       _resolvePredecessorFromDependencyToken(
                                           dep);
                                   if (match != null) {
-                                    predecessorId = match;
-                                    break;
+                                    matchedDependencyIds.add(match);
+                                    predecessorId ??= match;
                                   }
                                 }
+                                dependencyIdsController.text =
+                                    matchedDependencyIds.join(', ');
                               }
                             });
                           },
                         ),
                       TextField(
                         controller: titleController,
-                        decoration: const InputDecoration(labelText: 'Task Name'),
+                        decoration:
+                            const InputDecoration(labelText: 'Task Name'),
                       ),
                       TextField(
                         controller: durationController,
@@ -650,7 +751,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             const InputDecoration(labelText: 'Duration (days)'),
                       ),
                       DropdownButtonFormField<String?>(
-                        value: predecessorId,
+                        initialValue: predecessorId,
                         decoration:
                             const InputDecoration(labelText: 'Predecessor'),
                         items: [
@@ -670,14 +771,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                         ],
                         onChanged: (value) {
-                          setDialogState(() => predecessorId = value);
+                          setDialogState(() {
+                            predecessorId = value;
+                            final parsed = _parseDependencyIds(
+                                dependencyIdsController.text);
+                            if (value != null && !parsed.contains(value)) {
+                              parsed.insert(0, value);
+                            }
+                            dependencyIdsController.text = parsed.join(', ');
+                          });
                         },
+                      ),
+                      TextField(
+                        controller: dependencyIdsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Dependency IDs',
+                          helperText:
+                              'Comma-separated activity IDs. The predecessor dropdown is included automatically.',
+                        ),
                       ),
                       Row(
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration:
                                   const InputDecoration(labelText: 'Status'),
                               items: const [
@@ -701,14 +818,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: priority,
+                              initialValue: priority,
                               decoration:
                                   const InputDecoration(labelText: 'Priority'),
                               items: const [
-                                DropdownMenuItem(value: 'low', child: Text('Low')),
+                                DropdownMenuItem(
+                                    value: 'low', child: Text('Low')),
                                 DropdownMenuItem(
                                     value: 'medium', child: Text('Medium')),
-                                DropdownMenuItem(value: 'high', child: Text('High')),
+                                DropdownMenuItem(
+                                    value: 'high', child: Text('High')),
                                 DropdownMenuItem(
                                     value: 'critical', child: Text('Critical')),
                               ],
@@ -722,7 +841,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                       TextField(
                         controller: assigneeController,
-                        decoration: const InputDecoration(labelText: 'Assignee'),
+                        decoration:
+                            const InputDecoration(labelText: 'Assignee'),
                       ),
                       TextField(
                         controller: disciplineController,
@@ -735,8 +855,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             child: TextField(
                               controller: progressController,
                               keyboardType: TextInputType.number,
-                              decoration:
-                                  const InputDecoration(labelText: 'Progress %'),
+                              decoration: const InputDecoration(
+                                  labelText: 'Progress %'),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -768,6 +888,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      TextField(
+                        controller: estimatingBasisController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Estimate Basis',
+                          helperText:
+                              'Assumptions, method, source data, or duration basis for this activity.',
+                        ),
                       ),
                       TextField(
                         controller: milestoneController,
@@ -802,13 +931,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                     final duration =
                         int.tryParse(durationController.text.trim()) ?? 5;
-                    final progress = (double.tryParse(
-                                progressController.text.trim()) ??
-                            0)
-                        .clamp(0, 100) /
-                        100;
+                    final progress =
+                        (double.tryParse(progressController.text.trim()) ?? 0)
+                                .clamp(0, 100) /
+                            100;
                     final startDate = startDateController.text.trim();
                     final dueDate = dueDateController.text.trim();
+                    final dependencyIds =
+                        _parseDependencyIds(dependencyIdsController.text);
+                    if (predecessorId != null &&
+                        !dependencyIds.contains(predecessorId)) {
+                      dependencyIds.insert(0, predecessorId!);
+                    }
 
                     if (startDate.isNotEmpty && _parseDate(startDate) == null) {
                       _showInfo('Start date must be YYYY-MM-DD.');
@@ -830,6 +964,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         ),
                         durationDays: duration < 0 ? 0 : duration,
                         predecessorId: predecessorId,
+                        dependencyIds: dependencyIds,
                         isMilestone: isMilestone,
                         status: _normalizeScheduleStatus(status),
                         priority: _normalizeSchedulePriority(priority),
@@ -840,6 +975,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         dueDate: dueDate,
                         estimatedHours:
                             double.tryParse(hoursController.text.trim()) ?? 0,
+                        estimatingBasis: estimatingBasisController.text.trim(),
                         milestone: milestoneController.text.trim(),
                       ),
                     );
@@ -861,8 +997,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     startDateController.dispose();
     dueDateController.dispose();
     hoursController.dispose();
+    estimatingBasisController.dispose();
     milestoneController.dispose();
+    dependencyIdsController.dispose();
     return result;
+  }
+
+  List<String> _parseDependencyIds(String value) {
+    return value
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toSet()
+        .toList();
   }
 
   void _deleteTask(String id) {
@@ -876,17 +1023,344 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _handleActivityChanged();
   }
 
-  void _validateSchedule() {
-    final unassigned = _activityRows
-        .where((row) => row.assigneeController.text.trim().isEmpty)
-        .length;
-    final noPredecessor = _activityRows
-        .where((row) => !row.isMilestone && row.predecessorId == null)
-        .length;
-    _showInfo(
-      'Validation complete: ${_activityRows.length} tasks, '
-      '$unassigned unassigned, $noPredecessor without predecessor.',
+  Future<void> _validateSchedule() async {
+    final report = _buildValidationReport();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _ScheduleValidationDialog(report: report),
     );
+  }
+
+  _ScheduleValidationReport _buildValidationReport() {
+    final activities = _buildScheduleActivities();
+    final cpm = ScheduleCpmService.calculate(
+      activities: activities,
+      projectStart: _scheduleStartDate ?? DateTime.now(),
+    );
+    final data = ProjectDataHelper.getData(context, listen: false);
+
+    final packageWarnings = <_PackageWarning>[];
+    for (final package in data.workPackages) {
+      final warnings = IntegratedWorkPackageService.validateReadiness(package);
+      if (warnings.isNotEmpty) {
+        packageWarnings
+            .add(_PackageWarning(package: package, warnings: warnings));
+      }
+    }
+
+    final packageCandidateIds = data.workPackages
+        .map((package) => package.sourceWbsLevel3Id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final unlinkedWbsCandidates = <WorkItem>[];
+    void visitLevel3(List<WorkItem> nodes, int depth) {
+      for (final node in nodes) {
+        if (depth == 3 && !packageCandidateIds.contains(node.id)) {
+          unlinkedWbsCandidates.add(node);
+        }
+        if (depth < 3) {
+          visitLevel3(node.children, depth + 1);
+        }
+      }
+    }
+
+    visitLevel3(data.wbsTree, 1);
+
+    final missingEstimateBasis = activities.where((activity) {
+      final isCritical = cpm.activitiesById[activity.id]?.isCritical ?? false;
+      return (isCritical || activity.durationDays >= 5) &&
+          activity.estimatingBasis.trim().isEmpty;
+    }).toList();
+    final resourceWarnings = _buildResourceWarnings(activities);
+    final contractAlignmentWarnings =
+        _buildContractAlignmentWarnings(data.workPackages);
+    final baselineVarianceWarnings = _buildBaselineVarianceWarnings(
+      activities: activities,
+      baselineActivities: data.scheduleBaselineActivities,
+    );
+    final milestoneWarnings = _buildMilestoneWarnings(
+      milestones: data.keyMilestones,
+      activities: activities,
+    );
+
+    return _ScheduleValidationReport(
+      taskCount: _activityRows.length,
+      unassignedTaskCount: _activityRows
+          .where((row) => row.assigneeController.text.trim().isEmpty)
+          .length,
+      noPredecessorCount: _activityRows
+          .where((row) => !row.isMilestone && row.predecessorId == null)
+          .length,
+      cpm: cpm,
+      packageWarnings: packageWarnings,
+      unlinkedWbsCandidates: unlinkedWbsCandidates,
+      missingEstimateBasis: missingEstimateBasis,
+      resourceWarnings: resourceWarnings,
+      contractAlignmentWarnings: contractAlignmentWarnings,
+      baselineVarianceWarnings: baselineVarianceWarnings,
+      milestoneWarnings: milestoneWarnings,
+    );
+  }
+
+  List<_ResourceWarning> _buildResourceWarnings(
+    List<ScheduleActivity> activities,
+  ) {
+    final dailyHoursByAssignee = <String, Map<String, double>>{};
+    final unassignedExecution = <ScheduleActivity>[];
+
+    for (final activity in activities) {
+      final assignee = activity.assignee.trim();
+      final workPackageType = activity.workPackageType.trim().toLowerCase();
+      final isExecution = workPackageType == 'construction' ||
+          workPackageType == 'execution' ||
+          activity.phase.trim().toLowerCase() == 'execution';
+
+      if (assignee.isEmpty) {
+        if (isExecution) {
+          unassignedExecution.add(activity);
+        }
+        continue;
+      }
+
+      final start = _parseDate(activity.startDate);
+      final end = _parseDate(activity.dueDate);
+      if (start == null || end == null || end.isBefore(start)) continue;
+
+      final durationDays = end.difference(start).inDays + 1;
+      final dailyHours = activity.estimatedHours > 0
+          ? activity.estimatedHours / durationDays
+          : (activity.durationDays <= 0 ? 0.0 : 8.0);
+      for (var i = 0; i < durationDays; i++) {
+        final dateKey = _formatDate(start.add(Duration(days: i)));
+        dailyHoursByAssignee.putIfAbsent(assignee, () => {}).update(
+            dateKey, (value) => value + dailyHours,
+            ifAbsent: () => dailyHours);
+      }
+    }
+
+    final warnings = <_ResourceWarning>[];
+    for (final entry in dailyHoursByAssignee.entries) {
+      final overloadedDays = entry.value.entries
+          .where((day) => day.value > 8)
+          .map((day) => '${day.key}: ${day.value.toStringAsFixed(1)}h')
+          .toList();
+      if (overloadedDays.isNotEmpty) {
+        warnings.add(
+          _ResourceWarning(
+            title: '${entry.key} exceeds 8h/day capacity',
+            detail: overloadedDays.take(5).join('\n'),
+          ),
+        );
+      }
+    }
+
+    for (final activity in unassignedExecution) {
+      warnings.add(
+        _ResourceWarning(
+          title: activity.title.isNotEmpty ? activity.title : activity.id,
+          detail: 'Execution activity has no assigned owner/resource.',
+        ),
+      );
+    }
+
+    return warnings;
+  }
+
+  List<_ContractAlignmentWarning> _buildContractAlignmentWarnings(
+    List<WorkPackage> packages,
+  ) {
+    final warnings = <_ContractAlignmentWarning>[];
+    final packagesByContract = <String, List<WorkPackage>>{};
+
+    for (final package in packages) {
+      final classification = package.packageClassification.trim();
+      final isProcurement =
+          classification == IntegratedWorkPackageService.procurementPackage;
+      final isExecution = classification ==
+              IntegratedWorkPackageService.constructionCwp ||
+          classification ==
+              IntegratedWorkPackageService.implementationWorkPackage ||
+          classification == IntegratedWorkPackageService.agileIterationPackage;
+
+      if (isProcurement &&
+          package.contractIds.isEmpty &&
+          package.vendorIds.isEmpty) {
+        warnings.add(
+          _ContractAlignmentWarning(
+            title: package.title.isNotEmpty ? package.title : package.id,
+            detail: 'Procurement package has no contract or vendor reference.',
+          ),
+        );
+      }
+
+      if (isExecution &&
+          package.contractIds.isEmpty &&
+          package.contractorOrCrew.trim().isEmpty &&
+          package.owner.trim().isEmpty) {
+        warnings.add(
+          _ContractAlignmentWarning(
+            title: package.title.isNotEmpty ? package.title : package.id,
+            detail:
+                'Execution package has no contract, contractor/crew, or owner assignment.',
+          ),
+        );
+      }
+
+      for (final contractId in package.contractIds) {
+        final trimmed = contractId.trim();
+        if (trimmed.isNotEmpty) {
+          packagesByContract.putIfAbsent(trimmed, () => []).add(package);
+        }
+      }
+    }
+
+    for (final entry in packagesByContract.entries) {
+      final level3Ids = entry.value
+          .map((package) => package.sourceWbsLevel3Id.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      if (level3Ids.length > 1) {
+        warnings.add(
+          _ContractAlignmentWarning(
+            title: 'Contract ${entry.key}',
+            detail:
+                'Mapped across multiple WBS Level 3 package candidates: ${entry.value.map((package) => package.title.isNotEmpty ? package.title : package.id).join(', ')}.',
+          ),
+        );
+      }
+    }
+
+    return warnings;
+  }
+
+  List<_BaselineVarianceWarning> _buildBaselineVarianceWarnings({
+    required List<ScheduleActivity> activities,
+    required List<ScheduleActivity> baselineActivities,
+  }) {
+    if (baselineActivities.isEmpty) {
+      return const [
+        _BaselineVarianceWarning(
+          title: 'No schedule baseline',
+          detail: 'Baseline the schedule to track slippage and variance.',
+        ),
+      ];
+    }
+
+    final warnings = <_BaselineVarianceWarning>[];
+    final baselineById = {
+      for (final baseline in baselineActivities) baseline.id: baseline,
+    };
+
+    for (final activity in activities) {
+      final baseline = baselineById[activity.id];
+      if (baseline == null) {
+        warnings.add(
+          _BaselineVarianceWarning(
+            title: activity.title.isNotEmpty ? activity.title : activity.id,
+            detail: 'Activity is not present in the saved baseline.',
+          ),
+        );
+        continue;
+      }
+
+      final baselineStart = _parseDate(baseline.startDate);
+      final baselineEnd = _parseDate(baseline.dueDate);
+      final currentStart = _parseDate(activity.startDate);
+      final currentEnd = _parseDate(activity.dueDate);
+
+      if (baselineStart != null && currentStart != null) {
+        final startSlip = currentStart.difference(baselineStart).inDays;
+        if (startSlip > 0) {
+          warnings.add(
+            _BaselineVarianceWarning(
+              title: activity.title.isNotEmpty ? activity.title : activity.id,
+              detail:
+                  'Start slipped by $startSlip day${startSlip == 1 ? '' : 's'} from baseline.',
+            ),
+          );
+        }
+      }
+
+      if (baselineEnd != null && currentEnd != null) {
+        final finishSlip = currentEnd.difference(baselineEnd).inDays;
+        if (finishSlip > 0) {
+          warnings.add(
+            _BaselineVarianceWarning(
+              title: activity.title.isNotEmpty ? activity.title : activity.id,
+              detail:
+                  'Finish slipped by $finishSlip day${finishSlip == 1 ? '' : 's'} from baseline.',
+            ),
+          );
+        }
+      }
+
+      final durationVariance = activity.durationDays - baseline.durationDays;
+      if (durationVariance > 0) {
+        warnings.add(
+          _BaselineVarianceWarning(
+            title: activity.title.isNotEmpty ? activity.title : activity.id,
+            detail:
+                'Duration increased by $durationVariance day${durationVariance == 1 ? '' : 's'} versus baseline.',
+          ),
+        );
+      }
+    }
+
+    return warnings;
+  }
+
+  List<_MilestoneWarning> _buildMilestoneWarnings({
+    required List<Milestone> milestones,
+    required List<ScheduleActivity> activities,
+  }) {
+    final warnings = <_MilestoneWarning>[];
+    final activityTitles = activities
+        .map((activity) => activity.title.trim().toLowerCase())
+        .where((title) => title.isNotEmpty)
+        .toSet();
+    final activityMilestones = activities
+        .map((activity) => activity.milestone.trim().toLowerCase())
+        .where((milestone) => milestone.isNotEmpty)
+        .toSet();
+    final milestoneActivities =
+        activities.where((activity) => activity.isMilestone);
+
+    for (final milestone in milestones) {
+      final name = milestone.name.trim();
+      if (name.isEmpty) continue;
+      final normalized = name.toLowerCase();
+      if (milestone.dueDate.trim().isEmpty) {
+        warnings.add(
+          _MilestoneWarning(
+            title: name,
+            detail: 'Milestone has no due date.',
+          ),
+        );
+      }
+      if (!activityTitles.contains(normalized) &&
+          !activityMilestones.contains(normalized)) {
+        warnings.add(
+          _MilestoneWarning(
+            title: name,
+            detail: 'Milestone is not represented in the schedule network.',
+          ),
+        );
+      }
+    }
+
+    for (final activity in milestoneActivities) {
+      final dueDate = activity.dueDate.trim();
+      if (dueDate.isEmpty) {
+        warnings.add(
+          _MilestoneWarning(
+            title: activity.title.isNotEmpty ? activity.title : activity.id,
+            detail: 'Milestone activity has no due date.',
+          ),
+        );
+      }
+    }
+
+    return warnings;
   }
 
   void _moveTaskToStatus(String taskId, String targetStatus) {
@@ -959,7 +1433,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Work Package'),
-        content: const Text('Are you sure you want to delete this work package?'),
+        content:
+            const Text('Are you sure you want to delete this work package?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -985,9 +1460,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _showWorkPackageDetail(WorkPackage wp) async {
     final data = ProjectDataHelper.getData(context);
-    final activities = data.scheduleActivities
-        .where((a) => a.workPackageId == wp.id)
-        .toList();
+    final activities =
+        data.scheduleActivities.where((a) => a.workPackageId == wp.id).toList();
 
     await showDialog(
       context: context,
@@ -1020,7 +1494,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     // Import from Design Planning Document
     try {
       final doc = DesignPlanningDocument.fromProjectData(data);
-      for (final item in [...doc.modules, ...doc.journeys, ...doc.interfaces, ...doc.integrations]) {
+      for (final item in [
+        ...doc.modules,
+        ...doc.journeys,
+        ...doc.interfaces,
+        ...doc.integrations
+      ]) {
         if (item.name.trim().isEmpty) continue;
         newPackages.add(WorkPackage(
           title: item.name,
@@ -1053,7 +1532,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             description: entry.details,
             type: type,
             phase: 'execution',
-            status: entry.status.toLowerCase() == 'complete' ? 'complete' : 'planned',
+            status: entry.status.toLowerCase() == 'complete'
+                ? 'complete'
+                : 'planned',
             wbsLevel2Title: entry.title,
           ));
         }
@@ -1086,7 +1567,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
 
-    if (shouldImport != true) return;
+    if (shouldImport != true || !mounted) return;
 
     final updatedPackages = [...data.workPackages, ...newPackages];
     await ProjectDataHelper.updateAndSave(
@@ -1098,6 +1579,377 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     setState(() {});
     _showInfo('Imported ${newPackages.length} Work Packages.');
+  }
+
+  Future<void> _generateIntegratedPackageChainsFromWbs() async {
+    final data = ProjectDataHelper.getData(context);
+    if (data.wbsTree.isEmpty) {
+      _showInfo('No WBS items found.');
+      return;
+    }
+
+    final generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
+      wbsTree: data.wbsTree,
+      methodology: _selectedMethodology,
+    );
+    if (generated.isEmpty) {
+      _showInfo('No WBS Level 3 package candidates found.');
+      return;
+    }
+
+    final existingIds = data.workPackages.map((wp) => wp.id).toSet();
+    final newPackages =
+        generated.where((wp) => !existingIds.contains(wp.id)).toList();
+    if (newPackages.isEmpty) {
+      _showInfo('Integrated package chains are already generated.');
+      return;
+    }
+
+    final shouldImport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Generate Integrated Package Chains'),
+        content: Text(
+          'Found ${newPackages.length} new EWP, procurement, and execution '
+          'packages from WBS Level 3 candidates. Generate them now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Generate'),
+          ),
+        ],
+      ),
+    );
+    if (shouldImport != true) return;
+    if (!mounted) return;
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) =>
+          data.copyWith(workPackages: [...data.workPackages, ...newPackages]),
+      showSnackbar: false,
+    );
+
+    setState(() {});
+    _showInfo('Generated ${newPackages.length} integrated work packages.');
+  }
+
+  Future<void> _generateScheduleNetworkFromPackages() async {
+    final data = ProjectDataHelper.getData(context);
+    if (data.workPackages.isEmpty) {
+      _showInfo('No work packages found.');
+      return;
+    }
+
+    final generated =
+        IntegratedWorkPackageService.generateScheduleActivitiesFromPackages(
+      packages: data.workPackages,
+      existingActivities: _buildScheduleActivities(),
+    );
+
+    if (generated.isEmpty) {
+      _showInfo('Integrated schedule network is already generated.');
+      return;
+    }
+
+    final shouldImport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Integrated Schedule Network'),
+        content: Text(
+          'Found ${generated.length} work package activities not yet in the '
+          'schedule. Add them with engineering, procurement, and execution '
+          'logic links?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Create Network'),
+          ),
+        ],
+      ),
+    );
+    if (shouldImport != true || !mounted) return;
+
+    setState(() {
+      _activityRows.addAll(
+        generated.map(
+          (activity) => _ScheduleRow.fromActivity(
+            activity,
+            onChanged: _handleActivityChanged,
+          ),
+        ),
+      );
+    });
+
+    _handleActivityChanged();
+    _showInfo('Added ${generated.length} integrated schedule activities.');
+  }
+
+  Future<void> _syncMilestonesFromSchedule() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final data = provider.projectData;
+    final activities = _buildScheduleActivities();
+    final generated = _generateIntegratedMilestones(
+      activities: activities,
+      packages: data.workPackages,
+    );
+
+    if (generated.isEmpty) {
+      _showInfo('No integrated milestones could be derived yet.');
+      return;
+    }
+
+    final merged = _mergeMilestones(
+      existing: data.keyMilestones,
+      generated: generated,
+    );
+    provider.updateField((data) => data.copyWith(keyMilestones: merged));
+
+    final success =
+        await provider.saveToFirebase(checkpoint: 'planning_schedule');
+    if (!mounted) return;
+    if (success) {
+      _showInfo('Synced ${generated.length} schedule milestones.');
+    } else {
+      _showInfo(
+        'Milestones synced locally. Save warning: ${provider.lastError ?? 'Could not save data'}.',
+      );
+    }
+  }
+
+  List<Milestone> _generateIntegratedMilestones({
+    required List<ScheduleActivity> activities,
+    required List<WorkPackage> packages,
+  }) {
+    final milestones = <Milestone>[];
+    final hasConstruction = packages.any((package) =>
+        package.packageClassification ==
+        IntegratedWorkPackageService.constructionCwp);
+    final hasExecutionScope = activities.any((activity) =>
+            activity.phase.trim().toLowerCase() == 'execution' ||
+            activity.workPackageType.trim().toLowerCase() == 'construction' ||
+            activity.workPackageType.trim().toLowerCase() == 'execution') ||
+        packages.any((package) =>
+            package.phase.trim().toLowerCase() == 'execution' ||
+            package.type.trim().toLowerCase() == 'construction' ||
+            package.type.trim().toLowerCase() == 'execution');
+
+    void addMilestone({
+      required String name,
+      required String discipline,
+      required String dueDate,
+      required String comments,
+    }) {
+      milestones.add(
+        Milestone(
+          name: name,
+          discipline: discipline,
+          dueDate: dueDate,
+          references: 'Generated from integrated schedule',
+          comments: comments,
+        ),
+      );
+    }
+
+    final designComplete = _latestDate([
+      ...activities
+          .where((activity) =>
+              activity.phase.trim().toLowerCase() == 'design' ||
+              activity.workPackageType.trim().toLowerCase() == 'design')
+          .map((activity) => activity.dueDate),
+      ...packages
+          .where((package) =>
+              package.packageClassification ==
+                  IntegratedWorkPackageService.engineeringEwp ||
+              package.phase.trim().toLowerCase() == 'design')
+          .map((package) => package.plannedEnd ?? ''),
+    ]);
+    if (designComplete.isNotEmpty) {
+      addMilestone(
+        name: 'Design Complete',
+        discipline: 'Engineering',
+        dueDate: designComplete,
+        comments: 'Latest engineering package completion date.',
+      );
+    }
+
+    final contractAwarded = _latestDate([
+      ...activities.map((activity) => activity.procurementAwardDate ?? ''),
+      ...packages
+          .map((package) => package.procurementBreakdown.awardDate)
+          .where((date) => date.trim().isNotEmpty),
+    ]);
+    if (contractAwarded.isNotEmpty ||
+        packages.any((package) =>
+            package.packageClassification ==
+            IntegratedWorkPackageService.procurementPackage)) {
+      addMilestone(
+        name: 'Contract Awarded',
+        discipline: 'Procurement',
+        dueDate: contractAwarded,
+        comments: 'Derived from procurement award checkpoints.',
+      );
+    }
+
+    final equipmentDelivered = _latestDate([
+      ...packages
+          .map((package) => package.procurementBreakdown.deliveryDate)
+          .where((date) => date.trim().isNotEmpty),
+      ...activities
+          .where((activity) =>
+              activity.workPackageType.trim().toLowerCase() == 'procurement')
+          .map((activity) => activity.dueDate),
+    ]);
+    if (equipmentDelivered.isNotEmpty ||
+        packages.any((package) =>
+            package.packageClassification ==
+            IntegratedWorkPackageService.procurementPackage)) {
+      addMilestone(
+        name: 'Equipment Delivered',
+        discipline: 'Procurement',
+        dueDate: equipmentDelivered,
+        comments: 'Derived from procurement delivery checkpoints.',
+      );
+    }
+
+    final executionComplete = _latestDate([
+      ...activities
+          .where((activity) =>
+              activity.phase.trim().toLowerCase() == 'execution' &&
+              activity.workPackageType.trim().toLowerCase() != 'procurement')
+          .map((activity) => activity.dueDate),
+      ...packages
+          .where((package) =>
+              package.phase.trim().toLowerCase() == 'execution' &&
+              package.type.trim().toLowerCase() != 'procurement')
+          .map((package) => package.plannedEnd ?? ''),
+    ]);
+    if (executionComplete.isNotEmpty || hasExecutionScope) {
+      addMilestone(
+        name: hasConstruction
+            ? 'Construction Complete'
+            : 'Implementation Complete',
+        discipline: hasConstruction ? 'Construction' : 'Execution',
+        dueDate: executionComplete,
+        comments: 'Latest execution package completion date.',
+      );
+    }
+
+    final commissioningStart = _earliestDate([
+      ...activities
+          .where((activity) =>
+              _looksLikeCommissioning(activity.title) ||
+              _looksLikeCommissioning(activity.milestone) ||
+              activity.phase.trim().toLowerCase() == 'launch')
+          .map((activity) => activity.startDate),
+      ...packages
+          .where((package) =>
+              _looksLikeCommissioning(package.title) ||
+              _looksLikeCommissioning(package.description) ||
+              package.phase.trim().toLowerCase() == 'launch')
+          .map((package) => package.plannedStart ?? ''),
+    ]);
+    if (commissioningStart.isNotEmpty || hasExecutionScope) {
+      addMilestone(
+        name: 'Commissioning Start',
+        discipline: 'Commissioning',
+        dueDate: commissioningStart,
+        comments: 'Earliest commissioning or launch-start checkpoint.',
+      );
+    }
+
+    final projectLaunch = _latestDate([
+      ...activities
+          .where((activity) =>
+              activity.phase.trim().toLowerCase() == 'launch' ||
+              _looksLikeLaunch(activity.title))
+          .map((activity) => activity.dueDate),
+      ...packages
+          .where((package) =>
+              package.phase.trim().toLowerCase() == 'launch' ||
+              _looksLikeLaunch(package.title))
+          .map((package) => package.plannedEnd ?? ''),
+    ]);
+    if (projectLaunch.isNotEmpty) {
+      addMilestone(
+        name: 'Project Launch',
+        discipline: 'Launch',
+        dueDate: projectLaunch,
+        comments: 'Latest launch or go-live checkpoint.',
+      );
+    }
+
+    return milestones;
+  }
+
+  List<Milestone> _mergeMilestones({
+    required List<Milestone> existing,
+    required List<Milestone> generated,
+  }) {
+    final merged = [...existing];
+    final indexByName = <String, int>{};
+    for (var i = 0; i < merged.length; i++) {
+      final key = merged[i].name.trim().toLowerCase();
+      if (key.isNotEmpty) {
+        indexByName[key] = i;
+      }
+    }
+
+    for (final milestone in generated) {
+      final key = milestone.name.trim().toLowerCase();
+      final index = indexByName[key];
+      if (index == null) {
+        merged.add(milestone);
+        indexByName[key] = merged.length - 1;
+      } else {
+        merged[index] = Milestone(
+          name: milestone.name,
+          discipline: milestone.discipline,
+          dueDate: milestone.dueDate,
+          references: milestone.references,
+          comments: milestone.comments,
+        );
+      }
+    }
+
+    return merged;
+  }
+
+  String _latestDate(Iterable<String> rawDates) {
+    final parsed = rawDates.map(_parseDate).whereType<DateTime>().toList()
+      ..sort();
+    return parsed.isEmpty ? '' : _formatDate(parsed.last);
+  }
+
+  String _earliestDate(Iterable<String> rawDates) {
+    final parsed = rawDates.map(_parseDate).whereType<DateTime>().toList()
+      ..sort();
+    return parsed.isEmpty ? '' : _formatDate(parsed.first);
+  }
+
+  bool _looksLikeCommissioning(String value) {
+    final text = value.trim().toLowerCase();
+    return text.contains('commission') ||
+        text.contains('handover') ||
+        text.contains('startup');
+  }
+
+  bool _looksLikeLaunch(String value) {
+    final text = value.trim().toLowerCase();
+    return text.contains('launch') ||
+        text.contains('go-live') ||
+        text.contains('golive');
   }
 
   Future<void> _calculateScheduleCostImpact() async {
@@ -1115,9 +1967,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     for (final activity in data.scheduleActivities) {
       final dueDate = _parseDate(activity.dueDate) ?? now;
-      final plannedEnd = _parseDate(activity.dueDate) ?? now;
-      final actualEnd = _parseDate(activity.dueDate) ?? now;
-
       // Calculate delay
       final baseline = data.scheduleBaselineActivities.firstWhere(
         (baseline) => baseline.id == activity.id,
@@ -1134,8 +1983,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
 
       delayedCount++;
-      final dailyRate = activity.budgetedCost / (activity.durationDays > 0 ? activity.durationDays : 1);
-      final delayPenalty = dailyRate * delayDays * 1.2; // 1.2x multiplier for penalties
+      final dailyRate = activity.budgetedCost /
+          (activity.durationDays > 0 ? activity.durationDays : 1);
+      final delayPenalty =
+          dailyRate * delayDays * 1.2; // 1.2x multiplier for penalties
       totalImpact += delayPenalty;
 
       // Update activity with cost impact info
@@ -1161,7 +2012,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       checkpoint: 'planning_schedule',
       dataUpdater: (data) => data.copyWith(
         scheduleActivities: updatedActivities,
-        workPackages: updatedPackages.isNotEmpty ? updatedPackages : data.workPackages,
+        workPackages:
+            updatedPackages.isNotEmpty ? updatedPackages : data.workPackages,
       ),
       showSnackbar: false,
     );
@@ -1263,6 +2115,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           onImportFromWbs: () => _importFromWbs(),
                           onGenerateAi: _generateScheduleFromAi,
                           onAddTask: _addTask,
+                          onSyncMilestones: _syncMilestonesFromSchedule,
                           onValidate: _validateSchedule,
                           onApproveBaseline: _setBaseline,
                           onCalculateCostImpact: _calculateScheduleCostImpact,
@@ -1370,6 +2223,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           scheduleActivities: data.scheduleActivities,
           onWorkPackageTap: (wp) => _showWorkPackageDetail(wp),
           onImportFromPlans: _importWorkPackagesFromDesignAndExecution,
+          onGeneratePackageChains: _generateIntegratedPackageChainsFromWbs,
+          onGenerateScheduleNetwork: _generateScheduleNetworkFromPackages,
           onAddWorkPackage: _createWorkPackage,
           onEditWorkPackage: _editWorkPackage,
           onDeleteWorkPackage: _deleteWorkPackage,
@@ -1385,7 +2240,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           scheduleActivities: data.scheduleActivities,
           costEstimateItems: data.costEstimateItems,
           startDate: _scheduleStartDate ?? DateTime.now(),
-          endDate: (_scheduleStartDate ?? DateTime.now()).add(const Duration(days: 365)),
+          endDate: (_scheduleStartDate ?? DateTime.now())
+              .add(const Duration(days: 365)),
         );
       default:
         return const SizedBox.shrink();
@@ -1393,6 +2249,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 }
 
+// ignore: unused_element
 class _WbsAndSummaryCard extends StatelessWidget {
   const _WbsAndSummaryCard({required this.rows, required this.wbsTree});
 
@@ -1652,8 +2509,9 @@ class _TimelineWorkspaceCard extends StatelessWidget {
             onSelected: (_) => onTabChanged(i),
             selectedColor: const Color(0xFFF59E0B),
             labelStyle: TextStyle(
-              color:
-                  selectedTab == i ? const Color(0xFF111827) : const Color(0xFF4B5563),
+              color: selectedTab == i
+                  ? const Color(0xFF111827)
+                  : const Color(0xFF4B5563),
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -1670,7 +2528,9 @@ class _TimelineWorkspaceCard extends StatelessWidget {
           onPressed: onPickStartDate,
           icon: const Icon(Icons.event_outlined, size: 16),
           label: Text(
-            startDate == null ? 'Start Date' : 'Start: ${_formatDate(startDate!)}',
+            startDate == null
+                ? 'Start Date'
+                : 'Start: ${_formatDate(startDate!)}',
           ),
         ),
         Container(
@@ -1740,6 +2600,7 @@ class _TimelineWorkspaceCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SectionEmpty extends StatelessWidget {
   const _SectionEmpty({required this.title, required this.message});
 
@@ -1778,6 +2639,7 @@ class _SectionEmpty extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TimelineGantt extends StatelessWidget {
   const _TimelineGantt({
     required this.computed,
@@ -2298,19 +3160,30 @@ class _TimelineList extends StatelessWidget {
                             child: Text('None'),
                           ),
                           ...predecessorCandidates.map((candidate) {
-                            final label = candidate.titleController.text
-                                    .trim()
-                                    .isEmpty
-                                ? 'Untitled task'
-                                : candidate.titleController.text.trim();
+                            final label =
+                                candidate.titleController.text.trim().isEmpty
+                                    ? 'Untitled task'
+                                    : candidate.titleController.text.trim();
                             return DropdownMenuItem<String?>(
                               value: candidate.id,
-                              child: Text(label, overflow: TextOverflow.ellipsis),
+                              child:
+                                  Text(label, overflow: TextOverflow.ellipsis),
                             );
                           }),
                         ],
                         onChanged: (value) {
+                          final previous = row.predecessorId;
                           row.predecessorId = value;
+                          final dependencies = row.normalizedDependencyIds;
+                          if (previous != null && previous != value) {
+                            dependencies.remove(previous);
+                          }
+                          if (value == null) {
+                            dependencies.remove(previous);
+                          } else if (!dependencies.contains(value)) {
+                            dependencies.insert(0, value);
+                          }
+                          row.dependencyIds = dependencies;
                           onChanged();
                         },
                       ),
@@ -2320,9 +3193,10 @@ class _TimelineList extends StatelessWidget {
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: _TimelineList._statusOptions.contains(statusValue)
-                            ? statusValue
-                            : null,
+                        value:
+                            _TimelineList._statusOptions.contains(statusValue)
+                                ? statusValue
+                                : null,
                         hint: const Text('Pending'),
                         items: _statusOptions
                             .map((option) => DropdownMenuItem(
@@ -2342,10 +3216,10 @@ class _TimelineList extends StatelessWidget {
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value:
-                            _TimelineList._priorityOptions.contains(priorityValue)
-                                ? priorityValue
-                                : null,
+                        value: _TimelineList._priorityOptions
+                                .contains(priorityValue)
+                            ? priorityValue
+                            : null,
                         hint: const Text('Medium'),
                         items: _priorityOptions
                             .map((option) => DropdownMenuItem(
@@ -2436,6 +3310,19 @@ class _TimelineList extends StatelessWidget {
                   ),
                   _cell(
                     TextField(
+                      controller: row.estimatingBasisController,
+                      onChanged: (_) => onChanged(),
+                      minLines: 1,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintText: 'Basis',
+                      ),
+                    ),
+                  ),
+                  _cell(
+                    TextField(
                       controller: row.milestoneController,
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
@@ -2486,6 +3373,7 @@ class _TimelineList extends StatelessWidget {
         label('Start Date'),
         label('Due Date'),
         label('Est. Hours'),
+        label('Estimate Basis'),
         label('Milestone'),
         label(''),
       ],
@@ -2821,6 +3709,7 @@ class _TaskDraft {
     required this.wbsId,
     required this.durationDays,
     required this.predecessorId,
+    required this.dependencyIds,
     required this.isMilestone,
     required this.status,
     required this.priority,
@@ -2830,6 +3719,7 @@ class _TaskDraft {
     required this.startDate,
     required this.dueDate,
     required this.estimatedHours,
+    required this.estimatingBasis,
     required this.milestone,
   });
 
@@ -2837,6 +3727,7 @@ class _TaskDraft {
   final String wbsId;
   final int durationDays;
   final String? predecessorId;
+  final List<String> dependencyIds;
   final bool isMilestone;
   final String status;
   final String priority;
@@ -2846,6 +3737,7 @@ class _TaskDraft {
   final String startDate;
   final String dueDate;
   final double estimatedHours;
+  final String estimatingBasis;
   final String milestone;
 }
 
@@ -2856,6 +3748,7 @@ class _ScheduleRow {
     String title = '',
     int durationDays = 5,
     this.predecessorId,
+    List<String>? dependencyIds,
     this.isMilestone = false,
     String status = 'pending',
     String priority = 'medium',
@@ -2865,7 +3758,15 @@ class _ScheduleRow {
     String startDate = '',
     String dueDate = '',
     double estimatedHours = 0,
+    String estimatingBasis = '',
     String milestone = '',
+    this.workPackageId = '',
+    this.workPackageTitle = '',
+    this.workPackageType = '',
+    this.phase = '',
+    this.wbsLevel2Id = '',
+    this.wbsLevel2Title = '',
+    this.contractId = '',
     this.onChanged,
   })  : status = _normalizeScheduleStatus(status),
         priority = _normalizeSchedulePriority(priority),
@@ -2882,7 +3783,11 @@ class _ScheduleRow {
         hoursController = TextEditingController(
           text: estimatedHours == 0 ? '' : estimatedHours.toStringAsFixed(1),
         ),
-        milestoneController = TextEditingController(text: milestone) {
+        estimatingBasisController =
+            TextEditingController(text: estimatingBasis),
+        milestoneController = TextEditingController(text: milestone),
+        dependencyIds = dependencyIds ??
+            (predecessorId == null ? <String>[] : <String>[predecessorId]) {
     if (onChanged != null) {
       titleController.addListener(onChanged!);
       durationController.addListener(onChanged!);
@@ -2892,6 +3797,7 @@ class _ScheduleRow {
       startDateController.addListener(onChanged!);
       dueDateController.addListener(onChanged!);
       hoursController.addListener(onChanged!);
+      estimatingBasisController.addListener(onChanged!);
       milestoneController.addListener(onChanged!);
     }
   }
@@ -2906,11 +3812,20 @@ class _ScheduleRow {
   final TextEditingController startDateController;
   final TextEditingController dueDateController;
   final TextEditingController hoursController;
+  final TextEditingController estimatingBasisController;
   final TextEditingController milestoneController;
   String? predecessorId;
+  List<String> dependencyIds;
   bool isMilestone;
   String status;
   String priority;
+  String workPackageId;
+  String workPackageTitle;
+  String workPackageType;
+  String phase;
+  String wbsLevel2Id;
+  String wbsLevel2Title;
+  String contractId;
   final VoidCallback? onChanged;
 
   factory _ScheduleRow.fromActivity(
@@ -2927,6 +3842,10 @@ class _ScheduleRow {
       predecessorId: activity.predecessorIds.isEmpty
           ? null
           : activity.predecessorIds.first,
+      dependencyIds: {
+        ...activity.predecessorIds,
+        ...activity.dependencyIds,
+      }.where((id) => id.trim().isNotEmpty).toList(),
       isMilestone: activity.isMilestone,
       status: activity.status,
       priority: activity.priority,
@@ -2936,7 +3855,15 @@ class _ScheduleRow {
       startDate: activity.startDate,
       dueDate: activity.dueDate,
       estimatedHours: activity.estimatedHours,
+      estimatingBasis: activity.estimatingBasis,
       milestone: activity.milestone,
+      workPackageId: activity.workPackageId,
+      workPackageTitle: activity.workPackageTitle,
+      workPackageType: activity.workPackageType,
+      phase: activity.phase,
+      wbsLevel2Id: activity.wbsLevel2Id,
+      wbsLevel2Title: activity.wbsLevel2Title,
+      contractId: activity.contractId,
       onChanged: onChanged,
     );
   }
@@ -2950,7 +3877,17 @@ class _ScheduleRow {
     startDateController.dispose();
     dueDateController.dispose();
     hoursController.dispose();
+    estimatingBasisController.dispose();
     milestoneController.dispose();
+  }
+
+  List<String> get normalizedDependencyIds {
+    final values = <String>[
+      if (predecessorId != null && predecessorId!.trim().isNotEmpty)
+        predecessorId!.trim(),
+      ...dependencyIds.map((id) => id.trim()),
+    ].where((id) => id.isNotEmpty).toList();
+    return values.toSet().toList();
   }
 }
 
@@ -2992,6 +3929,384 @@ class _ComputedItem {
   final List<String> predecessorIds;
 }
 
+class _ScheduleValidationReport {
+  const _ScheduleValidationReport({
+    required this.taskCount,
+    required this.unassignedTaskCount,
+    required this.noPredecessorCount,
+    required this.cpm,
+    required this.packageWarnings,
+    required this.unlinkedWbsCandidates,
+    required this.missingEstimateBasis,
+    required this.resourceWarnings,
+    required this.contractAlignmentWarnings,
+    required this.baselineVarianceWarnings,
+    required this.milestoneWarnings,
+  });
+
+  final int taskCount;
+  final int unassignedTaskCount;
+  final int noPredecessorCount;
+  final CpmResult cpm;
+  final List<_PackageWarning> packageWarnings;
+  final List<WorkItem> unlinkedWbsCandidates;
+  final List<ScheduleActivity> missingEstimateBasis;
+  final List<_ResourceWarning> resourceWarnings;
+  final List<_ContractAlignmentWarning> contractAlignmentWarnings;
+  final List<_BaselineVarianceWarning> baselineVarianceWarnings;
+  final List<_MilestoneWarning> milestoneWarnings;
+}
+
+class _PackageWarning {
+  const _PackageWarning({required this.package, required this.warnings});
+
+  final WorkPackage package;
+  final List<String> warnings;
+}
+
+class _ResourceWarning {
+  const _ResourceWarning({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+}
+
+class _ContractAlignmentWarning {
+  const _ContractAlignmentWarning({
+    required this.title,
+    required this.detail,
+  });
+
+  final String title;
+  final String detail;
+}
+
+class _BaselineVarianceWarning {
+  const _BaselineVarianceWarning({
+    required this.title,
+    required this.detail,
+  });
+
+  final String title;
+  final String detail;
+}
+
+class _MilestoneWarning {
+  const _MilestoneWarning({
+    required this.title,
+    required this.detail,
+  });
+
+  final String title;
+  final String detail;
+}
+
+class _ScheduleValidationDialog extends StatelessWidget {
+  const _ScheduleValidationDialog({required this.report});
+
+  final _ScheduleValidationReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Schedule Validation'),
+      content: SizedBox(
+        width: 760,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _ValidationStat(
+                    label: 'Tasks',
+                    value: report.taskCount.toString(),
+                    color: const Color(0xFF2563EB),
+                  ),
+                  _ValidationStat(
+                    label: 'Unassigned',
+                    value: report.unassignedTaskCount.toString(),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _ValidationStat(
+                    label: 'No Predecessor',
+                    value: report.noPredecessorCount.toString(),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _ValidationStat(
+                    label: 'Logic Warnings',
+                    value: report.cpm.diagnostics.length.toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
+                  _ValidationStat(
+                    label: 'Readiness Warnings',
+                    value: report.packageWarnings
+                        .fold<int>(0, (sum, item) => sum + item.warnings.length)
+                        .toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
+                  _ValidationStat(
+                    label: 'Resource Warnings',
+                    value: report.resourceWarnings.length.toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
+                  _ValidationStat(
+                    label: 'Contract Warnings',
+                    value: report.contractAlignmentWarnings.length.toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
+                  _ValidationStat(
+                    label: 'Baseline Variance',
+                    value: report.baselineVarianceWarnings.length.toString(),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _ValidationStat(
+                    label: 'Milestone Gaps',
+                    value: report.milestoneWarnings.length.toString(),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _ValidationStat(
+                    label: 'Critical Path',
+                    value: report.cpm.criticalPathIds.length.toString(),
+                    color: const Color(0xFF7C3AED),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _ValidationSection(
+                title: 'CPM Logic',
+                emptyText: 'No CPM logic warnings.',
+                children: report.cpm.diagnostics
+                    .map((diagnostic) => _ValidationLine(
+                          title: diagnostic.activityId,
+                          detail: diagnostic.message,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Readiness Warnings',
+                emptyText: 'No package readiness warnings.',
+                children: report.packageWarnings
+                    .map((item) => _ValidationLine(
+                          title: item.package.title.isNotEmpty
+                              ? item.package.title
+                              : item.package.id,
+                          detail: item.warnings.join('\n'),
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Unlinked WBS Level 3 Candidates',
+                emptyText: 'All WBS Level 3 candidates are linked to packages.',
+                children: report.unlinkedWbsCandidates
+                    .map((item) => _ValidationLine(
+                          title: item.title.isNotEmpty ? item.title : item.id,
+                          detail: item.description.isNotEmpty
+                              ? item.description
+                              : 'No package chain generated for this candidate.',
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Missing Estimate Basis',
+                emptyText:
+                    'Critical and longer-duration activities have estimate basis.',
+                children: report.missingEstimateBasis
+                    .map((activity) => _ValidationLine(
+                          title: activity.title.isNotEmpty
+                              ? activity.title
+                              : activity.id,
+                          detail:
+                              'Duration ${activity.durationDays} days, critical path: ${activity.isCriticalPath ? 'yes' : 'no'}.',
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Resource Loading',
+                emptyText: 'No resource loading warnings.',
+                children: report.resourceWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Contract Alignment',
+                emptyText: 'No contract alignment warnings.',
+                children: report.contractAlignmentWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Baseline Variance',
+                emptyText: 'No baseline variance warnings.',
+                children: report.baselineVarianceWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Milestone Coverage',
+                emptyText: 'No milestone coverage warnings.',
+                children: report.milestoneWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ValidationStat extends StatelessWidget {
+  const _ValidationStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 120,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ValidationSection extends StatelessWidget {
+  const _ValidationSection({
+    required this.title,
+    required this.emptyText,
+    required this.children,
+  });
+
+  final String title;
+  final String emptyText;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (children.isEmpty)
+            Text(
+              emptyText,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF047857)),
+            )
+          else
+            ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ValidationLine extends StatelessWidget {
+  const _ValidationLine({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFF59E0B)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF92400E),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            detail,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF78350F),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 _ComputedSchedule _computeSchedule(List<_ScheduleRow> rows, DateTime start) {
   final byId = {for (final row in rows) row.id: row};
   final resolved = <String, _ComputedItem>{};
@@ -3019,16 +4334,20 @@ _ComputedSchedule _computeSchedule(List<_ScheduleRow> rows, DateTime start) {
         progress: (double.tryParse(row.progressController.text.trim()) ?? 0)
                 .clamp(0, 100) /
             100,
-        predecessorIds: row.predecessorId == null ? [] : [row.predecessorId!],
+        predecessorIds: row.normalizedDependencyIds,
       );
     }
 
     visiting.add(id);
 
     int startOffset = 0;
-    if (row.predecessorId != null && byId.containsKey(row.predecessorId)) {
-      final predecessor = compute(row.predecessorId!, visiting);
-      startOffset = predecessor.startOffsetDays + predecessor.durationDays;
+    for (final dependencyId in row.normalizedDependencyIds) {
+      if (!byId.containsKey(dependencyId)) continue;
+      final predecessor = compute(dependencyId, visiting);
+      final candidate = predecessor.startOffsetDays + predecessor.durationDays;
+      if (candidate > startOffset) {
+        startOffset = candidate;
+      }
     }
 
     final duration = durationFor(row);
@@ -3053,7 +4372,7 @@ _ComputedSchedule _computeSchedule(List<_ScheduleRow> rows, DateTime start) {
       progress: (double.tryParse(row.progressController.text.trim()) ?? 0)
               .clamp(0, 100) /
           100,
-      predecessorIds: row.predecessorId == null ? [] : [row.predecessorId!],
+      predecessorIds: row.normalizedDependencyIds,
     );
 
     resolved[id] = item;
@@ -3260,6 +4579,8 @@ class _WorkPackagesTab extends StatelessWidget {
     required this.scheduleActivities,
     this.onWorkPackageTap,
     this.onImportFromPlans,
+    this.onGeneratePackageChains,
+    this.onGenerateScheduleNetwork,
     this.onAddWorkPackage,
     this.onEditWorkPackage,
     this.onDeleteWorkPackage,
@@ -3269,6 +4590,8 @@ class _WorkPackagesTab extends StatelessWidget {
   final List<ScheduleActivity> scheduleActivities;
   final ValueChanged<WorkPackage>? onWorkPackageTap;
   final VoidCallback? onImportFromPlans;
+  final VoidCallback? onGeneratePackageChains;
+  final VoidCallback? onGenerateScheduleNetwork;
   final VoidCallback? onAddWorkPackage;
   final ValueChanged<WorkPackage>? onEditWorkPackage;
   final ValueChanged<String>? onDeleteWorkPackage;
@@ -3311,6 +4634,22 @@ class _WorkPackagesTab extends StatelessWidget {
             ),
             if (onImportFromPlans != null) ...[
               const SizedBox(height: 16),
+              if (onGeneratePackageChains != null) ...[
+                FilledButton.icon(
+                  onPressed: onGeneratePackageChains,
+                  icon: const Icon(Icons.account_tree_outlined, size: 16),
+                  label: const Text('Generate Package Chains'),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (onGenerateScheduleNetwork != null) ...[
+                OutlinedButton.icon(
+                  onPressed: onGenerateScheduleNetwork,
+                  icon: const Icon(Icons.timeline_outlined, size: 16),
+                  label: const Text('Create Schedule Network'),
+                ),
+                const SizedBox(height: 8),
+              ],
               OutlinedButton.icon(
                 onPressed: onImportFromPlans,
                 icon: const Icon(Icons.download_outlined, size: 16),
@@ -3352,6 +4691,20 @@ class _WorkPackagesTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              if (onGeneratePackageChains != null)
+                FilledButton.icon(
+                  onPressed: onGeneratePackageChains,
+                  icon: const Icon(Icons.account_tree_outlined, size: 16),
+                  label: const Text('Generate Package Chains'),
+                ),
+              const SizedBox(width: 8),
+              if (onGenerateScheduleNetwork != null)
+                OutlinedButton.icon(
+                  onPressed: onGenerateScheduleNetwork,
+                  icon: const Icon(Icons.timeline_outlined, size: 16),
+                  label: const Text('Create Schedule Network'),
+                ),
+              const SizedBox(width: 8),
               if (onImportFromPlans != null)
                 OutlinedButton.icon(
                   onPressed: onImportFromPlans,
@@ -3408,6 +4761,8 @@ class _WorkPackageCard extends StatelessWidget {
     final progress = workPackage.budgetedCost > 0
         ? (workPackage.actualCost / workPackage.budgetedCost).clamp(0.0, 1.0)
         : 0.0;
+    final readinessWarnings =
+        IntegratedWorkPackageService.validateReadiness(workPackage);
 
     return GestureDetector(
       onTap: onTap,
@@ -3452,6 +4807,29 @@ class _WorkPackageCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (readinessWarnings.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: readinessWarnings.take(5).join('\n'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFF97316)),
+                      ),
+                      child: Text(
+                        '${readinessWarnings.length} WARN',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF9A3412),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 if (onEdit != null) ...[
                   const SizedBox(width: 8),
                   IconButton(
@@ -3462,8 +4840,8 @@ class _WorkPackageCard extends StatelessWidget {
                 ],
                 if (onDelete != null)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18,
-                        color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        size: 18, color: Color(0xFFEF4444)),
                     onPressed: onDelete,
                     tooltip: 'Delete',
                   ),
@@ -3484,11 +4862,15 @@ class _WorkPackageCard extends StatelessWidget {
             ],
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 14, color: Color(0xFF6B7280)),
+                const Icon(Icons.person_outline,
+                    size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.owner.isNotEmpty ? workPackage.owner : 'Unassigned',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  workPackage.owner.isNotEmpty
+                      ? workPackage.owner
+                      : 'Unassigned',
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(width: 16),
                 const Icon(Icons.category_outlined,
@@ -3739,8 +5121,7 @@ class _ProcurementActivityCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _procurementStatusColor(activity.procurementStatus),
                   borderRadius: BorderRadius.circular(999),
@@ -3854,14 +5235,11 @@ class _CostVsScheduleTab extends StatelessWidget {
 
     final points = <SCurveDataPoint>[];
     double cumulative = 0;
-    final sorted = [...workPackages]
-      ..sort((a, b) {
-        final aDate = a.plannedStart != null
-            ? DateTime.tryParse(a.plannedStart!)
-            : null;
-        final bDate = b.plannedStart != null
-            ? DateTime.tryParse(b.plannedStart!)
-            : null;
+    final sorted = [...workPackages]..sort((a, b) {
+        final aDate =
+            a.plannedStart != null ? DateTime.tryParse(a.plannedStart!) : null;
+        final bDate =
+            b.plannedStart != null ? DateTime.tryParse(b.plannedStart!) : null;
         if (aDate == null && bDate == null) return 0;
         if (aDate == null) return 1;
         if (bDate == null) return -1;
@@ -3869,9 +5247,8 @@ class _CostVsScheduleTab extends StatelessWidget {
       });
 
     for (final wp in sorted) {
-      final date = wp.plannedStart != null
-          ? DateTime.tryParse(wp.plannedStart!)
-          : null;
+      final date =
+          wp.plannedStart != null ? DateTime.tryParse(wp.plannedStart!) : null;
       if (date != null) {
         cumulative += wp.budgetedCost;
         points.add(SCurveDataPoint(date: date, cumulativeCost: cumulative));
@@ -3886,14 +5263,11 @@ class _CostVsScheduleTab extends StatelessWidget {
 
     final points = <SCurveDataPoint>[];
     double cumulative = 0;
-    final sorted = [...workPackages]
-      ..sort((a, b) {
-        final aDate = a.actualStart != null
-            ? DateTime.tryParse(a.actualStart!)
-            : null;
-        final bDate = b.actualStart != null
-            ? DateTime.tryParse(b.actualStart!)
-            : null;
+    final sorted = [...workPackages]..sort((a, b) {
+        final aDate =
+            a.actualStart != null ? DateTime.tryParse(a.actualStart!) : null;
+        final bDate =
+            b.actualStart != null ? DateTime.tryParse(b.actualStart!) : null;
         if (aDate == null && bDate == null) return 0;
         if (aDate == null) return 1;
         if (bDate == null) return -1;
@@ -3901,9 +5275,8 @@ class _CostVsScheduleTab extends StatelessWidget {
       });
 
     for (final wp in sorted) {
-      final date = wp.actualStart != null
-          ? DateTime.tryParse(wp.actualStart!)
-          : null;
+      final date =
+          wp.actualStart != null ? DateTime.tryParse(wp.actualStart!) : null;
       if (date != null) {
         cumulative += wp.actualCost > 0 ? wp.actualCost : wp.budgetedCost;
         points.add(SCurveDataPoint(date: date, cumulativeCost: cumulative));
@@ -3923,15 +5296,15 @@ class _CostVsScheduleTab extends StatelessWidget {
       0,
       (sum, wp) => sum + wp.actualCost,
     );
-    final totalEstimate = costEstimateItems.fold<double>(
-      0,
-      (sum, item) => sum + item.amount,
-    );
+    final totalEstimate = costEstimateItems
+        .where(
+          (item) => item.costState == 'forecast' && !item.isBaseline,
+        )
+        .fold<double>(0, (sum, item) => sum + item.amount);
 
     final variance = totalBudget - totalActual;
-    final variancePercent = totalBudget > 0
-        ? (variance / totalBudget * 100).abs()
-        : 0.0;
+    final variancePercent =
+        totalBudget > 0 ? (variance / totalBudget * 100).abs() : 0.0;
 
     final plannedCurve = _generatePlannedCurve();
     final actualCurve = _generateActualCurve();
@@ -4024,9 +5397,8 @@ class _CostVsScheduleTab extends StatelessWidget {
             ...workPackages.map((wp) {
               final wpActual = wp.actualCost;
               final wpBudget = wp.budgetedCost;
-              final utilization = wpBudget > 0
-                  ? (wpActual / wpBudget).clamp(0.0, 1.0)
-                  : 0.0;
+              final utilization =
+                  wpBudget > 0 ? (wpActual / wpBudget).clamp(0.0, 1.0) : 0.0;
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -4216,6 +5588,7 @@ class _ScheduleTopBar extends StatelessWidget {
     required this.onImportFromWbs,
     required this.onGenerateAi,
     required this.onAddTask,
+    required this.onSyncMilestones,
     required this.onValidate,
     required this.onApproveBaseline,
     this.onCalculateCostImpact,
@@ -4228,14 +5601,13 @@ class _ScheduleTopBar extends StatelessWidget {
   final VoidCallback onImportFromWbs;
   final VoidCallback onGenerateAi;
   final VoidCallback onAddTask;
+  final VoidCallback onSyncMilestones;
   final VoidCallback onValidate;
   final VoidCallback onApproveBaseline;
   final VoidCallback? onCalculateCostImpact;
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 768;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4325,6 +5697,11 @@ class _ScheduleTopBar extends StatelessWidget {
                   backgroundColor: const Color(0xFFF59E0B),
                   foregroundColor: const Color(0xFF111827),
                 ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onSyncMilestones,
+                icon: const Icon(Icons.flag_outlined, size: 16),
+                label: const Text('Sync Milestones'),
               ),
               OutlinedButton.icon(
                 onPressed: onValidate,

@@ -61,8 +61,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     final data = ProjectDataHelper.getData(context);
 
     _projectName = data.projectName.trim();
-    _totalBudget = data.costEstimateItems
-        .fold<double>(0, (sum, item) => sum + item.amount);
+    _totalBudget = ProjectDataHelper.getCostEstimateTotalByState(data,
+        costState: 'forecast');
 
     _loadScheduleData(data);
     _loadCostData(data);
@@ -145,17 +145,39 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   void _loadCostData(ProjectDataModel data) {
-    _costItems = data.costEstimateItems
+    final forecastItems = ProjectDataHelper.getActiveCostEstimateItems(
+      data,
+      costState: 'forecast',
+    );
+    final actualByScope = <String, double>{};
+    for (final item in ProjectDataHelper.getActiveCostEstimateItems(
+      data,
+      costState: 'actual',
+    )) {
+      final scopeKey = item.reconciliationReference.trim().isNotEmpty
+          ? item.reconciliationReference.trim()
+          : item.id;
+      actualByScope[scopeKey] = (actualByScope[scopeKey] ?? 0) + item.amount;
+    }
+
+    _costItems = forecastItems
         .map((item) => _CostItem(
               category: item.title.trim(),
               estimated: item.amount,
-              actual: 0,
+              actual: actualByScope[
+                      item.reconciliationReference.trim().isNotEmpty
+                          ? item.reconciliationReference.trim()
+                          : item.id] ??
+                  0,
             ))
         .toList();
 
     final storedSpend =
         data.planningNotes['baseline_current_spend']?.trim() ?? '';
-    _currentSpend = double.tryParse(storedSpend) ?? 0;
+    final actualTotal = ProjectDataHelper.getCostEstimateTotalByState(data,
+        costState: 'actual');
+    _currentSpend =
+        actualTotal > 0 ? actualTotal : double.tryParse(storedSpend) ?? 0;
   }
 
   void _loadScopeData(ProjectDataModel data) {

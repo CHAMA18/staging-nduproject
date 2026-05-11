@@ -263,6 +263,13 @@ class _FrontEndPlanningAllowanceScreenState
         TextEditingController(text: item?.assignedTo ?? '');
     final notesController = TextEditingController(text: item?.notes ?? '');
     String selectedType = item?.type ?? 'Contingency';
+    String releaseStatus = item?.releaseStatus ?? 'Reserved';
+    final releasedAmountController = TextEditingController(
+      text: item != null ? item.releasedAmount.toString() : '0',
+    );
+    final actualAmountController = TextEditingController(
+      text: item != null ? item.actualAmount.toString() : '0',
+    );
 
     InputDecoration fieldDecoration({
       required String hintText,
@@ -370,6 +377,66 @@ class _FrontEndPlanningAllowanceScreenState
                         fieldDecoration(hintText: '0', prefixText: '\$'),
                   ),
                   const SizedBox(height: 12),
+                  fieldLabel('Release Status'),
+                  DropdownButtonFormField<String>(
+                    initialValue: releaseStatus,
+                    isExpanded: true,
+                    decoration: fieldDecoration(hintText: 'Select status'),
+                    items: const [
+                      'Reserved',
+                      'Partially Released',
+                      'Released',
+                      'Consumed',
+                      'Closed',
+                    ]
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setDialogState(() => releaseStatus = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            fieldLabel('Released Amount'),
+                            TextField(
+                              controller: releasedAmountController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              decoration: fieldDecoration(
+                                  hintText: '0', prefixText: '\$'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            fieldLabel('Actual Amount'),
+                            TextField(
+                              controller: actualAmountController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              decoration: fieldDecoration(
+                                  hintText: '0', prefixText: '\$'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   fieldLabel('Applies To'),
                   TextField(
                     controller: appliesToController,
@@ -433,6 +500,12 @@ class _FrontEndPlanningAllowanceScreenState
 
       final amount =
           double.tryParse(amountController.text.replaceAll(',', '')) ?? 0.0;
+      final releasedAmount =
+          double.tryParse(releasedAmountController.text.replaceAll(',', '')) ??
+              0.0;
+      final actualAmount =
+          double.tryParse(actualAmountController.text.replaceAll(',', '')) ??
+              0.0;
       final appliesTo = appliesToController.text
           .split(',')
           .map((e) => e.trim())
@@ -448,6 +521,9 @@ class _FrontEndPlanningAllowanceScreenState
         appliesTo: appliesTo,
         assignedTo: assignedToController.text.trim(),
         notes: notesController.text.trim(),
+        releaseStatus: releaseStatus,
+        releasedAmount: releasedAmount,
+        actualAmount: actualAmount,
       );
 
       final editingItemId = item?.id;
@@ -649,6 +725,43 @@ class _FrontEndPlanningAllowanceScreenState
           ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Text(
+                  item.releaseStatus,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4B5563),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Released ${formatter.format(item.releasedAmount)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Actual ${formatter.format(item.actualAmount)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Row(
             children: [

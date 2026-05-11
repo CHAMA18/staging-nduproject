@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/planning_contracting_screen.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/program_workspace_scaffold.dart';
-import 'package:ndu_project/widgets/user_access_chip.dart';
 
-/// Front End Planning – Technology Personnel screen
-/// Follows the same visual language as the other Front End Planning pages.
 class FrontEndPlanningTechnologyPersonnelScreen extends StatefulWidget {
   const FrontEndPlanningTechnologyPersonnelScreen({super.key});
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => const FrontEndPlanningTechnologyPersonnelScreen()),
+        builder: (_) => const FrontEndPlanningTechnologyPersonnelScreen(),
+      ),
     );
   }
 
@@ -26,11 +26,156 @@ class FrontEndPlanningTechnologyPersonnelScreen extends StatefulWidget {
 class _FrontEndPlanningTechnologyPersonnelScreenState
     extends State<FrontEndPlanningTechnologyPersonnelScreen> {
   final TextEditingController _notes = TextEditingController();
+  List<TechnologyPersonnelItem> _rows = [];
+  bool _isSyncReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = ProjectDataHelper.getData(context);
+      setState(() {
+        _notes.text = data.frontEndPlanning.technology;
+        _rows = List<TechnologyPersonnelItem>.from(
+          data.frontEndPlanning.technologyPersonnelItems,
+        );
+        _isSyncReady = true;
+      });
+      _notes.addListener(_syncToProvider);
+    });
+  }
 
   @override
   void dispose() {
+    _notes.removeListener(_syncToProvider);
     _notes.dispose();
     super.dispose();
+  }
+
+  void _syncToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          technology: _notes.text,
+          technologyPersonnelItems: _rows,
+        ),
+      ),
+    );
+    provider.saveToFirebase(checkpoint: 'fep_technology_personnel');
+  }
+
+  Future<void> _upsertRow({TechnologyPersonnelItem? existing}) async {
+    final technologyController =
+        TextEditingController(text: existing?.technologyArea ?? '');
+    final ownerController =
+        TextEditingController(text: existing?.primaryOwner ?? '');
+    final supportController =
+        TextEditingController(text: existing?.backupSupport ?? '');
+    final notesController = TextEditingController(text: existing?.notes ?? '');
+
+    try {
+      final result = await showDialog<TechnologyPersonnelItem>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text(existing == null
+                ? 'Add Technology Owner'
+                : 'Edit Technology Owner'),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: technologyController,
+                      decoration: const InputDecoration(
+                        labelText: 'Technology Area',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: ownerController,
+                      decoration: const InputDecoration(
+                        labelText: 'Primary Owner',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: supportController,
+                      decoration: const InputDecoration(
+                        labelText: 'Backup / Support',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final technology = technologyController.text.trim();
+                  if (technology.isEmpty) return;
+                  Navigator.of(dialogContext).pop(
+                    TechnologyPersonnelItem(
+                      id: existing?.id ??
+                          DateTime.now().microsecondsSinceEpoch.toString(),
+                      number: existing?.number ?? (_rows.length + 1),
+                      technologyArea: technology,
+                      primaryOwner: ownerController.text.trim(),
+                      backupSupport: supportController.text.trim(),
+                      notes: notesController.text.trim(),
+                    ),
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (result == null || !mounted) return;
+      setState(() {
+        final index = _rows.indexWhere((item) => item.id == result.id);
+        if (index == -1) {
+          _rows.add(result);
+        } else {
+          _rows[index] = result;
+        }
+      });
+      _syncToProvider();
+    } finally {
+      technologyController.dispose();
+      ownerController.dispose();
+      supportController.dispose();
+      notesController.dispose();
+    }
+  }
+
+  void _deleteRow(String id) {
+    setState(() => _rows.removeWhere((item) => item.id == id));
+    _syncToProvider();
   }
 
   @override
@@ -49,19 +194,141 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _roundedField(
-                          controller: _notes,
-                          hint: 'Input your notes here...',
-                          minLines: 3),
-                      const SizedBox(height: 22),
+                      TextField(
+                        controller: _notes,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: const InputDecoration(
+                          hintText:
+                              'Capture technology ownership, support handoff, and coverage notes...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: const [
-                          Expanded(child: _SectionTitle()),
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Technology Personnel',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _upsertRow(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Owner'),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      const _TechnologyPersonnelTable(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Persist named owners and support contacts for technology cost and accountability traceability.',
+                        style: TextStyle(color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_rows.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: const Text(
+                            'No technology ownership rows yet. Add primary owners and backup support for key tools, platforms, and integrations.',
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                        )
+                      else
+                        Column(
+                          children: _rows.map((item) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.technologyArea.trim().isEmpty
+                                              ? 'Unnamed technology'
+                                              : item.technologyArea.trim(),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          item.primaryOwner.trim().isEmpty
+                                              ? 'Primary owner not assigned'
+                                              : 'Owner: ${item.primaryOwner.trim()}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF374151),
+                                          ),
+                                        ),
+                                        if (item.backupSupport
+                                            .trim()
+                                            .isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Support: ${item.backupSupport.trim()}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF4B5563),
+                                            ),
+                                          ),
+                                        ],
+                                        if (item.notes.trim().isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            item.notes.trim(),
+                                            style: const TextStyle(
+                                              color: Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _upsertRow(existing: item);
+                                      } else if (value == 'delete') {
+                                        _deleteRow(item.id);
+                                      }
+                                    },
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Edit'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       const SizedBox(height: 140),
                     ],
                   ),
@@ -70,132 +337,10 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
             ],
           ),
           _BottomOverlay(
-              onSubmit: () => PlanningContractingScreen.open(context)),
+            onSubmit: () => PlanningContractingScreen.open(context),
+          ),
           const KazAiChatBubble(),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle();
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: const TextSpan(
-        children: [
-          TextSpan(
-            text: 'Technology Personnel  ',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
-          ),
-          TextSpan(
-            text: '(Key roles and owners for project technologies)',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TechnologyPersonnelTable extends StatelessWidget {
-  const _TechnologyPersonnelTable();
-
-  @override
-  Widget build(BuildContext context) {
-    final border = const BorderSide(color: Color(0xFFE5E7EB));
-    final headerStyle = const TextStyle(
-        fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
-    final cellStyle = const TextStyle(fontSize: 14, color: Color(0xFF111827));
-
-    Widget th(String text) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Center(
-            child: Text(
-              text,
-              style: headerStyle,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        );
-
-    TableRow buildRow(int index) {
-      Widget td(Widget child) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: child,
-          );
-      return TableRow(children: [
-        td(Text('$index', style: cellStyle)),
-        td(Text('Technology area', style: cellStyle)),
-        td(Text('Primary owner', style: cellStyle)),
-        td(Text('Backup/Support', style: cellStyle)),
-        td(Text('Notes', style: cellStyle)),
-      ]);
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final minTableWidth =
-              constraints.maxWidth > 1180 ? constraints.maxWidth : 1180.0;
-
-          return Scrollbar(
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: minTableWidth),
-                child: Table(
-                  columnWidths: const {
-                    0: FixedColumnWidth(60),
-                    1: FlexColumnWidth(2.0),
-                    2: FlexColumnWidth(1.6),
-                    3: FlexColumnWidth(1.6),
-                    4: FlexColumnWidth(2.0),
-                  },
-                  border: TableBorder(
-                    horizontalInside: border,
-                    verticalInside: border,
-                    top: border,
-                    bottom: border,
-                    left: border,
-                    right: border,
-                  ),
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    TableRow(
-                      decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
-                      children: [
-                        th('No'),
-                        th('Technology'),
-                        th('Owner'),
-                        th('Support'),
-                        th('Notes'),
-                      ],
-                    ),
-                    buildRow(1),
-                    buildRow(2),
-                    buildRow(3),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -208,154 +353,20 @@ class _BottomOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: false,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 24,
-              bottom: 24,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                    color: Color(0xFFB3D9FF), shape: BoxShape.circle),
-                child: const Icon(Icons.info_outline, color: Colors.white),
-              ),
-            ),
-            Positioned(
-              right: 24,
-              bottom: 24,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE6F1FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFD7E5FF)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
-                        SizedBox(width: 8),
-                        Text('AI',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF2563EB))),
-                        SizedBox(width: 10),
-                        Text('Capture technology owners and support contacts.',
-                            style: TextStyle(color: Color(0xFF1F2937))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    height: 44,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      onPressed: onSubmit,
-                      child: const Text('Submit',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    return Positioned(
+      right: 24,
+      bottom: 24,
+      child: SizedBox(
+        height: 44,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2563EB),
+            foregroundColor: Colors.white,
+          ),
+          onPressed: onSubmit,
+          child: const Text('Continue'),
         ),
       ),
     );
   }
-}
-
-// ignore: unused_element
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: [
-          Row(children: [
-            _circleButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: () => Navigator.maybePop(context)),
-            const SizedBox(width: 8),
-            _circleButton(icon: Icons.arrow_forward_ios_rounded, onTap: () {}),
-          ]),
-          const Spacer(),
-          const Text('Front End Planning',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87)),
-          const Spacer(),
-          const UserAccessChip(),
-        ],
-      ),
-    );
-  }
-
-  Widget _circleButton({required IconData icon, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Icon(icon, size: 16, color: const Color(0xFF6B7280)),
-      ),
-    );
-  }
-}
-
-Widget _roundedField(
-    {required TextEditingController controller,
-    required String hint,
-    int minLines = 1}) {
-  return Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE4E7EC)),
-    ),
-    padding: const EdgeInsets.all(14),
-    child: TextField(
-      controller: controller,
-      minLines: minLines,
-      maxLines: null,
-      decoration: const InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        hintText: 'Input your notes here...',
-        hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
-      ),
-      style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-    ),
-  );
 }

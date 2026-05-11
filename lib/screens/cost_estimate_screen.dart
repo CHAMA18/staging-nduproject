@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/s_curve_chart.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class CostEstimateScreen extends StatefulWidget {
@@ -255,6 +256,8 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           reconciliationReport: reconciliationReport,
                           overviewRows: overviewRows,
                           forecastItems: forecastItems,
+                          committedItems: committedItems,
+                          actualItems: actualItems,
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -297,6 +300,8 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     required _ReconciliationReport reconciliationReport,
     required List<_OverviewRow> overviewRows,
     required List<CostEstimateItem> forecastItems,
+    required List<CostEstimateItem> committedItems,
+    required List<CostEstimateItem> actualItems,
   }) {
     switch (_activeTab) {
       case _CostWorkspaceTab.overview:
@@ -394,6 +399,13 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
             const SizedBox(height: 22),
             _TrailingSummaryCard(view: view),
           ],
+        );
+      case _CostWorkspaceTab.cbsTree:
+        return _CbsTreeWorkspace(
+          projectData: projectData,
+          forecastItems: forecastItems,
+          committedItems: committedItems,
+          actualItems: actualItems,
         );
       case _CostWorkspaceTab.sourceImports:
         return _SourceImportsTab(
@@ -3633,17 +3645,372 @@ class _ContingencyRow extends StatelessWidget {
   }
 }
 
+class _CbsTreeNode {
+  const _CbsTreeNode({
+    required this.label,
+    required this.planned,
+    this.committed = 0,
+    this.actual = 0,
+    this.children = const [],
+    this.depth = 0,
+    this.designMaturity = '',
+  });
+
+  final String label;
+  final double planned;
+  final double committed;
+  final double actual;
+  final List<_CbsTreeNode> children;
+  final int depth;
+  final String designMaturity;
+
+  double get total => planned + committed + actual;
+}
+
+class _CbsTreeWorkspace extends StatelessWidget {
+  const _CbsTreeWorkspace({
+    required this.projectData,
+    required this.forecastItems,
+    required this.committedItems,
+    required this.actualItems,
+  });
+
+  final ProjectDataModel projectData;
+  final List<CostEstimateItem> forecastItems;
+  final List<CostEstimateItem> committedItems;
+  final List<CostEstimateItem> actualItems;
+
+  @override
+  Widget build(BuildContext context) {
+    final tree = _buildTree();
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cost Breakdown Structure (CBS)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _legendDot(const Color(0xFFB45309), 'Forecast'),
+              const SizedBox(width: 16),
+              _legendDot(const Color(0xFF1D4ED8), 'Committed'),
+              const SizedBox(width: 16),
+              _legendDot(const Color(0xFF047857), 'Actual'),
+              const Spacer(),
+              Text(
+                'Total: ${formatCurrency(tree.total)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (tree.children.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No WBS items available yet.\n'
+                  'Create a Work Breakdown Structure to see cost hierarchy.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+              ),
+            )
+          else
+            ...tree.children.map((node) => _CbsTreeTile(node: node)),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+      ],
+    );
+  }
+
+  _CbsTreeNode _buildTree() {
+    final wbsItems = projectData.wbsTree;
+    final itemsByWbs = <String, List<CostEstimateItem>>{};
+    final allItems = [
+      ...forecastItems.map((e) => (item: e, state: 'forecast')),
+      ...committedItems.map((e) => (item: e, state: 'committed')),
+      ...actualItems.map((e) => (item: e, state: 'actual')),
+    ];
+
+    for (final entry in allItems) {
+      final wbsId = entry.item.wbsItemId.trim();
+      if (wbsId.isNotEmpty) {
+        itemsByWbs.putIfAbsent(wbsId, () => []).add(entry.item);
+      }
+    }
+
+    final unlinkedItems = allItems
+        .where((e) => e.item.wbsItemId.trim().isEmpty)
+        .map((e) => e.item)
+        .toList();
+
+    final children = <_CbsTreeNode>[];
+    for (final wbs in wbsItems) {
+      final node = _buildWbsNode(wbs, itemsByWbs, 0);
+      if (node != null) children.add(node);
+    }
+
+    if (unlinkedItems.isNotEmpty) {
+      double plan = 0, comm = 0, act = 0;
+      for (final item in unlinkedItems) {
+        switch (item.costState) {
+          case 'committed': comm += item.amount;
+          case 'actual': act += item.amount;
+          default: plan += item.amount;
+        }
+      }
+      children.add(_CbsTreeNode(
+        label: 'Unlinked Items',
+        planned: plan,
+        committed: comm,
+        actual: act,
+        depth: 0,
+      ));
+    }
+
+    double rootPlan = 0, rootComm = 0, rootAct = 0;
+    for (final c in children) {
+      rootPlan += c.planned;
+      rootComm += c.committed;
+      rootAct += c.actual;
+    }
+    return _CbsTreeNode(label: 'Total Project', planned: rootPlan, committed: rootComm, actual: rootAct, children: children);
+  }
+
+  _CbsTreeNode? _buildWbsNode(
+    WorkItem wbs,
+    Map<String, List<CostEstimateItem>> itemsByWbs,
+    int depth,
+  ) {
+    final childNodes = <_CbsTreeNode>[];
+    for (final child in wbs.children) {
+      final node = _buildWbsNode(child, itemsByWbs, depth + 1);
+      if (node != null) childNodes.add(node);
+    }
+
+    final directItems = itemsByWbs[wbs.id] ?? [];
+    double plan = 0, comm = 0, act = 0;
+    int minRank = 999;
+    for (final item in directItems) {
+      switch (item.costState) {
+        case 'committed': comm += item.amount;
+        case 'actual': act += item.amount;
+        default: plan += item.amount;
+      }
+      if (item.designMaturity.isNotEmpty) {
+        final r = _maturityRank(item.designMaturity);
+        if (r > 0 && r < minRank) minRank = r;
+      }
+    }
+
+    for (final child in childNodes) {
+      plan += child.planned;
+      comm += child.committed;
+      act += child.actual;
+      if (child.designMaturity.isNotEmpty) {
+        final r = _maturityRank(child.designMaturity);
+        if (r > 0 && r < minRank) minRank = r;
+      }
+    }
+
+    if (plan == 0 && comm == 0 && act == 0 && childNodes.isEmpty) return null;
+
+    final maturity = minRank < 999
+        ? ['', '10%', '30%', '60%', '90%', 'IFC', 'AsBuilt'][minRank]
+        : '';
+
+    return _CbsTreeNode(
+      label: wbs.title.trim().isEmpty ? 'Unnamed WBS Item' : wbs.title.trim(),
+      planned: plan,
+      committed: comm,
+      actual: act,
+      children: childNodes,
+      depth: depth,
+      designMaturity: maturity,
+    );
+  }
+}
+
+class _CbsTreeTile extends StatefulWidget {
+  const _CbsTreeTile({required this.node});
+
+  final _CbsTreeNode node;
+
+  @override
+  State<_CbsTreeTile> createState() => _CbsTreeTileState();
+}
+
+class _CbsTreeTileState extends State<_CbsTreeTile> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final node = widget.node;
+    final hasChildren = node.children.isNotEmpty;
+    final indent = node.depth * 24.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: hasChildren ? () => setState(() => _expanded = !_expanded) : null,
+          child: Container(
+            padding: EdgeInsets.only(left: 12 + indent, right: 12),
+            height: 44,
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: const Color(0xFFF1F5F9))),
+            ),
+            child: Row(
+              children: [
+                if (hasChildren)
+                  Icon(
+                    _expanded ? Icons.expand_more : Icons.chevron_right,
+                    size: 18,
+                    color: const Color(0xFF64748B),
+                  )
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 6),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: hasChildren ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    node.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: hasChildren ? FontWeight.w700 : FontWeight.w500,
+                      color: const Color(0xFF111827),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (node.designMaturity.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _DesignMaturityBadge(designMaturity: node.designMaturity),
+                  ),
+                SizedBox(width: 100, child: Text(formatCurrency(node.planned), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309)), textAlign: TextAlign.right)),
+                SizedBox(width: 100, child: Text(node.committed > 0 ? formatCurrency(node.committed) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: node.committed > 0 ? const Color(0xFF1D4ED8) : const Color(0xFFCBD5E1)), textAlign: TextAlign.right)),
+                SizedBox(width: 100, child: Text(node.actual > 0 ? formatCurrency(node.actual) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: node.actual > 0 ? const Color(0xFF047857) : const Color(0xFFCBD5E1)), textAlign: TextAlign.right)),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded && hasChildren)
+          ...node.children.map((child) => _CbsTreeTile(node: child)),
+      ],
+    );
+  }
+}
+
 class _CostVsScheduleWorkspace extends StatelessWidget {
   const _CostVsScheduleWorkspace({required this.projectData});
 
   final ProjectDataModel projectData;
 
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  DateTime? _tryParseDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw.trim());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final workPackages = projectData.workPackages;
+
+    final monthlyPlanned = <String, double>{};
+    final monthlyActual = <String, double>{};
+    DateTime? earliestStart;
+    DateTime? latestEnd;
+
+    for (final wp in workPackages) {
+      final start = _tryParseDate(wp.plannedStart) ?? _tryParseDate(wp.actualStart);
+      final end = _tryParseDate(wp.plannedEnd) ?? _tryParseDate(wp.actualEnd);
+      if (start == null || end == null || end.isBefore(start)) continue;
+
+      if (earliestStart == null || start.isBefore(earliestStart)) earliestStart = start;
+      if (latestEnd == null || end.isAfter(latestEnd)) latestEnd = end;
+
+      final months = _monthSpan(start, end);
+      if (months <= 0) continue;
+      final monthlyPlannedAmount = wp.budgetedCost / months;
+      final monthlyActualAmount = wp.actualCost > 0 ? wp.actualCost / months : 0.0;
+
+      var cursor = DateTime(start.year, start.month, 1);
+      while (!cursor.isAfter(end)) {
+        final key = _monthKey(cursor);
+        monthlyPlanned.update(key, (v) => v + monthlyPlannedAmount, ifAbsent: () => monthlyPlannedAmount);
+        if (monthlyActualAmount > 0) {
+          monthlyActual.update(key, (v) => v + monthlyActualAmount, ifAbsent: () => monthlyActualAmount);
+        }
+        cursor = DateTime(cursor.year, cursor.month + 1, 1);
+      }
+    }
+
+    final plannedData = <SCurveDataPoint>[];
+    final actualData = <SCurveDataPoint>[];
+    final sortedMonths = monthlyPlanned.keys.toList()..sort();
+    double plannedCumulative = 0;
+    double actualCumulative = 0;
+
+    for (final key in sortedMonths) {
+      final parts = key.split('-');
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[0]);
+      plannedCumulative += monthlyPlanned[key] ?? 0;
+      actualCumulative += monthlyActual[key] ?? 0;
+      final date = DateTime(year, month, 1);
+      plannedData.add(SCurveDataPoint(date: date, cumulativeCost: plannedCumulative));
+      actualData.add(SCurveDataPoint(date: date, cumulativeCost: actualCumulative));
+    }
+
+    final chartStart = earliestStart ?? now;
+    final chartEnd = latestEnd ?? now;
     final linkedCount = projectData.costEstimateItems.where((item) {
       return item.workPackageId.trim().isNotEmpty ||
           item.scheduleActivityId.trim().isNotEmpty;
     }).length;
+
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -3662,48 +4029,119 @@ class _CostVsScheduleWorkspace extends StatelessWidget {
               color: Color(0xFF111827),
             ),
           ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 320,
+            child: SCurveChart(
+              plannedData: plannedData,
+              actualData: actualData,
+              startDate: chartStart,
+              endDate: chartEnd,
+              height: 320,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Monthly Cash Flow',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
           const SizedBox(height: 10),
+          if (sortedMonths.isEmpty)
+            const Text(
+              'No scheduled work packages with dates for cash flow projection.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 24,
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columns: const [
+                  DataColumn(label: Text('Month', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+                  DataColumn(label: Text('Planned', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                  DataColumn(label: Text('Actual', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                  DataColumn(label: Text('Variance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                ],
+                rows: sortedMonths.map((key) {
+                  final parts = key.split('-');
+                  final month = int.parse(parts[1]);
+                  final year = int.parse(parts[0]);
+                  final label = '${_monthNames[month - 1]} $year';
+                  final planned = monthlyPlanned[key] ?? 0;
+                  final actual = monthlyActual[key] ?? 0;
+                  final variance = planned - actual;
+                  return DataRow(cells: [
+                    DataCell(Text(label, style: const TextStyle(fontSize: 12))),
+                    DataCell(Text(formatCurrency(planned), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                    DataCell(Text(actual > 0 ? formatCurrency(actual) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: actual > 0 ? const Color(0xFF047857) : const Color(0xFFCBD5E1)))),
+                    DataCell(Text(variance != 0 ? formatCurrency(variance) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: variance > 0 ? const Color(0xFF059669) : variance < 0 ? const Color(0xFFDC2626) : const Color(0xFFCBD5E1)))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          const SizedBox(height: 24),
+          const Text(
+            'Work Package Budgets',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
-            '$linkedCount estimate line(s) are linked to work packages or schedule activities.',
+            '$linkedCount estimate line(s) linked to work packages or schedule activities.',
             style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
-          const SizedBox(height: 18),
-          ...projectData.workPackages.take(8).map(
-                (workPackage) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          workPackage.title.trim().isEmpty
-                              ? 'Untitled Work Package'
-                              : workPackage.title.trim(),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        formatCurrency(workPackage.budgetedCost),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          if (projectData.workPackages.isEmpty)
+          const SizedBox(height: 12),
+          if (workPackages.isEmpty)
             const Text(
               'No work packages available yet for cost/schedule mapping.',
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-            ),
+            )
+          else
+            ...workPackages.map((wp) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          wp.title.trim().isEmpty ? 'Untitled Work Package' : wp.title.trim(),
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+                        ),
+                        if (wp.plannedStart != null || wp.plannedEnd != null)
+                          Text(
+                            '${wp.plannedStart ?? '?'} \u2192 ${wp.plannedEnd ?? '?'}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(wp.budgetedCost),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            )),
         ],
       ),
     );
   }
+
+  int _monthSpan(DateTime start, DateTime end) {
+    return (end.year - start.year) * 12 + (end.month - start.month) + 1;
+  }
+
+  String _monthKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}';
 }
 
 class _StatusChip extends StatelessWidget {
@@ -5540,6 +5978,7 @@ enum _CostStateFilter { all, forecast, committed, actual }
 enum _CostWorkspaceTab {
   overview,
   estimateLines,
+  cbsTree,
   sourceImports,
   contractsProcurement,
   staffingInfrastructure,
@@ -5638,6 +6077,8 @@ extension _CostWorkspaceTabX on _CostWorkspaceTab {
         return 'Overview';
       case _CostWorkspaceTab.estimateLines:
         return 'Estimate Lines';
+      case _CostWorkspaceTab.cbsTree:
+        return 'CBS Tree';
       case _CostWorkspaceTab.sourceImports:
         return 'Source Imports';
       case _CostWorkspaceTab.contractsProcurement:
@@ -5749,6 +6190,18 @@ Color _costStateTone(String costState) {
     case 'forecast':
     default:
       return const Color(0xFFB45309);
+  }
+}
+
+int _maturityRank(String designMaturity) {
+  switch (designMaturity) {
+    case 'AsBuilt': return 6;
+    case 'IFC': return 5;
+    case '90%': return 4;
+    case '60%': return 3;
+    case '30%': return 2;
+    case '10%': return 1;
+    default: return 0;
   }
 }
 

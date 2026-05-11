@@ -190,8 +190,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   DateTime? _lastSavedAt;
   // ValueNotifier for lightweight save-indicator rebuilds without full setState
   final ValueNotifier<_SaveIndicatorState> _saveIndicatorNotifier =
-      ValueNotifier<_SaveIndicatorState>(
-          _SaveIndicatorState(saving: false, pending: false, lastSavedAt: null));
+      ValueNotifier<_SaveIndicatorState>(_SaveIndicatorState(
+          saving: false, pending: false, lastSavedAt: null));
   final Map<String, bool> _aiGenerating = {};
   late Map<String, _SectionProgressState> _sectionProgress;
   late Map<String, bool> _sectionExpanded;
@@ -2576,7 +2576,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _kBorder),
               ),
-              child: Column(
+              child: IntrinsicHeight(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (unlinkedRequirements.isNotEmpty) ...[
@@ -2635,7 +2636,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                         i < _document.specifications.length;
                         i++) ...[
                       Container(
-                        key: _specificationRowKeys[_document.specifications[i].id],
+                        key: _specificationRowKeys[
+                            _document.specifications[i].id],
                         child: _SpecificationPlanRowCard(
                           key: ValueKey(_document.specifications[i].id),
                           index: i + 1,
@@ -2710,6 +2712,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                   ],
                 ),
               ),
+            ),
           ),
         ],
       ),

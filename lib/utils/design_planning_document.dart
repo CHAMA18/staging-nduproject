@@ -15,6 +15,14 @@ String _nextUniqueId([String prefix = 'id']) {
 /// Kept for backward compatibility — delegates to [_nextUniqueId].
 String _nextSpecRowId() => _nextUniqueId('spec_row');
 
+/// Treat empty or whitespace-only IDs as null so constructors generate a
+/// fresh unique ID — prevents duplicate-key crashes when expanding sections
+/// that mount widgets keyed by [id].
+String? _nonEmptyId(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  return raw;
+}
+
 const String kDesignPlanningDocumentKey = 'planning_design_basis_document';
 const String kDesignPlanningSummaryKey = 'planning_design_notes';
 const String kDesignPlanningPlanKey = 'planning_design_plan';
@@ -975,7 +983,7 @@ class DesignPlanningWorkItem {
 
   factory DesignPlanningWorkItem.fromJson(Map<String, dynamic> json) {
     return DesignPlanningWorkItem(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       name: json['name']?.toString() ?? '',
       purpose: json['purpose']?.toString() ?? '',
       owner: json['owner']?.toString() ?? '',
@@ -1036,7 +1044,7 @@ class DesignSpecificationPlanRow {
         '';
     final parsedLegacy = _parseLegacyDisciplineArea(legacyDisciplineArea);
     return DesignSpecificationPlanRow(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       title: json['title']?.toString() ?? '',
       details: json['details']?.toString() ?? '',
       specificationType: json['specificationType']?.toString() ??
@@ -1120,7 +1128,7 @@ class DesignSpecificationDeviation {
 
   factory DesignSpecificationDeviation.fromJson(Map<String, dynamic> json) {
     return DesignSpecificationDeviation(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       specificationId: json['specificationId']?.toString() ??
           json['linkedSpecificationId']?.toString() ??
           '',
@@ -1161,7 +1169,7 @@ class DesignPlanningReferenceDoc {
 
   factory DesignPlanningReferenceDoc.fromJson(Map<String, dynamic> json) {
     return DesignPlanningReferenceDoc(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Standards',
       attachedRequirementIds: (json['attachedRequirementIds'] as List?)
@@ -1222,7 +1230,7 @@ class DesignRiskEntry {
 
   factory DesignRiskEntry.fromJson(Map<String, dynamic> json) {
     return DesignRiskEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       risk: json['risk']?.toString() ?? '',
       impact: json['impact']?.toString() ?? '',
       likelihood: json['likelihood']?.toString() ?? '',
@@ -1266,7 +1274,7 @@ class DesignDependencyEntry {
 
   factory DesignDependencyEntry.fromJson(Map<String, dynamic> json) {
     return DesignDependencyEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       name: json['name']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       source: json['source']?.toString() ?? '',
@@ -1310,7 +1318,7 @@ class DesignDecisionEntry {
 
   factory DesignDecisionEntry.fromJson(Map<String, dynamic> json) {
     return DesignDecisionEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       decision: json['decision']?.toString() ?? '',
       rationale: json['rationale']?.toString() ?? '',
       alternatives: json['alternatives']?.toString() ?? '',
@@ -1348,7 +1356,7 @@ class DesignApprovalEntry {
 
   factory DesignApprovalEntry.fromJson(Map<String, dynamic> json) {
     return DesignApprovalEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       reviewer: json['reviewer']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Pending',

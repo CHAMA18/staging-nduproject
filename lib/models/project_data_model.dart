@@ -138,6 +138,7 @@ class ProjectDataModel {
 
   // Cost Estimate Data
   List<CostEstimateItem> costEstimateItems;
+  double managementReserve;
 
   // IT Considerations Data
   ITConsiderationsData? itConsiderationsData;
@@ -260,6 +261,7 @@ class ProjectDataModel {
     List<LaunchChecklistItem>? launchChecklistItems,
     this.costAnalysisData,
     List<CostEstimateItem>? costEstimateItems,
+    this.managementReserve = 0.0,
     List<WorkPackage>? workPackages,
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
@@ -419,6 +421,7 @@ class ProjectDataModel {
     List<LaunchChecklistItem>? launchChecklistItems,
     CostAnalysisData? costAnalysisData,
     List<CostEstimateItem>? costEstimateItems,
+    double? managementReserve,
     ITConsiderationsData? itConsiderationsData,
     InfrastructureConsiderationsData? infrastructureConsiderationsData,
     CoreStakeholdersData? coreStakeholdersData,
@@ -549,6 +552,7 @@ class ProjectDataModel {
       launchChecklistItems: launchChecklistItems ?? this.launchChecklistItems,
       costAnalysisData: costAnalysisData ?? this.costAnalysisData,
       costEstimateItems: costEstimateItems ?? this.costEstimateItems,
+      managementReserve: managementReserve ?? this.managementReserve,
       itConsiderationsData: itConsiderationsData ?? this.itConsiderationsData,
       infrastructureConsiderationsData: infrastructureConsiderationsData ??
           this.infrastructureConsiderationsData,
@@ -692,6 +696,7 @@ class ProjectDataModel {
         'costAnalysisData': costAnalysisData!.toJson(),
       'costEstimateItems':
           costEstimateItems.map((item) => item.toJson()).toList(),
+      'managementReserve': managementReserve,
       if (itConsiderationsData != null)
         'itConsiderationsData': itConsiderationsData!.toJson(),
       if (infrastructureConsiderationsData != null)
@@ -950,6 +955,8 @@ class ProjectDataModel {
           safeParseSingle('costAnalysisData', CostAnalysisData.fromJson),
       costEstimateItems:
           safeParseList('costEstimateItems', CostEstimateItem.fromJson),
+      managementReserve:
+          (json['managementReserve'] is num) ? (json['managementReserve'] as num).toDouble() : 0.0,
       itConsiderationsData: safeParseSingle(
           'itConsiderationsData', ITConsiderationsData.fromJson),
       infrastructureConsiderationsData: safeParseSingle(
@@ -3225,6 +3232,15 @@ class CostEstimateItem {
   // Contingency
   double contingencyPercent;
   double contingencyAmount;
+  // Structured BOE fields (P1)
+  String scopeIncluded;
+  String scopeExcluded;
+  String designMaturity; // '10%' | '30%' | '60%' | '90%' | 'IFC' | 'AsBuilt' | ''
+  String designMaturityNote;
+  String rateSource; // 'vendor_quote' | 'historical' | 'published_index' | 'benchmark' | 'expert_judgment' | ''
+  // PERT risk ranges (P1)
+  double rangeLow;
+  double rangeHigh;
   // Contract linkage
   String contractId;
   String quoteReference;
@@ -3251,10 +3267,23 @@ class CostEstimateItem {
     this.unitOfMeasure = '',
     this.contingencyPercent = 0,
     this.contingencyAmount = 0,
+    this.scopeIncluded = '',
+    this.scopeExcluded = '',
+    this.designMaturity = '',
+    this.designMaturityNote = '',
+    this.rateSource = '',
+    this.rangeLow = 0,
+    this.rangeHigh = 0,
     this.contractId = '',
     this.quoteReference = '',
     this.reconciliationReference = '',
   }) : id = id ?? _generateId();
+
+  double get pertMean => (rangeLow > 0 && rangeHigh > 0 && amount > 0)
+      ? (rangeLow + 4 * amount + rangeHigh) / 6
+      : amount;
+
+  double get pertExposure => pertMean - amount;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3277,6 +3306,13 @@ class CostEstimateItem {
         'unitOfMeasure': unitOfMeasure,
         'contingencyPercent': contingencyPercent,
         'contingencyAmount': contingencyAmount,
+        'scopeIncluded': scopeIncluded,
+        'scopeExcluded': scopeExcluded,
+        'designMaturity': designMaturity,
+        'designMaturityNote': designMaturityNote,
+        'rateSource': rateSource,
+        'rangeLow': rangeLow,
+        'rangeHigh': rangeHigh,
         'contractId': contractId,
         'quoteReference': quoteReference,
         'reconciliationReference': reconciliationReference,
@@ -3313,6 +3349,17 @@ class CostEstimateItem {
       contingencyAmount: json['contingencyAmount'] is num
           ? (json['contingencyAmount'] as num).toDouble()
           : double.tryParse(json['contingencyAmount']?.toString() ?? '') ?? 0,
+      scopeIncluded: json['scopeIncluded']?.toString() ?? '',
+      scopeExcluded: json['scopeExcluded']?.toString() ?? '',
+      designMaturity: json['designMaturity']?.toString() ?? '',
+      designMaturityNote: json['designMaturityNote']?.toString() ?? '',
+      rateSource: json['rateSource']?.toString() ?? '',
+      rangeLow: json['rangeLow'] is num
+          ? (json['rangeLow'] as num).toDouble()
+          : double.tryParse(json['rangeLow']?.toString() ?? '') ?? 0,
+      rangeHigh: json['rangeHigh'] is num
+          ? (json['rangeHigh'] as num).toDouble()
+          : double.tryParse(json['rangeHigh']?.toString() ?? '') ?? 0,
       contractId: json['contractId']?.toString() ?? '',
       quoteReference: json['quoteReference']?.toString() ?? '',
       reconciliationReference:

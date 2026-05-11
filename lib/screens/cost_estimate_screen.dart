@@ -148,6 +148,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
       forecastTotal: forecastTotal,
       committedTotal: committedTotal,
       actualTotal: actualTotal,
+      managementReserve: projectData.managementReserve,
     );
     final sourceSummaries = _buildSourceSummaries(projectData);
     final validationSummary = _buildValidationSummary(projectData);
@@ -238,7 +239,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           onChanged: (tab) => setState(() => _activeTab = tab),
                         ),
                         const SizedBox(height: 24),
-                        _buildTabContent(
+                          _buildTabContent(
                           context,
                           projectData,
                           isMobile: isMobile,
@@ -253,6 +254,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           validationSummary: validationSummary,
                           reconciliationReport: reconciliationReport,
                           overviewRows: overviewRows,
+                          forecastItems: forecastItems,
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -294,6 +296,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     required _ValidationSummary validationSummary,
     required _ReconciliationReport reconciliationReport,
     required List<_OverviewRow> overviewRows,
+    required List<CostEstimateItem> forecastItems,
   }) {
     switch (_activeTab) {
       case _CostWorkspaceTab.overview:
@@ -414,10 +417,9 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           rows: _buildStaffingInfrastructureRows(projectData),
         );
       case _CostWorkspaceTab.contingencyRisk:
-        return _SourceDetailList(
-          title: 'Contingency & Risk',
-          subtitle:
-              'Allowance and mitigation exposure that should be tracked separately from core delivery cost.',
+        return _ContingencyRiskPanel(
+          projectData: projectData,
+          forecastItems: forecastItems,
           rows: _buildContingencyRiskRows(projectData),
         );
       case _CostWorkspaceTab.costVsSchedule:
@@ -481,6 +483,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     required double forecastTotal,
     required double committedTotal,
     required double actualTotal,
+    required double managementReserve,
   }) {
     return [
       _CostSummary(
@@ -526,6 +529,17 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
         accentColor: const Color(0xFFB45309),
         descriptionColor: const Color(0xFFB45309),
         badgeLabel: total == 0 ? null : 'Planning',
+      ),
+      _CostSummary(
+        title: 'Management Reserve',
+        amount: managementReserve,
+        description: managementReserve == 0
+            ? 'No management reserve set'
+            : 'Separate from delivery forecast',
+        backgroundColor: const Color(0xFFF5F3FF),
+        accentColor: const Color(0xFF7C3AED),
+        descriptionColor: const Color(0xFF7C3AED),
+        badgeLabel: managementReserve == 0 ? null : 'Reserve',
       ),
     ];
   }
@@ -2203,6 +2217,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
       _OverviewRow(label: 'Committed reference total', value: committedTotal),
       _OverviewRow(label: 'Actual reference total', value: actualTotal),
       _OverviewRow(label: 'Initiation baseline', value: baselineTotal),
+      _OverviewRow(label: 'Management reserve', value: data.managementReserve),
       _OverviewRow(
           label: 'Imported source coverage', value: importedSourcesTotal),
       _OverviewRow(label: 'Contractor estimates', value: contractorTotal),
@@ -2711,6 +2726,34 @@ class _CostStateBadge extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           color: tone,
+        ),
+      ),
+    );
+  }
+}
+
+class _DesignMaturityBadge extends StatelessWidget {
+  const _DesignMaturityBadge({required this.designMaturity});
+
+  final String designMaturity;
+
+  @override
+  Widget build(BuildContext context) {
+    if (designMaturity.isEmpty) return const SizedBox.shrink();
+    final color = _designMaturityColor(designMaturity);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        _designMaturityLabel(designMaturity),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
       ),
     );
@@ -3392,6 +3435,200 @@ class _SourceDetailList extends StatelessWidget {
               )),
         ],
       ),
+    );
+  }
+}
+
+class _ContingencyRiskPanel extends StatelessWidget {
+  const _ContingencyRiskPanel({
+    required this.projectData,
+    required this.forecastItems,
+    required this.rows,
+  });
+
+  final ProjectDataModel projectData;
+  final List<CostEstimateItem> forecastItems;
+  final List<_SourceDetailRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final pertItems = forecastItems
+        .where((item) => item.rangeLow > 0 && item.rangeHigh > 0)
+        .toList();
+    final pertBaseTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.amount);
+    final pertMeanTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.pertMean);
+    final pertExposureTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.pertExposure);
+    final reserve = projectData.managementReserve;
+    final forecastTotal = forecastItems.fold<double>(
+        0, (total, item) => total + item.amount);
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Contingency & Risk',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Allowance, management reserve, and PERT risk exposure.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 20),
+          if (reserve > 0) ...[
+            _ContingencyRow(
+              label: 'Management Reserve',
+              amount: reserve,
+              color: const Color(0xFF7C3AED),
+            ),
+            const Divider(height: 24),
+          ],
+          if (pertItems.isNotEmpty) ...[
+            const Text(
+              'PERT Risk Analysis',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
+            ),
+            const SizedBox(height: 8),
+            _ContingencyRow(
+              label: 'Items with PERT ranges',
+              amount: pertItems.length.toDouble(),
+              color: const Color(0xFF475569),
+              isCount: true,
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'Base estimate (P50)',
+              amount: pertBaseTotal,
+              color: const Color(0xFFB45309),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'PERT mean estimate',
+              amount: pertMeanTotal,
+              color: const Color(0xFF2563EB),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'PERT exposure (mean - base)',
+              amount: pertExposureTotal,
+              color: pertExposureTotal > 0
+                  ? const Color(0xFFDC2626)
+                  : const Color(0xFF059669),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'Adjusted total (forecast + exposure)',
+              amount: forecastTotal + pertExposureTotal,
+              color: const Color(0xFF111827),
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 24),
+          ],
+          const Text(
+            'Contingency Allowances',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 12),
+          ...rows.map((row) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            row.subtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      formatCurrency(row.amount),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContingencyRow extends StatelessWidget {
+  const _ContingencyRow({
+    required this.label,
+    required this.amount,
+    required this.color,
+    this.isCount = false,
+  });
+
+  final String label;
+  final double amount;
+  final Color color;
+  final bool isCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+            ),
+          ),
+        ),
+        Text(
+          isCount ? amount.toInt().toString() : formatCurrency(amount),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -4154,6 +4391,8 @@ class _CategoryTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     _CostStateBadge(costState: item.costState),
+                    const SizedBox(width: 6),
+                    _DesignMaturityBadge(designMaturity: item.designMaturity),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -4357,12 +4596,21 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
   final _contingencyAmountController = TextEditingController();
   final _quoteReferenceController = TextEditingController();
   final _contractReferenceController = TextEditingController();
+  // Structured BOE (P1)
+  final _scopeIncludedController = TextEditingController();
+  final _scopeExcludedController = TextEditingController();
+  final _designMaturityNoteController = TextEditingController();
+  // PERT risk ranges (P1)
+  final _rangeLowController = TextEditingController();
+  final _rangeHighController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   late _CostView _selectedView = widget.initialView;
   late String _selectedSource;
   late String _selectedCostState;
   late String _selectedPhase;
   late String _selectedEstimatingMethod;
+  late String _selectedDesignMaturity;
+  late String _selectedRateSource;
   String? _selectedWorkPackageId;
   String? _selectedScheduleActivityId;
   bool _showValidation = false;
@@ -4391,6 +4639,13 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
           : existing.contingencyAmount.toStringAsFixed(2);
       _quoteReferenceController.text = existing.quoteReference;
       _contractReferenceController.text = existing.contractId;
+      _scopeIncludedController.text = existing.scopeIncluded;
+      _scopeExcludedController.text = existing.scopeExcluded;
+      _designMaturityNoteController.text = existing.designMaturityNote;
+      _rangeLowController.text =
+          existing.rangeLow > 0 ? existing.rangeLow.toStringAsFixed(0) : '';
+      _rangeHighController.text =
+          existing.rangeHigh > 0 ? existing.rangeHigh.toStringAsFixed(0) : '';
     }
     _selectedSource = existing?.source ?? 'manual';
     _selectedCostState = existing?.costState ?? 'forecast';
@@ -4401,6 +4656,14 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
         existing?.estimatingMethod.trim().isNotEmpty == true
             ? existing!.estimatingMethod
             : 'manual';
+    _selectedDesignMaturity =
+        existing?.designMaturity.trim().isNotEmpty == true
+            ? existing!.designMaturity
+            : '';
+    _selectedRateSource =
+        existing?.rateSource.trim().isNotEmpty == true
+            ? existing!.rateSource
+            : '';
     _selectedWorkPackageId = existing?.workPackageId.trim().isNotEmpty == true
         ? existing!.workPackageId
         : null;
@@ -4423,6 +4686,11 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
     _contingencyAmountController.dispose();
     _quoteReferenceController.dispose();
     _contractReferenceController.dispose();
+    _scopeIncludedController.dispose();
+    _scopeExcludedController.dispose();
+    _designMaturityNoteController.dispose();
+    _rangeLowController.dispose();
+    _rangeHighController.dispose();
     super.dispose();
   }
 
@@ -4736,6 +5004,70 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        _DialogLabel(label: 'Scope / BOE (optional)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _scopeIncludedController,
+                          minLines: 2,
+                          maxLines: 3,
+                          decoration: _inputDecoration('Scope included'),
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _scopeExcludedController,
+                          minLines: 2,
+                          maxLines: 3,
+                          decoration: _inputDecoration('Scope excluded'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdownField<String>(
+                                label: 'Design Maturity',
+                                value: _selectedDesignMaturity,
+                                items: const [
+                                  DropdownMenuItem(value: '', child: Text('Not specified')),
+                                  DropdownMenuItem(value: '10%', child: Text('10% - Concept')),
+                                  DropdownMenuItem(value: '30%', child: Text('30% - Preliminary')),
+                                  DropdownMenuItem(value: '60%', child: Text('60% - Detailed')),
+                                  DropdownMenuItem(value: '90%', child: Text('90% - Pre-IFC')),
+                                  DropdownMenuItem(value: 'IFC', child: Text('IFC')),
+                                  DropdownMenuItem(value: 'AsBuilt', child: Text('As-Built')),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _selectedDesignMaturity = value);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _dropdownField<String>(
+                                label: 'Rate Source',
+                                value: _selectedRateSource,
+                                items: const [
+                                  DropdownMenuItem(value: '', child: Text('Not specified')),
+                                  DropdownMenuItem(value: 'vendor_quote', child: Text('Vendor Quote')),
+                                  DropdownMenuItem(value: 'historical', child: Text('Historical Data')),
+                                  DropdownMenuItem(value: 'published_index', child: Text('Published Index')),
+                                  DropdownMenuItem(value: 'benchmark', child: Text('Benchmark')),
+                                  DropdownMenuItem(value: 'expert_judgment', child: Text('Expert Judgment')),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _selectedRateSource = value);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _designMaturityNoteController,
+                          decoration: _inputDecoration('Design maturity note (optional)'),
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
@@ -4786,6 +5118,38 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                                         decimal: true),
                                 decoration: _inputDecoration(
                                   'Contingency amount',
+                                  prefix: '\$',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _DialogLabel(label: 'PERT Risk Ranges (optional)'),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _rangeLowController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: _inputDecoration(
+                                  'Optimistic (low)',
+                                  prefix: '\$',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _rangeHighController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: _inputDecoration(
+                                  'Pessimistic (high)',
                                   prefix: '\$',
                                 ),
                               ),
@@ -4901,6 +5265,13 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
       unitOfMeasure: _unitOfMeasureController.text.trim(),
       contingencyPercent: _parseAmount(_contingencyPercentController.text),
       contingencyAmount: _parseAmount(_contingencyAmountController.text),
+      rangeLow: _parseAmount(_rangeLowController.text),
+      rangeHigh: _parseAmount(_rangeHighController.text),
+      scopeIncluded: _scopeIncludedController.text.trim(),
+      scopeExcluded: _scopeExcludedController.text.trim(),
+      designMaturity: _selectedDesignMaturity,
+      designMaturityNote: _designMaturityNoteController.text.trim(),
+      rateSource: _selectedRateSource,
       contractId: _contractReferenceController.text.trim(),
       quoteReference: _quoteReferenceController.text.trim(),
       reconciliationReference:
@@ -5378,6 +5749,44 @@ Color _costStateTone(String costState) {
     case 'forecast':
     default:
       return const Color(0xFFB45309);
+  }
+}
+
+Color _designMaturityColor(String designMaturity) {
+  switch (designMaturity) {
+    case '10%':
+      return const Color(0xFFDC2626);
+    case '30%':
+      return const Color(0xFFEA580C);
+    case '60%':
+      return const Color(0xFFCA8A04);
+    case '90%':
+      return const Color(0xFF059669);
+    case 'IFC':
+      return const Color(0xFF2563EB);
+    case 'AsBuilt':
+      return const Color(0xFF7C3AED);
+    default:
+      return const Color(0xFF94A3B8);
+  }
+}
+
+String _designMaturityLabel(String designMaturity) {
+  switch (designMaturity) {
+    case '10%':
+      return '10% Concept';
+    case '30%':
+      return '30% Prelim';
+    case '60%':
+      return '60% Detail';
+    case '90%':
+      return '90% Pre-IFC';
+    case 'IFC':
+      return 'IFC';
+    case 'AsBuilt':
+      return 'As-Built';
+    default:
+      return '';
   }
 }
 

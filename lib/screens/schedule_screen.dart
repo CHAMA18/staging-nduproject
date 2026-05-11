@@ -55,6 +55,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String? _hoveredTaskId;
   int _selectedMainTab =
       0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
+  String _timelineSearchQuery = '';
+  String _workPackageSearchQuery = '';
+  String _ganttSearchQuery = '';
+  String _workPackageSortField = 'title'; // title, status, owner, phase, budget
+  bool _workPackageSortAscending = true;
+  String _listSortField = 'title'; // title, status, priority, assignee, startDate
+  bool _listSortAscending = true;
 
   @override
   void initState() {
@@ -1781,7 +1788,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           description: spec.details,
           type: 'design',
           phase: 'design',
-          status: spec.status.toLowerCase() == 'approved' ? 'complete' : 'planned',
+          status: spec.status.toLowerCase() == 'approved' ? 'completed' : 'planned',
           owner: spec.owner,
           discipline: spec.discipline,
           areaOrSystem: spec.area,
@@ -1819,7 +1826,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             type: type,
             phase: 'execution',
             status: entry.status.toLowerCase() == 'complete'
-                ? 'complete'
+                ? 'completed'
                 : 'planned',
             wbsLevel2Title: entry.title,
           ));
@@ -2473,7 +2480,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           workPackages: data.workPackages,
           scheduleActivities: data.scheduleActivities,
           onWorkPackageTap: (wp) {
-            // Navigate to work package detail
+            _showWorkPackageDetail(wp);
           },
           onActivityTap: (activity) {
             // Resolve through _activityRows — the in-memory rows may have
@@ -2496,12 +2503,63 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           hoveredActivityId: _hoveredTaskId,
         );
       case 2:
+        var filteredListRows = _timelineSearchQuery.isEmpty
+            ? _activityRows
+            : _activityRows
+                .where((r) =>
+                    r.titleController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.assigneeController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.disciplineController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.status
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.priority
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()))
+                .toList();
+        // Apply sort (P7)
+        filteredListRows.sort((a, b) {
+          int cmp;
+          switch (_listSortField) {
+            case 'status':
+              cmp = a.status.toLowerCase().compareTo(b.status.toLowerCase());
+            case 'priority':
+              cmp = a.priority.toLowerCase().compareTo(b.priority.toLowerCase());
+            case 'assignee':
+              cmp = a.assigneeController.text
+                  .toLowerCase()
+                  .compareTo(b.assigneeController.text.toLowerCase());
+            case 'startDate':
+              cmp = a.startDateController.text
+                  .compareTo(b.startDateController.text);
+            default:
+              cmp = a.titleController.text
+                  .toLowerCase()
+                  .compareTo(b.titleController.text.toLowerCase());
+          }
+          return _listSortAscending ? cmp : -cmp;
+        });
         return _TimelineWorkspaceCard(
           onPickStartDate: _pickStartDate,
           startDate: _scheduleStartDate,
           onValidate: _validateSchedule,
+          searchQuery: _timelineSearchQuery,
+          onSearchChanged: (q) => setState(() => _timelineSearchQuery = q),
+          sortField: _listSortField,
+          sortAscending: _listSortAscending,
+          onSortChanged: (field, ascending) =>
+              setState(() {
+                _listSortField = field;
+                _listSortAscending = ascending;
+              }),
           child: _TimelineList(
-            rows: _activityRows,
+            rows: filteredListRows,
             computed: computed,
             onChanged: _handleActivityChanged,
             onDelete: _deleteTask,
@@ -2509,12 +2567,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       case 3:
+        final filteredBoardRows = _timelineSearchQuery.isEmpty
+            ? _activityRows
+            : _activityRows
+                .where((r) =>
+                    r.titleController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.assigneeController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.status
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()))
+                .toList();
         return _TimelineWorkspaceCard(
           onPickStartDate: _pickStartDate,
           startDate: _scheduleStartDate,
           onValidate: _validateSchedule,
+          searchQuery: _timelineSearchQuery,
+          onSearchChanged: (q) => setState(() => _timelineSearchQuery = q),
           child: _TimelineBoard(
-            rows: _activityRows,
+            rows: filteredBoardRows,
             computed: computed,
             onMoveTaskToStatus: _moveTaskToStatus,
             onEditTask: _editTask,
@@ -2522,8 +2596,54 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       case 4:
+        var filteredWps = _workPackageSearchQuery.isEmpty
+            ? data.workPackages
+            : data.workPackages
+                .where((wp) =>
+                    wp.title
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.description
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.owner
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.type
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.status
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.phase
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.wbsLevel2Title
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.discipline
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()))
+                .toList();
+        // Apply sort (P7)
+        filteredWps.sort((a, b) {
+          int cmp;
+          switch (_workPackageSortField) {
+            case 'status':
+              cmp = a.status.toLowerCase().compareTo(b.status.toLowerCase());
+            case 'owner':
+              cmp = a.owner.toLowerCase().compareTo(b.owner.toLowerCase());
+            case 'phase':
+              cmp = a.phase.toLowerCase().compareTo(b.phase.toLowerCase());
+            case 'budget':
+              cmp = a.budgetedCost.compareTo(b.budgetedCost);
+            default:
+              cmp = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          }
+          return _workPackageSortAscending ? cmp : -cmp;
+        });
         return _WorkPackagesTab(
-          workPackages: data.workPackages,
+          workPackages: filteredWps,
           scheduleActivities: data.scheduleActivities,
           onWorkPackageTap: (wp) => _showWorkPackageDetail(wp),
           onImportFromPlans: _importWorkPackagesFromDesignAndExecution,
@@ -2532,6 +2652,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           onAddWorkPackage: _createWorkPackage,
           onEditWorkPackage: _editWorkPackage,
           onDeleteWorkPackage: _deleteWorkPackage,
+          searchQuery: _workPackageSearchQuery,
+          onSearchChanged: (q) => setState(() => _workPackageSearchQuery = q),
+          sortField: _workPackageSortField,
+          sortAscending: _workPackageSortAscending,
+          onSortChanged: (field, ascending) =>
+              setState(() {
+                _workPackageSortField = field;
+                _workPackageSortAscending = ascending;
+              }),
         );
       case 5:
         return _ProcurementTimelineTab(
@@ -2782,12 +2911,22 @@ class _TimelineWorkspaceCard extends StatelessWidget {
     required this.startDate,
     required this.onValidate,
     required this.child,
+    this.searchQuery = '',
+    this.onSearchChanged,
+    this.sortField = 'title',
+    this.sortAscending = true,
+    this.onSortChanged,
   });
 
   final VoidCallback onPickStartDate;
   final DateTime? startDate;
   final VoidCallback onValidate;
   final Widget child;
+  final String searchQuery;
+  final ValueChanged<String>? onSearchChanged;
+  final String sortField;
+  final bool sortAscending;
+  final void Function(String field, bool ascending)? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -2837,6 +2976,110 @@ class _TimelineWorkspaceCard extends StatelessWidget {
               controls,
             ],
           ),
+          if (onSearchChanged != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 320,
+              height: 38,
+              child: TextField(
+                onChanged: onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search tasks...',
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  prefixIcon: const Icon(Icons.search,
+                      size: 18, color: Color(0xFF6B7280)),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => onSearchChanged!(''),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppSemanticColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppSemanticColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                        color: Color(0xFFF59E0B), width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+          if (onSortChanged != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppSemanticColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.sort, size: 14, color: Color(0xFF6B7280)),
+                  const SizedBox(width: 4),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: sortField,
+                      onChanged: (value) {
+                        if (value != null) {
+                          onSortChanged!(value, sortAscending);
+                        }
+                      },
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'title', child: Text('Title')),
+                        DropdownMenuItem(
+                            value: 'status', child: Text('Status')),
+                        DropdownMenuItem(
+                            value: 'priority', child: Text('Priority')),
+                        DropdownMenuItem(
+                            value: 'assignee', child: Text('Assignee')),
+                        DropdownMenuItem(
+                            value: 'startDate', child: Text('Start Date')),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      onSortChanged!(sortField, !sortAscending);
+                    },
+                    tooltip: sortAscending
+                        ? 'Sort ascending'
+                        : 'Sort descending',
+                    constraints: const BoxConstraints(
+                        minWidth: 28, minHeight: 28),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           child,
         ],
@@ -4450,6 +4693,11 @@ class _WorkPackagesTab extends StatelessWidget {
     this.onAddWorkPackage,
     this.onEditWorkPackage,
     this.onDeleteWorkPackage,
+    this.searchQuery = '',
+    this.onSearchChanged,
+    this.sortField = 'title',
+    this.sortAscending = true,
+    this.onSortChanged,
   });
 
   final List<WorkPackage> workPackages;
@@ -4461,6 +4709,11 @@ class _WorkPackagesTab extends StatelessWidget {
   final VoidCallback? onAddWorkPackage;
   final ValueChanged<WorkPackage>? onEditWorkPackage;
   final ValueChanged<String>? onDeleteWorkPackage;
+  final String searchQuery;
+  final ValueChanged<String>? onSearchChanged;
+  final String sortField;
+  final bool sortAscending;
+  final void Function(String field, bool ascending)? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -4557,6 +4810,112 @@ class _WorkPackagesTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              if (onSearchChanged != null)
+                SizedBox(
+                  width: 260,
+                  height: 38,
+                  child: TextField(
+                    onChanged: onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Search work packages...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 18, color: Color(0xFF6B7280)),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () => onSearchChanged!(''),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            BorderSide(color: AppSemanticColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            BorderSide(color: AppSemanticColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFF59E0B), width: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+              if (onSearchChanged != null) const SizedBox(width: 12),
+              // Sort controls (P7)
+              if (onSortChanged != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppSemanticColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort, size: 14, color: Color(0xFF6B7280)),
+                      const SizedBox(width: 4),
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: sortField,
+                          onChanged: (value) {
+                            if (value != null) {
+                              onSortChanged!(value, sortAscending);
+                            }
+                          },
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'title', child: Text('Title')),
+                            DropdownMenuItem(
+                                value: 'status', child: Text('Status')),
+                            DropdownMenuItem(
+                                value: 'owner', child: Text('Owner')),
+                            DropdownMenuItem(
+                                value: 'phase', child: Text('Phase')),
+                            DropdownMenuItem(
+                                value: 'budget', child: Text('Budget')),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          sortAscending
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          size: 16,
+                        ),
+                        onPressed: () {
+                          onSortChanged!(sortField, !sortAscending);
+                        },
+                        tooltip: sortAscending
+                            ? 'Sort ascending'
+                            : 'Sort descending',
+                        constraints: const BoxConstraints(
+                            minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              if (onSortChanged != null) const SizedBox(width: 8),
               if (onGeneratePackageChains != null)
                 FilledButton.icon(
                   onPressed: onGeneratePackageChains,
@@ -4607,7 +4966,7 @@ class _WorkPackagesTab extends StatelessWidget {
   }
 }
 
-class _WorkPackageCard extends StatelessWidget {
+class _WorkPackageCard extends StatefulWidget {
   const _WorkPackageCard({
     required this.workPackage,
     required this.activities,
@@ -4623,15 +4982,45 @@ class _WorkPackageCard extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
+  State<_WorkPackageCard> createState() => _WorkPackageCardState();
+}
+
+class _WorkPackageCardState extends State<_WorkPackageCard> {
+  bool _activitiesExpanded = false;
+
+  Color _statusColor(String status) {
+    final normalized = status.toLowerCase();
+    switch (normalized) {
+      case 'in_progress':
+        return const Color(0xFF3B82F6);
+      case 'complete':
+      case 'completed':
+        return const Color(0xFF10B981);
+      case 'blocked':
+      case 'on_hold':
+        return const Color(0xFFEF4444);
+      case 'overdue':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final progress = workPackage.budgetedCost > 0
-        ? (workPackage.actualCost / workPackage.budgetedCost).clamp(0.0, 1.0)
+    final wp = widget.workPackage;
+    final activities = widget.activities;
+    final progress = wp.budgetedCost > 0
+        ? (wp.actualCost / wp.budgetedCost).clamp(0.0, 1.0)
         : 0.0;
     final readinessWarnings =
-        IntegratedWorkPackageService.validateReadiness(workPackage);
+        IntegratedWorkPackageService.validateReadiness(wp);
+    final displayedActivities =
+        _activitiesExpanded ? activities : activities.take(3).toList();
+    final hasMore = activities.length > 3 && !_activitiesExpanded;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -4647,8 +5036,8 @@ class _WorkPackageCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    workPackage.title.isNotEmpty
-                        ? workPackage.title
+                    wp.title.isNotEmpty
+                        ? wp.title
                         : 'Untitled Work Package',
                     style: const TextStyle(
                       fontSize: 16,
@@ -4661,11 +5050,11 @@ class _WorkPackageCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _statusColor(workPackage.status),
+                    color: _statusColor(wp.status),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    workPackage.status.toUpperCase(),
+                    wp.status.toUpperCase(),
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -4696,27 +5085,27 @@ class _WorkPackageCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (onEdit != null) ...[
+                if (widget.onEdit != null) ...[
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: onEdit,
+                    onPressed: widget.onEdit,
                     tooltip: 'Edit',
                   ),
                 ],
-                if (onDelete != null)
+                if (widget.onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline,
                         size: 18, color: Color(0xFFEF4444)),
-                    onPressed: onDelete,
+                    onPressed: widget.onDelete,
                     tooltip: 'Delete',
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            if (workPackage.description.isNotEmpty) ...[
+            if (wp.description.isNotEmpty) ...[
               Text(
-                workPackage.description,
+                wp.description,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF6B7280),
@@ -4732,8 +5121,8 @@ class _WorkPackageCard extends StatelessWidget {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.owner.isNotEmpty
-                      ? workPackage.owner
+                  wp.owner.isNotEmpty
+                      ? wp.owner
                       : 'Unassigned',
                   style:
                       const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
@@ -4743,8 +5132,8 @@ class _WorkPackageCard extends StatelessWidget {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.type.isNotEmpty
-                      ? workPackage.type.toUpperCase()
+                  wp.type.isNotEmpty
+                      ? wp.type.toUpperCase()
                       : 'N/A',
                   style: const TextStyle(
                     fontSize: 11,
@@ -4754,7 +5143,7 @@ class _WorkPackageCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '\$${workPackage.budgetedCost.toStringAsFixed(0)}',
+                  '\$${wp.budgetedCost.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -4774,7 +5163,7 @@ class _WorkPackageCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              ...activities.take(3).map((activity) {
+              ...displayedActivities.map((activity) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 4),
                   padding:
@@ -4830,13 +5219,33 @@ class _WorkPackageCard extends StatelessWidget {
                   ),
                 );
               }),
-              if (activities.length > 3)
-                Text(
-                  '+ ${activities.length - 3} more...',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF6B7280),
-                    fontStyle: FontStyle.italic,
+              if (hasMore || _activitiesExpanded)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _activitiesExpanded = !_activitiesExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _activitiesExpanded
+                          ? 'Show less'
+                          : '+ ${activities.length - 3} more...',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4B5563),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
             ],
@@ -4855,20 +5264,6 @@ class _WorkPackageCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'in_progress':
-        return const Color(0xFF3B82F6);
-      case 'complete':
-        return const Color(0xFF10B981);
-      case 'blocked':
-      case 'on_hold':
-        return const Color(0xFFEF4444);
-      default:
-        return const Color(0xFFF59E0B);
-    }
   }
 }
 

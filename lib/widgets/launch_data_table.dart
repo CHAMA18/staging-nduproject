@@ -619,8 +619,32 @@ class LaunchStatusDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effective = items.contains(value) ? value : items.first;
-    final statusColor = _statusColor(effective);
+    final menuItems = _normalizedItems();
+    final effective = _effectiveValue(menuItems);
+    final statusColor = _statusColor(effective ?? '');
+
+    if (menuItems.isEmpty || effective == null) {
+      return SizedBox(
+        width: width,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Text(
+            'Not set',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       width: width,
       height: 28,
@@ -657,6 +681,31 @@ class LaunchStatusDropdown extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<String> _normalizedItems() {
+    final seen = <String>{};
+    final normalized = <String>[];
+
+    void addIfValid(String raw) {
+      final item = raw.trim();
+      if (item.isEmpty || !seen.add(item)) return;
+      normalized.add(item);
+    }
+
+    for (final item in items) {
+      addIfValid(item);
+    }
+    addIfValid(value);
+
+    return normalized;
+  }
+
+  String? _effectiveValue(List<String> menuItems) {
+    if (menuItems.isEmpty) return null;
+    final trimmedValue = value.trim();
+    if (trimmedValue.isEmpty) return menuItems.first;
+    return menuItems.contains(trimmedValue) ? trimmedValue : menuItems.first;
   }
 
   Color _statusColor(String status) {

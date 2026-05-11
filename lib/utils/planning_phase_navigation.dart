@@ -6,6 +6,7 @@ import 'package:ndu_project/screens/planning_requirements_screen.dart';
 import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
+import 'package:ndu_project/screens/team_management_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
@@ -80,6 +81,11 @@ class PlanningPhaseNavigation {
       builder: (_) => const StakeholderManagementScreen(),
     ),
     PlanningPage(
+      id: 'team_management',
+      title: 'Team Management',
+      builder: (_) => const TeamManagementScreen(),
+    ),
+    PlanningPage(
       id: 'ssher',
       title: 'SSHER',
       builder: (_) => const SsherStackedScreen(),
@@ -122,6 +128,21 @@ class PlanningPhaseNavigation {
       id: 'execution_enabling_work_plan',
       title: 'Enabling Work Plan',
       builder: (_) => const ExecutionEnablingWorkPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'design',
+      title: 'Design Planning',
+      builder: (_) => const DesignPlanningScreen(),
+    ),
+    PlanningPage(
+      id: 'technology',
+      title: 'Technology Planning',
+      builder: (_) => const PlanningTechnologyScreen(),
+    ),
+    PlanningPage(
+      id: 'interface_management',
+      title: 'Interface Management',
+      builder: (_) => const InterfaceManagementScreen(),
     ),
     PlanningPage(
       id: 'execution_plan_construction_plan',

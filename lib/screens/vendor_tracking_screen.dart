@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ndu_project/models/user_role.dart';
+import 'package:ndu_project/providers/user_role_provider.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:ndu_project/services/vendor_service.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -14,7 +18,6 @@ import 'package:ndu_project/widgets/vendors_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class VendorTrackingScreen extends StatefulWidget {
   const VendorTrackingScreen({super.key});
@@ -42,6 +45,25 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     }
   }
 
+  _VendorCrudPolicy get _crudPolicy {
+    final projectId = _projectId;
+    final user = FirebaseAuth.instance.currentUser;
+    final roleProvider = UserRoleInherited.of(context);
+    final baseRole = roleProvider.siteRole;
+    final isAdminByEmail = UserService.isAdminEmail(user?.email ?? '');
+    final effectiveRole = isAdminByEmail
+        ? SiteRole.admin
+        : baseRole == SiteRole.guest && user != null
+            ? SiteRole.user
+            : baseRole;
+    final hasProject = projectId != null && projectId.isNotEmpty;
+
+    return _VendorCrudPolicy.fromRole(
+      role: effectiveRole,
+      hasProject: hasProject,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -54,16 +76,16 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     final provider = ProjectDataInherited.maybeOf(context);
     final data = provider?.projectData;
     if (projectId == null || data == null) return;
+    final contextText = ExecutionPhaseAiSeed.buildContext(
+      context,
+      section: 'Vendor Tracking',
+    );
 
     final hasVendors = await VendorService.hasAnyVendors(projectId);
     if (hasVendors) return;
 
     _isSeedingVendors = true;
     try {
-      final contextText = ExecutionPhaseAiSeed.buildContext(
-        context,
-        section: 'Vendor Tracking',
-      );
       final ai = OpenAiServiceSecure();
       final vendors = await ai.generateProcurementVendors(
         projectName: data.projectName,
@@ -112,6 +134,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
+    final policy = _crudPolicy;
 
     return ResponsiveScaffold(
       activeItemLabel: 'Vendor Tracking',
@@ -123,9 +146,11 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(isNarrow),
+                _buildHeader(isNarrow, policy),
                 const SizedBox(height: 16),
                 _buildFilterChips(),
+                const SizedBox(height: 14),
+                _buildGovernanceStrip(policy),
                 const SizedBox(height: 20),
                 _buildStatsRow(isNarrow),
                 const SizedBox(height: 24),
@@ -157,7 +182,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     );
   }
 
-  Widget _buildHeader(bool isNarrow) {
+  Widget _buildHeader(bool isNarrow, _VendorCrudPolicy policy) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -195,54 +220,79 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ],
               ),
             ),
-            if (!isNarrow) _buildHeaderActions(),
+            if (!isNarrow) _buildHeaderActions(policy),
           ],
         ),
         if (isNarrow) ...[
           const SizedBox(height: 12),
-          _buildHeaderActions(),
+          _buildHeaderActions(policy),
         ],
       ],
     );
   }
 
-  Widget _buildHeaderActions() {
+  Widget _buildHeaderActions(_VendorCrudPolicy policy) {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
       children: [
         _actionButton(Icons.add, 'Add vendor',
-            onPressed: () => _showAddVendorDialog(context)),
+            onPressed:
+                policy.canCreate ? () => _showAddVendorDialog(context) : null),
         _actionButton(Icons.assessment_outlined, 'Quarterly review',
-            onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Quarterly review started. Use vendor status and score columns to capture decisions.')),
-          );
-        }),
+            onPressed: policy.canReview
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Quarterly review started. Use vendor status and score columns to capture decisions.')),
+                    );
+                  }
+                : null),
         _actionButton(Icons.description_outlined, 'Export scorecard',
-            onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Scorecard export is queued while report templates are finalized.')),
-          );
-        }),
-        _primaryButton('Start vendor audit'),
+            onPressed: policy.canExport
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Scorecard export is queued while report templates are finalized.')),
+                    );
+                  }
+                : null),
+        _primaryButton(
+          'Start vendor audit',
+          onPressed: policy.canAudit
+              ? () {
+                  setState(() {
+                    _selectedFilters
+                      ..clear()
+                      ..add('At risk');
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'Vendor audit started. Filter set to at-risk vendors.')),
+                  );
+                }
+              : null,
+        ),
       ],
     );
   }
 
   Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
+    final enabled = onPressed != null;
     return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+      onPressed: onPressed,
+      icon: Icon(icon,
+          size: 18,
+          color: enabled ? const Color(0xFF64748B) : const Color(0xFFCBD5E1)),
       label: Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B))),
+              color:
+                  enabled ? const Color(0xFF64748B) : const Color(0xFF94A3B8))),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -251,20 +301,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     );
   }
 
-  Widget _primaryButton(String label) {
+  Widget _primaryButton(String label, {VoidCallback? onPressed}) {
     return ElevatedButton.icon(
-      onPressed: () {
-        setState(() {
-          _selectedFilters
-            ..clear()
-            ..add('At risk');
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Vendor audit started. Filter set to at-risk vendors.')),
-        );
-      },
+      onPressed: onPressed,
       icon: const Icon(Icons.play_arrow, size: 18),
       label: Text(label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
@@ -273,6 +312,80 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildGovernanceStrip(_VendorCrudPolicy policy) {
+    final items = [
+      _GovernanceItem(Icons.verified_user_outlined, 'Access', policy.roleLabel,
+          policy.roleColor),
+      _GovernanceItem(
+          Icons.add_circle_outline,
+          'Create',
+          policy.canCreate ? 'Enabled' : 'Restricted',
+          policy.canCreate ? const Color(0xFF10B981) : const Color(0xFF94A3B8)),
+      _GovernanceItem(
+          Icons.edit_outlined,
+          'Update',
+          policy.canUpdate ? 'Enabled' : 'Read-only',
+          policy.canUpdate ? const Color(0xFF0EA5E9) : const Color(0xFF94A3B8)),
+      _GovernanceItem(
+          Icons.delete_outline,
+          'Delete',
+          policy.canDelete ? 'Admin only' : 'Restricted',
+          policy.canDelete ? const Color(0xFFEF4444) : const Color(0xFF94A3B8)),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.spaceBetween,
+        children: [
+          ...items.map(_buildGovernancePill),
+          Text(
+            policy.hasProject
+                ? 'Scorecard, SLA, risk, compliance, review, and remediation controls are separated by access level.'
+                : 'Open a project to enable vendor governance controls.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGovernancePill(_GovernanceItem item) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: item.color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: item.color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(item.icon, size: 16, color: item.color),
+          const SizedBox(width: 8),
+          Text('${item.label}: ',
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600)),
+          Text(item.value,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: item.color,
+                  fontWeight: FontWeight.w700)),
+        ],
       ),
     );
   }
@@ -416,6 +529,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   }
 
   Widget _buildVendorRegister() {
+    final policy = _crudPolicy;
     if (_projectId == null || _projectId!.isEmpty) {
       return _PanelShell(
         title: 'Vendor scorecard',
@@ -432,8 +546,12 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
 
     return _PanelShell(
       title: 'Vendor scorecard',
-      subtitle: 'Performance, rating, and compliance checkpoints',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
+      subtitle:
+          'Performance, rating, SLA, criticality, and compliance checkpoints',
+      trailing: policy.canCreate
+          ? _actionButton(Icons.add, 'Add vendor',
+              onPressed: () => _showAddVendorDialog(context))
+          : null,
       child: StreamBuilder<List<VendorModel>>(
         stream: VendorService.streamVendors(_projectId!),
         builder: (context, snapshot) {
@@ -457,13 +575,21 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const Text('No vendors found.',
-                        style: TextStyle(color: Color(0xFF64748B))),
+                    Text(
+                        policy.canCreate
+                            ? 'No vendors found.'
+                            : 'No vendors available in your current view.',
+                        style: const TextStyle(color: Color(0xFF64748B))),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
-                      onPressed: () => _showAddVendorDialog(context),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add First Vendor'),
+                      onPressed: policy.canCreate
+                          ? () => _showAddVendorDialog(context)
+                          : null,
+                      icon: Icon(
+                          policy.canCreate ? Icons.add : Icons.lock_outline,
+                          size: 18),
+                      label: Text(
+                          policy.canCreate ? 'Add First Vendor' : 'Read-only'),
                     ),
                   ],
                 ),
@@ -473,6 +599,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
 
           return VendorsTableWidget(
             vendors: filteredVendors,
+            canEdit: policy.canUpdate,
+            canDelete: policy.canDelete,
+            canUseAi: policy.canUpdate,
             onUpdated: (vendor) {
               // Vendor updated via table widget
             },
@@ -706,6 +835,13 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   }
 
   void _showAddVendorDialog(BuildContext context) {
+    final policy = _crudPolicy;
+    if (!policy.canCreate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(policy.restrictedMessage)),
+      );
+      return;
+    }
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -721,6 +857,13 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   void _showVendorDialog(
       BuildContext context, VendorModel? vendor, String projectId) async {
     final isEdit = vendor != null;
+    final policy = _crudPolicy;
+    if ((isEdit && !policy.canUpdate) || (!isEdit && !policy.canCreate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(policy.restrictedMessage)),
+      );
+      return;
+    }
     final nameController = TextEditingController(text: vendor?.name ?? '');
     var selectedCategory = vendor?.category ?? 'Logistics';
     var selectedCriticality = vendor?.criticality ?? 'Medium';
@@ -1077,26 +1220,38 @@ class _PanelShell extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Stack(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF64748B))),
-                  ],
+              Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: trailing == null ? 0 : 120,
+                    right: trailing == null ? 0 : 120,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(subtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF64748B))),
+                    ],
+                  ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              if (trailing != null)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: trailing!,
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1104,6 +1259,65 @@ class _PanelShell extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _GovernanceItem {
+  const _GovernanceItem(this.icon, this.label, this.value, this.color);
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+}
+
+class _VendorCrudPolicy {
+  const _VendorCrudPolicy({
+    required this.role,
+    required this.hasProject,
+    required this.canCreate,
+    required this.canUpdate,
+    required this.canDelete,
+    required this.canReview,
+    required this.canExport,
+    required this.canAudit,
+  });
+
+  final SiteRole role;
+  final bool hasProject;
+  final bool canCreate;
+  final bool canUpdate;
+  final bool canDelete;
+  final bool canReview;
+  final bool canExport;
+  final bool canAudit;
+
+  factory _VendorCrudPolicy.fromRole({
+    required SiteRole role,
+    required bool hasProject,
+  }) {
+    final level = role.level;
+    return _VendorCrudPolicy(
+      role: role,
+      hasProject: hasProject,
+      canCreate: hasProject && level >= SiteRole.editor.level,
+      canUpdate: hasProject && level >= SiteRole.editor.level,
+      canDelete: hasProject && level >= SiteRole.admin.level,
+      canReview: hasProject && level >= SiteRole.user.level,
+      canExport: hasProject && level >= SiteRole.user.level,
+      canAudit: hasProject && level >= SiteRole.editor.level,
+    );
+  }
+
+  String get roleLabel => hasProject ? role.displayName : 'No project';
+
+  Color get roleColor => hasProject ? role.color : const Color(0xFF94A3B8);
+
+  String get restrictedMessage {
+    if (!hasProject) {
+      return 'No project selected. Please open a project first.';
+    }
+    return 'Your current access is ${role.displayName}. Vendor edits require Editor access; deletes require Admin access.';
   }
 }
 

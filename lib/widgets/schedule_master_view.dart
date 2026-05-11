@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/theme.dart';
 
-class ScheduleMasterView extends StatelessWidget {
+class ScheduleMasterView extends StatefulWidget {
   const ScheduleMasterView({
     super.key,
     required this.workPackages,
@@ -17,22 +17,74 @@ class ScheduleMasterView extends StatelessWidget {
   final ValueChanged<ScheduleActivity>? onActivityTap;
 
   @override
+  State<ScheduleMasterView> createState() => _ScheduleMasterViewState();
+}
+
+class _ScheduleMasterViewState extends State<ScheduleMasterView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Normalize status strings: treat 'complete' and 'completed' the same.
+  Color _statusColor(String status) {
+    final normalized = status.toLowerCase();
+    switch (normalized) {
+      case 'in_progress':
+        return const Color(0xFF3B82F6);
+      case 'complete':
+      case 'completed':
+        return const Color(0xFF10B981);
+      case 'blocked':
+      case 'on_hold':
+        return const Color(0xFFEF4444);
+      case 'overdue':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  bool _matchesSearch(WorkPackage wp) {
+    if (_searchQuery.isEmpty) return true;
+    final q = _searchQuery.toLowerCase();
+    if (wp.title.toLowerCase().contains(q)) return true;
+    if (wp.description.toLowerCase().contains(q)) return true;
+    if (wp.owner.toLowerCase().contains(q)) return true;
+    if (wp.type.toLowerCase().contains(q)) return true;
+    if (wp.phase.toLowerCase().contains(q)) return true;
+    if (wp.wbsLevel2Title.toLowerCase().contains(q)) return true;
+    // Also search activities within the WP
+    final activities = widget.scheduleActivities
+        .where((a) => a.workPackageId == wp.id)
+        .toList();
+    for (final a in activities) {
+      if (a.title.toLowerCase().contains(q)) return true;
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final byWbsLevel2 = <String, List<WorkPackage>>{};
-    for (final wp in workPackages) {
+    for (final wp in widget.workPackages) {
       final key = wp.wbsLevel2Id.isNotEmpty ? wp.wbsLevel2Id : 'unassigned';
       byWbsLevel2.putIfAbsent(key, () => []).add(wp);
     }
 
     final wbsLevel2Titles = <String, String>{};
-    for (final wp in workPackages) {
+    for (final wp in widget.workPackages) {
       if (wp.wbsLevel2Id.isNotEmpty && wp.wbsLevel2Title.isNotEmpty) {
         wbsLevel2Titles[wp.wbsLevel2Id] = wp.wbsLevel2Title;
       }
     }
 
     final activitiesByWp = <String, List<ScheduleActivity>>{};
-    for (final activity in scheduleActivities) {
+    for (final activity in widget.scheduleActivities) {
       if (activity.workPackageId.isNotEmpty) {
         activitiesByWp
             .putIfAbsent(activity.workPackageId, () => [])
@@ -41,6 +93,19 @@ class ScheduleMasterView extends StatelessWidget {
     }
 
     final unassignedWps = byWbsLevel2.remove('unassigned') ?? [];
+
+    // Apply search filter
+    final filteredByWbsLevel2 = <String, List<WorkPackage>>{};
+    for (final entry in byWbsLevel2.entries) {
+      final filtered = entry.value.where(_matchesSearch).toList();
+      if (filtered.isNotEmpty) {
+        filteredByWbsLevel2[entry.key] = filtered;
+      }
+    }
+    final filteredUnassigned = unassignedWps.where(_matchesSearch).toList();
+
+    final hasResults =
+        filteredByWbsLevel2.isNotEmpty || filteredUnassigned.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -52,39 +117,116 @@ class ScheduleMasterView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Master Schedule - WBS Level 2',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
+          Row(
+            children: [
+              const Text(
+                'Master Schedule - WBS Level 2',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 280,
+                height: 40,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search work packages, activities...',
+                    hintStyle: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                    prefixIcon: const Icon(Icons.search,
+                        size: 18, color: Color(0xFF6B7280)),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide:
+                          BorderSide(color: AppSemanticColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide:
+                          BorderSide(color: AppSemanticColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: Color(0xFFF59E0B), width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          if (byWbsLevel2.isEmpty && unassignedWps.isEmpty)
+          if (!hasResults && widget.workPackages.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const Icon(Icons.search_off,
+                      size: 40, color: Color(0xFF9CA3AF)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No results for "$_searchQuery"',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (widget.workPackages.isEmpty)
             const _EmptyMasterView()
-          else
-            ...byWbsLevel2.entries.map((entry) {
-              final title = wbsLevel2Titles[entry.key] ?? 'Untitled Phase';
+          else ...[
+            ...filteredByWbsLevel2.entries.map((entry) {
+              final title =
+                  wbsLevel2Titles[entry.key] ?? 'Untitled Phase';
               return _WbsLevel2Section(
                 wbsLevel2Id: entry.key,
                 title: title,
                 workPackages: entry.value,
                 activitiesByWp: activitiesByWp,
-                onWorkPackageTap: onWorkPackageTap,
-                onActivityTap: onActivityTap,
+                onWorkPackageTap: widget.onWorkPackageTap,
+                onActivityTap: widget.onActivityTap,
               );
             }),
-          if (unassignedWps.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _WbsLevel2Section(
-              wbsLevel2Id: 'unassigned',
-              title: 'Unassigned Work Packages',
-              workPackages: unassignedWps,
-              activitiesByWp: activitiesByWp,
-              onWorkPackageTap: onWorkPackageTap,
-              onActivityTap: onActivityTap,
-            ),
+            if (filteredUnassigned.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _WbsLevel2Section(
+                wbsLevel2Id: 'unassigned',
+                title: 'Unassigned Work Packages',
+                workPackages: filteredUnassigned,
+                activitiesByWp: activitiesByWp,
+                onWorkPackageTap: widget.onWorkPackageTap,
+                onActivityTap: widget.onActivityTap,
+              ),
+            ],
           ],
         ],
       ),
@@ -92,7 +234,8 @@ class ScheduleMasterView extends StatelessWidget {
   }
 }
 
-class _WbsLevel2Section extends StatelessWidget {
+/// Collapsible WBS Level 2 section (P5).
+class _WbsLevel2Section extends StatefulWidget {
   const _WbsLevel2Section({
     required this.wbsLevel2Id,
     required this.title,
@@ -110,6 +253,13 @@ class _WbsLevel2Section extends StatelessWidget {
   final ValueChanged<ScheduleActivity>? onActivityTap;
 
   @override
+  State<_WbsLevel2Section> createState() => _WbsLevel2SectionState();
+}
+
+class _WbsLevel2SectionState extends State<_WbsLevel2Section> {
+  bool _isExpanded = true;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -121,64 +271,78 @@ class _WbsLevel2Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+          GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.0 : -0.25,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.expand_more,
+                        size: 20, color: Color(0xFF4B5563)),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.folder,
+                      size: 18, color: Color(0xFF4B5563)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${widget.workPackages.length} WP',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF4B5563),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.folder, size: 18, color: Color(0xFF4B5563)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${workPackages.length} WP',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF4B5563),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
-          ...workPackages.map((wp) {
-            final activities = activitiesByWp[wp.id] ?? [];
-            return _WorkPackageTile(
-              workPackage: wp,
-              activities: activities,
-              onTap: onWorkPackageTap,
-              onActivityTap: onActivityTap,
-            );
-          }),
+          if (_isExpanded)
+            ...widget.workPackages.map((wp) {
+              final activities = widget.activitiesByWp[wp.id] ?? [];
+              return _WorkPackageTile(
+                workPackage: wp,
+                activities: activities,
+                onTap: widget.onWorkPackageTap,
+                onActivityTap: widget.onActivityTap,
+              );
+            }),
         ],
       ),
     );
   }
 }
 
-class _WorkPackageTile extends StatelessWidget {
+/// Work package tile with expandable activities (P3) and fixed status (P6).
+class _WorkPackageTile extends StatefulWidget {
   const _WorkPackageTile({
     required this.workPackage,
     required this.activities,
@@ -191,14 +355,25 @@ class _WorkPackageTile extends StatelessWidget {
   final ValueChanged<WorkPackage>? onTap;
   final ValueChanged<ScheduleActivity>? onActivityTap;
 
+  @override
+  State<_WorkPackageTile> createState() => _WorkPackageTileState();
+}
+
+class _WorkPackageTileState extends State<_WorkPackageTile> {
+  bool _activitiesExpanded = false;
+
   Color _statusColor(String status) {
-    switch (status) {
+    final normalized = status.toLowerCase();
+    switch (normalized) {
       case 'in_progress':
         return const Color(0xFF3B82F6);
       case 'complete':
+      case 'completed':
         return const Color(0xFF10B981);
       case 'blocked':
       case 'on_hold':
+        return const Color(0xFFEF4444);
+      case 'overdue':
         return const Color(0xFFEF4444);
       default:
         return const Color(0xFFF59E0B);
@@ -207,13 +382,20 @@ class _WorkPackageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(workPackage.status);
-    final progress = workPackage.budgetedCost > 0
-        ? (workPackage.actualCost / workPackage.budgetedCost).clamp(0.0, 1.0)
+    final wp = widget.workPackage;
+    final activities = widget.activities;
+    final statusColor = _statusColor(wp.status);
+    final progress = wp.budgetedCost > 0
+        ? (wp.actualCost / wp.budgetedCost).clamp(0.0, 1.0)
         : 0.0;
 
+    // Show up to 3 initially, or all when expanded
+    final displayedActivities =
+        _activitiesExpanded ? activities : activities.take(3).toList();
+    final hasMore = activities.length > 3 && !_activitiesExpanded;
+
     return GestureDetector(
-      onTap: () => onTap?.call(workPackage),
+      onTap: () => widget.onTap?.call(wp),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
@@ -237,8 +419,8 @@ class _WorkPackageTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    workPackage.title.isNotEmpty
-                        ? workPackage.title
+                    wp.title.isNotEmpty
+                        ? wp.title
                         : 'Untitled Work Package',
                     style: const TextStyle(
                       fontSize: 14,
@@ -248,14 +430,14 @@ class _WorkPackageTile extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    workPackage.type.toUpperCase(),
+                    wp.type.toUpperCase(),
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -266,9 +448,9 @@ class _WorkPackageTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            if (workPackage.description.isNotEmpty)
+            if (wp.description.isNotEmpty)
               Text(
-                workPackage.description,
+                wp.description,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF6B7280),
@@ -280,14 +462,14 @@ class _WorkPackageTile extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  _phaseIcon(workPackage.phase),
+                  _phaseIcon(wp.phase),
                   size: 14,
                   color: const Color(0xFF6B7280),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.phase.isNotEmpty
-                      ? workPackage.phase.toUpperCase()
+                  wp.phase.isNotEmpty
+                      ? wp.phase.toUpperCase()
                       : 'N/A',
                   style: const TextStyle(
                     fontSize: 11,
@@ -300,9 +482,7 @@ class _WorkPackageTile extends StatelessWidget {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.owner.isNotEmpty
-                      ? workPackage.owner
-                      : 'Unassigned',
+                  wp.owner.isNotEmpty ? wp.owner : 'Unassigned',
                   style: const TextStyle(
                     fontSize: 11,
                     color: Color(0xFF6B7280),
@@ -310,7 +490,7 @@ class _WorkPackageTile extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '\$${workPackage.budgetedCost.toStringAsFixed(0)}',
+                  '\$${wp.budgetedCost.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -330,9 +510,9 @@ class _WorkPackageTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              ...activities.take(3).map((activity) {
+              ...displayedActivities.map((activity) {
                 return GestureDetector(
-                  onTap: () => onActivityTap?.call(activity),
+                  onTap: () => widget.onActivityTap?.call(activity),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 4),
                     padding: const EdgeInsets.symmetric(
@@ -340,7 +520,8 @@ class _WorkPackageTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppSemanticColors.border),
+                      border:
+                          Border.all(color: AppSemanticColors.border),
                     ),
                     child: Row(
                       children: [
@@ -389,13 +570,33 @@ class _WorkPackageTile extends StatelessWidget {
                   ),
                 );
               }),
-              if (activities.length > 3)
-                Text(
-                  '+ ${activities.length - 3} more...',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF6B7280),
-                    fontStyle: FontStyle.italic,
+              if (hasMore || _activitiesExpanded)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _activitiesExpanded = !_activitiesExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _activitiesExpanded
+                          ? 'Show less'
+                          : '+ ${activities.length - 3} more...',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4B5563),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
             ],

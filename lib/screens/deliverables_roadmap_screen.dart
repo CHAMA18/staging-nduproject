@@ -43,7 +43,7 @@ class DeliverablesRoadmapScreen extends StatelessWidget {
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
                   child: const InitiationLikeSidebar(
-                      activeItemLabel: 'Deliverable Roadmap'),
+                      activeItemLabel: 'Deliverables Roadmap'),
                 ),
                 const Expanded(child: _DeliverablesRoadmapBody()),
               ],
@@ -358,7 +358,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
             title: 'Notes',
             sectionLabel: 'Deliverable Roadmap',
             noteKey: 'planning_deliverable_roadmap_notes',
-            checkpoint: 'deliverable_roadmap',
+            checkpoint: 'deliverables_roadmap',
             description:
                 'Summarize roadmap milestones, delivery pacing, and risk flags.',
           ),
@@ -370,12 +370,12 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           ),
           const SizedBox(height: 28),
           LaunchPhaseNavigation(
-            backLabel: PlanningPhaseNavigation.backLabel('deliverable_roadmap'),
-            nextLabel: PlanningPhaseNavigation.nextLabel('deliverable_roadmap'),
+            backLabel: PlanningPhaseNavigation.backLabel('deliverables_roadmap'),
+            nextLabel: PlanningPhaseNavigation.nextLabel('deliverables_roadmap'),
             onBack: () => PlanningPhaseNavigation.goToPrevious(
-                context, 'deliverable_roadmap'),
+                context, 'deliverables_roadmap'),
             onNext: () => PlanningPhaseNavigation.goToNext(
-                context, 'deliverable_roadmap'),
+                context, 'deliverables_roadmap'),
           ),
         ],
       ),
@@ -390,13 +390,13 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         _buildCircleButton(
           icon: Icons.arrow_back_ios_new,
           onTap: () => PlanningPhaseNavigation.goToPrevious(
-              context, 'deliverable_roadmap'),
+              context, 'deliverables_roadmap'),
         ),
         const SizedBox(width: 10),
         _buildCircleButton(
           icon: Icons.arrow_forward_ios,
           onTap: () =>
-              PlanningPhaseNavigation.goToNext(context, 'deliverable_roadmap'),
+              PlanningPhaseNavigation.goToNext(context, 'deliverables_roadmap'),
         ),
         const SizedBox(width: 24),
         const Expanded(

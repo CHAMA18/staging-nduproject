@@ -8657,11 +8657,13 @@ CRITICAL Requirements:
 3. Each item MUST have a "title" and "description".
 4. Use "children" for sub-items.
 5. Use "dependencies" as a list of titles of sibling items that must be completed first.
-6. Keep the structure 2-3 levels deep (never deeper than Level 3).
+6. Keep the structure 2-5 levels deep (supports up to Level 5 for complex projects).
 7. Prefix titles with WBS numbering using the Segment-based scheme:
    - Level 1: "S1: Goal Title", "S2: Goal Title" in order
    - Level 2: "S1.1: Deliverable", "S1.2: Deliverable"
    - Level 3: "S1.1.1: Sub-deliverable"
+   - Level 4: "S1.1.1.1: Work package component"
+   - Level 5: "S1.1.1.1.1: Task element"
 8. Include "framework" in each item (Waterfall or Agile only).
 
 Return strict JSON only in this format:

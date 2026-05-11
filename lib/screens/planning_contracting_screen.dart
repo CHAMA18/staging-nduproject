@@ -19,6 +19,7 @@ import 'package:ndu_project/models/procurement/procurement_models.dart'
     as procurement_models;
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 const Color _kFabYellow = Color(0xFFFBBF24);
 const Color _kFabOnYellow = Color(0xFF111827);
@@ -147,7 +148,8 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _BuildHeader(
-                                onBack: () => Navigator.maybePop(context),
+                                onBack: () => PlanningPhaseNavigation.goToPrevious(context, 'contracts'),
+                                onForward: () => PlanningPhaseNavigation.goToNext(context, 'contracts'),
                                 onProcurement: _openProcurement,
                               ),
                               SizedBox(height: isMobile ? 18 : 28),
@@ -209,8 +211,9 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
 }
 
 class _BuildHeader extends StatelessWidget {
-  const _BuildHeader({required this.onBack, required this.onProcurement});
+  const _BuildHeader({required this.onBack, required this.onForward, required this.onProcurement});
   final VoidCallback onBack;
+  final VoidCallback onForward;
   final VoidCallback onProcurement;
 
   @override
@@ -219,7 +222,7 @@ class _BuildHeader extends StatelessWidget {
       children: [
         _CircleBtn(icon: Icons.arrow_back_ios_new, onTap: onBack),
         const SizedBox(width: 10),
-        const _CircleBtn(icon: Icons.arrow_forward_ios),
+        _CircleBtn(icon: Icons.arrow_forward_ios, onTap: onForward),
         const SizedBox(width: 20),
         const Text('Contract Planning',
             style: TextStyle(

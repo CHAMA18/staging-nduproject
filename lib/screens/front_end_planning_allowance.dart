@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -51,13 +52,35 @@ class _FrontEndPlanningAllowanceScreenState
   bool _isGenerating = false;
   late final OpenAiServiceSecure _openAi;
 
-  static const String _kAllowanceInitializedNoteKey =
-      'fep_allowance_initialized';
-  static const String _kAllowanceUserTouchedNoteKey =
-      'fep_allowance_user_touched';
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
 
-  bool _asPlanningFlag(Map<String, String> notes, String key) {
-    return (notes[key] ?? '').trim().toLowerCase() == 'true';
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   @override
@@ -79,20 +102,9 @@ class _FrontEndPlanningAllowanceScreenState
 
       _notes.addListener(_syncNotesToProvider);
       _isSyncReady = true;
-      _syncItemsToProvider(markInitialized: true, markTouched: false);
-      final allowanceInitialized = _asPlanningFlag(
-        data.planningNotes,
-        _kAllowanceInitializedNoteKey,
-      );
-      final allowanceTouched = _asPlanningFlag(
-        data.planningNotes,
-        _kAllowanceUserTouchedNoteKey,
-      );
-      if (_allowanceItems.isEmpty &&
-          !allowanceInitialized &&
-          !allowanceTouched) {
-        Future<void>(
-            () async => _generateDefaultAllowances(autoTriggered: true));
+      _syncItemsToProvider();
+      if (_allowanceItems.isEmpty) {
+        _checkAndGenerateDefaultAllowances();
       }
       setState(() {});
     });
@@ -109,39 +121,22 @@ class _FrontEndPlanningAllowanceScreenState
     if (!mounted || !_isSyncReady) return;
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
-      (data) {
-        final nextNotes = Map<String, String>.from(data.planningNotes)
-          ..[_kAllowanceInitializedNoteKey] = 'true'
-          ..[_kAllowanceUserTouchedNoteKey] = 'true';
-        return data.copyWith(
-          planningNotes: nextNotes,
-          frontEndPlanning: ProjectDataHelper.updateFEPField(
-            current: data.frontEndPlanning,
-            allowance: _notes.text, // Sync general notes
-          ),
-        );
-      },
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          allowance: _notes.text, // Sync general notes
+        ),
+      ),
     );
     provider.saveToFirebase(checkpoint: 'fep_allowance');
   }
 
-  void _syncItemsToProvider({
-    bool markTouched = true,
-    bool markInitialized = true,
-  }) {
+  void _syncItemsToProvider() {
     if (!mounted || !_isSyncReady) return;
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) {
-        final nextNotes = Map<String, String>.from(data.planningNotes);
-        if (markInitialized) {
-          nextNotes[_kAllowanceInitializedNoteKey] = 'true';
-        }
-        if (markTouched) {
-          nextNotes[_kAllowanceUserTouchedNoteKey] = 'true';
-        }
         final updated = data.copyWith(
-          planningNotes: nextNotes,
           frontEndPlanning: ProjectDataHelper.updateFEPField(
             current: data.frontEndPlanning,
             allowanceItems: _allowanceItems,
@@ -151,9 +146,19 @@ class _FrontEndPlanningAllowanceScreenState
       },
     );
     provider.saveToFirebase(checkpoint: 'fep_allowance');
+    if (_allowanceItems.isNotEmpty) {
+      _markSectionInitialized('allowance_initialized');
+    }
   }
 
-  Future<void> _generateDefaultAllowances({bool autoTriggered = false}) async {
+  Future<void> _checkAndGenerateDefaultAllowances() async {
+    final initialized = await _isSectionInitialized('allowance_initialized');
+    if (!initialized && mounted) {
+      await _generateDefaultAllowances();
+    }
+  }
+
+  Future<void> _generateDefaultAllowances() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
 
@@ -190,10 +195,7 @@ class _FrontEndPlanningAllowanceScreenState
         setState(() {
           _allowanceItems.addAll(newItems);
         });
-        _syncItemsToProvider(
-          markInitialized: true,
-          markTouched: !autoTriggered,
-        );
+        _syncItemsToProvider();
       }
     } catch (e) {
       if (mounted) {
@@ -234,7 +236,7 @@ class _FrontEndPlanningAllowanceScreenState
     setState(() {
       _allowanceItems.removeWhere((item) => item.id == id);
     });
-    _syncItemsToProvider(markTouched: true, markInitialized: true);
+    _syncItemsToProvider();
   }
 
   String _nextFlowDestinationLabel() {
@@ -576,7 +578,7 @@ class _FrontEndPlanningAllowanceScreenState
           _allowanceItems.add(newItem);
         }
       });
-      _syncItemsToProvider(markTouched: true, markInitialized: true);
+      _syncItemsToProvider();
     }
   }
 

@@ -182,13 +182,40 @@ class _DeliverablesRoadmapDetailedScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Detailed Deliverables',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _kHeadline,
-            ),
+          Row(
+            children: [
+              _NavCircleBtn(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => PlanningPhaseNavigation.goToPrevious(
+                  context,
+                  'deliverables_roadmap_detailed',
+                ),
+              ),
+              const SizedBox(width: 10),
+              _NavCircleBtn(
+                icon: Icons.arrow_forward_ios_rounded,
+                onTap: () => PlanningPhaseNavigation.goToNext(
+                  context,
+                  'deliverables_roadmap_detailed',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Detailed Deliverables',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _kHeadline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildFilterBar(),
@@ -1153,5 +1180,30 @@ class _EditDeliverableDialogState extends State<_EditDeliverableDialog> {
       case RoadmapDeliverablePriority.low:
         return 'Low';
     }
+  }
+}
+
+class _NavCircleBtn extends StatelessWidget {
+  const _NavCircleBtn({required this.icon, this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Icon(icon, size: 16, color: const Color(0xFF6B7280)),
+      ),
+    );
   }
 }

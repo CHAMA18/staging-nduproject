@@ -14,6 +14,10 @@ class SecureAPIConfig {
   // Default model used across OpenAI requests.
   static const String model = 'gpt-4o-mini';
 
+  // Default OpenAI Agent Builder workflow used by the Firebase OpenAI proxy.
+  static const String workflowId =
+      'wf_69f1f5acc7ec819082fb76bbbf79b64d088ea0e514080150';
+
   static String? get apiKey => _apiKey;
   static bool get hasApiKey => _apiKey?.trim().isNotEmpty == true;
 

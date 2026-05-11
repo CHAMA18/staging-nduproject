@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-const String _appFontFamily = 'Satoshi';
+const String appFontFamily = 'Satoshi';
+const String _appFontFamily = appFontFamily;
 
 class LightModeColors {
   // Brand: yellow accent like the screenshot logo, neutral blue/green for UI

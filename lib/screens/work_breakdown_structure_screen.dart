@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
@@ -68,7 +69,7 @@ class _WorkBreakdownStructureBody extends StatefulWidget {
 
 class _WorkBreakdownStructureBodyState
     extends State<_WorkBreakdownStructureBody> {
-  static const int _maxWbsDepth = 3;
+  static const int _maxWbsDepth = 5;
   static const List<Map<String, String>> _criteriaOptions = [
     {
       'value': 'Deliverable',
@@ -114,61 +115,50 @@ class _WorkBreakdownStructureBodyState
   bool _contextExpanded = false;
   Map<String, dynamic>? _contextSnapshot;
   DateTime? _contextCapturedAt;
-  bool _isPersistingWbs = false;
 
-  static const String _kWbsInitializedNoteKey = 'planning_wbs_initialized';
-  static const String _kWbsUserTouchedNoteKey = 'planning_wbs_user_touched';
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
 
-  bool _asPlanningFlag(Map<String, String> notes, String key) {
-    return (notes[key] ?? '').trim().toLowerCase() == 'true';
-  }
-
-  void _syncWbsToProvider(
-      {bool markTouched = false, bool markInitialized = true}) {
-    if (!mounted) return;
-    final provider = ProjectDataHelper.getProvider(context);
-    provider.updateField((data) {
-      final nextNotes = Map<String, String>.from(data.planningNotes);
-      if (markInitialized) {
-        nextNotes[_kWbsInitializedNoteKey] = 'true';
-      }
-      if (markTouched) {
-        nextNotes[_kWbsUserTouchedNoteKey] = 'true';
-      }
-      return data.copyWith(
-        planningNotes: nextNotes,
-        wbsTree: _wbsItems,
-      );
-    });
-  }
-
-  Future<void> _persistWbsChanges({bool markTouched = false}) async {
-    if (!mounted || _isPersistingWbs) return;
-    _isPersistingWbs = true;
-    final provider = ProjectDataHelper.getProvider(context);
-    final currentData = provider.projectData;
-    final nextNotes = Map<String, String>.from(currentData.planningNotes)
-      ..[_kWbsInitializedNoteKey] = 'true';
-    if (markTouched) {
-      nextNotes[_kWbsUserTouchedNoteKey] = 'true';
-    }
-    provider.updateField(
-      (data) => data.copyWith(
-        planningNotes: nextNotes,
-        wbsTree: _wbsItems,
-      ),
-    );
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
     try {
-      await provider.saveToFirebase(checkpoint: 'work_breakdown_structure');
-    } finally {
-      _isPersistingWbs = false;
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  void _syncWbsToProvider() {
+    if (!mounted) return;
+    ProjectDataHelper.getProvider(context).updateWBSData(wbsTree: _wbsItems);
+    if (_wbsItems.isNotEmpty) {
+      _markSectionInitialized('wbs_initialized');
     }
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final projectData = ProjectDataHelper.getProvider(context).projectData;
       _selectedCriteriaA = projectData.wbsCriteriaA;
@@ -176,17 +166,13 @@ class _WorkBreakdownStructureBodyState
       _syncGoalContext(projectData);
 
       _wbsItems = projectData.wbsTree;
-      final wbsInitialized =
-          _asPlanningFlag(projectData.planningNotes, _kWbsInitializedNoteKey);
-      final wbsUserTouched =
-          _asPlanningFlag(projectData.planningNotes, _kWbsUserTouchedNoteKey);
       if (_wbsItems.isEmpty &&
-          !wbsInitialized &&
-          !wbsUserTouched &&
           projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
-        _migrateFromGoalsToTree(projectData.goalWorkItems);
-        _syncWbsToProvider(markInitialized: true);
-        _persistWbsChanges();
+        final wbsInitialized = await _isSectionInitialized('wbs_initialized');
+        if (!wbsInitialized) {
+          _migrateFromGoalsToTree(projectData.goalWorkItems);
+          _syncWbsToProvider();
+        }
       }
       _syncGoalFrameworks(projectData);
       _applyOverallFrameworkRules(projectData);
@@ -214,9 +200,9 @@ class _WorkBreakdownStructureBodyState
       if (parentDepth >= _maxWbsDepth) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Maximum WBS depth is Level 3.'),
-              backgroundColor: Color(0xFFEF4444),
+            SnackBar(
+              content: Text('Maximum WBS depth is Level $_maxWbsDepth.'),
+              backgroundColor: const Color(0xFFEF4444),
             ),
           );
         }
@@ -234,8 +220,7 @@ class _WorkBreakdownStructureBodyState
         _collapsedNodeIds.remove(parent.id);
       }
     });
-    _syncWbsToProvider(markTouched: true);
-    _persistWbsChanges(markTouched: true);
+    _syncWbsToProvider();
   }
 
   Future<WorkItem?> _openAddNodeDialog(
@@ -399,8 +384,7 @@ class _WorkBreakdownStructureBodyState
     final updated = await _openAddNodeDialog(existingNode: node);
     if (updated != null) {
       setState(() {});
-      _syncWbsToProvider(markTouched: true);
-      _persistWbsChanges(markTouched: true);
+      _syncWbsToProvider();
     }
   }
 
@@ -413,8 +397,7 @@ class _WorkBreakdownStructureBodyState
       }
       _removeCollapsedIds(node);
     });
-    _syncWbsToProvider(markTouched: true);
-    _persistWbsChanges(markTouched: true);
+    _syncWbsToProvider();
   }
 
   void _removeNodeFromChildren(List<WorkItem> items, WorkItem nodeToRemove) {
@@ -947,9 +930,9 @@ class _WorkBreakdownStructureBodyState
                       onTap: () {
                         if (!canAddChild) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Maximum WBS depth is Level 3.'),
-                              backgroundColor: Color(0xFFEF4444),
+                            SnackBar(
+                              content: Text('Maximum WBS depth is Level $_maxWbsDepth.'),
+                              backgroundColor: const Color(0xFFEF4444),
                             ),
                           );
                           return;
@@ -1017,11 +1000,15 @@ class _WorkBreakdownStructureBodyState
   Color _getNodeColor(int level) {
     switch (level) {
       case 0:
-        return const Color(0xFFFF5252); // Red
+        return const Color(0xFFFF5252); // Level 1: Red
       case 1:
-        return const Color(0xFF00BFA5); // Cyan (teal-ish)
+        return const Color(0xFF00BFA5); // Level 2: Teal
       case 2:
-        return const Color(0xFFFFD54F); // Yellow
+        return const Color(0xFFFFD54F); // Level 3: Yellow
+      case 3:
+        return const Color(0xFF7C4DFF); // Level 4: Deep Purple
+      case 4:
+        return const Color(0xFF448AFF); // Level 5: Blue
       default:
         return Colors.blueGrey.shade100;
     }

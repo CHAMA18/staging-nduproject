@@ -29,6 +29,7 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
   late ScrollController _verticalController;
   String? _selectedId;
   String? _hoveredId;
+  String _searchQuery = '';
 
   double _leftColumnWidth = 320;
   double _chartHeightPerRow = 48;
@@ -112,9 +113,54 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _buildGanttItems();
+    var items = _buildGanttItems();
     if (items.isEmpty) {
       return const _EmptyGanttView();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      items = items
+          .where((item) =>
+              item.title.toLowerCase().contains(q) ||
+              item.workPackageTitle.toLowerCase().contains(q) ||
+              item.wbsLevel2Title.toLowerCase().contains(q) ||
+              item.status.toLowerCase().contains(q))
+          .toList();
+      if (items.isEmpty) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppSemanticColors.border),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Enhanced Gantt Chart',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildSearchBar(),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Icon(Icons.search_off, size: 40, color: Color(0xFF9CA3AF)),
+              const SizedBox(height: 8),
+              Text('No activities match "$_searchQuery"',
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+            ],
+          ),
+        );
+      }
     }
 
     final dates = items
@@ -156,6 +202,71 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
                 ),
               ),
               const Spacer(),
+              // Zoom controls (P8)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove, size: 16),
+                      onPressed: () {
+                        setState(() {
+                          _pxPerDay = (_pxPerDay - 0.5).clamp(1.0, 8.0);
+                        });
+                      },
+                      tooltip: 'Zoom out',
+                      constraints: const BoxConstraints(
+                          minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        '${(_pxPerDay * 100 / 3).round()}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4B5563),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 16),
+                      onPressed: () {
+                        setState(() {
+                          _pxPerDay = (_pxPerDay + 0.5).clamp(1.0, 8.0);
+                        });
+                      },
+                      tooltip: 'Zoom in',
+                      constraints: const BoxConstraints(
+                          minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.fit_screen_outlined, size: 16),
+                      onPressed: () {
+                        setState(() {
+                          _pxPerDay = 3.0; // Reset to default (100%)
+                        });
+                      },
+                      tooltip: 'Fit to screen',
+                      constraints: const BoxConstraints(
+                          minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _buildSearchBar(),
+              const SizedBox(width: 12),
               _buildLegend(),
             ],
           ),
@@ -233,6 +344,53 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return SizedBox(
+      width: 220,
+      height: 34,
+      child: TextField(
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.trim();
+          });
+        },
+        decoration: InputDecoration(
+          hintText: 'Search activities...',
+          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+          prefixIcon:
+              const Icon(Icons.search, size: 16, color: Color(0xFF6B7280)),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: const Color(0xFFF9FAFB),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: AppSemanticColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: AppSemanticColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide:
+                const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
+          ),
+        ),
+        style: const TextStyle(fontSize: 12),
       ),
     );
   }

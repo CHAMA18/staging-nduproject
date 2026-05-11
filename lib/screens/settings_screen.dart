@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/openai/openai_config.dart';
+import 'package:ndu_project/models/user_role.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/services/permission_service.dart';
 import 'package:ndu_project/services/subscription_service.dart';
 import 'package:ndu_project/widgets/api_key_input_dialog.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -45,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   List<String> get _tabs {
     final tabs = <String>[
       'Preferences',
+      'Access & Collaborators',
       'Billing & Subscription',
       'Report & Analysis',
     ];
@@ -209,6 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           controller: _tabController,
                           children: [
                             _preferencesPanel(),
+                            const _AccessCollaboratorsPanel(),
                             if (_isAdminDomain) _integrationsPanel(),
                             _billingSubscriptionPanel(),
                             _reportAnalysisPanel(),
@@ -2983,6 +2988,1163 @@ class _UpgradePlanCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AccessCollaboratorsPanel extends StatefulWidget {
+  const _AccessCollaboratorsPanel();
+
+  @override
+  State<_AccessCollaboratorsPanel> createState() =>
+      _AccessCollaboratorsPanelState();
+}
+
+class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
+  static const _accent = Color(0xFFFFC107);
+  final _emailController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _messageController = TextEditingController(
+    text: 'You have been invited to collaborate in NDU Project.',
+  );
+
+  SiteRole _selectedRole = SiteRole.editor;
+  ResourceAccessLevel _selectedAccess = ResourceAccessLevel.editor;
+  String _selectedScope = 'Current project';
+  String _selectedExpiry = '30 days';
+  bool _requireMfa = true;
+  bool _notifyOnAccessChange = true;
+  bool _isSending = false;
+  final Set<Permission> _customPermissions = {
+    Permission.viewAnalytics,
+    Permission.exportData,
+  };
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _nameController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendInvite() async {
+    final email = _emailController.text.trim().toLowerCase();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      _showSnack('Enter a valid collaborator email address.');
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    final project = ProjectDataInherited.maybeOf(context)?.projectData;
+    final expiresAt = _expiryDate(_selectedExpiry);
+
+    setState(() => _isSending = true);
+    try {
+      final payload = {
+        'email': email,
+        'displayName': _nameController.text.trim(),
+        'siteRole': _selectedRole.name,
+        'resourceAccessLevel': _selectedAccess.name,
+        'scope': _selectedScope,
+        'projectId': project?.projectId ?? '',
+        'projectName': project?.projectName ?? '',
+        'customPermissions': _customPermissions.map((p) => p.name).toList(),
+        'message': _messageController.text.trim(),
+        'status': 'pending',
+        'requireMfa': _requireMfa,
+        'notifyOnAccessChange': _notifyOnAccessChange,
+        'invitedByUid': user?.uid,
+        'invitedByEmail': user?.email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'expiresAt': expiresAt == null ? null : Timestamp.fromDate(expiresAt),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('collaboration_invites')
+          .add(payload);
+
+      await FirebaseFirestore.instance.collection('rbac_audit_events').add({
+        'action': 'collaborator_invited',
+        'targetEmail': email,
+        'role': _selectedRole.name,
+        'scope': _selectedScope,
+        'projectId': project?.projectId ?? '',
+        'actorUid': user?.uid,
+        'actorEmail': user?.email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      _emailController.clear();
+      _nameController.clear();
+      _showSnack('Invitation staged for $email.');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Could not create invitation: $e');
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  DateTime? _expiryDate(String value) {
+    final now = DateTime.now();
+    switch (value) {
+      case '7 days':
+        return now.add(const Duration(days: 7));
+      case '30 days':
+        return now.add(const Duration(days: 30));
+      case '90 days':
+        return now.add(const Duration(days: 90));
+      default:
+        return null;
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 1080;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 48),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _accessHeader(context),
+              const SizedBox(height: 24),
+              _securityStrip(),
+              const SizedBox(height: 24),
+              if (isWide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 11, child: _inviteCard()),
+                    const SizedBox(width: 20),
+                    Expanded(flex: 10, child: _collaboratorsCard()),
+                  ],
+                )
+              else ...[
+                _inviteCard(),
+                const SizedBox(height: 20),
+                _collaboratorsCard(),
+              ],
+              const SizedBox(height: 24),
+              if (isWide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _rolePresetCard()),
+                    const SizedBox(width: 20),
+                    Expanded(child: _pendingInvitesCard()),
+                  ],
+                )
+              else ...[
+                _rolePresetCard(),
+                const SizedBox(height: 20),
+                _pendingInvitesCard(),
+              ],
+              const SizedBox(height: 24),
+              _permissionMatrixCard(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _accessHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 760;
+          final title = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _accent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.admin_panel_settings_outlined,
+                    color: _accent, size: 26),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Access & Collaborators',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Invite collaborators, assign least-privilege roles, control project-level access, and review the RBAC policy before changes reach delivery data.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.72), height: 1.45),
+              ),
+            ],
+          );
+          final stats = Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: const [
+              _AccessStat(label: 'Role tiers', value: '5'),
+              _AccessStat(label: 'Access levels', value: '5'),
+              _AccessStat(label: 'Policy gates', value: '22'),
+            ],
+          );
+          if (stacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [title, const SizedBox(height: 20), stats],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: title),
+              const SizedBox(width: 24),
+              stats,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _securityStrip() {
+    return Wrap(
+      spacing: 14,
+      runSpacing: 14,
+      children: [
+        _PolicyToggle(
+          icon: Icons.verified_user_outlined,
+          title: 'Require MFA',
+          subtitle: 'Applies to new collaborators',
+          value: _requireMfa,
+          onChanged: (value) => setState(() => _requireMfa = value),
+        ),
+        _PolicyToggle(
+          icon: Icons.notifications_active_outlined,
+          title: 'Access-change alerts',
+          subtitle: 'Notify admins and owners',
+          value: _notifyOnAccessChange,
+          onChanged: (value) => setState(() => _notifyOnAccessChange = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _inviteCard() {
+    return _RbacCard(
+      title: 'Invite Collaborator',
+      subtitle:
+          'Create a governed invitation with role, scope, expiry, and granular permissions.',
+      icon: Icons.person_add_alt_1_outlined,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _fieldDecoration('Email address',
+                      icon: Icons.alternate_email),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _nameController,
+                  decoration:
+                      _fieldDecoration('Full name', icon: Icons.badge_outlined),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<SiteRole>(
+                  initialValue: _selectedRole,
+                  isExpanded: true,
+                  menuMaxHeight: 280,
+                  decoration:
+                      _fieldDecoration('Platform role', icon: Icons.shield),
+                  items: SiteRole.values
+                      .map((role) => DropdownMenuItem(
+                            value: role,
+                            child: Text(role.displayName),
+                          ))
+                      .toList(),
+                  onChanged: (role) {
+                    if (role == null) return;
+                    setState(() {
+                      _selectedRole = role;
+                      _customPermissions
+                        ..clear()
+                        ..addAll(Permission.getPermissionsForRole(role)
+                            .take(role == SiteRole.owner ? 8 : 5));
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<ResourceAccessLevel>(
+                  initialValue: _selectedAccess,
+                  isExpanded: true,
+                  menuMaxHeight: 280,
+                  decoration: _fieldDecoration('Resource access',
+                      icon: Icons.folder_shared_outlined),
+                  items: ResourceAccessLevel.values
+                      .where((level) => level != ResourceAccessLevel.none)
+                      .map((level) => DropdownMenuItem(
+                            value: level,
+                            child: Text(level.displayName),
+                          ))
+                      .toList(),
+                  onChanged: (level) {
+                    if (level != null) setState(() => _selectedAccess = level);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectedScope,
+                  isExpanded: true,
+                  menuMaxHeight: 280,
+                  decoration: _fieldDecoration('Access scope',
+                      icon: Icons.account_tree_outlined),
+                  items: const [
+                    'Current project',
+                    'All projects',
+                    'Program workspace',
+                    'Portfolio workspace',
+                    'Read-only external workspace',
+                  ]
+                      .map((scope) =>
+                          DropdownMenuItem(value: scope, child: Text(scope)))
+                      .toList(),
+                  onChanged: (scope) {
+                    if (scope != null) setState(() => _selectedScope = scope);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectedExpiry,
+                  isExpanded: true,
+                  menuMaxHeight: 280,
+                  decoration: _fieldDecoration('Invite expires',
+                      icon: Icons.event_available_outlined),
+                  items: const ['7 days', '30 days', '90 days', 'Never']
+                      .map((expiry) =>
+                          DropdownMenuItem(value: expiry, child: Text(expiry)))
+                      .toList(),
+                  onChanged: (expiry) {
+                    if (expiry != null) {
+                      setState(() => _selectedExpiry = expiry);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _messageController,
+            minLines: 2,
+            maxLines: 4,
+            decoration:
+                _fieldDecoration('Invite note', icon: Icons.notes_outlined),
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Additional permissions',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: Permission.values.take(12).map((permission) {
+              final selected = _customPermissions.contains(permission);
+              return FilterChip(
+                selected: selected,
+                label: Text(_permissionLabel(permission)),
+                selectedColor: _accent.withValues(alpha: 0.22),
+                checkmarkColor: Colors.black,
+                onSelected: (value) {
+                  setState(() {
+                    if (value) {
+                      _customPermissions.add(permission);
+                    } else {
+                      _customPermissions.remove(permission);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isSending ? null : _sendInvite,
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(_isSending ? 'Creating Invite...' : 'Send Invite'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: Colors.black,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _collaboratorsCard() {
+    return _RbacCard(
+      title: 'Collaborators',
+      subtitle:
+          'Live roster with role posture, activation state, and recent access signal.',
+      icon: Icons.groups_2_outlined,
+      child: StreamBuilder<List<UserProfile>>(
+        stream: PermissionService.instance.getAllUsersStream(),
+        builder: (context, snapshot) {
+          final users = snapshot.data ?? const <UserProfile>[];
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const _RbacLoadingRow(label: 'Loading collaborators...');
+          }
+          if (snapshot.hasError) {
+            return _EmptyRbacState(
+              icon: Icons.lock_outline,
+              title: 'Roster unavailable',
+              message:
+                  'Firestore rules did not allow the collaborator roster to load for this session.',
+            );
+          }
+          if (users.isEmpty) {
+            return const _EmptyRbacState(
+              icon: Icons.people_outline,
+              title: 'No collaborators yet',
+              message: 'Send an invite to start building the workspace roster.',
+            );
+          }
+
+          return Column(
+            children: users.take(8).map((user) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _CollaboratorTile(user: user),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _rolePresetCard() {
+    return _RbacCard(
+      title: 'Role Presets',
+      subtitle:
+          'Pre-approved platform personas keep access assignment consistent.',
+      icon: Icons.workspace_premium_outlined,
+      child: Column(
+        children: SiteRole.values.map((role) {
+          final selected = role == _selectedRole;
+          final permissions = Permission.getPermissionsForRole(role).length;
+          return InkWell(
+            onTap: () => setState(() => _selectedRole = role),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: selected
+                    ? _accent.withValues(alpha: 0.12)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: selected
+                        ? _accent
+                        : Colors.grey.withValues(alpha: 0.14)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: role.color.withValues(alpha: 0.14),
+                    child: Icon(_roleIcon(role), color: role.color, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(role.displayName,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text('$permissions permissions · Level ${role.level}',
+                            style: const TextStyle(
+                                color: Colors.black54, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  if (selected)
+                    const Icon(Icons.check_circle, color: _accent, size: 20),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _pendingInvitesCard() {
+    return _RbacCard(
+      title: 'Pending Invites',
+      subtitle: 'Invitation queue with expiry, role, and approval readiness.',
+      icon: Icons.mark_email_unread_outlined,
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('collaboration_invites')
+            .orderBy('createdAt', descending: true)
+            .limit(8)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const _RbacLoadingRow(label: 'Loading invitations...');
+          }
+          if (snapshot.hasError) {
+            return const _EmptyRbacState(
+              icon: Icons.warning_amber_rounded,
+              title: 'Invite queue unavailable',
+              message:
+                  'Check Firestore access rules for collaboration_invites.',
+            );
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const _EmptyRbacState(
+              icon: Icons.outgoing_mail,
+              title: 'No pending invitations',
+              message: 'New collaborator invitations will appear here.',
+            );
+          }
+          return Column(
+            children: docs.map((doc) {
+              final data = doc.data();
+              final role =
+                  SiteRole.fromString(data['siteRole']?.toString() ?? '');
+              return _InviteTile(
+                email: data['email']?.toString() ?? 'Unknown email',
+                role: role,
+                scope: data['scope']?.toString() ?? 'Workspace',
+                status: data['status']?.toString() ?? 'pending',
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _permissionMatrixCard() {
+    final permissionGroups = <String, List<Permission>>{
+      'Governance': [
+        Permission.manageBilling,
+        Permission.manageUsers,
+        Permission.manageRoles,
+        Permission.manageSiteSettings,
+        Permission.viewAnalytics,
+      ],
+      'Delivery': [
+        Permission.createProject,
+        Permission.editAnyProject,
+        Permission.deleteAnyProject,
+        Permission.archiveProject,
+        Permission.createProgram,
+        Permission.editAnyProgram,
+        Permission.createPortfolio,
+        Permission.editAnyPortfolio,
+      ],
+      'Collaboration': [
+        Permission.inviteUsers,
+        Permission.moderateComments,
+        Permission.exportData,
+        Permission.useAiGeneration,
+        Permission.useAdvancedAiFeatures,
+      ],
+    };
+
+    return _RbacCard(
+      title: 'Permission Matrix',
+      subtitle:
+          'Role inheritance map for every critical governance and delivery action.',
+      icon: Icons.grid_view_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: permissionGroups.entries.map((entry) {
+          return _permissionGroupTable(entry.key, entry.value);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _permissionGroupTable(String title, List<Permission> permissions) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final minTableWidth =
+              constraints.maxWidth < 760 ? 760.0 : constraints.maxWidth;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 15)),
+              const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: minTableWidth),
+                  child: Table(
+                    border: TableBorder(
+                      horizontalInside: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.12)),
+                    ),
+                    columnWidths: const {
+                      0: FlexColumnWidth(2.6),
+                      1: FlexColumnWidth(),
+                      2: FlexColumnWidth(),
+                      3: FlexColumnWidth(),
+                      4: FlexColumnWidth(),
+                      5: FlexColumnWidth(),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        children: [
+                          const _PermissionTableHeader('Permission',
+                              alignment: Alignment.centerLeft),
+                          ...SiteRole.values.map((role) =>
+                              _PermissionTableHeader(role.displayName)),
+                        ],
+                      ),
+                      ...permissions.map((permission) {
+                        return TableRow(
+                          children: [
+                            _PermissionTableCell(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                _permissionLabel(permission),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            ...SiteRole.values.map((role) {
+                              final allowed =
+                                  Permission.getPermissionsForRole(role)
+                                      .contains(permission);
+                              return _PermissionTableCell(
+                                child: Icon(
+                                  allowed
+                                      ? Icons.check_circle
+                                      : Icons.remove_circle_outline,
+                                  color: allowed
+                                      ? const Color(0xFF16A34A)
+                                      : Colors.black26,
+                                  size: 20,
+                                ),
+                              );
+                            }),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String label, {required IconData icon}) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _accent, width: 1.4),
+      ),
+    );
+  }
+}
+
+class _RbacCard extends StatelessWidget {
+  const _RbacCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.16)),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 18,
+            offset: Offset(0, 12),
+            color: Color(0x0D000000),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFC107).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: const Color(0xFFFFC107), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: Colors.black54, height: 1.35)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _AccessStat extends StatelessWidget {
+  const _AccessStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 118,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.65), fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PolicyToggle extends StatelessWidget {
+  const _PolicyToggle({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: const Color(0xFFFFC107).withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFFB45309)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style:
+                        const TextStyle(color: Colors.black54, fontSize: 12)),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+class _CollaboratorTile extends StatelessWidget {
+  const _CollaboratorTile({required this.user});
+
+  final UserProfile user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: user.siteRole.color.withValues(alpha: 0.16),
+            child: Text(user.initials,
+                style: TextStyle(
+                    color: user.siteRole.color, fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.displayName.isEmpty ? user.email : user.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(user.email,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(color: Colors.black54, fontSize: 12)),
+              ],
+            ),
+          ),
+          _RolePill(role: user.siteRole),
+          const SizedBox(width: 8),
+          Icon(
+            user.isActive ? Icons.check_circle : Icons.pause_circle_outline,
+            color: user.isActive ? const Color(0xFF16A34A) : Colors.orange,
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InviteTile extends StatelessWidget {
+  const _InviteTile({
+    required this.email,
+    required this.role,
+    required this.scope,
+    required this.status,
+  });
+
+  final String email;
+  final SiteRole role;
+  final String scope;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.outgoing_mail, color: Color(0xFF64748B)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(email,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(scope,
+                    style:
+                        const TextStyle(color: Colors.black54, fontSize: 12)),
+              ],
+            ),
+          ),
+          _RolePill(role: role),
+          const SizedBox(width: 8),
+          Text(status.toUpperCase(),
+              style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFFB45309),
+                  fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RolePill extends StatelessWidget {
+  const _RolePill({required this.role});
+
+  final SiteRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: role.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(role.displayName,
+          style: TextStyle(
+              color: role.color, fontSize: 12, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+class _PermissionTableHeader extends StatelessWidget {
+  const _PermissionTableHeader(
+    this.label, {
+    this.alignment = Alignment.center,
+  });
+
+  final String label;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Text(
+        label,
+        textAlign: alignment == Alignment.center ? TextAlign.center : null,
+        style: const TextStyle(
+          color: Color(0xFF475569),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionTableCell extends StatelessWidget {
+  const _PermissionTableCell({
+    required this.child,
+    this.alignment = Alignment.center,
+  });
+
+  final Widget child;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 46,
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: child,
+    );
+  }
+}
+
+class _RbacLoadingRow extends StatelessWidget {
+  const _RbacLoadingRow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        const SizedBox(width: 12),
+        Text(label, style: const TextStyle(color: Colors.black54)),
+      ],
+    );
+  }
+}
+
+class _EmptyRbacState extends StatelessWidget {
+  const _EmptyRbacState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.black38, size: 28),
+          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54, height: 1.35)),
+        ],
+      ),
+    );
+  }
+}
+
+IconData _roleIcon(SiteRole role) {
+  switch (role) {
+    case SiteRole.owner:
+      return Icons.workspace_premium;
+    case SiteRole.admin:
+      return Icons.admin_panel_settings;
+    case SiteRole.editor:
+      return Icons.edit_note;
+    case SiteRole.user:
+      return Icons.person;
+    case SiteRole.guest:
+      return Icons.visibility_outlined;
+  }
+}
+
+String _permissionLabel(Permission permission) {
+  final raw = permission.name;
+  final words = raw
+      .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(1)}')
+      .split(' ');
+  return words
+      .where((word) => word.isNotEmpty)
+      .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
 }
 
 class _FeatureChip extends StatelessWidget {

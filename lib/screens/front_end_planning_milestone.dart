@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -47,16 +48,6 @@ class _FrontEndPlanningMilestoneScreenState
   bool _isSyncReady = false;
   bool _isGenerating = false;
   bool _autoGenerationTriggered = false;
-
-  static const String _kMilestoneInitializedNoteKey =
-      'fep_milestone_initialized';
-  static const String _kMilestoneUserTouchedNoteKey =
-      'fep_milestone_user_touched';
-
-  bool _asPlanningFlag(Map<String, String> notes, String key) {
-    return (notes[key] ?? '').trim().toLowerCase() == 'true';
-  }
-
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
   final ScrollController _milestonesHorizontalScroll = ScrollController();
   final List<TextEditingController> _milestoneNameControllers =
@@ -67,6 +58,37 @@ class _FrontEndPlanningMilestoneScreenState
       <TextEditingController>[];
   late final OpenAiServiceSecure _openAi;
   Map<String, String> _validationErrors = const {};
+
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -129,53 +151,43 @@ class _FrontEndPlanningMilestoneScreenState
 
   Future<void> _triggerAutoMilestoneGenerationIfMissing() async {
     if (_autoGenerationTriggered || _isGenerating || !mounted) return;
-    final data = ProjectDataHelper.getData(context);
-    final milestoneInitialized =
-        _asPlanningFlag(data.planningNotes, _kMilestoneInitializedNoteKey);
-    final milestoneTouched =
-        _asPlanningFlag(data.planningNotes, _kMilestoneUserTouchedNoteKey);
     final datesMissing =
         _startDateStr.trim().isEmpty || _endDateStr.trim().isEmpty;
     final milestonesMissing = _milestones.isEmpty;
     if (!datesMissing && !milestonesMissing) return;
-    if (milestoneInitialized || milestoneTouched) return;
+
+    final datesInitialized = await _isSectionInitialized('milestone_dates_initialized');
+    final itemsInitialized = await _isSectionInitialized('milestone_items_initialized');
 
     _autoGenerationTriggered = true;
-    if (datesMissing) {
-      await _generateDatesWithAI(silent: true, markTouched: false);
+    if (datesMissing && !datesInitialized) {
+      await _generateDatesWithAI(silent: true);
     }
-    if (milestonesMissing) {
-      await _generateMilestonesWithAI(silent: true, markTouched: false);
+    if (milestonesMissing && !itemsInitialized) {
+      await _generateMilestonesWithAI(silent: true);
     }
   }
 
-  void _syncToProvider({
-    bool markTouched = true,
-    bool markInitialized = true,
-  }) {
+  void _syncToProvider() {
     if (!_isSyncReady || !mounted) return;
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
-      (data) {
-        final nextNotes = Map<String, String>.from(data.planningNotes);
-        if (markInitialized) {
-          nextNotes[_kMilestoneInitializedNoteKey] = 'true';
-        }
-        if (markTouched) {
-          nextNotes[_kMilestoneUserTouchedNoteKey] = 'true';
-        }
-        return data.copyWith(
-          planningNotes: nextNotes,
-          frontEndPlanning: ProjectDataHelper.updateFEPField(
-            current: data.frontEndPlanning,
-            milestoneStartDate: _startDateStr,
-            milestoneEndDate: _endDateStr,
-          ),
-          keyMilestones: List.from(_milestones),
-        );
-      },
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          milestoneStartDate: _startDateStr,
+          milestoneEndDate: _endDateStr,
+        ),
+        keyMilestones: List.from(_milestones),
+      ),
     );
     provider.saveToFirebase(checkpoint: 'fep_milestone');
+    if (_startDateStr.trim().isNotEmpty || _endDateStr.trim().isNotEmpty) {
+      _markSectionInitialized('milestone_dates_initialized');
+    }
+    if (_milestones.isNotEmpty) {
+      _markSectionInitialized('milestone_items_initialized');
+    }
   }
 
   GlobalKey _milestoneNameKey(int index) {
@@ -258,7 +270,6 @@ class _FrontEndPlanningMilestoneScreenState
     FrontEndPlanningNavigation.goToNext(context, 'fep_milestone');
   }
 
-  // ignore: unused_element
   Future<void> _autoFillMilestoneRequirements(
     FormValidationResult validation,
   ) async {
@@ -272,10 +283,10 @@ class _FrontEndPlanningMilestoneScreenState
         issue.id.startsWith('milestone_date_'));
 
     if (needsDates) {
-      await _generateDatesWithAI(silent: true, markTouched: false);
+      await _generateDatesWithAI(silent: true);
     }
     if (needsMilestones) {
-      await _generateMilestonesWithAI(silent: true, markTouched: false);
+      await _generateMilestonesWithAI(silent: true);
     }
   }
 
@@ -338,7 +349,7 @@ class _FrontEndPlanningMilestoneScreenState
         }
         _validationErrors = nextErrors;
       });
-      _syncToProvider(markTouched: true, markInitialized: true);
+      _syncToProvider();
     }
   }
 
@@ -370,7 +381,7 @@ class _FrontEndPlanningMilestoneScreenState
         nextErrors.remove('project_end_date');
         _validationErrors = nextErrors;
       });
-      _syncToProvider(markTouched: true, markInitialized: true);
+      _syncToProvider();
     }
   }
 
@@ -394,7 +405,7 @@ class _FrontEndPlanningMilestoneScreenState
         nextErrors.remove('milestone_date_$index');
         _validationErrors = nextErrors;
       });
-      _syncToProvider(markTouched: true, markInitialized: true);
+      _syncToProvider();
     }
   }
 
@@ -411,7 +422,7 @@ class _FrontEndPlanningMilestoneScreenState
       _validationErrors = Map<String, String>.from(_validationErrors)
         ..remove('key_milestones');
     });
-    _syncToProvider(markTouched: true, markInitialized: true);
+    _syncToProvider();
   }
 
   void _removeMilestone(int index) {
@@ -426,7 +437,7 @@ class _FrontEndPlanningMilestoneScreenState
             key.startsWith('milestone_date_'));
       _validationErrors = nextErrors;
     });
-    _syncToProvider(markTouched: true, markInitialized: true);
+    _syncToProvider();
   }
 
   Future<void> _confirmDeleteMilestone(int index) async {
@@ -459,13 +470,10 @@ class _FrontEndPlanningMilestoneScreenState
       }
       _validationErrors = nextErrors;
     });
-    _syncToProvider(markTouched: true, markInitialized: true);
+    _syncToProvider();
   }
 
-  Future<void> _generateMilestonesWithAI({
-    bool silent = false,
-    bool markTouched = true,
-  }) async {
+  Future<void> _generateMilestonesWithAI({bool silent = false}) async {
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -510,10 +518,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
             _milestones = generatedMilestones;
             _rebuildMilestoneCommentControllers();
           });
-          _syncToProvider(
-            markTouched: markTouched,
-            markInitialized: true,
-          );
+          _syncToProvider();
 
           if (!silent) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -526,16 +531,16 @@ Generate milestones that cover the typical project lifecycle phases.''';
           }
         } else {
           // Fallback to defaults if parsing failed
-          _useDefaultMilestones(silent: silent, markTouched: markTouched);
+          _useDefaultMilestones(silent: silent);
         }
       } else {
         // Fallback if response is empty
-        _useDefaultMilestones(silent: silent, markTouched: markTouched);
+        _useDefaultMilestones(silent: silent);
       }
     } catch (e) {
       // CRITICAL: Defensive error handling - fallback to defaults, never show error to user
       debugPrint('AI milestone generation failed: $e');
-      _useDefaultMilestones(silent: silent, markTouched: markTouched);
+      _useDefaultMilestones(silent: silent);
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -544,19 +549,13 @@ Generate milestones that cover the typical project lifecycle phases.''';
   }
 
   /// Fallback to default milestones when AI generation fails
-  void _useDefaultMilestones({
-    bool silent = false,
-    bool markTouched = true,
-  }) {
+  void _useDefaultMilestones({bool silent = false}) {
     if (!mounted) return;
     setState(() {
       _milestones = getDefaultMilestones();
       _rebuildMilestoneCommentControllers();
     });
-    _syncToProvider(
-      markTouched: markTouched,
-      markInitialized: true,
-    );
+    _syncToProvider();
 
     if (!silent) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -631,10 +630,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
     return milestones.take(7).toList();
   }
 
-  Future<void> _generateDatesWithAI({
-    bool silent = false,
-    bool markTouched = true,
-  }) async {
+  Future<void> _generateDatesWithAI({bool silent = false}) async {
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -686,10 +682,7 @@ Consider typical project timelines and ensure end date is after start date.''';
         }
 
         if (foundStart || foundEnd) {
-          _syncToProvider(
-            markTouched: markTouched,
-            markInitialized: true,
-          );
+          _syncToProvider();
           if (!silent) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

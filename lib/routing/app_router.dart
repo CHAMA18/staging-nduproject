@@ -107,6 +107,9 @@ import 'package:ndu_project/screens/risk_tracking_workspace_screen.dart';
 import 'package:ndu_project/screens/identify_staff_ops_team_screen.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
+import 'package:ndu_project/screens/deliverable_status_updates_screen.dart';
+import 'package:ndu_project/screens/recurring_deliverables_screen.dart';
+import 'package:ndu_project/screens/status_reports_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:ndu_project/screens/scope_tracking_implementation_screen.dart';
 import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
@@ -224,6 +227,9 @@ class AppRoutes {
   static const identifyStaffOpsTeam = 'identify-staff-ops-team';
   static const contractsTracking = 'contracts-tracking';
   static const vendorTracking = 'vendor-tracking';
+  static const deliverableStatusUpdates = 'deliverable-status-updates';
+  static const recurringDeliverables = 'recurring-deliverables';
+  static const statusReports = 'status-reports';
   static const detailedDesign = 'detailed-design';
   static const scopeTrackingImplementation = 'scope-tracking-implementation';
   static const stakeholderAlignment = 'stakeholder-alignment';
@@ -745,6 +751,18 @@ class AppRouter {
           name: AppRoutes.vendorTracking,
           path: '/${AppRoutes.vendorTracking}',
           builder: (c, s) => const VendorTrackingScreen()),
+      GoRoute(
+          name: AppRoutes.deliverableStatusUpdates,
+          path: '/${AppRoutes.deliverableStatusUpdates}',
+          builder: (c, s) => const DeliverableStatusUpdatesScreen()),
+      GoRoute(
+          name: AppRoutes.recurringDeliverables,
+          path: '/${AppRoutes.recurringDeliverables}',
+          builder: (c, s) => const RecurringDeliverablesScreen()),
+      GoRoute(
+          name: AppRoutes.statusReports,
+          path: '/${AppRoutes.statusReports}',
+          builder: (c, s) => const StatusReportsScreen()),
       GoRoute(
           name: AppRoutes.detailedDesign,
           path: '/${AppRoutes.detailedDesign}',

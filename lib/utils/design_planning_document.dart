@@ -2,6 +2,27 @@ import 'dart:convert';
 
 import 'package:ndu_project/models/project_data_model.dart';
 
+/// Monotonic counter used to generate unique IDs without relying on
+/// `DateTime.now()` (which can produce duplicates in tight loops on
+/// platforms with millisecond-resolution clocks).
+int _uniqueIdCounter = 0;
+
+String _nextUniqueId([String prefix = 'id']) {
+  _uniqueIdCounter++;
+  return '${prefix}_${DateTime.now().millisecondsSinceEpoch}_$_uniqueIdCounter';
+}
+
+/// Kept for backward compatibility — delegates to [_nextUniqueId].
+String _nextSpecRowId() => _nextUniqueId('spec_row');
+
+/// Treat empty or whitespace-only IDs as null so constructors generate a
+/// fresh unique ID — prevents duplicate-key crashes when expanding sections
+/// that mount widgets keyed by [id].
+String? _nonEmptyId(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  return raw;
+}
+
 const String kDesignPlanningDocumentKey = 'planning_design_basis_document';
 const String kDesignPlanningSummaryKey = 'planning_design_notes';
 const String kDesignPlanningPlanKey = 'planning_design_plan';
@@ -868,7 +889,7 @@ class DesignRequirementMapping {
     this.linkedArtifact = '',
     this.acceptanceCriteria = '',
     this.verificationMethod = '',
-  }) : localId = localId ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : localId = localId ?? _nextUniqueId();
 
   final String localId;
   String requirementId;
@@ -952,7 +973,7 @@ class DesignPlanningWorkItem {
     this.purpose = '',
     this.owner = '',
     this.status = 'Draft',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String name;
@@ -962,7 +983,7 @@ class DesignPlanningWorkItem {
 
   factory DesignPlanningWorkItem.fromJson(Map<String, dynamic> json) {
     return DesignPlanningWorkItem(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       name: json['name']?.toString() ?? '',
       purpose: json['purpose']?.toString() ?? '',
       owner: json['owner']?.toString() ?? '',
@@ -997,7 +1018,7 @@ class DesignSpecificationPlanRow {
     this.wbsWorkPackageTitle = '',
     this.uploadedFileName = '',
     this.uploadedStoragePath = '',
-  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+  })  : id = id ?? _nextSpecRowId(),
         attachedRequirementIds = attachedRequirementIds ?? [];
 
   final String id;
@@ -1023,7 +1044,7 @@ class DesignSpecificationPlanRow {
         '';
     final parsedLegacy = _parseLegacyDisciplineArea(legacyDisciplineArea);
     return DesignSpecificationPlanRow(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       title: json['title']?.toString() ?? '',
       details: json['details']?.toString() ?? '',
       specificationType: json['specificationType']?.toString() ??
@@ -1099,7 +1120,7 @@ class DesignSpecificationDeviation {
     String? id,
     this.specificationId = '',
     this.description = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String specificationId;
@@ -1107,7 +1128,7 @@ class DesignSpecificationDeviation {
 
   factory DesignSpecificationDeviation.fromJson(Map<String, dynamic> json) {
     return DesignSpecificationDeviation(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       specificationId: json['specificationId']?.toString() ??
           json['linkedSpecificationId']?.toString() ??
           '',
@@ -1134,7 +1155,7 @@ class DesignPlanningReferenceDoc {
     this.fileName = '',
     this.storagePath = '',
     this.notes = '',
-  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+  })  : id = id ?? _nextUniqueId(),
         attachedRequirementIds = attachedRequirementIds ?? [];
 
   final String id;
@@ -1148,7 +1169,7 @@ class DesignPlanningReferenceDoc {
 
   factory DesignPlanningReferenceDoc.fromJson(Map<String, dynamic> json) {
     return DesignPlanningReferenceDoc(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Standards',
       attachedRequirementIds: (json['attachedRequirementIds'] as List?)
@@ -1186,7 +1207,7 @@ class DesignRiskEntry {
     this.mitigation = '',
     this.owner = '',
     this.status = 'Open',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String risk;
@@ -1209,7 +1230,7 @@ class DesignRiskEntry {
 
   factory DesignRiskEntry.fromJson(Map<String, dynamic> json) {
     return DesignRiskEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       risk: json['risk']?.toString() ?? '',
       impact: json['impact']?.toString() ?? '',
       likelihood: json['likelihood']?.toString() ?? '',
@@ -1240,7 +1261,7 @@ class DesignDependencyEntry {
     this.owner = '',
     this.status = 'Planned',
     this.notes = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String name;
@@ -1253,7 +1274,7 @@ class DesignDependencyEntry {
 
   factory DesignDependencyEntry.fromJson(Map<String, dynamic> json) {
     return DesignDependencyEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       name: json['name']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       source: json['source']?.toString() ?? '',
@@ -1285,7 +1306,7 @@ class DesignDecisionEntry {
     this.owner = '',
     this.date = '',
     this.status = 'Open',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String decision;
@@ -1297,7 +1318,7 @@ class DesignDecisionEntry {
 
   factory DesignDecisionEntry.fromJson(Map<String, dynamic> json) {
     return DesignDecisionEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       decision: json['decision']?.toString() ?? '',
       rationale: json['rationale']?.toString() ?? '',
       alternatives: json['alternatives']?.toString() ?? '',
@@ -1325,7 +1346,7 @@ class DesignApprovalEntry {
     this.role = '',
     this.status = 'Pending',
     this.comment = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  }) : id = id ?? _nextUniqueId();
 
   final String id;
   String reviewer;
@@ -1335,7 +1356,7 @@ class DesignApprovalEntry {
 
   factory DesignApprovalEntry.fromJson(Map<String, dynamic> json) {
     return DesignApprovalEntry(
-      id: json['id']?.toString(),
+      id: _nonEmptyId(json['id']?.toString()),
       reviewer: json['reviewer']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Pending',

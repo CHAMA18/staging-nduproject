@@ -138,6 +138,7 @@ class ProjectDataModel {
 
   // Cost Estimate Data
   List<CostEstimateItem> costEstimateItems;
+  double managementReserve;
 
   // IT Considerations Data
   ITConsiderationsData? itConsiderationsData;
@@ -260,6 +261,7 @@ class ProjectDataModel {
     List<LaunchChecklistItem>? launchChecklistItems,
     this.costAnalysisData,
     List<CostEstimateItem>? costEstimateItems,
+    this.managementReserve = 0.0,
     List<WorkPackage>? workPackages,
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
@@ -419,6 +421,7 @@ class ProjectDataModel {
     List<LaunchChecklistItem>? launchChecklistItems,
     CostAnalysisData? costAnalysisData,
     List<CostEstimateItem>? costEstimateItems,
+    double? managementReserve,
     ITConsiderationsData? itConsiderationsData,
     InfrastructureConsiderationsData? infrastructureConsiderationsData,
     CoreStakeholdersData? coreStakeholdersData,
@@ -549,6 +552,7 @@ class ProjectDataModel {
       launchChecklistItems: launchChecklistItems ?? this.launchChecklistItems,
       costAnalysisData: costAnalysisData ?? this.costAnalysisData,
       costEstimateItems: costEstimateItems ?? this.costEstimateItems,
+      managementReserve: managementReserve ?? this.managementReserve,
       itConsiderationsData: itConsiderationsData ?? this.itConsiderationsData,
       infrastructureConsiderationsData: infrastructureConsiderationsData ??
           this.infrastructureConsiderationsData,
@@ -692,6 +696,7 @@ class ProjectDataModel {
         'costAnalysisData': costAnalysisData!.toJson(),
       'costEstimateItems':
           costEstimateItems.map((item) => item.toJson()).toList(),
+      'managementReserve': managementReserve,
       if (itConsiderationsData != null)
         'itConsiderationsData': itConsiderationsData!.toJson(),
       if (infrastructureConsiderationsData != null)
@@ -950,6 +955,8 @@ class ProjectDataModel {
           safeParseSingle('costAnalysisData', CostAnalysisData.fromJson),
       costEstimateItems:
           safeParseList('costEstimateItems', CostEstimateItem.fromJson),
+      managementReserve:
+          (json['managementReserve'] is num) ? (json['managementReserve'] as num).toDouble() : 0.0,
       itConsiderationsData: safeParseSingle(
           'itConsiderationsData', ITConsiderationsData.fromJson),
       infrastructureConsiderationsData: safeParseSingle(
@@ -3225,6 +3232,15 @@ class CostEstimateItem {
   // Contingency
   double contingencyPercent;
   double contingencyAmount;
+  // Structured BOE fields (P1)
+  String scopeIncluded;
+  String scopeExcluded;
+  String designMaturity; // '10%' | '30%' | '60%' | '90%' | 'IFC' | 'AsBuilt' | ''
+  String designMaturityNote;
+  String rateSource; // 'vendor_quote' | 'historical' | 'published_index' | 'benchmark' | 'expert_judgment' | ''
+  // PERT risk ranges (P1)
+  double rangeLow;
+  double rangeHigh;
   // Contract linkage
   String contractId;
   String quoteReference;
@@ -3251,10 +3267,23 @@ class CostEstimateItem {
     this.unitOfMeasure = '',
     this.contingencyPercent = 0,
     this.contingencyAmount = 0,
+    this.scopeIncluded = '',
+    this.scopeExcluded = '',
+    this.designMaturity = '',
+    this.designMaturityNote = '',
+    this.rateSource = '',
+    this.rangeLow = 0,
+    this.rangeHigh = 0,
     this.contractId = '',
     this.quoteReference = '',
     this.reconciliationReference = '',
   }) : id = id ?? _generateId();
+
+  double get pertMean => (rangeLow > 0 && rangeHigh > 0 && amount > 0)
+      ? (rangeLow + 4 * amount + rangeHigh) / 6
+      : amount;
+
+  double get pertExposure => pertMean - amount;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3277,6 +3306,13 @@ class CostEstimateItem {
         'unitOfMeasure': unitOfMeasure,
         'contingencyPercent': contingencyPercent,
         'contingencyAmount': contingencyAmount,
+        'scopeIncluded': scopeIncluded,
+        'scopeExcluded': scopeExcluded,
+        'designMaturity': designMaturity,
+        'designMaturityNote': designMaturityNote,
+        'rateSource': rateSource,
+        'rangeLow': rangeLow,
+        'rangeHigh': rangeHigh,
         'contractId': contractId,
         'quoteReference': quoteReference,
         'reconciliationReference': reconciliationReference,
@@ -3313,6 +3349,17 @@ class CostEstimateItem {
       contingencyAmount: json['contingencyAmount'] is num
           ? (json['contingencyAmount'] as num).toDouble()
           : double.tryParse(json['contingencyAmount']?.toString() ?? '') ?? 0,
+      scopeIncluded: json['scopeIncluded']?.toString() ?? '',
+      scopeExcluded: json['scopeExcluded']?.toString() ?? '',
+      designMaturity: json['designMaturity']?.toString() ?? '',
+      designMaturityNote: json['designMaturityNote']?.toString() ?? '',
+      rateSource: json['rateSource']?.toString() ?? '',
+      rangeLow: json['rangeLow'] is num
+          ? (json['rangeLow'] as num).toDouble()
+          : double.tryParse(json['rangeLow']?.toString() ?? '') ?? 0,
+      rangeHigh: json['rangeHigh'] is num
+          ? (json['rangeHigh'] as num).toDouble()
+          : double.tryParse(json['rangeHigh']?.toString() ?? '') ?? 0,
       contractId: json['contractId']?.toString() ?? '',
       quoteReference: json['quoteReference']?.toString() ?? '',
       reconciliationReference:
@@ -3366,11 +3413,25 @@ class WorkPackage {
   String areaOrSystem;
   String contractorOrCrew;
   String releaseStatus;
+  /// Date when the EWP was released for execution (Guide Step 2 / Fix 1.4).
+  /// Null means not yet released. Only set when releaseStatus is 'released'.
+  String? releaseForExecutionDate;
+  /// IDs of design specification rows from DesignPlanningDocument
+  /// that are linked to this package (Guide Step 2 / Fix 1.2).
+  /// For EWPs, these are the specs this package must produce deliverables for.
+  /// For procurement packages, these are specs whose deliverables feed this package.
+  List<String> linkedDesignSpecificationIds;
   PackageReadinessChecklist readiness;
   PackageEstimateBasis estimateBasis;
   PackageProcurementBreakdown procurementBreakdown;
   List<String> readinessWarnings;
   String notes;
+
+  /// Whether this EWP has been released for execution.
+  /// An EWP is releasable when all required deliverables are complete
+  /// and readiness checks pass (Guide Step 2).
+  bool get isReleasedForExecution =>
+      releaseStatus == 'released' || releaseStatus == 'complete';
 
   WorkPackage({
     String? id,
@@ -3411,6 +3472,8 @@ class WorkPackage {
     this.areaOrSystem = '',
     this.contractorOrCrew = '',
     this.releaseStatus = 'draft',
+    this.releaseForExecutionDate,
+    List<String>? linkedDesignSpecificationIds,
     PackageReadinessChecklist? readiness,
     PackageEstimateBasis? estimateBasis,
     PackageProcurementBreakdown? procurementBreakdown,
@@ -3427,6 +3490,8 @@ class WorkPackage {
         requirementIds = requirementIds ?? [],
         deliverables = deliverables ?? [],
         procurementItemIds = procurementItemIds ?? [],
+        linkedDesignSpecificationIds =
+            linkedDesignSpecificationIds ?? [],
         readiness = readiness ?? PackageReadinessChecklist(),
         estimateBasis = estimateBasis ?? PackageEstimateBasis(),
         procurementBreakdown =
@@ -3472,6 +3537,8 @@ class WorkPackage {
         'areaOrSystem': areaOrSystem,
         'contractorOrCrew': contractorOrCrew,
         'releaseStatus': releaseStatus,
+        'releaseForExecutionDate': releaseForExecutionDate,
+        'linkedDesignSpecificationIds': linkedDesignSpecificationIds,
         'readiness': readiness.toJson(),
         'estimateBasis': estimateBasis.toJson(),
         'procurementBreakdown': procurementBreakdown.toJson(),
@@ -3556,6 +3623,13 @@ class WorkPackage {
       areaOrSystem: json['areaOrSystem']?.toString() ?? '',
       contractorOrCrew: json['contractorOrCrew']?.toString() ?? '',
       releaseStatus: json['releaseStatus']?.toString() ?? 'draft',
+      releaseForExecutionDate:
+          json['releaseForExecutionDate']?.toString(),
+      linkedDesignSpecificationIds:
+          (json['linkedDesignSpecificationIds'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
       readiness: json['readiness'] is Map
           ? PackageReadinessChecklist.fromJson(
               Map<String, dynamic>.from(json['readiness'] as Map),
@@ -3617,6 +3691,8 @@ class WorkPackage {
     String? areaOrSystem,
     String? contractorOrCrew,
     String? releaseStatus,
+    String? releaseForExecutionDate,
+    List<String>? linkedDesignSpecificationIds,
     PackageReadinessChecklist? readiness,
     PackageEstimateBasis? estimateBasis,
     PackageProcurementBreakdown? procurementBreakdown,
@@ -3666,6 +3742,11 @@ class WorkPackage {
       areaOrSystem: areaOrSystem ?? this.areaOrSystem,
       contractorOrCrew: contractorOrCrew ?? this.contractorOrCrew,
       releaseStatus: releaseStatus ?? this.releaseStatus,
+      releaseForExecutionDate:
+          releaseForExecutionDate ?? this.releaseForExecutionDate,
+      linkedDesignSpecificationIds:
+          linkedDesignSpecificationIds ??
+              this.linkedDesignSpecificationIds,
       readiness: readiness ?? this.readiness,
       estimateBasis: estimateBasis ?? this.estimateBasis,
       procurementBreakdown: procurementBreakdown ?? this.procurementBreakdown,
@@ -3682,6 +3763,19 @@ class PackageDeliverable {
   String status;
   String reference;
   String notes;
+  /// IDs of procurement packages that this deliverable feeds into.
+  /// Enables design-to-procurement traceability (Guide Step 3):
+  /// each EWP output that must be purchased or contracted links
+  /// directly to the procurement package it triggers.
+  List<String> feedsProcurementPackageIds;
+  /// IDs of design specification rows from DesignPlanningDocument
+  /// that this deliverable fulfills. Provides traceability from
+  /// design specifications → EWP deliverables.
+  List<String> linkedSpecificationIds;
+  /// Whether this deliverable is required for procurement.
+  /// When true, the linked procurement package cannot start
+  /// until this deliverable reaches 'released' status.
+  bool requiredForProcurement;
 
   PackageDeliverable({
     String? id,
@@ -3690,7 +3784,15 @@ class PackageDeliverable {
     this.status = 'planned',
     this.reference = '',
     this.notes = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    List<String>? feedsProcurementPackageIds,
+    List<String>? linkedSpecificationIds,
+    this.requiredForProcurement = false,
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        feedsProcurementPackageIds = feedsProcurementPackageIds ?? [],
+        linkedSpecificationIds = linkedSpecificationIds ?? [];
+
+  /// Whether this deliverable has been released for execution.
+  bool get isReleased => status == 'released' || status == 'complete';
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3699,6 +3801,9 @@ class PackageDeliverable {
         'status': status,
         'reference': reference,
         'notes': notes,
+        'feedsProcurementPackageIds': feedsProcurementPackageIds,
+        'linkedSpecificationIds': linkedSpecificationIds,
+        'requiredForProcurement': requiredForProcurement,
       };
 
   factory PackageDeliverable.fromJson(Map<String, dynamic> json) {
@@ -3709,6 +3814,16 @@ class PackageDeliverable {
       status: json['status']?.toString() ?? 'planned',
       reference: json['reference']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
+      feedsProcurementPackageIds:
+          (json['feedsProcurementPackageIds'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
+      linkedSpecificationIds: (json['linkedSpecificationIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      requiredForProcurement: json['requiredForProcurement'] == true,
     );
   }
 }
@@ -3875,6 +3990,35 @@ class PackageEstimateBasis {
       risksAndContingency: json['risksAndContingency']?.toString() ?? '',
     );
   }
+
+  PackageEstimateBasis copyWith({
+    String? method,
+    String? sourceData,
+    List<String>? assumptions,
+    String? productivityBasis,
+    String? resourceBasis,
+    String? workingCalendar,
+    String? procurementLeadTimeBasis,
+    String? reviewAllowance,
+    String? confidenceLevel,
+    List<String>? exclusions,
+    String? risksAndContingency,
+  }) {
+    return PackageEstimateBasis(
+      method: method ?? this.method,
+      sourceData: sourceData ?? this.sourceData,
+      assumptions: assumptions ?? this.assumptions,
+      productivityBasis: productivityBasis ?? this.productivityBasis,
+      resourceBasis: resourceBasis ?? this.resourceBasis,
+      workingCalendar: workingCalendar ?? this.workingCalendar,
+      procurementLeadTimeBasis:
+          procurementLeadTimeBasis ?? this.procurementLeadTimeBasis,
+      reviewAllowance: reviewAllowance ?? this.reviewAllowance,
+      confidenceLevel: confidenceLevel ?? this.confidenceLevel,
+      exclusions: exclusions ?? this.exclusions,
+      risksAndContingency: risksAndContingency ?? this.risksAndContingency,
+    );
+  }
 }
 
 class PackageProcurementBreakdown {
@@ -3928,6 +4072,30 @@ class PackageProcurementBreakdown {
       activities:
           (json['activities'] as List?)?.map((e) => e.toString()).toList() ??
               [],
+    );
+  }
+
+  PackageProcurementBreakdown copyWith({
+    String? category,
+    String? scopeDefinition,
+    int? leadTimeDays,
+    String? rfqDate,
+    String? awardDate,
+    String? deliveryDate,
+    String? requiredByMilestoneId,
+    String? vendorScope,
+    List<String>? activities,
+  }) {
+    return PackageProcurementBreakdown(
+      category: category ?? this.category,
+      scopeDefinition: scopeDefinition ?? this.scopeDefinition,
+      leadTimeDays: leadTimeDays ?? this.leadTimeDays,
+      rfqDate: rfqDate ?? this.rfqDate,
+      awardDate: awardDate ?? this.awardDate,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
+      requiredByMilestoneId: requiredByMilestoneId ?? this.requiredByMilestoneId,
+      vendorScope: vendorScope ?? this.vendorScope,
+      activities: activities ?? this.activities,
     );
   }
 }
@@ -4553,35 +4721,115 @@ class DebtItem {
 class DebtInsight {
   String title;
   String subtitle;
+  String evidence;
+  String control;
+  String tier;
+  int colorValue;
 
-  DebtInsight({this.title = '', this.subtitle = ''});
+  DebtInsight({
+    this.title = '',
+    this.subtitle = '',
+    this.evidence = '',
+    this.control = '',
+    this.tier = 'Medium',
+    this.colorValue = 0xFF6366F1,
+  });
 
-  Map<String, dynamic> toJson() => {'title': title, 'subtitle': subtitle};
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+        'evidence': evidence,
+        'control': control,
+        'tier': tier,
+        'colorValue': colorValue,
+      };
 
   factory DebtInsight.fromJson(Map<String, dynamic> json) => DebtInsight(
         title: json['title'] ?? '',
         subtitle: json['subtitle'] ?? '',
+        evidence: json['evidence'] ?? '',
+        control: json['control'] ?? '',
+        tier: json['tier'] ?? 'Medium',
+        colorValue: json['colorValue'] ?? 0xFF6366F1,
+      );
+
+  DebtInsight copyWith({
+    String? title,
+    String? subtitle,
+    String? evidence,
+    String? control,
+    String? tier,
+    int? colorValue,
+  }) =>
+      DebtInsight(
+        title: title ?? this.title,
+        subtitle: subtitle ?? this.subtitle,
+        evidence: evidence ?? this.evidence,
+        control: control ?? this.control,
+        tier: tier ?? this.tier,
+        colorValue: colorValue ?? this.colorValue,
       );
 }
 
 class RemediationTrack {
   String label;
+  String secondary;
+  String exitCriteria;
+  String evidence;
+  String ownerCadence;
   double progress;
   int colorValue;
 
-  RemediationTrack(
-      {this.label = '', this.progress = 0.0, this.colorValue = 0xFF6366F1});
+  RemediationTrack({
+    this.label = '',
+    this.secondary = '',
+    this.exitCriteria = '',
+    this.evidence = '',
+    this.ownerCadence = '',
+    this.progress = 0.0,
+    this.colorValue = 0xFF6366F1,
+  });
 
-  Map<String, dynamic> toJson() =>
-      {'label': label, 'progress': progress, 'colorValue': colorValue};
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'secondary': secondary,
+        'exitCriteria': exitCriteria,
+        'evidence': evidence,
+        'ownerCadence': ownerCadence,
+        'progress': progress,
+        'colorValue': colorValue,
+      };
 
   factory RemediationTrack.fromJson(Map<String, dynamic> json) =>
       RemediationTrack(
         label: json['label'] ?? '',
+        secondary: json['secondary'] ?? '',
+        exitCriteria: json['exitCriteria'] ?? '',
+        evidence: json['evidence'] ?? '',
+        ownerCadence: json['ownerCadence'] ?? '',
         progress: (json['progress'] is num)
             ? (json['progress'] as num).toDouble()
             : 0.0,
         colorValue: json['colorValue'] ?? 0xFF6366F1,
+      );
+
+  RemediationTrack copyWith({
+    String? label,
+    String? secondary,
+    String? exitCriteria,
+    String? evidence,
+    String? ownerCadence,
+    double? progress,
+    int? colorValue,
+  }) =>
+      RemediationTrack(
+        label: label ?? this.label,
+        secondary: secondary ?? this.secondary,
+        exitCriteria: exitCriteria ?? this.exitCriteria,
+        evidence: evidence ?? this.evidence,
+        ownerCadence: ownerCadence ?? this.ownerCadence,
+        progress: progress ?? this.progress,
+        colorValue: colorValue ?? this.colorValue,
       );
 }
 
@@ -4589,15 +4837,58 @@ class OwnerItem {
   String name;
   String count;
   String note;
+  String workstream;
+  String scope;
+  String coverage;
+  String escalation;
 
-  OwnerItem({this.name = '', this.count = '', this.note = ''});
+  OwnerItem({
+    this.name = '',
+    this.count = '1',
+    this.note = '',
+    this.workstream = '',
+    this.scope = '',
+    this.coverage = '',
+    this.escalation = '',
+  });
 
-  Map<String, dynamic> toJson() => {'name': name, 'count': count, 'note': note};
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'count': count,
+        'note': note,
+        'workstream': workstream,
+        'scope': scope,
+        'coverage': coverage,
+        'escalation': escalation,
+      };
 
   factory OwnerItem.fromJson(Map<String, dynamic> json) => OwnerItem(
         name: json['name'] ?? '',
-        count: json['count'] ?? '',
+        count: json['count'] ?? '1',
         note: json['note'] ?? '',
+        workstream: json['workstream'] ?? '',
+        scope: json['scope'] ?? '',
+        coverage: json['coverage'] ?? '',
+        escalation: json['escalation'] ?? '',
+      );
+
+  OwnerItem copyWith({
+    String? name,
+    String? count,
+    String? note,
+    String? workstream,
+    String? scope,
+    String? coverage,
+    String? escalation,
+  }) =>
+      OwnerItem(
+        name: name ?? this.name,
+        count: count ?? this.count,
+        note: note ?? this.note,
+        workstream: workstream ?? this.workstream,
+        scope: scope ?? this.scope,
+        coverage: coverage ?? this.coverage,
+        escalation: escalation ?? this.escalation,
       );
 }
 

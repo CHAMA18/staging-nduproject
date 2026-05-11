@@ -57,6 +57,9 @@ import 'package:ndu_project/screens/risk_assessment_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/screens/progress_tracking_screen.dart';
+import 'package:ndu_project/screens/deliverable_status_updates_screen.dart';
+import 'package:ndu_project/screens/recurring_deliverables_screen.dart';
+import 'package:ndu_project/screens/status_reports_screen.dart';
 import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
 import 'package:ndu_project/screens/execution_plan_interface_management_overview_screen.dart';
 import 'package:ndu_project/screens/project_decision_summary_screen.dart';
@@ -292,10 +295,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     ..._organizationPlanLabels,
     'SSHER',
     'Quality Management',
-    ..._executionPlanLabels,
     'Design Planning',
     ..._technologyPlanningLabels,
     'Interface Management',
+    ..._executionPlanLabels,
     'Risk Assessment',
     'Contract',
     'Contract Planning',
@@ -345,10 +348,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   static bool? _sharedProjectServicesExpanded;
   static double _sharedScrollOffset = 0;
 
-  late bool _initiationExpanded = _sharedInitiationExpanded ?? true;
-  late bool _businessCaseExpanded = _sharedBusinessCaseExpanded ?? true;
-  late bool _frontEndExpanded = _sharedFrontEndExpanded ?? true;
-  late bool _executionPlanExpanded = _sharedExecutionPlanExpanded ?? false;
+  bool _initiationExpanded = _sharedInitiationExpanded ?? true;
+  bool _businessCaseExpanded = _sharedBusinessCaseExpanded ?? true;
+  bool _frontEndExpanded = _sharedFrontEndExpanded ?? true;
+  bool _executionPlanExpanded = _sharedExecutionPlanExpanded ?? false;
   late bool _technologyPlanningExpanded =
       _sharedTechnologyPlanningExpanded ?? false;
   late bool _planningPhaseExpanded = _sharedPlanningPhaseExpanded ?? false;
@@ -383,7 +386,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   bool _expandForActiveLabel() {
     bool changed = false;
 
-    void expandIf(Set<String> labels, bool currentValue, void Function() apply) {
+    void expandIf(
+        Set<String> labels, bool currentValue, void Function() apply) {
       if (_activeIn(labels) && !currentValue) {
         apply();
         changed = true;
@@ -414,13 +418,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       _organizationPlanExpanded = true;
       _sharedOrganizationPlanExpanded = true;
     });
-    expandIf(_executionPlanLabels, _executionPlanExpanded, () {
-      _executionPlanExpanded = true;
-      _sharedExecutionPlanExpanded = true;
-    });
     expandIf(_technologyPlanningLabels, _technologyPlanningExpanded, () {
       _technologyPlanningExpanded = true;
       _sharedTechnologyPlanningExpanded = true;
+    });
+    expandIf(_executionPlanLabels, _executionPlanExpanded, () {
+      _executionPlanExpanded = true;
+      _sharedExecutionPlanExpanded = true;
     });
     expandIf(_costEstimateLabels, _costEstimateExpanded, () {
       _costEstimateExpanded = true;
@@ -607,6 +611,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       'interface_management',
       'startup_planning',
       'deliverable_roadmap',
+      'deliverables_roadmap',
       'agile_project_baseline',
       'project_baseline',
       'organization_roles_responsibilities',
@@ -1140,6 +1145,20 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   void _openProgressTracking() {
     _navigateWithCheckpoint(
         'progress_tracking', const ProgressTrackingScreen());
+  }
+
+  void _openDeliverableStatusUpdates() {
+    _navigateWithCheckpoint(
+        'deliverable_status_updates', const DeliverableStatusUpdatesScreen());
+  }
+
+  void _openRecurringDeliverables() {
+    _navigateWithCheckpoint(
+        'recurring_deliverables', const RecurringDeliverablesScreen());
+  }
+
+  void _openStatusReports() {
+    _navigateWithCheckpoint('status_reports', const StatusReportsScreen());
   }
 
   void _openGapAnalysisAndScopeReconcillation() {
@@ -2088,6 +2107,31 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Quality Management',
             onTap: _openQualityManagement,
             isActive: widget.activeItemLabel == 'Quality Management'),
+        _buildSubMenuItem('Design Planning',
+            onTap: _openDesign,
+            isActive: widget.activeItemLabel == 'Design Planning'),
+        _buildSubExpandableHeader(
+          'Technology Planning',
+          expanded: _technologyPlanningExpanded,
+          onTap: () => setState(() {
+            _technologyPlanningExpanded = !_technologyPlanningExpanded;
+            _sharedTechnologyPlanningExpanded = _technologyPlanningExpanded;
+          }),
+          isActive: _activeIn(_technologyPlanningLabels),
+        ),
+        if (_technologyPlanningExpanded) ...[
+          _buildSubSubMenuItem(
+            'Technology Planning Overview',
+            onTap: _openTechnology,
+            isActive: widget.activeItemLabel == 'Technology Planning',
+          ),
+        ],
+        _buildSubMenuItem(
+          'Interface Management',
+          onTap: lockInterfaceManagement ? null : _openInterfaceManagement,
+          isActive: widget.activeItemLabel == 'Interface Management',
+          isDisabled: lockInterfaceManagement,
+        ),
         _buildSubExpandableHeader(
           'Execution Plan',
           expanded: _executionPlanExpanded,
@@ -2121,8 +2165,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           _buildSubSubMenuItem(
             'Execution Enabling Work Plan',
             onTap: _openExecutionEnablingWorkPlan,
-            isActive:
-                widget.activeItemLabel == 'Execution Enabling Work Plan',
+            isActive: widget.activeItemLabel == 'Execution Enabling Work Plan',
           ),
           _buildSubSubMenuItem(
             'Execution Issue Management',
@@ -2144,18 +2187,20 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           _buildSubSubMenuItem(
             'Lessons Learned',
             onTap: _openExecutionPlanLessonsLearned,
-            isActive: widget.activeItemLabel == 'Execution Plan - Lesson Learned',
+            isActive:
+                widget.activeItemLabel == 'Execution Plan - Lesson Learned',
           ),
           _buildSubSubMenuItem(
             'Best Practices',
             onTap: _openExecutionPlanBestPractices,
-            isActive: widget.activeItemLabel == 'Execution Plan - Best Practices',
+            isActive:
+                widget.activeItemLabel == 'Execution Plan - Best Practices',
           ),
           _buildSubSubMenuItem(
             'Interface Management',
             onTap: _openExecutionPlanInterfaceManagement,
-            isActive:
-                widget.activeItemLabel == 'Execution Plan - Interface Management',
+            isActive: widget.activeItemLabel ==
+                'Execution Plan - Interface Management',
           ),
           _buildSubSubMenuItem(
             'Communication Plan',
@@ -2176,31 +2221,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 'Execution Plan - Interface Management Overview',
           ),
         ],
-        _buildSubMenuItem('Design Planning',
-            onTap: _openDesign,
-            isActive: widget.activeItemLabel == 'Design Planning'),
-        _buildSubExpandableHeader(
-          'Technology Planning',
-          expanded: _technologyPlanningExpanded,
-          onTap: () => setState(() {
-            _technologyPlanningExpanded = !_technologyPlanningExpanded;
-            _sharedTechnologyPlanningExpanded = _technologyPlanningExpanded;
-          }),
-          isActive: _activeIn(_technologyPlanningLabels),
-        ),
-        if (_technologyPlanningExpanded) ...[
-          _buildSubSubMenuItem(
-            'Technology Planning Overview',
-            onTap: _openTechnology,
-            isActive: widget.activeItemLabel == 'Technology Planning',
-          ),
-        ],
-        _buildSubMenuItem(
-          'Interface Management',
-          onTap: lockInterfaceManagement ? null : _openInterfaceManagement,
-          isActive: widget.activeItemLabel == 'Interface Management',
-          isDisabled: lockInterfaceManagement,
-        ),
         _buildSubMenuItem('Risk Assessment',
             onTap: _openRiskAssessment,
             isActive: widget.activeItemLabel == 'Risk Assessment'),
@@ -2454,13 +2474,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         ),
         if (_progressTrackingExpanded) ...[
           _buildSubSubMenuItem('Deliverable Status Updates',
-              onTap: _openProgressTracking,
+              onTap: _openDeliverableStatusUpdates,
               isActive: widget.activeItemLabel == 'Deliverable Status Updates'),
           _buildSubSubMenuItem('Recurring Deliverables',
-              onTap: _openProgressTracking,
+              onTap: _openRecurringDeliverables,
               isActive: widget.activeItemLabel == 'Recurring Deliverables'),
           _buildSubSubMenuItem('Status Reports',
-              onTap: _openProgressTracking,
+              onTap: _openStatusReports,
               isActive: widget.activeItemLabel == 'Status Reports'),
         ],
         _buildSubMenuItem('Contracts Tracking',
@@ -3152,6 +3172,25 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           Icons.track_changes_outlined, 'Progress Tracking',
           onTap: _openProgressTracking,
           isActive: widget.activeItemLabel == 'Progress Tracking'));
+    }
+    if ('deliverable status updates'.contains(query) ||
+        'deliverable updates'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.inventory_2_outlined, 'Deliverable Status Updates',
+          onTap: _openDeliverableStatusUpdates,
+          isActive: widget.activeItemLabel == 'Deliverable Status Updates'));
+    }
+    if ('recurring deliverables'.contains(query) ||
+        'recurring'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.repeat_outlined, 'Recurring Deliverables',
+          onTap: _openRecurringDeliverables,
+          isActive: widget.activeItemLabel == 'Recurring Deliverables'));
+    }
+    if ('status reports'.contains(query) || 'reports'.contains(query)) {
+      results.add(_buildMenuItem(Icons.description_outlined, 'Status Reports',
+          onTap: _openStatusReports,
+          isActive: widget.activeItemLabel == 'Status Reports'));
     }
     if ('gap analysis'.contains(query) ||
         'scope reconciliation'.contains(query) ||

@@ -19,8 +19,8 @@ import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/screens/quality_management_screen.dart';
-import 'package:ndu_project/screens/design_planning_screen.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 const Map<String, String> _executionCheckpointAlias = {
   'execution_plan_outline': 'execution_plan',
@@ -94,13 +94,10 @@ class _ExecutionPlanScreenState extends State<ExecutionPlanScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ExecutionPlanHeader(
-                      onBack: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const QualityManagementScreen()),
-                      ),
-                      onNext: () =>
-                          ExecutionPlanConstructionPlanScreen.open(context),
+                      onBack: () => PlanningPhaseNavigation.goToPrevious(
+                          context, 'execution_plan_construction_plan'),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'execution_plan_construction_plan'),
                     ),
                     const SizedBox(height: 32),
                     const _SectionIntro(),
@@ -124,8 +121,7 @@ class _ExecutionPlanScreenState extends State<ExecutionPlanScreen> {
                           _YellowActionButton(
                             label: 'Next',
                             onPressed: () =>
-                                ExecutionPlanConstructionPlanScreen.open(
-                                    context),
+                                PlanningPhaseNavigation.goToNext(context, 'execution_plan_construction_plan'),
                           ),
                         ],
                       ),
@@ -3841,13 +3837,10 @@ class ExecutionPlanConstructionPlanScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ExecutionPlanHeader(
-                      onBack: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ExecutionPlanScreen()),
-                      ),
-                      onNext: () =>
-                          ExecutionPlanInfrastructurePlanScreen.open(context),
+                      onBack: () => PlanningPhaseNavigation.goToPrevious(
+                          context, 'execution_plan_construction_plan'),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'execution_plan_construction_plan'),
                     ),
                     const SizedBox(height: 32),
                     const _SectionIntro(
@@ -4046,14 +4039,10 @@ class ExecutionPlanInfrastructurePlanScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ExecutionPlanHeader(
-                      onBack: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                const ExecutionPlanConstructionPlanScreen()),
-                      ),
-                      onNext: () =>
-                          ExecutionPlanAgileDeliveryPlanScreen.open(context),
+                      onBack: () => PlanningPhaseNavigation.goToPrevious(
+                          context, 'execution_plan_infrastructure_plan'),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'execution_plan_infrastructure_plan'),
                     ),
                     const SizedBox(height: 32),
                     const _SectionIntro(
@@ -4554,17 +4543,10 @@ class ExecutionPlanAgileDeliveryPlanScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ExecutionPlanHeader(
-                      onBack: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                const ExecutionPlanInfrastructurePlanScreen()),
-                      ),
-                      onNext: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const DesignPlanningScreen()),
-                      ),
+                      onBack: () => PlanningPhaseNavigation.goToPrevious(
+                          context, 'execution_plan_agile_delivery_plan'),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'execution_plan_agile_delivery_plan'),
                     ),
                     const SizedBox(height: 32),
                     const _SectionIntro(
@@ -4684,10 +4666,8 @@ class _AgileDeliveryPlanSection extends StatelessWidget {
             const SizedBox(width: 16),
             _YellowActionButton(
               label: 'Next',
-              onPressed: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const DesignPlanningScreen()),
-              ),
+              onPressed: () => PlanningPhaseNavigation.goToNext(
+                  context, 'execution_plan_agile_delivery_plan'),
             ),
           ],
         ),

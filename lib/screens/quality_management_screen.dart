@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/screens/execution_plan_screen.dart';
-import 'package:ndu_project/screens/ssher_stacked_screen.dart';
+
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -12,6 +11,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 enum _QualityTab { plan, targets, qaTracking, qcTracking, metrics }
 
@@ -353,31 +353,14 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                         _TabContent(selectedTab: _selectedTab),
                         const SizedBox(height: 28),
                         _NavigationRow(
-                          onBack: () async {
-                            await ProjectDataHelper.saveAndNavigate(
-                              context: context,
-                              checkpoint: 'quality_management',
-                              saveInBackground: true,
-                              nextScreenBuilder: () =>
-                                  const SsherStackedScreen(),
-                              dataUpdater: (data) => data,
-                              destinationCheckpoint: 'ssher',
-                              destinationName: 'SSHER',
-                            );
-                          },
-                          onNext: () async {
-                            await ProjectDataHelper.saveAndNavigate(
-                              context: context,
-                              checkpoint: 'quality_management',
-                              saveInBackground: true,
-                              nextScreenBuilder: () =>
-                                  const ExecutionPlanConstructionPlanScreen(),
-                              dataUpdater: (data) => data,
-                              destinationCheckpoint:
-                                  'execution_plan_construction_plan',
-                              destinationName: 'Construction Plan',
-                            );
-                          },
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                            context,
+                            'quality_management',
+                          ),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                            context,
+                            'quality_management',
+                          ),
                         ),
                         const SizedBox(height: 48),
                       ],
@@ -438,7 +421,7 @@ class _NavigationRow extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back, size: 16),
-          label: const Text('Back to SSHER'),
+          label: Text(PlanningPhaseNavigation.backLabel('quality_management')),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF374151),
@@ -452,7 +435,7 @@ class _NavigationRow extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: onNext,
           icon: const Icon(Icons.arrow_forward, size: 16),
-          label: const Text('Next: Construction Plan'),
+          label: Text(PlanningPhaseNavigation.nextLabel('quality_management')),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFFC044),
             foregroundColor: const Color(0xFF111827),

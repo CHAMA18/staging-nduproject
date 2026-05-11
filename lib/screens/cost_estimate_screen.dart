@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +16,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/s_curve_chart.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class CostEstimateScreen extends StatefulWidget {
@@ -41,10 +43,42 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     ),
   };
 
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
   _CostView _activeView = _CostView.indirect;
   _CostStateFilter _activeStateFilter = _CostStateFilter.all;
   bool _includeSupersededLines = false;
   _CostWorkspaceTab _activeTab = _CostWorkspaceTab.overview;
+  double _overheadRatePercent = 0;
   bool _loadedCostItems = false;
   bool _autoPopulated = false;
   bool _importingSources = false;
@@ -117,6 +151,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
       forecastTotal: forecastTotal,
       committedTotal: committedTotal,
       actualTotal: actualTotal,
+      managementReserve: projectData.managementReserve,
     );
     final sourceSummaries = _buildSourceSummaries(projectData);
     final validationSummary = _buildValidationSummary(projectData);
@@ -207,7 +242,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           onChanged: (tab) => setState(() => _activeTab = tab),
                         ),
                         const SizedBox(height: 24),
-                        _buildTabContent(
+                          _buildTabContent(
                           context,
                           projectData,
                           isMobile: isMobile,
@@ -222,6 +257,10 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           validationSummary: validationSummary,
                           reconciliationReport: reconciliationReport,
                           overviewRows: overviewRows,
+                          forecastItems: forecastItems,
+                          committedItems: committedItems,
+                          actualItems: actualItems,
+                          directTotal: directTotal,
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -263,6 +302,10 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     required _ValidationSummary validationSummary,
     required _ReconciliationReport reconciliationReport,
     required List<_OverviewRow> overviewRows,
+    required List<CostEstimateItem> forecastItems,
+    required List<CostEstimateItem> committedItems,
+    required List<CostEstimateItem> actualItems,
+    required double directTotal,
   }) {
     switch (_activeTab) {
       case _CostWorkspaceTab.overview:
@@ -277,6 +320,13 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
               sourceSummaries: sourceSummaries,
               validationSummary: validationSummary,
               reconciliationReport: reconciliationReport,
+            ),
+            const SizedBox(height: 24),
+            _BoeSummaryCard(items: projectData.costEstimateItems),
+            const SizedBox(height: 24),
+            _CostProfileCard(
+              items: projectData.costEstimateItems,
+              workPackages: projectData.workPackages,
             ),
           ],
         );
@@ -357,9 +407,25 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                 iconForItem: _iconForItem,
               ),
             ],
+            if (_activeView == _CostView.indirect) ...[
+              const SizedBox(height: 22),
+              _OverheadConfigCard(
+                ratePercent: _overheadRatePercent,
+                directBaseTotal: directTotal,
+                complexityIndex: _resolveComplexityIndex(projectData),
+                onRateChanged: (v) => setState(() => _overheadRatePercent = v),
+              ),
+            ],
             const SizedBox(height: 22),
             _TrailingSummaryCard(view: view),
           ],
+        );
+      case _CostWorkspaceTab.cbsTree:
+        return _CbsTreeWorkspace(
+          projectData: projectData,
+          forecastItems: forecastItems,
+          committedItems: committedItems,
+          actualItems: actualItems,
         );
       case _CostWorkspaceTab.sourceImports:
         return _SourceImportsTab(
@@ -369,11 +435,21 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           onValidate: _runValidation,
         );
       case _CostWorkspaceTab.contractsProcurement:
-        return _SourceDetailList(
-          title: 'Contracts & Procurement',
-          subtitle:
-              'Commercial sources that should reconcile to the estimate total.',
-          rows: _buildContractsProcurementRows(projectData),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ContractStrategyCard(
+              contracts: _contracts,
+              costItems: projectData.costEstimateItems,
+            ),
+            const SizedBox(height: 20),
+            _SourceDetailList(
+              title: 'Contracts & Procurement',
+              subtitle:
+                  'Commercial sources that should reconcile to the estimate total.',
+              rows: _buildContractsProcurementRows(projectData),
+            ),
+          ],
         );
       case _CostWorkspaceTab.staffingInfrastructure:
         return _SourceDetailList(
@@ -383,25 +459,14 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           rows: _buildStaffingInfrastructureRows(projectData),
         );
       case _CostWorkspaceTab.contingencyRisk:
-        return _SourceDetailList(
-          title: 'Contingency & Risk',
-          subtitle:
-              'Allowance and mitigation exposure that should be tracked separately from core delivery cost.',
+        return _ContingencyRiskPanel(
+          projectData: projectData,
+          forecastItems: forecastItems,
+          allItems: projectData.costEstimateItems,
           rows: _buildContingencyRiskRows(projectData),
         );
       case _CostWorkspaceTab.costVsSchedule:
-        return _CostVsScheduleWorkspace(
-          projectData: projectData,
-          onLinkEstimateItem: (item) => _showEditItem(context, item),
-          onAddLinkedEstimate: (
-              {String? workPackageId, String? scheduleActivityId}) {
-            return _showAddItem(
-              context,
-              initialWorkPackageId: workPackageId,
-              initialScheduleActivityId: scheduleActivityId,
-            );
-          },
-        );
+        return _CostVsScheduleWorkspace(projectData: projectData);
     }
   }
 
@@ -461,6 +526,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     required double forecastTotal,
     required double committedTotal,
     required double actualTotal,
+    required double managementReserve,
   }) {
     return [
       _CostSummary(
@@ -506,6 +572,17 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
         accentColor: const Color(0xFFB45309),
         descriptionColor: const Color(0xFFB45309),
         badgeLabel: total == 0 ? null : 'Planning',
+      ),
+      _CostSummary(
+        title: 'Management Reserve',
+        amount: managementReserve,
+        description: managementReserve == 0
+            ? 'No management reserve set'
+            : 'Separate from delivery forecast',
+        backgroundColor: const Color(0xFFF5F3FF),
+        accentColor: const Color(0xFF7C3AED),
+        descriptionColor: const Color(0xFF7C3AED),
+        badgeLabel: managementReserve == 0 ? null : 'Reserve',
       ),
     ];
   }
@@ -622,19 +699,13 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
     }
   }
 
-  Future<void> _showAddItem(
-    BuildContext context, {
-    String? initialWorkPackageId,
-    String? initialScheduleActivityId,
-  }) async {
+  Future<void> _showAddItem(BuildContext context) async {
     final provider = ProjectDataHelper.getProvider(context);
     final selected = await showDialog<CostEstimateItem>(
       context: context,
       builder: (dialogContext) => _AddCostItemDialog(
         initialView: _activeView,
         projectData: provider.projectData,
-        initialWorkPackageId: initialWorkPackageId,
-        initialScheduleActivityId: initialScheduleActivityId,
       ),
     );
 
@@ -717,6 +788,12 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
       return;
     }
 
+    final initialized = await _isSectionInitialized('cost_estimate_initialized');
+    if (initialized) {
+      _autoPopulated = true;
+      return;
+    }
+
     final baselineItems =
         _buildBaselineItemsFromInitiation(provider.projectData);
     if (baselineItems.isEmpty) {
@@ -732,6 +809,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
       await _persistCostItem(item);
     }
     _autoPopulated = true;
+    await _markSectionInitialized('cost_estimate_initialized');
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1113,6 +1191,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
         .collection('cost_estimate_items')
         .doc(item.id)
         .set(item.toJson(), SetOptions(merge: true));
+    await _markSectionInitialized('cost_estimate_initialized');
   }
 
   Future<void> _loadWorkspaceState() async {
@@ -2181,6 +2260,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
       _OverviewRow(label: 'Committed reference total', value: committedTotal),
       _OverviewRow(label: 'Actual reference total', value: actualTotal),
       _OverviewRow(label: 'Initiation baseline', value: baselineTotal),
+      _OverviewRow(label: 'Management reserve', value: data.managementReserve),
       _OverviewRow(
           label: 'Imported source coverage', value: importedSourcesTotal),
       _OverviewRow(label: 'Contractor estimates', value: contractorTotal),
@@ -2695,6 +2775,34 @@ class _CostStateBadge extends StatelessWidget {
   }
 }
 
+class _DesignMaturityBadge extends StatelessWidget {
+  const _DesignMaturityBadge({required this.designMaturity});
+
+  final String designMaturity;
+
+  @override
+  Widget build(BuildContext context) {
+    if (designMaturity.isEmpty) return const SizedBox.shrink();
+    final color = _designMaturityColor(designMaturity);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        _designMaturityLabel(designMaturity),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 class _SupersededToggle extends StatelessWidget {
   const _SupersededToggle({
     required this.enabled,
@@ -3047,6 +3155,545 @@ class _CoverageSummaryCard extends StatelessWidget {
   }
 }
 
+class _BoeSummaryCard extends StatelessWidget {
+  const _BoeSummaryCard({required this.items});
+
+  final List<CostEstimateItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final methods = <String, int>{};
+    final rateSources = <String, int>{};
+    final maturityLevels = <String, int>{};
+    int totalItems = items.length;
+    int documentedScope = 0;
+    int withEstimatingBasis = 0;
+
+    for (final item in items) {
+      methods[item.estimatingMethod] = (methods[item.estimatingMethod] ?? 0) + 1;
+      if (item.rateSource.isNotEmpty) {
+        rateSources[item.rateSource] = (rateSources[item.rateSource] ?? 0) + 1;
+      }
+      if (item.designMaturity.isNotEmpty) {
+        maturityLevels[item.designMaturity] = (maturityLevels[item.designMaturity] ?? 0) + 1;
+      }
+      if (item.scopeIncluded.isNotEmpty || item.scopeExcluded.isNotEmpty) {
+        documentedScope++;
+      }
+      if (item.estimatingBasis.isNotEmpty) {
+        withEstimatingBasis++;
+      }
+    }
+
+    final missingBasis = totalItems - withEstimatingBasis;
+    final missingScope = totalItems - documentedScope;
+
+    final methodLabels = <String, String>{
+      'bottoms_up': 'Bottom-Up',
+      'top_down': 'Top-Down',
+      'unit_rate': 'Unit Rate',
+      'analogous': 'Analogy',
+      'quote_based': 'Quote-Based',
+      'actual': 'Actual',
+      'allowance_release': 'Allowance',
+      'manual': 'Manual',
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Basis of Estimate Summary',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$totalItems items',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _boeColumn(
+                  'Estimating Methods',
+                  methods.entries
+                      .where((e) => e.value > 0)
+                      .map((e) => _boeRow(
+                            methodLabels[e.key] ?? e.key,
+                            e.value,
+                            totalItems,
+                          ))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _boeColumn(
+                  'Design Maturity',
+                  maturityLevels.entries
+                      .where((e) => e.value > 0)
+                      .map((e) => _boeRow(
+                            _designMaturityLabel(e.key),
+                            e.value,
+                            totalItems,
+                          ))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _boeColumn(
+                  'Rate Sources',
+                  rateSources.entries
+                      .where((e) => e.value > 0)
+                      .map((e) => _boeRow(
+                            _rateSourceLabel(e.key),
+                            e.value,
+                            totalItems,
+                          ))
+                      .toList(),
+                  emptyMessage: 'No rate sources documented',
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _boeColumn(
+                  'Documentation Gap',
+                  [
+                    _boeGapRow('Estimating Basis', withEstimatingBasis, totalItems, missingBasis),
+                    _boeGapRow('Scope In/Excluded', documentedScope, totalItems, missingScope),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _boeColumn(String title, List<Widget> rows, {String? emptyMessage}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+        ),
+        const SizedBox(height: 8),
+        if (rows.isEmpty && emptyMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              emptyMessage,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
+            ),
+          )
+        else
+          ...rows,
+      ],
+    );
+  }
+
+  Widget _boeRow(String label, int count, int total) {
+    final pct = total > 0 ? count / total : 0.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+              Text('$count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+            ],
+          ),
+          const SizedBox(height: 2),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _boeGapRow(String label, int documented, int total, int missing) {
+    final pct = total > 0 ? documented / total : 0.0;
+    final color = missing == 0 ? const Color(0xFF059669) : const Color(0xFFC2410C);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+              Text('$documented/$total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _rateSourceLabel(String key) {
+    switch (key) {
+      case 'vendor_quote': return 'Vendor Quote';
+      case 'historical': return 'Historical';
+      case 'published_index': return 'Published Index';
+      case 'benchmark': return 'Benchmark';
+      case 'expert_judgment': return 'Expert Judgment';
+      default: return key;
+    }
+  }
+}
+
+class _CostProfileCard extends StatelessWidget {
+  const _CostProfileCard({
+    required this.items,
+    required this.workPackages,
+  });
+
+  final List<CostEstimateItem> items;
+  final List<WorkPackage> workPackages;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCost = items.fold<double>(0, (s, item) => s + item.amount);
+    final avgCostPerItem = items.isNotEmpty ? totalCost / items.length : 0.0;
+
+    final byPhase = <String, double>{};
+    final byPhaseCount = <String, int>{};
+    for (final item in items) {
+      final phase = item.phase.isEmpty ? 'unassigned' : item.phase;
+      byPhase[phase] = (byPhase[phase] ?? 0) + item.amount;
+      byPhaseCount[phase] = (byPhaseCount[phase] ?? 0) + 1;
+    }
+
+    final wpCount = workPackages.length;
+    final wpTotalBudget = workPackages.fold<double>(0, (s, wp) => s + wp.budgetedCost);
+    final wpAvgBudget = wpCount > 0 ? wpTotalBudget / wpCount : 0.0;
+
+    final agileWps = workPackages.where((wp) => wp.type == 'agile').toList();
+    final agileCost = agileWps.fold<double>(0, (s, wp) => s + wp.budgetedCost);
+    final agileCount = agileWps.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cost Profile & Benchmarks',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _profileColumn('Summary', [
+                  _profileRow('Total Items', '${items.length}'),
+                  _profileRow('Total Cost', formatCurrency(totalCost)),
+                  _profileRow('Avg / Item', formatCurrency(avgCostPerItem)),
+                ]),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _profileColumn('Work Packages', [
+                  _profileRow('Total Packages', '$wpCount'),
+                  _profileRow('Total Budget', formatCurrency(wpTotalBudget)),
+                  _profileRow('Avg / Package', formatCurrency(wpAvgBudget)),
+                ]),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _profileColumn('By Phase', byPhase.entries.map((e) =>
+                  _profileRow('${e.key} (${byPhaseCount[e.key] ?? 0})', formatCurrency(e.value))
+                ).toList()),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: _profileColumn('Agile Delivery', [
+                  if (agileCount > 0) ...[
+                    _profileRow('Agile Packages', '$agileCount'),
+                    _profileRow('Agile Budget', formatCurrency(agileCost)),
+                    _profileRow('% of Total Budget', wpTotalBudget > 0 ? '${(agileCost / wpTotalBudget * 100).toStringAsFixed(1)}%' : '0%'),
+                  ] else
+                    _profileRow('Status', 'No Agile packages'),
+                ]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileColumn(String title, List<Widget> rows) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+        ),
+        const SizedBox(height: 8),
+        ...rows,
+      ],
+    );
+  }
+
+  Widget _profileRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+          const SizedBox(width: 8),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContractStrategyCard extends StatelessWidget {
+  const _ContractStrategyCard({
+    required this.contracts,
+    required this.costItems,
+  });
+
+  final List<ContractModel> contracts;
+  final List<CostEstimateItem> costItems;
+
+  @override
+  Widget build(BuildContext context) {
+    final byStatus = <ContractStatus, double>{};
+    final byStatusCount = <ContractStatus, int>{};
+    for (final c in contracts) {
+      byStatus[c.status] = (byStatus[c.status] ?? 0) + c.estimatedCost;
+      byStatusCount[c.status] = (byStatusCount[c.status] ?? 0) + 1;
+    }
+
+    final contractIds = costItems
+        .where((item) => item.contractId.isNotEmpty)
+        .map((item) => item.contractId)
+        .toSet();
+    final linkedCost = costItems
+        .where((item) => item.contractId.isNotEmpty)
+        .fold<double>(0, (s, item) => s + item.amount);
+
+    final totalContractValue = contracts.fold<double>(0, (s, c) => s + c.estimatedCost);
+    final totalCostValue = costItems.fold<double>(0, (s, item) => s + item.amount);
+    final pctLinkedToContracts = totalCostValue > 0 ? (linkedCost / totalCostValue * 100) : 0.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Contract Strategy',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${contracts.length} contracts',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _strategyStat('Total Contract Value', formatCurrency(totalContractValue), const Color(0xFF1E293B)),
+              const SizedBox(width: 16),
+              _strategyStat('Linked Cost Items', '${contractIds.length} linked', const Color(0xFF2563EB)),
+              const SizedBox(width: 16),
+              _strategyStat('Coverage', '${pctLinkedToContracts.toStringAsFixed(1)}% of total', pctLinkedToContracts > 50 ? const Color(0xFF059669) : const Color(0xFFC2410C)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'By Status',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+          ),
+          const SizedBox(height: 8),
+          ...ContractStatus.values.where((s) => (byStatusCount[s] ?? 0) > 0).map((status) {
+            final value = byStatus[status] ?? 0;
+            final count = byStatusCount[status] ?? 0;
+            final pct = totalContractValue > 0 ? value / totalContractValue : 0.0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      _contractStatusLabel(status),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 6,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        valueColor: AlwaysStoppedAnimation<Color>(_contractStatusColor(status)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      formatCurrency(value),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '($count)',
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (contracts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'No contracts added yet. Add contracts in the procurement screen.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _strategyStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _contractStatusLabel(ContractStatus status) {
+    switch (status) {
+      case ContractStatus.draft: return 'Draft';
+      case ContractStatus.under_review: return 'Under Review';
+      case ContractStatus.approved: return 'Approved';
+      case ContractStatus.executed: return 'Executed';
+      case ContractStatus.expired: return 'Expired';
+      case ContractStatus.terminated: return 'Terminated';
+    }
+  }
+
+  Color _contractStatusColor(ContractStatus status) {
+    switch (status) {
+      case ContractStatus.draft: return const Color(0xFF94A3B8);
+      case ContractStatus.under_review: return const Color(0xFFC2410C);
+      case ContractStatus.approved: return const Color(0xFF2563EB);
+      case ContractStatus.executed: return const Color(0xFF059669);
+      case ContractStatus.expired: return const Color(0xFF64748B);
+      case ContractStatus.terminated: return const Color(0xFFDC2626);
+    }
+  }
+}
+
 class _SourceImportsTab extends StatelessWidget {
   const _SourceImportsTab({
     required this.sourceSummaries,
@@ -3374,97 +4021,748 @@ class _SourceDetailList extends StatelessWidget {
   }
 }
 
-class _CostVsScheduleWorkspace extends StatelessWidget {
-  const _CostVsScheduleWorkspace({
+class _ContingencyRiskPanel extends StatelessWidget {
+  const _ContingencyRiskPanel({
     required this.projectData,
-    required this.onLinkEstimateItem,
-    required this.onAddLinkedEstimate,
+    required this.forecastItems,
+    required this.allItems,
+    required this.rows,
   });
 
   final ProjectDataModel projectData;
-  final Future<void> Function(CostEstimateItem item) onLinkEstimateItem;
-  final Future<void> Function({
-    String? workPackageId,
-    String? scheduleActivityId,
-  }) onAddLinkedEstimate;
+  final List<CostEstimateItem> forecastItems;
+  final List<CostEstimateItem> allItems;
+  final List<_SourceDetailRow> rows;
 
-  double _sumEstimateItems(Iterable<CostEstimateItem> items) {
-    return items.fold<double>(0, (total, item) => total + item.amount);
-  }
+  @override
+  Widget build(BuildContext context) {
+    final pertItems = forecastItems
+        .where((item) => item.rangeLow > 0 && item.rangeHigh > 0)
+        .toList();
+    final pertBaseTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.amount);
+    final pertMeanTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.pertMean);
+    final pertExposureTotal = pertItems.fold<double>(
+        0, (total, item) => total + item.pertExposure);
+    final reserve = projectData.managementReserve;
+    final forecastTotal = forecastItems.fold<double>(
+        0, (total, item) => total + item.amount);
 
-  double _workPackageProgress(WorkPackage workPackage) {
-    if (workPackage.scheduleActivityIds.isEmpty) {
-      switch (workPackage.status) {
-        case 'complete':
-          return 1.0;
-        case 'in_progress':
-          return 0.5;
-        default:
-          return 0.0;
+    double pertVarianceSum = 0;
+    for (final item in pertItems) {
+      final range = item.rangeHigh - item.rangeLow;
+      pertVarianceSum += (range * range) / 36;
+    }
+    final pertStdDev = pertVarianceSum > 0 ? math.sqrt(pertVarianceSum) : 0.0;
+    final p80 = pertMeanTotal + 0.84 * pertStdDev;
+    final p90 = pertMeanTotal + 1.28 * pertStdDev;
+
+    double engRisk = 0, procRisk = 0, execRisk = 0;
+    int engCount = 0, procCount = 0, execCount = 0;
+    for (final item in allItems) {
+      if (item.phase == 'design' ||
+          item.source.contains('design') ||
+          item.source.contains('technology')) {
+        engRisk += item.amount;
+        engCount++;
+      } else if (item.source.contains('procurement') ||
+          item.source.contains('purchase') ||
+          item.source.contains('contract') ||
+          item.source.contains('vendor')) {
+        procRisk += item.amount;
+        procCount++;
+      } else if (item.phase == 'execution' ||
+          item.source.contains('work_package') ||
+          item.source == 'initiation_cost_rows') {
+        execRisk += item.amount;
+        execCount++;
       }
     }
 
-    final linkedActivities = projectData.scheduleActivities
-        .where(
-            (activity) => workPackage.scheduleActivityIds.contains(activity.id))
-        .toList();
-    if (linkedActivities.isEmpty) return 0.0;
-
-    final totalProgress = linkedActivities.fold<double>(
-      0,
-      (total, activity) => total + activity.progress.clamp(0.0, 1.0),
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Contingency & Risk',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Allowance, management reserve, and PERT risk exposure.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 20),
+          if (reserve > 0) ...[
+            _ContingencyRow(
+              label: 'Management Reserve',
+              amount: reserve,
+              color: const Color(0xFF7C3AED),
+            ),
+            const Divider(height: 24),
+          ],
+          if (pertItems.isNotEmpty) ...[
+            const Text(
+              'PERT Risk Analysis',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
+            ),
+            const SizedBox(height: 8),
+            _ContingencyRow(
+              label: 'Items with PERT ranges',
+              amount: pertItems.length.toDouble(),
+              color: const Color(0xFF475569),
+              isCount: true,
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'Base estimate (P50)',
+              amount: pertBaseTotal,
+              color: const Color(0xFFB45309),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'PERT mean estimate',
+              amount: pertMeanTotal,
+              color: const Color(0xFF2563EB),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'PERT exposure (mean - base)',
+              amount: pertExposureTotal,
+              color: pertExposureTotal > 0
+                  ? const Color(0xFFDC2626)
+                  : const Color(0xFF059669),
+            ),
+            const SizedBox(height: 4),
+            _ContingencyRow(
+              label: 'Adjusted total (forecast + exposure)',
+              amount: forecastTotal + pertExposureTotal,
+              color: const Color(0xFF111827),
+            ),
+            const SizedBox(height: 8),
+            if (pertStdDev > 0) ...[
+              const Divider(height: 16),
+              const Text(
+                'Confidence Levels (Normal Approximation)',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827)),
+              ),
+              const SizedBox(height: 6),
+              _ContingencyRow(
+                label: 'P80 (80% confidence)',
+                amount: p80,
+                color: const Color(0xFF7C3AED),
+              ),
+              const SizedBox(height: 4),
+              _ContingencyRow(
+                label: 'P90 (90% confidence)',
+                amount: p90,
+                color: const Color(0xFFDC2626),
+              ),
+              const SizedBox(height: 4),
+              _ContingencyRow(
+                label: 'P80 exposure vs P50',
+                amount: p80 - pertBaseTotal,
+                color: const Color(0xFFC2410C),
+              ),
+              const SizedBox(height: 4),
+              _ContingencyRow(
+                label: 'Std Dev',
+                amount: pertStdDev,
+                color: const Color(0xFF64748B),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Divider(height: 24),
+          ],
+          const Divider(height: 16),
+          const Text(
+            'Risk Exposure by Domain',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 8),
+          _riskDomainTile(
+            'Engineering / Design',
+            engCount,
+            engRisk,
+            forecastTotal,
+            Icons.design_services_outlined,
+            'Design changes, tech uncertainty, rework',
+            const Color(0xFF2563EB),
+          ),
+          const SizedBox(height: 6),
+          _riskDomainTile(
+            'Procurement / Supply Chain',
+            procCount,
+            procRisk,
+            forecastTotal,
+            Icons.inventory_2_outlined,
+            'Price volatility, delays, logistics',
+            const Color(0xFFC2410C),
+          ),
+          const SizedBox(height: 6),
+          _riskDomainTile(
+            'Execution / Construction',
+            execCount,
+            execRisk,
+            forecastTotal,
+            Icons.construction_outlined,
+            'Productivity, weather, site access',
+            const Color(0xFF059669),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Contingency Allowances',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 12),
+          ...rows.map((row) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            row.subtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      formatCurrency(row.amount),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
     );
-    return totalProgress / linkedActivities.length;
+  }
+
+  Widget _riskDomainTile(String label, int count, double total, double forecastTotal, IconData icon, String description, Color color) {
+    final pct = forecastTotal > 0 ? (total / forecastTotal * 100) : 0.0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+                ),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                formatCurrency(total),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+              ),
+              Text(
+                '$count items (${pct.toStringAsFixed(1)}%)',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContingencyRow extends StatelessWidget {
+  const _ContingencyRow({
+    required this.label,
+    required this.amount,
+    required this.color,
+    this.isCount = false,
+  });
+
+  final String label;
+  final double amount;
+  final Color color;
+  final bool isCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+            ),
+          ),
+        ),
+        Text(
+          isCount ? amount.toInt().toString() : formatCurrency(amount),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CbsTreeNode {
+  const _CbsTreeNode({
+    required this.label,
+    required this.planned,
+    this.committed = 0,
+    this.actual = 0,
+    this.children = const [],
+    this.depth = 0,
+    this.designMaturity = '',
+  });
+
+  final String label;
+  final double planned;
+  final double committed;
+  final double actual;
+  final List<_CbsTreeNode> children;
+  final int depth;
+  final String designMaturity;
+
+  double get total => planned + committed + actual;
+}
+
+class _CbsTreeWorkspace extends StatelessWidget {
+  const _CbsTreeWorkspace({
+    required this.projectData,
+    required this.forecastItems,
+    required this.committedItems,
+    required this.actualItems,
+  });
+
+  final ProjectDataModel projectData;
+  final List<CostEstimateItem> forecastItems;
+  final List<CostEstimateItem> committedItems;
+  final List<CostEstimateItem> actualItems;
+
+  @override
+  Widget build(BuildContext context) {
+    final tree = _buildTree();
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cost Breakdown Structure (CBS)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _legendDot(const Color(0xFFB45309), 'Forecast'),
+              const SizedBox(width: 16),
+              _legendDot(const Color(0xFF1D4ED8), 'Committed'),
+              const SizedBox(width: 16),
+              _legendDot(const Color(0xFF047857), 'Actual'),
+              const Spacer(),
+              Text(
+                'Total: ${formatCurrency(tree.total)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (tree.children.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No WBS items available yet.\n'
+                  'Create a Work Breakdown Structure to see cost hierarchy.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+              ),
+            )
+          else
+            ...tree.children.map((node) => _CbsTreeTile(node: node)),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+      ],
+    );
+  }
+
+  _CbsTreeNode _buildTree() {
+    final wbsItems = projectData.wbsTree;
+    final itemsByWbs = <String, List<CostEstimateItem>>{};
+    final allItems = [
+      ...forecastItems.map((e) => (item: e, state: 'forecast')),
+      ...committedItems.map((e) => (item: e, state: 'committed')),
+      ...actualItems.map((e) => (item: e, state: 'actual')),
+    ];
+
+    for (final entry in allItems) {
+      final wbsId = entry.item.wbsItemId.trim();
+      if (wbsId.isNotEmpty) {
+        itemsByWbs.putIfAbsent(wbsId, () => []).add(entry.item);
+      }
+    }
+
+    final unlinkedItems = allItems
+        .where((e) => e.item.wbsItemId.trim().isEmpty)
+        .map((e) => e.item)
+        .toList();
+
+    final children = <_CbsTreeNode>[];
+    for (final wbs in wbsItems) {
+      final node = _buildWbsNode(wbs, itemsByWbs, 0);
+      if (node != null) children.add(node);
+    }
+
+    if (unlinkedItems.isNotEmpty) {
+      double plan = 0, comm = 0, act = 0;
+      for (final item in unlinkedItems) {
+        switch (item.costState) {
+          case 'committed': comm += item.amount;
+          case 'actual': act += item.amount;
+          default: plan += item.amount;
+        }
+      }
+      children.add(_CbsTreeNode(
+        label: 'Unlinked Items',
+        planned: plan,
+        committed: comm,
+        actual: act,
+        depth: 0,
+      ));
+    }
+
+    double rootPlan = 0, rootComm = 0, rootAct = 0;
+    for (final c in children) {
+      rootPlan += c.planned;
+      rootComm += c.committed;
+      rootAct += c.actual;
+    }
+    return _CbsTreeNode(label: 'Total Project', planned: rootPlan, committed: rootComm, actual: rootAct, children: children);
+  }
+
+  _CbsTreeNode? _buildWbsNode(
+    WorkItem wbs,
+    Map<String, List<CostEstimateItem>> itemsByWbs,
+    int depth,
+  ) {
+    final childNodes = <_CbsTreeNode>[];
+    for (final child in wbs.children) {
+      final node = _buildWbsNode(child, itemsByWbs, depth + 1);
+      if (node != null) childNodes.add(node);
+    }
+
+    final directItems = itemsByWbs[wbs.id] ?? [];
+    double plan = 0, comm = 0, act = 0;
+    int minRank = 999;
+    for (final item in directItems) {
+      switch (item.costState) {
+        case 'committed': comm += item.amount;
+        case 'actual': act += item.amount;
+        default: plan += item.amount;
+      }
+      if (item.designMaturity.isNotEmpty) {
+        final r = _maturityRank(item.designMaturity);
+        if (r > 0 && r < minRank) minRank = r;
+      }
+    }
+
+    for (final child in childNodes) {
+      plan += child.planned;
+      comm += child.committed;
+      act += child.actual;
+      if (child.designMaturity.isNotEmpty) {
+        final r = _maturityRank(child.designMaturity);
+        if (r > 0 && r < minRank) minRank = r;
+      }
+    }
+
+    if (plan == 0 && comm == 0 && act == 0 && childNodes.isEmpty) return null;
+
+    final maturity = minRank < 999
+        ? ['', '10%', '30%', '60%', '90%', 'IFC', 'AsBuilt'][minRank]
+        : '';
+
+    return _CbsTreeNode(
+      label: wbs.title.trim().isEmpty ? 'Unnamed WBS Item' : wbs.title.trim(),
+      planned: plan,
+      committed: comm,
+      actual: act,
+      children: childNodes,
+      depth: depth,
+      designMaturity: maturity,
+    );
+  }
+}
+
+class _CbsTreeTile extends StatefulWidget {
+  const _CbsTreeTile({required this.node});
+
+  final _CbsTreeNode node;
+
+  @override
+  State<_CbsTreeTile> createState() => _CbsTreeTileState();
+}
+
+class _CbsTreeTileState extends State<_CbsTreeTile> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final node = widget.node;
+    final hasChildren = node.children.isNotEmpty;
+    final indent = node.depth * 24.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: hasChildren ? () => setState(() => _expanded = !_expanded) : null,
+          child: Container(
+            padding: EdgeInsets.only(left: 12 + indent, right: 12),
+            height: 44,
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: const Color(0xFFF1F5F9))),
+            ),
+            child: Row(
+              children: [
+                if (hasChildren)
+                  Icon(
+                    _expanded ? Icons.expand_more : Icons.chevron_right,
+                    size: 18,
+                    color: const Color(0xFF64748B),
+                  )
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 6),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: hasChildren ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    node.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: hasChildren ? FontWeight.w700 : FontWeight.w500,
+                      color: const Color(0xFF111827),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (node.designMaturity.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _DesignMaturityBadge(designMaturity: node.designMaturity),
+                  ),
+                SizedBox(width: 100, child: Text(formatCurrency(node.planned), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309)), textAlign: TextAlign.right)),
+                SizedBox(width: 100, child: Text(node.committed > 0 ? formatCurrency(node.committed) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: node.committed > 0 ? const Color(0xFF1D4ED8) : const Color(0xFFCBD5E1)), textAlign: TextAlign.right)),
+                SizedBox(width: 100, child: Text(node.actual > 0 ? formatCurrency(node.actual) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: node.actual > 0 ? const Color(0xFF047857) : const Color(0xFFCBD5E1)), textAlign: TextAlign.right)),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded && hasChildren)
+          ...node.children.map((child) => _CbsTreeTile(node: child)),
+      ],
+    );
+  }
+}
+
+class _CostVsScheduleWorkspace extends StatelessWidget {
+  const _CostVsScheduleWorkspace({required this.projectData});
+
+  final ProjectDataModel projectData;
+
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  DateTime? _tryParseDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw.trim());
   }
 
   @override
   Widget build(BuildContext context) {
-    final linkedItems = projectData.costEstimateItems.where((item) {
+    final now = DateTime.now();
+    final workPackages = projectData.workPackages;
+
+    final monthlyPlanned = <String, double>{};
+    final monthlyActual = <String, double>{};
+    DateTime? earliestStart;
+    DateTime? latestEnd;
+
+    for (final wp in workPackages) {
+      final start = _tryParseDate(wp.plannedStart) ?? _tryParseDate(wp.actualStart);
+      final end = _tryParseDate(wp.plannedEnd) ?? _tryParseDate(wp.actualEnd);
+      if (start == null || end == null || end.isBefore(start)) continue;
+
+      if (earliestStart == null || start.isBefore(earliestStart)) earliestStart = start;
+      if (latestEnd == null || end.isAfter(latestEnd)) latestEnd = end;
+
+      final months = _monthSpan(start, end);
+      if (months <= 0) continue;
+      final monthlyPlannedAmount = wp.budgetedCost / months;
+      final monthlyActualAmount = wp.actualCost > 0 ? wp.actualCost / months : 0.0;
+
+      var cursor = DateTime(start.year, start.month, 1);
+      while (!cursor.isAfter(end)) {
+        final key = _monthKey(cursor);
+        monthlyPlanned.update(key, (v) => v + monthlyPlannedAmount, ifAbsent: () => monthlyPlannedAmount);
+        if (monthlyActualAmount > 0) {
+          monthlyActual.update(key, (v) => v + monthlyActualAmount, ifAbsent: () => monthlyActualAmount);
+        }
+        cursor = DateTime(cursor.year, cursor.month + 1, 1);
+      }
+    }
+
+    final plannedData = <SCurveDataPoint>[];
+    final actualData = <SCurveDataPoint>[];
+    final sortedMonths = monthlyPlanned.keys.toList()..sort();
+    double plannedCumulative = 0;
+    double actualCumulative = 0;
+
+    for (final key in sortedMonths) {
+      final parts = key.split('-');
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[0]);
+      plannedCumulative += monthlyPlanned[key] ?? 0;
+      actualCumulative += monthlyActual[key] ?? 0;
+      final date = DateTime(year, month, 1);
+      plannedData.add(SCurveDataPoint(date: date, cumulativeCost: plannedCumulative));
+      actualData.add(SCurveDataPoint(date: date, cumulativeCost: actualCumulative));
+    }
+
+    final chartStart = earliestStart ?? now;
+    final chartEnd = latestEnd ?? now;
+    final linkedCount = projectData.costEstimateItems.where((item) {
       return item.workPackageId.trim().isNotEmpty ||
           item.scheduleActivityId.trim().isNotEmpty;
-    }).toList();
-    final unlinkedItems = projectData.costEstimateItems.where((item) {
-      return item.workPackageId.trim().isEmpty &&
-          item.scheduleActivityId.trim().isEmpty;
-    }).toList();
-    final forecastItems = projectData.costEstimateItems
-        .where((item) => item.costState == 'forecast')
-        .toList();
-    final committedItems = projectData.costEstimateItems
-        .where((item) => item.costState == 'committed')
-        .toList();
-    final actualItems = projectData.costEstimateItems
-        .where((item) => item.costState == 'actual')
-        .toList();
+    }).length;
 
-    final linkedCount = linkedItems.length;
-    final unlinkedCount = unlinkedItems.length;
-    final workPackagesWithoutLinkedEstimate =
-        projectData.workPackages.where((wp) {
-      return !projectData.costEstimateItems.any(
-        (item) => item.workPackageId.trim() == wp.id.trim(),
-      );
-    }).toList();
-    final activitiesWithoutLinkedEstimate =
-        projectData.scheduleActivities.where((activity) {
-      return !projectData.costEstimateItems.any(
-        (item) => item.scheduleActivityId.trim() == activity.id.trim(),
-      );
-    }).toList();
+    final double bac = workPackages.fold<double>(0, (s, wp) => s + wp.budgetedCost);
+    final double totalActual = workPackages.fold<double>(0, (s, wp) => s + wp.actualCost);
 
-    final forecastTotal = _sumEstimateItems(forecastItems);
-    final committedTotal = _sumEstimateItems(committedItems);
-    final actualTotal = _sumEstimateItems(actualItems);
-    final workPackageBudgetTotal = projectData.workPackages.fold<double>(
-      0,
-      (total, wp) => total + wp.budgetedCost,
-    );
-    final workPackageActualTotal = projectData.workPackages.fold<double>(
-      0,
-      (total, wp) => total + wp.actualCost,
-    );
-    final estimateVsBudgetVariance = forecastTotal - workPackageBudgetTotal;
-    final actualVsBudgetVariance = actualTotal - workPackageBudgetTotal;
+    final String currentMonthKey = _monthKey(now);
+    double pvAtNow = 0;
+    for (final key in sortedMonths) {
+      if (key.compareTo(currentMonthKey) <= 0) {
+        pvAtNow += monthlyPlanned[key] ?? 0;
+      }
+    }
+
+    double ev = 0;
+    for (final wp in workPackages) {
+      if (wp.status == 'complete') {
+        ev += wp.budgetedCost;
+      } else if (wp.status == 'in_progress') {
+        ev += wp.budgetedCost > 0
+            ? (wp.actualCost / wp.budgetedCost).clamp(0, 1) * wp.budgetedCost
+            : 0;
+      }
+    }
+
+    final double ac = totalActual;
+    final double cpi = ac > 0 ? ev / ac : 0;
+    final double spi = pvAtNow > 0 ? ev / pvAtNow : 0;
+    final double cv = ev - ac;
+    final double sv = ev - pvAtNow;
+    final double eac = cpi > 0 ? bac / cpi : bac;
+
+    final bool hasData = bac > 0 || totalActual > 0;
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -3484,392 +4782,186 @@ class _CostVsScheduleWorkspace extends StatelessWidget {
               color: Color(0xFF111827),
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            '$linkedCount estimate line(s) are linked to work packages or schedule activities. $unlinkedCount estimate line(s) still need schedule linkage.',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _CostVsScheduleMetricCard(
-                label: 'Forecast total',
-                value: formatCurrency(forecastTotal),
-                tone: const Color(0xFF2563EB),
-              ),
-              _CostVsScheduleMetricCard(
-                label: 'Committed total',
-                value: formatCurrency(committedTotal),
-                tone: const Color(0xFF7C3AED),
-              ),
-              _CostVsScheduleMetricCard(
-                label: 'Actual total',
-                value: formatCurrency(actualTotal),
-                tone: const Color(0xFFF59E0B),
-              ),
-              _CostVsScheduleMetricCard(
-                label: 'WP budget total',
-                value: formatCurrency(workPackageBudgetTotal),
-                tone: const Color(0xFF0F172A),
-              ),
-              _CostVsScheduleMetricCard(
-                label: 'Estimate vs budget',
-                value: formatCurrency(estimateVsBudgetVariance),
-                tone: estimateVsBudgetVariance <= 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFEF4444),
-              ),
-              _CostVsScheduleMetricCard(
-                label: 'Actual vs budget',
-                value: formatCurrency(actualVsBudgetVariance),
-                tone: actualVsBudgetVariance <= 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFEF4444),
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          _CostVsScheduleInsightPanel(
-            title: 'Linkage gaps',
-            subtitle:
-                'These counts show where cost and schedule data still need stronger reconciliation.',
-            children: [
-              _CostVsScheduleBullet(
-                label: 'Unlinked estimate lines',
-                value: '$unlinkedCount',
-                tone: unlinkedCount == 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-              ),
-              _CostVsScheduleBullet(
-                label: 'Work packages without linked estimates',
-                value: '${workPackagesWithoutLinkedEstimate.length}',
-                tone: workPackagesWithoutLinkedEstimate.isEmpty
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-              ),
-              _CostVsScheduleBullet(
-                label: 'Schedule activities without linked estimates',
-                value: '${activitiesWithoutLinkedEstimate.length}',
-                tone: activitiesWithoutLinkedEstimate.isEmpty
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-              ),
-              _CostVsScheduleBullet(
-                label: 'Work package actual total',
-                value: formatCurrency(workPackageActualTotal),
-                tone: const Color(0xFFF59E0B),
-              ),
-            ],
-          ),
-          if (unlinkedItems.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _CostVsScheduleInsightPanel(
-              title: 'Unlinked estimate lines',
-              subtitle:
-                  'Use these actions to quickly connect estimate lines back to schedule entities.',
-              children: unlinkedItems.take(8).map((item) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title.trim().isEmpty
-                                  ? 'Untitled estimate line'
-                                  : item.title.trim(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${formatCurrency(item.amount)} • ${item.costState}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () => onLinkEstimateItem(item),
-                        child: const Text('Link'),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          if (hasData) ...[
+            const SizedBox(height: 16),
+            _EarnedValueMetricsRow(
+              bac: bac,
+              pv: pvAtNow,
+              ev: ev,
+              ac: ac,
+              cpi: cpi,
+              spi: spi,
+              cv: cv,
+              sv: sv,
+              eac: eac,
             ),
           ],
-          if (workPackagesWithoutLinkedEstimate.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _CostVsScheduleInsightPanel(
-              title: 'Work packages missing estimate lines',
-              subtitle:
-                  'Create a linked estimate directly from a work package context.',
-              children: workPackagesWithoutLinkedEstimate.take(8).map((wp) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              wp.title.trim().isEmpty
-                                  ? 'Untitled Work Package'
-                                  : wp.title.trim(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Budget ${formatCurrency(wp.budgetedCost)} • ${wp.scheduleActivityIds.length} linked activities',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () => onAddLinkedEstimate(
-                          workPackageId: wp.id,
-                        ),
-                        child: const Text('Add linked estimate'),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 320,
+            child: SCurveChart(
+              plannedData: plannedData,
+              actualData: actualData,
+              startDate: chartStart,
+              endDate: chartEnd,
+              height: 320,
             ),
-          ],
-          if (activitiesWithoutLinkedEstimate.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _CostVsScheduleInsightPanel(
-              title: 'Schedule activities missing estimate lines',
-              subtitle:
-                  'Create estimate lines directly from uncovered schedule activities.',
-              children: activitiesWithoutLinkedEstimate.take(8).map((activity) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              activity.title.trim().isEmpty
-                                  ? 'Untitled Activity'
-                                  : activity.title.trim(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Budget ${formatCurrency(activity.budgetedCost)} • Progress ${(activity.progress * 100).round()}%',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () => onAddLinkedEstimate(
-                          scheduleActivityId: activity.id,
-                        ),
-                        child: const Text('Add linked estimate'),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-          const SizedBox(height: 22),
+          ),
+          const SizedBox(height: 24),
           const Text(
-            'Work Package Reconciliation',
+            'Monthly Cash Flow',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Color(0xFF111827),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          if (sortedMonths.isEmpty)
+            const Text(
+              'No scheduled work packages with dates for cash flow projection.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 24,
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columns: const [
+                  DataColumn(label: Text('Month', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+                  DataColumn(label: Text('Planned', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                  DataColumn(label: Text('Actual', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                  DataColumn(label: Text('Variance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)), numeric: true),
+                ],
+                rows: sortedMonths.map((key) {
+                  final parts = key.split('-');
+                  final month = int.parse(parts[1]);
+                  final year = int.parse(parts[0]);
+                  final label = '${_monthNames[month - 1]} $year';
+                  final planned = monthlyPlanned[key] ?? 0;
+                  final actual = monthlyActual[key] ?? 0;
+                  final variance = planned - actual;
+                  return DataRow(cells: [
+                    DataCell(Text(label, style: const TextStyle(fontSize: 12))),
+                    DataCell(Text(formatCurrency(planned), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                    DataCell(Text(actual > 0 ? formatCurrency(actual) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: actual > 0 ? const Color(0xFF047857) : const Color(0xFFCBD5E1)))),
+                    DataCell(Text(variance != 0 ? formatCurrency(variance) : '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: variance > 0 ? const Color(0xFF059669) : variance < 0 ? const Color(0xFFDC2626) : const Color(0xFFCBD5E1)))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          const SizedBox(height: 24),
           const Text(
-            'Compare schedule package budgets, linked estimate lines, actuals, and delivery progress.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            'Work Package Budgets',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
           ),
-          const SizedBox(height: 16),
-          if (projectData.workPackages.isEmpty)
+          const SizedBox(height: 4),
+          Text(
+            '$linkedCount estimate line(s) linked to work packages or schedule activities.',
+            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 12),
+          if (workPackages.isEmpty)
             const Text(
               'No work packages available yet for cost/schedule mapping.',
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             )
           else
-            ...projectData.workPackages.take(12).map((workPackage) {
-              final linkedEstimateItems = projectData.costEstimateItems.where(
-                (item) => item.workPackageId.trim() == workPackage.id.trim(),
-              );
-              final linkedEstimateTotal =
-                  _sumEstimateItems(linkedEstimateItems);
-              final variance = linkedEstimateTotal - workPackage.budgetedCost;
-              final progress = _workPackageProgress(workPackage);
-              final varianceTone = variance <= 0
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFFEF4444);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              workPackage.title.trim().isEmpty
-                                  ? 'Untitled Work Package'
-                                  : workPackage.title.trim(),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: varianceTone.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              variance <= 0 ? 'Within budget' : 'Over budget',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: varianceTone,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 14,
-                        runSpacing: 8,
-                        children: [
-                          _CostVsScheduleMiniMetric(
-                            label: 'Budget',
-                            value: formatCurrency(workPackage.budgetedCost),
-                          ),
-                          _CostVsScheduleMiniMetric(
-                            label: 'Linked estimate',
-                            value: formatCurrency(linkedEstimateTotal),
-                          ),
-                          _CostVsScheduleMiniMetric(
-                            label: 'Actual',
-                            value: formatCurrency(workPackage.actualCost),
-                          ),
-                          _CostVsScheduleMiniMetric(
-                            label: 'Variance',
-                            value: formatCurrency(variance),
-                            valueColor: varianceTone,
-                          ),
-                          _CostVsScheduleMiniMetric(
-                            label: 'Progress',
-                            value: '${(progress * 100).round()}%',
-                          ),
-                          _CostVsScheduleMiniMetric(
-                            label: 'Linked activities',
-                            value: '${workPackage.scheduleActivityIds.length}',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          minHeight: 8,
-                          backgroundColor: const Color(0xFFE5E7EB),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF2563EB),
-                          ),
+            ...workPackages.map((wp) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          wp.title.trim().isEmpty ? 'Untitled Work Package' : wp.title.trim(),
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
                         ),
-                      ),
-                    ],
+                        if (wp.plannedStart != null || wp.plannedEnd != null)
+                          Text(
+                            '${wp.plannedStart ?? '?'} \u2192 ${wp.plannedEnd ?? '?'}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
-          if (projectData.workPackages.length > 12)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '+ ${projectData.workPackages.length - 12} more work package(s) not shown',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  Text(
+                    formatCurrency(wp.budgetedCost),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
-            ),
+            )),
         ],
       ),
     );
   }
+
+  int _monthSpan(DateTime start, DateTime end) {
+    return (end.year - start.year) * 12 + (end.month - start.month) + 1;
+  }
+
+  String _monthKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}';
 }
 
-class _CostVsScheduleMetricCard extends StatelessWidget {
-  const _CostVsScheduleMetricCard({
-    required this.label,
-    required this.value,
-    required this.tone,
+class _EarnedValueMetricsRow extends StatelessWidget {
+  const _EarnedValueMetricsRow({
+    required this.bac,
+    required this.pv,
+    required this.ev,
+    required this.ac,
+    required this.cpi,
+    required this.spi,
+    required this.cv,
+    required this.sv,
+    required this.eac,
   });
 
-  final String label;
-  final String value;
-  final Color tone;
+  final double bac;
+  final double pv;
+  final double ev;
+  final double ac;
+  final double cpi;
+  final double spi;
+  final double cv;
+  final double sv;
+  final double eac;
 
   @override
   Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _evmMetric('BAC', formatCurrency(bac), const Color(0xFF1E293B)),
+          _evmMetric('PV', formatCurrency(pv), const Color(0xFF2563EB)),
+          _evmMetric('EV', formatCurrency(ev), const Color(0xFF059669)),
+          _evmMetric('AC', formatCurrency(ac), const Color(0xFFB45309)),
+          _evmMetric('CPI', cpi.toStringAsFixed(2), _evmColor(cpi, 1.0)),
+          _evmMetric('SPI', spi.toStringAsFixed(2), _evmColor(spi, 1.0)),
+          _evmMetric('CV', formatCurrency(cv), cv >= 0 ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+          _evmMetric('SV', formatCurrency(sv), sv >= 0 ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+          _evmMetric('EAC', formatCurrency(eac), const Color(0xFF7C3AED)),
+        ],
+      ),
+    );
+  }
+
+  Widget _evmMetric(String label, String value, Color color) {
     return Container(
-      width: 170,
-      padding: const EdgeInsets.all(14),
+      width: 120,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
@@ -3877,154 +4969,22 @@ class _CostVsScheduleMetricCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: tone,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
     );
   }
-}
 
-class _CostVsScheduleInsightPanel extends StatelessWidget {
-  const _CostVsScheduleInsightPanel({
-    required this.title,
-    required this.subtitle,
-    required this.children,
-  });
-
-  final String title;
-  final String subtitle;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _CostVsScheduleBullet extends StatelessWidget {
-  const _CostVsScheduleBullet({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF111827),
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: tone,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CostVsScheduleMiniMetric extends StatelessWidget {
-  const _CostVsScheduleMiniMetric({
-    required this.label,
-    required this.value,
-    this.valueColor = const Color(0xFF111827),
-  });
-
-  final String label;
-  final String value;
-  final Color valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF64748B),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: valueColor,
-          ),
-        ),
-      ],
-    );
+  Color _evmColor(double ratio, double target) {
+    if (ratio >= target * 0.95 && ratio <= target * 1.05) return const Color(0xFF059669);
+    if (ratio >= target * 0.85) return const Color(0xFFC2410C);
+    return const Color(0xFFDC2626);
   }
 }
 
@@ -4713,6 +5673,8 @@ class _CategoryTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     _CostStateBadge(costState: item.costState),
+                    const SizedBox(width: 6),
+                    _DesignMaturityBadge(designMaturity: item.designMaturity),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -4840,6 +5802,206 @@ class _SupersededCategoryTile extends StatelessWidget {
   }
 }
 
+class _OverheadConfigCard extends StatelessWidget {
+  const _OverheadConfigCard({
+    required this.ratePercent,
+    required this.directBaseTotal,
+    required this.complexityIndex,
+    required this.onRateChanged,
+  });
+
+  final double ratePercent;
+  final double directBaseTotal;
+  final int complexityIndex;
+  final ValueChanged<double> onRateChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final overheadAmount = directBaseTotal * ratePercent / 100;
+
+    String validationNote;
+    String validationStatus;
+    if (ratePercent <= 0) {
+      validationNote = 'Set an overhead rate to apply G&A to direct costs.';
+      validationStatus = 'info';
+    } else {
+      final suggestedLow = _suggestedOverheadLow(complexityIndex);
+      final suggestedHigh = _suggestedOverheadHigh(complexityIndex);
+      if (ratePercent >= suggestedLow && ratePercent <= suggestedHigh) {
+        validationNote =
+            'Project complexity $complexityIndex/10 suggests $suggestedLow\u2013$suggestedHigh%. Rate is within expected range.';
+        validationStatus = 'ok';
+      } else if (ratePercent < suggestedLow) {
+        validationNote =
+            'Project complexity $complexityIndex/10 suggests $suggestedLow\u2013$suggestedHigh%. Rate may be low for this complexity.';
+        validationStatus = 'low';
+      } else {
+        validationNote =
+            'Project complexity $complexityIndex/10 suggests $suggestedLow\u2013$suggestedHigh%. Rate is above typical range.';
+        validationStatus = 'high';
+      }
+    }
+
+    final statusColor = validationStatus == 'ok'
+        ? const Color(0xFF059669)
+        : validationStatus == 'low'
+            ? const Color(0xFFC2410C)
+            : validationStatus == 'high'
+                ? const Color(0xFFDC2626)
+                : const Color(0xFF64748B);
+
+    return Container(
+      width: 360,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Overhead & G&A',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Corporate overhead and G&A allocation',
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Text(
+                'Rate (%)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 80,
+                height: 36,
+                child: TextField(
+                  controller: TextEditingController(
+                    text: ratePercent > 0 ? ratePercent.toStringAsFixed(1) : '',
+                  )
+                    ..selection = TextSelection.fromPosition(
+                      TextPosition(offset: (ratePercent > 0 ? ratePercent.toStringAsFixed(1) : '').length),
+                    ),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    suffixText: '%',
+                    suffixStyle: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  ),
+                  onSubmitted: (v) {
+                    final parsed = double.tryParse(v.trim());
+                    onRateChanged(parsed != null && parsed >= 0 ? parsed : 0);
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (ratePercent > 0) ...[
+            const SizedBox(height: 12),
+            _overheadRow('Direct Cost Base', directBaseTotal),
+            _overheadRow('Overhead Amount', overheadAmount),
+            if (ratePercent > 0) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Divider(height: 1),
+              ),
+              _overheadRow('Total incl. Overhead', directBaseTotal + overheadAmount,
+                  bold: true),
+            ],
+          ],
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  validationStatus == 'ok'
+                      ? Icons.check_circle
+                      : Icons.info_outline,
+                  size: 14,
+                  color: statusColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    validationNote,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: statusColor,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overheadRow(String label, double amount, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: bold ? const Color(0xFF111827) : const Color(0xFF475569),
+            ),
+          ),
+          Text(
+            formatCurrency(amount),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+              color: const Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static int _suggestedOverheadLow(int complexity) {
+    if (complexity <= 3) return 5;
+    if (complexity <= 6) return 10;
+    return 15;
+  }
+
+  static int _suggestedOverheadHigh(int complexity) {
+    if (complexity <= 3) return 10;
+    if (complexity <= 6) return 15;
+    return 25;
+  }
+}
+
 class _TrailingSummaryCard extends StatelessWidget {
   const _TrailingSummaryCard({required this.view});
 
@@ -4856,13 +6018,6 @@ class _TrailingSummaryCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4894,15 +6049,11 @@ class _AddCostItemDialog extends StatefulWidget {
     required this.initialView,
     required this.projectData,
     this.existingItem,
-    this.initialWorkPackageId,
-    this.initialScheduleActivityId,
   });
 
   final _CostView initialView;
   final ProjectDataModel projectData;
   final CostEstimateItem? existingItem;
-  final String? initialWorkPackageId;
-  final String? initialScheduleActivityId;
 
   @override
   State<_AddCostItemDialog> createState() => _AddCostItemDialogState();
@@ -4920,12 +6071,21 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
   final _contingencyAmountController = TextEditingController();
   final _quoteReferenceController = TextEditingController();
   final _contractReferenceController = TextEditingController();
+  // Structured BOE (P1)
+  final _scopeIncludedController = TextEditingController();
+  final _scopeExcludedController = TextEditingController();
+  final _designMaturityNoteController = TextEditingController();
+  // PERT risk ranges (P1)
+  final _rangeLowController = TextEditingController();
+  final _rangeHighController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   late _CostView _selectedView = widget.initialView;
   late String _selectedSource;
   late String _selectedCostState;
   late String _selectedPhase;
   late String _selectedEstimatingMethod;
+  late String _selectedDesignMaturity;
+  late String _selectedRateSource;
   String? _selectedWorkPackageId;
   String? _selectedScheduleActivityId;
   bool _showValidation = false;
@@ -4954,6 +6114,13 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
           : existing.contingencyAmount.toStringAsFixed(2);
       _quoteReferenceController.text = existing.quoteReference;
       _contractReferenceController.text = existing.contractId;
+      _scopeIncludedController.text = existing.scopeIncluded;
+      _scopeExcludedController.text = existing.scopeExcluded;
+      _designMaturityNoteController.text = existing.designMaturityNote;
+      _rangeLowController.text =
+          existing.rangeLow > 0 ? existing.rangeLow.toStringAsFixed(0) : '';
+      _rangeHighController.text =
+          existing.rangeHigh > 0 ? existing.rangeHigh.toStringAsFixed(0) : '';
     }
     _selectedSource = existing?.source ?? 'manual';
     _selectedCostState = existing?.costState ?? 'forecast';
@@ -4964,17 +6131,21 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
         existing?.estimatingMethod.trim().isNotEmpty == true
             ? existing!.estimatingMethod
             : 'manual';
+    _selectedDesignMaturity =
+        existing?.designMaturity.trim().isNotEmpty == true
+            ? existing!.designMaturity
+            : '';
+    _selectedRateSource =
+        existing?.rateSource.trim().isNotEmpty == true
+            ? existing!.rateSource
+            : '';
     _selectedWorkPackageId = existing?.workPackageId.trim().isNotEmpty == true
         ? existing!.workPackageId
-        : (widget.initialWorkPackageId?.trim().isNotEmpty == true
-            ? widget.initialWorkPackageId
-            : null);
+        : null;
     _selectedScheduleActivityId =
         existing?.scheduleActivityId.trim().isNotEmpty == true
             ? existing!.scheduleActivityId
-            : (widget.initialScheduleActivityId?.trim().isNotEmpty == true
-                ? widget.initialScheduleActivityId
-                : null);
+            : null;
   }
 
   @override
@@ -4990,6 +6161,11 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
     _contingencyAmountController.dispose();
     _quoteReferenceController.dispose();
     _contractReferenceController.dispose();
+    _scopeIncludedController.dispose();
+    _scopeExcludedController.dispose();
+    _designMaturityNoteController.dispose();
+    _rangeLowController.dispose();
+    _rangeHighController.dispose();
     super.dispose();
   }
 
@@ -5303,6 +6479,70 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        _DialogLabel(label: 'Scope / BOE (optional)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _scopeIncludedController,
+                          minLines: 2,
+                          maxLines: 3,
+                          decoration: _inputDecoration('Scope included'),
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _scopeExcludedController,
+                          minLines: 2,
+                          maxLines: 3,
+                          decoration: _inputDecoration('Scope excluded'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdownField<String>(
+                                label: 'Design Maturity',
+                                value: _selectedDesignMaturity,
+                                items: const [
+                                  DropdownMenuItem(value: '', child: Text('Not specified')),
+                                  DropdownMenuItem(value: '10%', child: Text('10% - Concept')),
+                                  DropdownMenuItem(value: '30%', child: Text('30% - Preliminary')),
+                                  DropdownMenuItem(value: '60%', child: Text('60% - Detailed')),
+                                  DropdownMenuItem(value: '90%', child: Text('90% - Pre-IFC')),
+                                  DropdownMenuItem(value: 'IFC', child: Text('IFC')),
+                                  DropdownMenuItem(value: 'AsBuilt', child: Text('As-Built')),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _selectedDesignMaturity = value);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _dropdownField<String>(
+                                label: 'Rate Source',
+                                value: _selectedRateSource,
+                                items: const [
+                                  DropdownMenuItem(value: '', child: Text('Not specified')),
+                                  DropdownMenuItem(value: 'vendor_quote', child: Text('Vendor Quote')),
+                                  DropdownMenuItem(value: 'historical', child: Text('Historical Data')),
+                                  DropdownMenuItem(value: 'published_index', child: Text('Published Index')),
+                                  DropdownMenuItem(value: 'benchmark', child: Text('Benchmark')),
+                                  DropdownMenuItem(value: 'expert_judgment', child: Text('Expert Judgment')),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _selectedRateSource = value);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _designMaturityNoteController,
+                          decoration: _inputDecoration('Design maturity note (optional)'),
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
@@ -5353,6 +6593,38 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                                         decimal: true),
                                 decoration: _inputDecoration(
                                   'Contingency amount',
+                                  prefix: '\$',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _DialogLabel(label: 'PERT Risk Ranges (optional)'),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _rangeLowController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: _inputDecoration(
+                                  'Optimistic (low)',
+                                  prefix: '\$',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _rangeHighController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: _inputDecoration(
+                                  'Pessimistic (high)',
                                   prefix: '\$',
                                 ),
                               ),
@@ -5468,6 +6740,13 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
       unitOfMeasure: _unitOfMeasureController.text.trim(),
       contingencyPercent: _parseAmount(_contingencyPercentController.text),
       contingencyAmount: _parseAmount(_contingencyAmountController.text),
+      rangeLow: _parseAmount(_rangeLowController.text),
+      rangeHigh: _parseAmount(_rangeHighController.text),
+      scopeIncluded: _scopeIncludedController.text.trim(),
+      scopeExcluded: _scopeExcludedController.text.trim(),
+      designMaturity: _selectedDesignMaturity,
+      designMaturityNote: _designMaturityNoteController.text.trim(),
+      rateSource: _selectedRateSource,
       contractId: _contractReferenceController.text.trim(),
       quoteReference: _quoteReferenceController.text.trim(),
       reconciliationReference:
@@ -5736,6 +7015,7 @@ enum _CostStateFilter { all, forecast, committed, actual }
 enum _CostWorkspaceTab {
   overview,
   estimateLines,
+  cbsTree,
   sourceImports,
   contractsProcurement,
   staffingInfrastructure,
@@ -5834,6 +7114,8 @@ extension _CostWorkspaceTabX on _CostWorkspaceTab {
         return 'Overview';
       case _CostWorkspaceTab.estimateLines:
         return 'Estimate Lines';
+      case _CostWorkspaceTab.cbsTree:
+        return 'CBS Tree';
       case _CostWorkspaceTab.sourceImports:
         return 'Source Imports';
       case _CostWorkspaceTab.contractsProcurement:
@@ -5945,6 +7227,64 @@ Color _costStateTone(String costState) {
     case 'forecast':
     default:
       return const Color(0xFFB45309);
+  }
+}
+
+int _maturityRank(String designMaturity) {
+  switch (designMaturity) {
+    case 'AsBuilt': return 6;
+    case 'IFC': return 5;
+    case '90%': return 4;
+    case '60%': return 3;
+    case '30%': return 2;
+    case '10%': return 1;
+    default: return 0;
+  }
+}
+
+int _resolveComplexityIndex(ProjectDataModel projectData) {
+  final assumptions = projectData.costAnalysisData?.solutionCostAssumptions;
+  if (assumptions != null && assumptions.isNotEmpty) {
+    return assumptions.first.complexityIndex;
+  }
+  return 3;
+}
+
+Color _designMaturityColor(String designMaturity) {
+  switch (designMaturity) {
+    case '10%':
+      return const Color(0xFFDC2626);
+    case '30%':
+      return const Color(0xFFEA580C);
+    case '60%':
+      return const Color(0xFFCA8A04);
+    case '90%':
+      return const Color(0xFF059669);
+    case 'IFC':
+      return const Color(0xFF2563EB);
+    case 'AsBuilt':
+      return const Color(0xFF7C3AED);
+    default:
+      return const Color(0xFF94A3B8);
+  }
+}
+
+String _designMaturityLabel(String designMaturity) {
+  switch (designMaturity) {
+    case '10%':
+      return '10% Concept';
+    case '30%':
+      return '30% Prelim';
+    case '60%':
+      return '60% Detail';
+    case '90%':
+      return '90% Pre-IFC';
+    case 'IFC':
+      return 'IFC';
+    case 'AsBuilt':
+      return 'As-Built';
+    default:
+      return '';
   }
 }
 

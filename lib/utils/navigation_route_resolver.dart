@@ -66,6 +66,9 @@ import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/screens/progress_tracking_screen.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
+import 'package:ndu_project/screens/deliverable_status_updates_screen.dart';
+import 'package:ndu_project/screens/recurring_deliverables_screen.dart';
+import 'package:ndu_project/screens/status_reports_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
 import 'package:ndu_project/screens/scope_tracking_implementation_screen.dart';
@@ -358,6 +361,7 @@ class NavigationRouteResolver {
         return const StartUpPlanningDevOpsScreen();
       case 'startup_planning_closeout':
         return const StartUpPlanningCloseOutPlanScreen();
+      case 'deliverables_roadmap':
       case 'deliverable_roadmap':
         return const DeliverablesRoadmapScreen();
       case 'deliverable_roadmap_agile_map_out':
@@ -416,6 +420,12 @@ class NavigationRouteResolver {
         return const TeamMeetingsScreen();
       case 'progress_tracking':
         return const ProgressTrackingScreen();
+      case 'deliverable_status_updates':
+        return const DeliverableStatusUpdatesScreen();
+      case 'recurring_deliverables':
+        return const RecurringDeliverablesScreen();
+      case 'status_reports':
+        return const StatusReportsScreen();
       case 'contracts_tracking':
         return const ContractsTrackingScreen();
       case 'vendor_tracking':

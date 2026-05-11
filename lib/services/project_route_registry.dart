@@ -64,6 +64,7 @@ class ProjectRouteRegistry {
     'lessons_learned': () => const LessonsLearnedScreen(),
     'startup_planning': () => const StartUpPlanningScreen(),
     'deliverable_roadmap': () => const DeliverablesRoadmapScreen(),
+    'deliverables_roadmap': () => const DeliverablesRoadmapScreen(),
     'agile_project_baseline': () => const AgileProjectBaselineScreen(),
     'project_plan': () => const ProjectPlanScreen(),
     'project_baseline': () => const ProjectBaselineScreen(),

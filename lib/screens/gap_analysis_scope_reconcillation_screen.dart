@@ -1077,7 +1077,25 @@ class _GapRegisterCard extends StatelessWidget {
     'Critical',
     'Moderate',
     'Low',
-    'Resolved'
+    'Resolved',
+  ];
+
+  static const List<String> _categoryOptions = [
+    'Scope',
+    'Schedule',
+    'Cost',
+    'Quality',
+    'Compliance',
+    'Resource',
+    'Technical',
+    'Process',
+  ];
+
+  static const List<String> _severityOptions = [
+    'Critical',
+    'High',
+    'Medium',
+    'Low',
   ];
 
   @override
@@ -1097,9 +1115,11 @@ class _GapRegisterCard extends StatelessWidget {
       width: width,
       title: 'Gap register & catalog',
       subtitle:
-          'Tracking priority, owner, and mitigation status for each scope gap.',
+          'Comprehensive gap register aligned with PMI PMBOK Control Scope (5.6) and '
+          'FIDIC variation management conventions. Track each scope discrepancy by '
+          'category, severity, root cause, owner, and remediation status.',
       trailing: TextButton.icon(
-        onPressed: _addEntry,
+        onPressed: () => _showGapEntryEditor(context),
         icon: const Icon(Icons.add_circle_outline),
         label: const Text('Log new gap'),
       ),
@@ -1131,7 +1151,7 @@ class _GapRegisterCard extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final tableWidth =
-                    constraints.maxWidth < 920 ? 920.0 : constraints.maxWidth;
+                    constraints.maxWidth < 1080 ? 1080.0 : constraints.maxWidth;
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
@@ -1145,23 +1165,86 @@ class _GapRegisterCard extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 14),
+                                horizontal: 20, vertical: 12),
                             decoration: const BoxDecoration(
                               color: Color(0xFFF9FAFB),
                               borderRadius: BorderRadius.vertical(
                                   top: Radius.circular(16)),
                             ),
-                            child: Row(
-                              children: const [
-                                _TableHeaderCell(flex: 3, label: 'Gap'),
-                                _TableHeaderCell(flex: 1, label: 'Priority'),
-                                _TableHeaderCell(flex: 1, label: 'Owner'),
-                                _TableHeaderCell(flex: 3, label: 'Next step'),
-                                _TableHeaderCell(flex: 1, label: ''),
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 20),
+                                Expanded(
+                                    flex: 4,
+                                    child: Text('GAP DESCRIPTION',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8))),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('CATEGORY',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('SEVERITY',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('PRIORITY',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('OWNER',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('TARGET',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 60,
+                                    child: Text('',
+                                        style: TextStyle(fontSize: 10))),
                               ],
                             ),
                           ),
-                          ...entries.map((entry) => _buildEntryRow(entry)),
+                          ..._sortedEntries.map((entry) {
+                            final isLast =
+                                entry == _sortedEntries.last;
+                            return _GapEntryRow(
+                              entry: entry,
+                              onEdit: () =>
+                                  _showGapEntryEditor(context, existing: entry),
+                              onDelete: () => _confirmDeleteEntry(context, entry),
+                              showDivider: !isLast,
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -1174,115 +1257,226 @@ class _GapRegisterCard extends StatelessWidget {
     );
   }
 
-  Widget _buildEntryRow(_GapEntry entry) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: const BoxDecoration(
-        border:
-            Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 0.9)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  key: ValueKey('gap-id-${entry.uid}'),
-                  initialValue: entry.id,
-                  decoration: _inputDecoration('Gap ID', dense: true),
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6B7280)),
-                  onChanged: (value) => _updateEntry(entry.copyWith(id: value)),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  key: ValueKey('gap-title-${entry.uid}'),
-                  initialValue: entry.title,
-                  decoration: _inputDecoration('Gap description'),
-                  onChanged: (value) =>
-                      _updateEntry(entry.copyWith(title: value)),
-                ),
-              ],
+  List<_GapEntry> get _sortedEntries {
+    const priorityOrder = {'Critical': 0, 'Moderate': 1, 'Low': 2, 'Resolved': 3};
+    final sorted = List<_GapEntry>.from(entries);
+    sorted.sort((a, b) =>
+        (priorityOrder[a.stage] ?? 99).compareTo(priorityOrder[b.stage] ?? 99));
+    return sorted;
+  }
+
+  void _showGapEntryEditor(BuildContext context, {_GapEntry? existing}) {
+    final isEdit = existing != null;
+    final idController =
+        TextEditingController(text: existing?.id ?? 'GAP-${DateTime.now().millisecondsSinceEpoch % 10000}');
+    final titleController =
+        TextEditingController(text: existing?.title ?? '');
+    final ownerController =
+        TextEditingController(text: existing?.owner ?? '');
+    final nextStepController =
+        TextEditingController(text: existing?.nextStep ?? '');
+    final impactAreaController =
+        TextEditingController(text: existing?.impactArea ?? '');
+    final targetDateController =
+        TextEditingController(text: existing?.targetDate ?? '');
+    final evidenceController =
+        TextEditingController(text: existing?.evidence ?? '');
+    String selectedStage = existing?.stage ?? 'Moderate';
+    String selectedCategory = existing?.category ?? 'Scope';
+    String selectedSeverity = existing?.severity ?? 'Medium';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Gap Entry' : 'Log New Gap'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: idController,
+                    decoration: const InputDecoration(
+                      labelText: 'Gap ID *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Gap description *',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Category *',
+                      isDense: true,
+                    ),
+                    items: _categoryOptions
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setDialogState(() => selectedCategory = v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedSeverity,
+                          decoration: const InputDecoration(
+                            labelText: 'Severity *',
+                            isDense: true,
+                          ),
+                          items: _severityOptions
+                              .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedSeverity = v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _priorityOptions.contains(selectedStage)
+                              ? selectedStage
+                              : _priorityOptions.first,
+                          decoration: const InputDecoration(
+                            labelText: 'Priority *',
+                            isDense: true,
+                          ),
+                          items: _priorityOptions
+                              .map((p) => DropdownMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedStage = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: ownerController,
+                    decoration: const InputDecoration(
+                      labelText: 'Owner *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: targetDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Target closure date',
+                            hintText: 'e.g., 2025-08-15',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nextStepController,
+                    decoration: const InputDecoration(
+                      labelText: 'Remediation / next step *',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: impactAreaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Impact area',
+                      hintText: 'e.g., Milestone 3 delivery',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: evidenceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Evidence / reference',
+                      hintText: 'e.g., Audit finding AF-2024-017',
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 1,
-            child: DropdownButtonFormField<String>(
-              initialValue: _priorityOptions.contains(entry.stage)
-                  ? entry.stage
-                  : _priorityOptions.first,
-              decoration: _inputDecoration('Priority', dense: true),
-              items: _priorityOptions
-                  .map((option) =>
-                      DropdownMenuItem(value: option, child: Text(option)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updateEntry(entry.copyWith(stage: value));
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) return;
+                final entry = _GapEntry(
+                  uid: existing?.uid ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  id: idController.text.trim(),
+                  title: titleController.text.trim(),
+                  stage: selectedStage,
+                  owner: ownerController.text.trim(),
+                  nextStep: nextStepController.text.trim(),
+                  category: selectedCategory,
+                  severity: selectedSeverity,
+                  impactArea: impactAreaController.text.trim(),
+                  targetDate: targetDateController.text.trim(),
+                  evidence: evidenceController.text.trim(),
+                );
+                final updated = isEdit
+                    ? [for (final e in entries) e.uid == entry.uid ? entry : e]
+                    : [...entries, entry];
+                onChanged(updated);
+                Navigator.pop(ctx);
               },
+              child: Text(isEdit ? 'Update' : 'Add'),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 1,
-            child: TextFormField(
-              key: ValueKey('gap-owner-${entry.uid}'),
-              initialValue: entry.owner,
-              decoration: _inputDecoration('Owner'),
-              onChanged: (value) => _updateEntry(entry.copyWith(owner: value)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 3,
-            child: TextFormField(
-              key: ValueKey('gap-next-${entry.uid}'),
-              initialValue: entry.nextStep,
-              decoration: _inputDecoration('Next step'),
-              onChanged: (value) =>
-                  _updateEntry(entry.copyWith(nextStep: value)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteEntry(entry),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  void _addEntry() {
-    final updated = [
-      ...entries,
-      _GapEntry(
-        uid: DateTime.now().microsecondsSinceEpoch.toString(),
-        id: 'GAP-${DateTime.now().millisecondsSinceEpoch % 1000}',
-        title: '',
-        stage: _priorityOptions.first,
-        owner: '',
-        nextStep: '',
+  void _confirmDeleteEntry(BuildContext context, _GapEntry entry) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Gap Entry'),
+        content: Text(
+            'Remove "${entry.title.isNotEmpty ? entry.title : entry.id}" from the gap register?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onChanged(entries.where((e) => e.uid != entry.uid).toList());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
-    ];
-    onChanged(updated);
-  }
-
-  void _updateEntry(_GapEntry entry) {
-    final updated = [
-      for (final item in entries) item.uid == entry.uid ? entry : item
-    ];
-    onChanged(updated);
-  }
-
-  void _deleteEntry(_GapEntry entry) {
-    final updated = entries.where((item) => item.uid != entry.uid).toList();
-    onChanged(updated);
+    );
   }
 }
 
@@ -1301,31 +1495,1066 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
   final ValueChanged<List<_RootCauseItem>> onRootCauseUpdated;
   final ValueChanged<List<_RootCauseItem>> onMitigationUpdated;
 
+  static const List<String> _categoryOptions = [
+    'Process',
+    'People',
+    'Technology',
+    'Requirements',
+    'Governance',
+    'External',
+    'Design',
+    'Communication',
+  ];
+
+  static const List<String> _methodologyOptions = [
+    '5 Whys',
+    'Fishbone (Ishikawa)',
+    'Pareto Analysis',
+    'Fault Tree',
+    'Root Cause Matrix',
+    'Gap-Effect Diagram',
+  ];
+
+  static const List<String> _impactOptions = [
+    'Critical',
+    'High',
+    'Medium',
+    'Low',
+  ];
+
+  static const List<String> _statusOptions = [
+    'Open',
+    'Under Investigation',
+    'Remediation In Progress',
+    'Verified Closed',
+    'Accepted Risk',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
       width: width,
       title: 'Gap analysis & root cause',
-      subtitle: 'Identify the underlying sources of each scope discrepancy.',
+      subtitle: 'Root cause identification aligned with PMI PMBOK Quality '
+          'Management (8.2) and PRINCE2 Issue and Risk evaluation. Uses '
+          'structured methodologies (5 Whys, Ishikawa, Pareto) to trace '
+          'each scope discrepancy to its systemic source.',
       trailing: TextButton.icon(
-        onPressed: () {},
+        onPressed: () => _showRootCauseEditor(context),
         icon: const Icon(Icons.playlist_add_check_circle_outlined),
-        label: const Text('Share updated findings'),
+        label: const Text('Log root cause'),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EditableInsightBlock(
-            label: 'Root cause themes',
-            items: rootCauseThemes,
-            onUpdated: onRootCauseUpdated,
+          Text(
+            'Root cause themes',
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
           ),
-          const SizedBox(height: 18),
-          _EditableInsightBlock(
-            label: 'Mitigation confidence',
-            items: mitigationConfidence,
-            onUpdated: onMitigationUpdated,
+          const SizedBox(height: 12),
+          if (rootCauseThemes.isEmpty)
+            const _EmptyPanel(label: 'No root cause themes identified yet.')
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tableWidth =
+                    constraints.maxWidth < 1080 ? 1080.0 : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 20),
+                                Expanded(
+                                    flex: 4,
+                                    child: Text('ROOT CAUSE',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8))),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('CATEGORY',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('METHOD',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 80,
+                                    child: Text('IMPACT',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 110,
+                                    child: Text('STATUS',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 60,
+                                    child: Text('',
+                                        style: TextStyle(fontSize: 10))),
+                              ],
+                            ),
+                          ),
+                          ...rootCauseThemes.map((item) {
+                            final isLast = item == rootCauseThemes.last;
+                            return _RootCauseRow(
+                              item: item,
+                              onEdit: () =>
+                                  _showRootCauseEditor(context, existing: item),
+                              onDelete: () =>
+                                  _confirmDeleteRootCause(context, item),
+                              showDivider: !isLast,
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 24),
+          Text(
+            'Mitigation confidence',
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
           ),
+          const SizedBox(height: 12),
+          if (mitigationConfidence.isEmpty)
+            const _EmptyPanel(
+                label: 'No mitigation confidence entries yet.')
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tableWidth =
+                    constraints.maxWidth < 1080 ? 1080.0 : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 20),
+                                Expanded(
+                                    flex: 5,
+                                    child: Text('MITIGATION ACTION',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8))),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('IMPACT',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 110,
+                                    child: Text('STATUS',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 60,
+                                    child: Text('',
+                                        style: TextStyle(fontSize: 10))),
+                              ],
+                            ),
+                          ),
+                          ...mitigationConfidence.map((item) {
+                            final isLast = item == mitigationConfidence.last;
+                            return _RootCauseRow(
+                              item: item,
+                              onEdit: () => _showMitigationEditor(
+                                  context, existing: item),
+                              onDelete: () =>
+                                  _confirmDeleteMitigation(context, item),
+                              showDivider: !isLast,
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showRootCauseEditor(BuildContext context, {_RootCauseItem? existing}) {
+    _showInsightEditor(
+      context,
+      existing: existing,
+      items: rootCauseThemes,
+      onSaved: onRootCauseUpdated,
+      title: existing != null ? 'Edit Root Cause' : 'Log Root Cause',
+    );
+  }
+
+  void _showMitigationEditor(BuildContext context,
+      {_RootCauseItem? existing}) {
+    _showInsightEditor(
+      context,
+      existing: existing,
+      items: mitigationConfidence,
+      onSaved: onMitigationUpdated,
+      title: existing != null ? 'Edit Mitigation' : 'Add Mitigation Action',
+    );
+  }
+
+  void _showInsightEditor(
+    BuildContext context, {
+    required List<_RootCauseItem> items,
+    required ValueChanged<List<_RootCauseItem>> onSaved,
+    required String title,
+    _RootCauseItem? existing,
+  }) {
+    final isEdit = existing != null;
+    final textController =
+        TextEditingController(text: existing?.text ?? '');
+    final freqController =
+        TextEditingController(text: existing?.frequency ?? '');
+    final recController =
+        TextEditingController(text: existing?.recommendation ?? '');
+    String selectedCategory = existing?.category ?? 'Process';
+    String selectedMethod = existing?.methodology ?? '5 Whys';
+    String selectedImpact = existing?.impact ?? 'Medium';
+    String selectedStatus = existing?.status ?? 'Open';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: textController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description *',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Category *',
+                      isDense: true,
+                    ),
+                    items: _categoryOptions
+                        .map((c) => DropdownMenuItem(
+                            value: c, child: Text(c, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedCategory = v);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Analysis method *',
+                      isDense: true,
+                    ),
+                    items: _methodologyOptions
+                        .map((m) => DropdownMenuItem(
+                            value: m, child: Text(m, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedMethod = v);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedImpact,
+                          decoration: const InputDecoration(
+                            labelText: 'Impact *',
+                            isDense: true,
+                          ),
+                          items: _impactOptions
+                              .map((i) => DropdownMenuItem(
+                                  value: i, child: Text(i, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedImpact = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Status *',
+                            isDense: true,
+                          ),
+                          items: _statusOptions
+                              .map((s) => DropdownMenuItem(
+                                  value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedStatus = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: freqController,
+                    decoration: const InputDecoration(
+                      labelText: 'Occurrence frequency',
+                      hintText: 'e.g., Recurring, One-time',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: recController,
+                    decoration: const InputDecoration(
+                      labelText: 'Recommendation',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (textController.text.trim().isEmpty) return;
+                final item = _RootCauseItem(
+                  id: existing?.id ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  text: textController.text.trim(),
+                  category: selectedCategory,
+                  methodology: selectedMethod,
+                  impact: selectedImpact,
+                  frequency: freqController.text.trim(),
+                  recommendation: recController.text.trim(),
+                  status: selectedStatus,
+                );
+                final updated = isEdit
+                    ? [for (final i in items) i.id == item.id ? item : i]
+                    : [...items, item];
+                onSaved(updated);
+                Navigator.pop(ctx);
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteRootCause(BuildContext context, _RootCauseItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Root Cause'),
+        content: Text('Remove this root cause entry?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onRootCauseUpdated(
+                  rootCauseThemes.where((i) => i.id != item.id).toList());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteMitigation(BuildContext context, _RootCauseItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Mitigation'),
+        content: Text('Remove this mitigation entry?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onMitigationUpdated(
+                  mitigationConfidence.where((i) => i.id != item.id).toList());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GapEntryRow extends StatefulWidget {
+  const _GapEntryRow({
+    required this.entry,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _GapEntry entry;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_GapEntryRow> createState() => _GapEntryRowState();
+}
+
+class _GapEntryRowState extends State<_GapEntryRow> {
+  bool _isHovering = false;
+
+  Color _categoryColor(String cat) {
+    switch (cat) {
+      case 'Scope':
+        return const Color(0xFF2563EB);
+      case 'Schedule':
+        return const Color(0xFFF59E0B);
+      case 'Cost':
+        return const Color(0xFF059669);
+      case 'Quality':
+        return const Color(0xFF7C3AED);
+      case 'Compliance':
+        return const Color(0xFFDC2626);
+      case 'Resource':
+        return const Color(0xFFEA580C);
+      case 'Technical':
+        return const Color(0xFF0D9488);
+      case 'Process':
+        return const Color(0xFF4F46E5);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _severityColor(String sev) {
+    switch (sev) {
+      case 'Critical':
+        return const Color(0xFFDC2626);
+      case 'High':
+        return const Color(0xFFEF4444);
+      case 'Medium':
+        return const Color(0xFFF59E0B);
+      case 'Low':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  Color _priorityColor(String stage) {
+    switch (stage) {
+      case 'Critical':
+        return const Color(0xFFDC2626);
+      case 'Moderate':
+        return const Color(0xFFF97316);
+      case 'Low':
+        return const Color(0xFF059669);
+      case 'Resolved':
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _priorityIcon(String stage) {
+    switch (stage) {
+      case 'Critical':
+        return Icons.error_outline;
+      case 'Moderate':
+        return Icons.warning_amber_outlined;
+      case 'Low':
+        return Icons.info_outline;
+      case 'Resolved':
+        return Icons.check_circle_outline;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    final catColor = _categoryColor(e.category);
+    final sevColor = _severityColor(e.severity);
+    final prioColor = _priorityColor(e.stage);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
+        children: [
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Gap ID + description
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              e.id,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        e.title.trim().isEmpty ? 'Untitled gap' : e.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827),
+                          height: 1.4,
+                        ),
+                      ),
+                      if (e.nextStep.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          e.nextStep,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Category
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: catColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: catColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        e.category,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: catColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Severity
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: sevColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(color: sevColor, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            e.severity,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sevColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Priority
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: prioColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_priorityIcon(e.stage), size: 13, color: prioColor),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              e.stage,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: prioColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Owner
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Text(
+                      e.owner.trim().isEmpty ? 'Unassigned' : e.owner,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: e.owner.trim().isEmpty ? const Color(0xFF9CA3AF) : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+                // Target date
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      e.targetDate.trim().isEmpty ? '—' : e.targetDate,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
+                ),
+              ],
+            ),
+          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RootCauseRow extends StatefulWidget {
+  const _RootCauseRow({
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _RootCauseItem item;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_RootCauseRow> createState() => _RootCauseRowState();
+}
+
+class _RootCauseRowState extends State<_RootCauseRow> {
+  bool _isHovering = false;
+
+  Color _categoryColor(String cat) {
+    switch (cat) {
+      case 'Process':
+        return const Color(0xFF4F46E5);
+      case 'People':
+        return const Color(0xFF2563EB);
+      case 'Technology':
+        return const Color(0xFF0D9488);
+      case 'Requirements':
+        return const Color(0xFF7C3AED);
+      case 'Governance':
+        return const Color(0xFFDC2626);
+      case 'External':
+        return const Color(0xFFEA580C);
+      case 'Design':
+        return const Color(0xFF059669);
+      case 'Communication':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _impactColor(String impact) {
+    switch (impact) {
+      case 'Critical':
+        return const Color(0xFFDC2626);
+      case 'High':
+        return const Color(0xFFEF4444);
+      case 'Medium':
+        return const Color(0xFFF59E0B);
+      case 'Low':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Open':
+        return const Color(0xFF9CA3AF);
+      case 'Under Investigation':
+        return const Color(0xFF2563EB);
+      case 'Remediation In Progress':
+        return const Color(0xFFF59E0B);
+      case 'Verified Closed':
+        return const Color(0xFF10B981);
+      case 'Accepted Risk':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'Open':
+        return Icons.radio_button_unchecked;
+      case 'Under Investigation':
+        return Icons.search;
+      case 'Remediation In Progress':
+        return Icons.sync_outlined;
+      case 'Verified Closed':
+        return Icons.check_circle_outline;
+      case 'Accepted Risk':
+        return Icons.shield_outlined;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final catColor = _categoryColor(item.category);
+    final impactColor = _impactColor(item.impact);
+    final statusColor = _statusColor(item.status);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
+        children: [
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Root cause description
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.text.trim().isEmpty ? 'Unnamed root cause' : item.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827),
+                          height: 1.4,
+                        ),
+                      ),
+                      if (item.recommendation.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          item.recommendation,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Category
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: catColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: catColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        item.category,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: catColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Method
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Text(
+                      item.methodology,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Impact
+                SizedBox(
+                  width: 80,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: impactColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(color: impactColor, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              item.impact,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: impactColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Status
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_statusIcon(item.status), size: 13, color: statusColor),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              item.status,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
+                ),
+              ],
+            ),
+          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ],
       ),
     );
@@ -1344,11 +2573,22 @@ class _ReconciliationPlanningCard extends StatelessWidget {
   final ValueChanged<List<_PlanEntry>> onPlansUpdated;
 
   static const _statusOptions = [
+    'Not started',
+    'In progress',
     'On track',
     'At risk',
     'In review',
-    'Not started',
     'Complete',
+    'Deferred',
+  ];
+
+  static const _phaseOptions = [
+    'Execution',
+    'Close-out',
+    'Handover',
+    'Remediation',
+    'Verification',
+    'Post-project',
   ];
 
   @override
@@ -1356,164 +2596,360 @@ class _ReconciliationPlanningCard extends StatelessWidget {
     return _SectionShell(
       width: width,
       title: 'Reconciliation planning',
-      subtitle: 'Sequenced closure plan with owners, timelines, and status.',
+      subtitle: 'Sequenced closure plan aligned with PMI PMBOK Close Project '
+          '(4.7) and PRINCE2 Closing a Project processes. Each action maps to '
+          'a specific gap with clear ownership, timeline dependencies, and '
+          'verifiable completion criteria.',
       trailing: TextButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.task_alt_outlined),
-        label: const Text('Export action plan'),
+        onPressed: () => _showPlanEditor(context),
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text('Add step'),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPlanTable(),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _addPlan,
-            icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Add reconciliation step'),
-          ),
+          if (plans.isEmpty)
+            const _EmptyPanel(label: 'No reconciliation steps yet.')
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tableWidth =
+                    constraints.maxWidth < 1120 ? 1120.0 : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 20),
+                                Expanded(
+                                    flex: 4,
+                                    child: Text('RECONCILIATION ACTION',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8))),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('PHASE',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('GAP REF',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('OWNER',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('DUE',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 80,
+                                    child: Text('PROGRESS',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 110,
+                                    child: Text('STATUS',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 60,
+                                    child: Text('',
+                                        style: TextStyle(fontSize: 10))),
+                              ],
+                            ),
+                          ),
+                          ...plans.map((plan) {
+                            final isLast = plan == plans.last;
+                            return _ReconPlanRow(
+                              plan: plan,
+                              onEdit: () =>
+                                  _showPlanEditor(context, existing: plan),
+                              onDelete: () =>
+                                  _confirmDeletePlan(context, plan),
+                              showDivider: !isLast,
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildPlanTable() {
-    if (plans.isEmpty) {
-      return const _EmptyPanel(label: 'No reconciliation steps yet.');
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tableWidth =
-            constraints.maxWidth < 860 ? 860.0 : constraints.maxWidth;
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: tableWidth,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
+  void _showPlanEditor(BuildContext context, {_PlanEntry? existing}) {
+    final isEdit = existing != null;
+    final titleController =
+        TextEditingController(text: existing?.title ?? '');
+    final dueController =
+        TextEditingController(text: existing?.due ?? '');
+    final ownerController =
+        TextEditingController(text: existing?.owner ?? '');
+    final gapRefController =
+        TextEditingController(text: existing?.gapReference ?? '');
+    final depController =
+        TextEditingController(text: existing?.dependency ?? '');
+    final notesController =
+        TextEditingController(text: existing?.notes ?? '');
+    String selectedStatus = existing?.status ?? 'Not started';
+    String selectedPhase = existing?.phase ?? 'Execution';
+    int completionPct = existing?.completionPct ?? 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Reconciliation Step' : 'Add Reconciliation Step'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 500,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF9FAFB),
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Action description *',
+                      isDense: true,
                     ),
-                    child: const Row(
-                      children: [
-                        _TableHeaderCell(flex: 3, label: 'Action'),
-                        _TableHeaderCell(flex: 2, label: 'Due'),
-                        _TableHeaderCell(flex: 2, label: 'Owner'),
-                        _TableHeaderCell(flex: 2, label: 'Status'),
-                        _TableHeaderCell(flex: 1, label: ''),
-                      ],
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedPhase,
+                          decoration: const InputDecoration(
+                            labelText: 'Phase *',
+                            isDense: true,
+                          ),
+                          items: _phaseOptions
+                              .map((p) => DropdownMenuItem(
+                                  value: p, child: Text(p, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedPhase = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _statusOptions.contains(selectedStatus)
+                              ? selectedStatus
+                              : _statusOptions.first,
+                          decoration: const InputDecoration(
+                            labelText: 'Status *',
+                            isDense: true,
+                          ),
+                          items: _statusOptions
+                              .map((s) => DropdownMenuItem(
+                                  value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedStatus = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ownerController,
+                          decoration: const InputDecoration(
+                            labelText: 'Owner *',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: dueController,
+                          decoration: const InputDecoration(
+                            labelText: 'Due date',
+                            hintText: 'e.g., 2025-09-30',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: gapRefController,
+                          decoration: const InputDecoration(
+                            labelText: 'Gap reference',
+                            hintText: 'e.g., GAP-001',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Completion: $completionPct%',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                            Slider(
+                              value: completionPct.toDouble(),
+                              min: 0,
+                              max: 100,
+                              divisions: 10,
+                              label: '$completionPct%',
+                              onChanged: (v) {
+                                setDialogState(() => completionPct = v.round());
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: depController,
+                    decoration: const InputDecoration(
+                      labelText: 'Dependency',
+                      hintText: 'e.g., Requires GAP-003 closure first',
+                      isDense: true,
                     ),
                   ),
-                  ...plans.map(_buildPlanRow),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
                 ],
               ),
             ),
           ),
-        );
-      },
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) return;
+                final plan = _PlanEntry(
+                  id: existing?.id ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  title: titleController.text.trim(),
+                  due: dueController.text.trim(),
+                  owner: ownerController.text.trim(),
+                  status: selectedStatus,
+                  phase: selectedPhase,
+                  gapReference: gapRefController.text.trim(),
+                  dependency: depController.text.trim(),
+                  completionPct: completionPct,
+                  notes: notesController.text.trim(),
+                );
+                final updated = isEdit
+                    ? [for (final p in plans) p.id == plan.id ? plan : p]
+                    : [...plans, plan];
+                onPlansUpdated(updated);
+                Navigator.pop(ctx);
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildPlanRow(_PlanEntry plan) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: const BoxDecoration(
-        border:
-            Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 0.9)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: TextFormField(
-              key: ValueKey('plan-title-${plan.id}'),
-              initialValue: plan.title,
-              decoration: _inputDecoration('Action'),
-              onChanged: (value) => _updatePlan(plan.copyWith(title: value)),
-            ),
+  void _confirmDeletePlan(BuildContext context, _PlanEntry plan) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Reconciliation Step'),
+        content: Text(
+            'Remove "${plan.title.isNotEmpty ? plan.title : 'this step'}" from the plan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: TextFormField(
-              key: ValueKey('plan-due-${plan.id}'),
-              initialValue: plan.due,
-              decoration: _inputDecoration('Due date'),
-              onChanged: (value) => _updatePlan(plan.copyWith(due: value)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: TextFormField(
-              key: ValueKey('plan-owner-${plan.id}'),
-              initialValue: plan.owner,
-              decoration: _inputDecoration('Owner'),
-              onChanged: (value) => _updatePlan(plan.copyWith(owner: value)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: DropdownButtonFormField<String>(
-              initialValue: _statusOptions.contains(plan.status)
-                  ? plan.status
-                  : _statusOptions.first,
-              decoration: _inputDecoration('Status', dense: true),
-              items: _statusOptions
-                  .map((status) =>
-                      DropdownMenuItem(value: status, child: Text(status)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updatePlan(plan.copyWith(status: value));
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deletePlan(plan),
+          ElevatedButton(
+            onPressed: () {
+              onPlansUpdated(plans.where((p) => p.id != plan.id).toList());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-  }
-
-  void _addPlan() {
-    final updated = [
-      ...plans,
-      _PlanEntry(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        title: '',
-        due: '',
-        owner: '',
-        status: _statusOptions.first,
-      ),
-    ];
-    onPlansUpdated(updated);
-  }
-
-  void _updatePlan(_PlanEntry updatedPlan) {
-    final updated = [
-      for (final plan in plans) plan.id == updatedPlan.id ? updatedPlan : plan
-    ];
-    onPlansUpdated(updated);
-  }
-
-  void _deletePlan(_PlanEntry plan) {
-    onPlansUpdated(plans.where((item) => item.id != plan.id).toList());
   }
 }
 
@@ -1533,206 +2969,1004 @@ class _ImpactAssessmentCard extends StatelessWidget {
   final List<_PlanEntry> plans;
 
   static const _ratingOptions = ['Low', 'Medium', 'High', 'Critical'];
-  static const _trendOptions = ['Improving', 'Stable', 'Needs attention'];
+  static const _trendOptions = ['Improving', 'Stable', 'Needs attention', 'Deteriorating'];
+  static const _domainOptions = [
+    'Schedule',
+    'Cost',
+    'Quality',
+    'Scope',
+    'Compliance',
+    'Safety',
+    'Reputation',
+    'Operations',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
       width: width,
       title: 'Impact assessment results',
-      subtitle:
-          'Evaluate schedule, cost, quality, and adoption exposure for unresolved gaps.',
-      trailing: TextButton.icon(
-        onPressed: () {
-          showDialog<void>(
-            context: context,
-            barrierColor: Colors.black.withValues(alpha: 0.35),
-            builder: (_) => _ScenarioMatrixDialog(
-              impacts: impacts,
-              gaps: gaps,
-              plans: plans,
-            ),
-          );
-        },
-        icon: const Icon(Icons.analytics_outlined),
-        label: const Text('View scenario matrix'),
+      subtitle: 'Impact evaluation aligned with PMI PMBOK Monitor Risks (11.7) '
+          'and PRINCE2 Risk Management. Assess each unresolved gap across '
+          'schedule, cost, quality, and compliance dimensions with trend '
+          'indicators and financial exposure estimates.',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton.icon(
+            onPressed: () => _showImpactEditor(context),
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text('Add impact'),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: () {
+              showDialog<void>(
+                context: context,
+                barrierColor: Colors.black.withValues(alpha: 0.35),
+                builder: (_) => _ScenarioMatrixDialog(
+                  impacts: impacts,
+                  gaps: gaps,
+                  plans: plans,
+                ),
+              );
+            },
+            icon: const Icon(Icons.analytics_outlined),
+            label: const Text('Scenario matrix'),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+          if (impacts.isEmpty)
+            const _EmptyPanel(label: 'No impact assessment items yet.')
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tableWidth =
+                    constraints.maxWidth < 1160 ? 1160.0 : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 20),
+                                Expanded(
+                                    flex: 4,
+                                    child: Text('IMPACT AREA',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8))),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('DOMAIN',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 80,
+                                    child: Text('RATING',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 100,
+                                    child: Text('TREND',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('OWNER',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 90,
+                                    child: Text('EXPOSURE',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6B7280),
+                                            letterSpacing: 0.8),
+                                        textAlign: TextAlign.center)),
+                                SizedBox(
+                                    width: 60,
+                                    child: Text('',
+                                        style: TextStyle(fontSize: 10))),
+                              ],
+                            ),
+                          ),
+                          ...impacts.map((impact) {
+                            final isLast = impact == impacts.last;
+                            return _ImpactAssessmentRow(
+                              impact: impact,
+                              onEdit: () =>
+                                  _showImpactEditor(context, existing: impact),
+                              onDelete: () =>
+                                  _confirmDeleteImpact(context, impact),
+                              showDivider: !isLast,
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            child: Column(
-              children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Row(
-                    children: const [
+        ],
+      ),
+    );
+  }
+
+  void _showImpactEditor(BuildContext context, {_ImpactRow? existing}) {
+    final isEdit = existing != null;
+    final areaController =
+        TextEditingController(text: existing?.area ?? '');
+    final detailController =
+        TextEditingController(text: existing?.detail ?? '');
+    final deliverableController =
+        TextEditingController(text: existing?.affectedDeliverable ?? '');
+    final exposureController =
+        TextEditingController(text: existing?.financialExposure ?? '');
+    final ownerController =
+        TextEditingController(text: existing?.owner ?? '');
+    final mitigationController =
+        TextEditingController(text: existing?.mitigationLink ?? '');
+    String selectedRating = existing?.rating ?? 'Medium';
+    String selectedTrend = existing?.trend ?? 'Stable';
+    String selectedDomain = existing?.domain ?? 'Schedule';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Impact Assessment' : 'Add Impact Assessment'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: areaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Impact area *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: detailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description *',
+                      isDense: true,
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
                       Expanded(
-                        child: Text(
-                          'Impact area',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B7280),
-                            letterSpacing: 0.3,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedDomain,
+                          decoration: const InputDecoration(
+                            labelText: 'Domain *',
+                            isDense: true,
                           ),
+                          items: _domainOptions
+                              .map((d) => DropdownMenuItem(
+                                  value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedDomain = v);
+                            }
+                          },
                         ),
                       ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Rating',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B7280),
-                            letterSpacing: 0.3,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _ratingOptions.contains(selectedRating)
+                              ? selectedRating
+                              : _ratingOptions.first,
+                          decoration: const InputDecoration(
+                            labelText: 'Rating *',
+                            isDense: true,
                           ),
+                          items: _ratingOptions
+                              .map((r) => DropdownMenuItem(
+                                  value: r, child: Text(r, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedRating = v);
+                            }
+                          },
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
                       Expanded(
-                        child: Text(
-                          'Trend',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B7280),
-                            letterSpacing: 0.3,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _trendOptions.contains(selectedTrend)
+                              ? selectedTrend
+                              : _trendOptions.first,
+                          decoration: const InputDecoration(
+                            labelText: 'Trend *',
+                            isDense: true,
+                          ),
+                          items: _trendOptions
+                              .map((t) => DropdownMenuItem(
+                                  value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedTrend = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: ownerController,
+                          decoration: const InputDecoration(
+                            labelText: 'Owner',
+                            isDense: true,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                if (impacts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                    child:
-                        _EmptyPanel(label: 'No impact assessment items yet.'),
-                  )
-                else
-                  ...impacts.map(_buildImpactRow),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: exposureController,
+                          decoration: const InputDecoration(
+                            labelText: 'Financial exposure',
+                            hintText: 'e.g., \$150K',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: deliverableController,
+                          decoration: const InputDecoration(
+                            labelText: 'Affected deliverable',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: mitigationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Mitigation plan reference',
+                      hintText: 'e.g., Linked to GAP-002 remediation',
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _addImpactRow,
-            icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Add impact row'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (areaController.text.trim().isEmpty) return;
+                final impact = _ImpactRow(
+                  id: existing?.id ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  area: areaController.text.trim(),
+                  rating: selectedRating,
+                  trend: selectedTrend,
+                  detail: detailController.text.trim(),
+                  domain: selectedDomain,
+                  affectedDeliverable: deliverableController.text.trim(),
+                  financialExposure: exposureController.text.trim(),
+                  owner: ownerController.text.trim(),
+                  mitigationLink: mitigationController.text.trim(),
+                );
+                final updated = isEdit
+                    ? [for (final i in impacts) i.id == impact.id ? impact : i]
+                    : [...impacts, impact];
+                onImpactsUpdated(updated);
+                Navigator.pop(ctx);
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteImpact(BuildContext context, _ImpactRow impact) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Impact Assessment'),
+        content: Text(
+            'Remove "${impact.area.isNotEmpty ? impact.area : 'this impact'}" from the assessment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onImpactsUpdated(
+                  impacts.where((i) => i.id != impact.id).toList());
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildImpactRow(_ImpactRow impact) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+class _ReconPlanRow extends StatefulWidget {
+  const _ReconPlanRow({
+    required this.plan,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _PlanEntry plan;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_ReconPlanRow> createState() => _ReconPlanRowState();
+}
+
+class _ReconPlanRowState extends State<_ReconPlanRow> {
+  bool _isHovering = false;
+
+  Color _phaseColor(String phase) {
+    switch (phase) {
+      case 'Execution':
+        return const Color(0xFF2563EB);
+      case 'Close-out':
+        return const Color(0xFF7C3AED);
+      case 'Handover':
+        return const Color(0xFF059669);
+      case 'Remediation':
+        return const Color(0xFFEF4444);
+      case 'Verification':
+        return const Color(0xFFF59E0B);
+      case 'Post-project':
+        return const Color(0xFF64748B);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Not started':
+        return const Color(0xFF9CA3AF);
+      case 'In progress':
+        return const Color(0xFF2563EB);
+      case 'On track':
+        return const Color(0xFF10B981);
+      case 'At risk':
+        return const Color(0xFFEF4444);
+      case 'In review':
+        return const Color(0xFFF59E0B);
+      case 'Complete':
+        return const Color(0xFF059669);
+      case 'Deferred':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'Not started':
+        return Icons.radio_button_unchecked;
+      case 'In progress':
+        return Icons.sync_outlined;
+      case 'On track':
+        return Icons.check_circle_outline;
+      case 'At risk':
+        return Icons.warning_amber_outlined;
+      case 'In review':
+        return Icons.visibility_outlined;
+      case 'Complete':
+        return Icons.task_alt_outlined;
+      case 'Deferred':
+        return Icons.schedule_outlined;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  Color _progressColor(int pct) {
+    if (pct >= 80) return const Color(0xFF10B981);
+    if (pct >= 50) return const Color(0xFF2563EB);
+    if (pct >= 25) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.plan;
+    final phaseColor = _phaseColor(p.phase);
+    final statusColor = _statusColor(p.status);
+    final pct = p.completionPct ?? 0;
+    final progressColor = _progressColor(pct);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                TextFormField(
-                  key: ValueKey('impact-area-${impact.id}'),
-                  initialValue: impact.area,
-                  decoration: _inputDecoration('Impact area', dense: true),
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1F2937)),
-                  onChanged: (value) =>
-                      _updateImpact(impact.copyWith(area: value)),
+                // Action title + gap ref + notes
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.title.trim().isEmpty ? 'Untitled action' : p.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827),
+                          height: 1.4,
+                        ),
+                      ),
+                      if (p.dependency.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          'Depends on: ${p.dependency}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  key: ValueKey('impact-detail-${impact.id}'),
-                  initialValue: impact.detail,
-                  decoration: _inputDecoration('Detail'),
-                  maxLines: 2,
-                  onChanged: (value) =>
-                      _updateImpact(impact.copyWith(detail: value)),
+                // Phase
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: phaseColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: phaseColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        p.phase,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: phaseColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Gap reference
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      p.gapReference.trim().isEmpty ? '—' : p.gapReference,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: p.gapReference.trim().isEmpty
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Owner
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      p.owner.trim().isEmpty ? 'Unassigned' : p.owner,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: p.owner.trim().isEmpty
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+                // Due
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      p.due.trim().isEmpty ? '—' : p.due,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Progress
+                SizedBox(
+                  width: 80,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$pct%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: progressColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: pct / 100.0,
+                            backgroundColor: const Color(0xFFE5E7EB),
+                            valueColor: AlwaysStoppedAnimation(progressColor),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Status
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_statusIcon(p.status), size: 13, color: statusColor),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              p.status,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _ratingOptions.contains(impact.rating)
-                  ? impact.rating
-                  : _ratingOptions.first,
-              decoration: _inputDecoration('Rating', dense: true),
-              items: _ratingOptions
-                  .map((rating) =>
-                      DropdownMenuItem(value: rating, child: Text(rating)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updateImpact(impact.copyWith(rating: value));
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _trendOptions.contains(impact.trend)
-                  ? impact.trend
-                  : _trendOptions.first,
-              decoration: _inputDecoration('Trend', dense: true),
-              items: _trendOptions
-                  .map((trend) =>
-                      DropdownMenuItem(value: trend, child: Text(trend)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updateImpact(impact.copyWith(trend: value));
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteImpact(impact),
-          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
         ],
       ),
     );
   }
+}
 
-  void _addImpactRow() {
-    final updated = [
-      ...impacts,
-      _ImpactRow(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        area: '',
-        rating: _ratingOptions.first,
-        trend: _trendOptions.first,
-        detail: '',
+class _ImpactAssessmentRow extends StatefulWidget {
+  const _ImpactAssessmentRow({
+    required this.impact,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _ImpactRow impact;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_ImpactAssessmentRow> createState() => _ImpactAssessmentRowState();
+}
+
+class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
+  bool _isHovering = false;
+
+  Color _domainColor(String domain) {
+    switch (domain) {
+      case 'Schedule':
+        return const Color(0xFF2563EB);
+      case 'Cost':
+        return const Color(0xFF059669);
+      case 'Quality':
+        return const Color(0xFF7C3AED);
+      case 'Scope':
+        return const Color(0xFFEA580C);
+      case 'Compliance':
+        return const Color(0xFFDC2626);
+      case 'Safety':
+        return const Color(0xFFEF4444);
+      case 'Reputation':
+        return const Color(0xFFF59E0B);
+      case 'Operations':
+        return const Color(0xFF0D9488);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _ratingColor(String rating) {
+    switch (rating) {
+      case 'Critical':
+        return const Color(0xFFDC2626);
+      case 'High':
+        return const Color(0xFFEF4444);
+      case 'Medium':
+        return const Color(0xFFF59E0B);
+      case 'Low':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _ratingIcon(String rating) {
+    switch (rating) {
+      case 'Critical':
+        return Icons.error_outline;
+      case 'High':
+        return Icons.warning_amber_outlined;
+      case 'Medium':
+        return Icons.info_outline;
+      case 'Low':
+        return Icons.check_circle_outline;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  Color _trendColor(String trend) {
+    switch (trend) {
+      case 'Improving':
+        return const Color(0xFF10B981);
+      case 'Stable':
+        return const Color(0xFF2563EB);
+      case 'Needs attention':
+        return const Color(0xFFF59E0B);
+      case 'Deteriorating':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _trendIcon(String trend) {
+    switch (trend) {
+      case 'Improving':
+        return Icons.trending_up;
+      case 'Stable':
+        return Icons.trending_flat;
+      case 'Needs attention':
+        return Icons.trending_down;
+      case 'Deteriorating':
+        return Icons.south_outlined;
+      default:
+        return Icons.trending_flat;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i = widget.impact;
+    final domainColor = _domainColor(i.domain);
+    final ratingColor = _ratingColor(i.rating);
+    final trendColor = _trendColor(i.trend);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
+        children: [
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Impact area + description
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        i.area.trim().isEmpty ? 'Unnamed impact' : i.area,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      if (i.detail.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          i.detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6B7280),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                      if (i.affectedDeliverable.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Deliverable: ${i.affectedDeliverable}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Domain
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: domainColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: domainColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        i.domain,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: domainColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Rating
+                SizedBox(
+                  width: 80,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: ratingColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_ratingIcon(i.rating), size: 13, color: ratingColor),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              i.rating,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ratingColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Trend
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: trendColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_trendIcon(i.trend), size: 14, color: trendColor),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              i.trend,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: trendColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Owner
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      i.owner.trim().isEmpty ? 'Unassigned' : i.owner,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: i.owner.trim().isEmpty
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+                // Financial exposure
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      i.financialExposure.trim().isEmpty ? '—' : i.financialExposure,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
+                ),
+              ],
+            ),
+          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
       ),
-    ];
-    onImpactsUpdated(updated);
-  }
-
-  void _updateImpact(_ImpactRow updatedImpact) {
-    final updated = [
-      for (final impact in impacts)
-        impact.id == updatedImpact.id ? updatedImpact : impact
-    ];
-    onImpactsUpdated(updated);
-  }
-
-  void _deleteImpact(_ImpactRow impact) {
-    onImpactsUpdated(impacts.where((item) => item.id != impact.id).toList());
+    );
   }
 }
 
@@ -3506,128 +5740,6 @@ class _TrendPill extends StatelessWidget {
   }
 }
 
-class _EditableInsightBlock extends StatelessWidget {
-  const _EditableInsightBlock({
-    required this.label,
-    required this.items,
-    required this.onUpdated,
-  });
-
-  final String label;
-  final List<_RootCauseItem> items;
-  final ValueChanged<List<_RootCauseItem>> onUpdated;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937)),
-              ),
-              TextButton.icon(
-                onPressed: _addItem,
-                icon: const Icon(Icons.add_circle_outline, size: 18),
-                label: const Text('Add'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (items.isEmpty)
-            const _EmptyPanel(label: 'No insights yet.')
-          else
-            ...items.map(_buildRow),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRow(_RootCauseItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: Color(0xFF9CA3AF)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              key: ValueKey('root-cause-${item.id}'),
-              initialValue: item.text,
-              decoration: _inputDecoration('Insight'),
-              maxLines: 2,
-              onChanged: (value) => _updateItem(item.copyWith(text: value)),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteItem(item),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addItem() {
-    final updated = [
-      ...items,
-      _RootCauseItem(
-          id: DateTime.now().microsecondsSinceEpoch.toString(), text: ''),
-    ];
-    onUpdated(updated);
-  }
-
-  void _updateItem(_RootCauseItem updatedItem) {
-    final updated = [
-      for (final item in items) item.id == updatedItem.id ? updatedItem : item
-    ];
-    onUpdated(updated);
-  }
-
-  void _deleteItem(_RootCauseItem item) {
-    onUpdated(items.where((entry) => entry.id != item.id).toList());
-  }
-}
-
-class _TableHeaderCell extends StatelessWidget {
-  const _TableHeaderCell({required this.label, this.flex = 1});
-
-  final String label;
-  final int flex;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        label,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF6B7280),
-            letterSpacing: 0.3),
-      ),
-    );
-  }
-}
-
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.color});
 
@@ -3685,6 +5797,11 @@ class _GapEntry {
     required this.stage,
     required this.owner,
     required this.nextStep,
+    this.category = 'Scope',
+    this.impactArea = '',
+    this.targetDate = '',
+    this.evidence = '',
+    this.severity = 'Medium',
   });
 
   final String uid;
@@ -3693,6 +5810,11 @@ class _GapEntry {
   final String stage;
   final String owner;
   final String nextStep;
+  final String category;
+  final String impactArea;
+  final String targetDate;
+  final String evidence;
+  final String severity;
 
   _GapEntry copyWith({
     String? uid,
@@ -3701,6 +5823,11 @@ class _GapEntry {
     String? stage,
     String? owner,
     String? nextStep,
+    String? category,
+    String? impactArea,
+    String? targetDate,
+    String? evidence,
+    String? severity,
   }) {
     return _GapEntry(
       uid: uid ?? this.uid,
@@ -3709,6 +5836,11 @@ class _GapEntry {
       stage: stage ?? this.stage,
       owner: owner ?? this.owner,
       nextStep: nextStep ?? this.nextStep,
+      category: category ?? this.category,
+      impactArea: impactArea ?? this.impactArea,
+      targetDate: targetDate ?? this.targetDate,
+      evidence: evidence ?? this.evidence,
+      severity: severity ?? this.severity,
     );
   }
 
@@ -3719,6 +5851,11 @@ class _GapEntry {
         'stage': stage,
         'owner': owner,
         'nextStep': nextStep,
+        'category': category,
+        'impactArea': impactArea,
+        'targetDate': targetDate,
+        'evidence': evidence,
+        'severity': severity,
       };
 
   factory _GapEntry.fromJson(Map<String, dynamic> json) {
@@ -3730,6 +5867,11 @@ class _GapEntry {
       stage: json['stage']?.toString() ?? 'Moderate',
       owner: json['owner']?.toString() ?? '',
       nextStep: json['nextStep']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'Scope',
+      impactArea: json['impactArea']?.toString() ?? '',
+      targetDate: json['targetDate']?.toString() ?? '',
+      evidence: json['evidence']?.toString() ?? '',
+      severity: json['severity']?.toString() ?? 'Medium',
     );
   }
 }
@@ -3741,6 +5883,11 @@ class _PlanEntry {
     required this.due,
     required this.owner,
     required this.status,
+    this.phase = 'Execution',
+    this.gapReference = '',
+    this.dependency = '',
+    this.completionPct,
+    this.notes = '',
   });
 
   final String id;
@@ -3748,12 +5895,22 @@ class _PlanEntry {
   final String due;
   final String owner;
   final String status;
+  final String phase;
+  final String gapReference;
+  final String dependency;
+  final int? completionPct;
+  final String notes;
 
   _PlanEntry copyWith({
     String? title,
     String? due,
     String? owner,
     String? status,
+    String? phase,
+    String? gapReference,
+    String? dependency,
+    int? completionPct,
+    String? notes,
   }) {
     return _PlanEntry(
       id: id,
@@ -3761,6 +5918,11 @@ class _PlanEntry {
       due: due ?? this.due,
       owner: owner ?? this.owner,
       status: status ?? this.status,
+      phase: phase ?? this.phase,
+      gapReference: gapReference ?? this.gapReference,
+      dependency: dependency ?? this.dependency,
+      completionPct: completionPct ?? this.completionPct,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -3770,6 +5932,11 @@ class _PlanEntry {
         'due': due,
         'owner': owner,
         'status': status,
+        'phase': phase,
+        'gapReference': gapReference,
+        'dependency': dependency,
+        'completionPct': completionPct,
+        'notes': notes,
       };
 
   factory _PlanEntry.fromJson(Map<String, dynamic> json) {
@@ -3778,7 +5945,14 @@ class _PlanEntry {
       title: json['title']?.toString() ?? '',
       due: json['due']?.toString() ?? '',
       owner: json['owner']?.toString() ?? '',
-      status: json['status']?.toString() ?? 'On track',
+      status: json['status']?.toString() ?? 'Not started',
+      phase: json['phase']?.toString() ?? 'Execution',
+      gapReference: json['gapReference']?.toString() ?? '',
+      dependency: json['dependency']?.toString() ?? '',
+      completionPct: json['completionPct'] is int
+          ? json['completionPct'] as int
+          : null,
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }
@@ -3790,6 +5964,11 @@ class _ImpactRow {
     required this.rating,
     required this.trend,
     required this.detail,
+    this.domain = 'Schedule',
+    this.affectedDeliverable = '',
+    this.financialExposure = '',
+    this.owner = '',
+    this.mitigationLink = '',
   });
 
   final String id;
@@ -3797,6 +5976,11 @@ class _ImpactRow {
   final String rating;
   final String trend;
   final String detail;
+  final String domain;
+  final String affectedDeliverable;
+  final String financialExposure;
+  final String owner;
+  final String mitigationLink;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3804,6 +5988,11 @@ class _ImpactRow {
         'rating': rating,
         'trend': trend,
         'detail': detail,
+        'domain': domain,
+        'affectedDeliverable': affectedDeliverable,
+        'financialExposure': financialExposure,
+        'owner': owner,
+        'mitigationLink': mitigationLink,
       };
 
   factory _ImpactRow.fromJson(Map<String, dynamic> json) {
@@ -3814,6 +6003,11 @@ class _ImpactRow {
       rating: json['rating']?.toString() ?? 'Medium',
       trend: json['trend']?.toString() ?? 'Stable',
       detail: json['detail']?.toString() ?? '',
+      domain: json['domain']?.toString() ?? 'Schedule',
+      affectedDeliverable: json['affectedDeliverable']?.toString() ?? '',
+      financialExposure: json['financialExposure']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      mitigationLink: json['mitigationLink']?.toString() ?? '',
     );
   }
 
@@ -3822,6 +6016,11 @@ class _ImpactRow {
     String? rating,
     String? trend,
     String? detail,
+    String? domain,
+    String? affectedDeliverable,
+    String? financialExposure,
+    String? owner,
+    String? mitigationLink,
   }) {
     return _ImpactRow(
       id: id,
@@ -3829,6 +6028,11 @@ class _ImpactRow {
       rating: rating ?? this.rating,
       trend: trend ?? this.trend,
       detail: detail ?? this.detail,
+      domain: domain ?? this.domain,
+      affectedDeliverable: affectedDeliverable ?? this.affectedDeliverable,
+      financialExposure: financialExposure ?? this.financialExposure,
+      owner: owner ?? this.owner,
+      mitigationLink: mitigationLink ?? this.mitigationLink,
     );
   }
 
@@ -3862,18 +6066,56 @@ class _ImpactRow {
 }
 
 class _RootCauseItem {
-  const _RootCauseItem({required this.id, required this.text});
+  const _RootCauseItem({
+    required this.id,
+    required this.text,
+    this.category = 'Process',
+    this.methodology = '5 Whys',
+    this.frequency = '',
+    this.impact = 'Medium',
+    this.recommendation = '',
+    this.status = 'Open',
+  });
 
   final String id;
   final String text;
+  final String category;
+  final String methodology;
+  final String frequency;
+  final String impact;
+  final String recommendation;
+  final String status;
 
-  _RootCauseItem copyWith({String? text}) {
-    return _RootCauseItem(id: id, text: text ?? this.text);
+  _RootCauseItem copyWith({
+    String? text,
+    String? category,
+    String? methodology,
+    String? frequency,
+    String? impact,
+    String? recommendation,
+    String? status,
+  }) {
+    return _RootCauseItem(
+      id: id,
+      text: text ?? this.text,
+      category: category ?? this.category,
+      methodology: methodology ?? this.methodology,
+      frequency: frequency ?? this.frequency,
+      impact: impact ?? this.impact,
+      recommendation: recommendation ?? this.recommendation,
+      status: status ?? this.status,
+    );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'text': text,
+        'category': category,
+        'methodology': methodology,
+        'frequency': frequency,
+        'impact': impact,
+        'recommendation': recommendation,
+        'status': status,
       };
 
   factory _RootCauseItem.fromJson(Map<String, dynamic> json) {
@@ -3881,6 +6123,12 @@ class _RootCauseItem {
       id: json['id']?.toString() ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       text: json['text']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'Process',
+      methodology: json['methodology']?.toString() ?? '5 Whys',
+      frequency: json['frequency']?.toString() ?? '',
+      impact: json['impact']?.toString() ?? 'Medium',
+      recommendation: json['recommendation']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Open',
     );
   }
 }

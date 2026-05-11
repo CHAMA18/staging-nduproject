@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -53,11 +54,6 @@ class _FrontEndPlanningOpportunitiesScreenState
   bool _isSyncReady = false;
   bool _hasAttemptedInitialAutofill = false;
 
-  static const String _kOpportunitiesInitializedNoteKey =
-      'fep_opportunities_initialized';
-  static const String _kOpportunitiesUserTouchedNoteKey =
-      'fep_opportunities_user_touched';
-
   // Backing rows for the table; built from incoming requirements (if any).
   late List<OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
@@ -83,27 +79,22 @@ class _FrontEndPlanningOpportunitiesScreenState
 
       // Load saved opportunities
       _loadSavedOpportunities(projectData);
-      _syncOpportunitiesToProvider(markInitialized: true, markTouched: false);
-      final opportunitiesInitialized = _asPlanningFlag(
-        projectData.planningNotes,
-        _kOpportunitiesInitializedNoteKey,
-      );
-      final opportunitiesTouched = _asPlanningFlag(
-        projectData.planningNotes,
-        _kOpportunitiesUserTouchedNoteKey,
-      );
-      if (!opportunitiesInitialized &&
-          !opportunitiesTouched &&
-          _shouldAutofillInitialOpportunities()) {
-        _hasAttemptedInitialAutofill = true;
-        _generateOpportunitiesFromContext(autoTriggered: true);
-      }
+      _syncOpportunitiesToProvider();
+      _checkAndAutoGenerateOpportunities();
       if (mounted) setState(() {});
     });
   }
 
-  bool _asPlanningFlag(Map<String, String> notes, String key) {
-    return (notes[key] ?? '').trim().toLowerCase() == 'true';
+  Future<void> _checkAndAutoGenerateOpportunities() async {
+    if (_hasAttemptedInitialAutofill) return;
+    if (_isGeneratingOpportunities) return;
+    if (_rows.where((r) => r.opportunity.trim().isNotEmpty).isNotEmpty) return;
+
+    final initialized = await _isSectionInitialized('opportunities_initialized');
+    if (!initialized && mounted) {
+      _hasAttemptedInitialAutofill = true;
+      _generateOpportunitiesFromContext(autoTriggered: true);
+    }
   }
 
   bool _shouldAutofillInitialOpportunities() {
@@ -148,9 +139,8 @@ class _FrontEndPlanningOpportunitiesScreenState
               status: 'Identified',
             ));
           }).toList();
-          // Initial sync to persist migration without marking user edits
-          _syncOpportunitiesToProvider(
-              markInitialized: true, markTouched: false);
+          // Initial sync to persist migration
+          _syncOpportunitiesToProvider();
         }
       }
     }
@@ -247,7 +237,7 @@ class _FrontEndPlanningOpportunitiesScreenState
               )))
           .toList();
     });
-    _syncOpportunitiesToProvider(markInitialized: true, markTouched: false);
+    _syncOpportunitiesToProvider();
   }
 
   OpportunityItem _normalizeOpportunityItem(OpportunityItem item,
@@ -331,10 +321,38 @@ class _FrontEndPlanningOpportunitiesScreenState
     super.dispose();
   }
 
-  void _syncOpportunitiesToProvider({
-    bool markTouched = true,
-    bool markInitialized = true,
-  }) {
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  void _syncOpportunitiesToProvider() {
     if (!mounted || !_isSyncReady) return;
 
     // Legacy string format
@@ -357,15 +375,7 @@ class _FrontEndPlanningOpportunitiesScreenState
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) {
-        final nextNotes = Map<String, String>.from(data.planningNotes);
-        if (markInitialized) {
-          nextNotes[_kOpportunitiesInitializedNoteKey] = 'true';
-        }
-        if (markTouched) {
-          nextNotes[_kOpportunitiesUserTouchedNoteKey] = 'true';
-        }
         final updated = data.copyWith(
-          planningNotes: nextNotes,
           frontEndPlanning: ProjectDataHelper.updateFEPField(
             current: data.frontEndPlanning,
             opportunities: oppText, // Legacy
@@ -376,6 +386,9 @@ class _FrontEndPlanningOpportunitiesScreenState
       },
     );
     provider.saveToFirebase(checkpoint: 'fep_opportunities');
+    if (_rows.where((r) => r.opportunity.trim().isNotEmpty).isNotEmpty) {
+      _markSectionInitialized('opportunities_initialized');
+    }
   }
 
   String _resolvePreferredSolutionTitle(ProjectDataModel data) {
@@ -469,10 +482,7 @@ Opportunity generation constraints:
                   _normalizeOpportunityItem(entry.value, index: entry.key))
               .toList();
         });
-        _syncOpportunitiesToProvider(
-          markInitialized: true,
-          markTouched: !autoTriggered,
-        );
+        _syncOpportunitiesToProvider();
         await ProjectDataHelper.getProvider(context)
             .saveToFirebase(checkpoint: 'fep_opportunities');
       } else {
@@ -710,7 +720,7 @@ Opportunity generation constraints:
     setState(() {
       _rows[index] = normalized;
     });
-    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
+    _syncOpportunitiesToProvider();
   }
 
   void _recordOpportunityFieldHistory({
@@ -806,7 +816,7 @@ Opportunity generation constraints:
     setState(() {
       _rows[index] = reverted;
     });
-    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
+    _syncOpportunitiesToProvider();
   }
 
   Future<void> _confirmDeleteOpportunity(String id) async {
@@ -824,7 +834,7 @@ Opportunity generation constraints:
     setState(() {
       _rows.removeAt(index);
     });
-    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
+    _syncOpportunitiesToProvider();
   }
 
   Future<void> _submitOpportunities() async {
@@ -1276,8 +1286,7 @@ Opportunity generation constraints:
           setState(() {
             _rows.add(_normalizeOpportunityItem(val, index: _rows.length));
           });
-          _syncOpportunitiesToProvider(
-              markTouched: true, markInitialized: true);
+          _syncOpportunitiesToProvider();
         }
       }
     });

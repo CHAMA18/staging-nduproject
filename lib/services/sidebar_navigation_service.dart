@@ -146,30 +146,55 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'quality_management', label: 'Quality Management'),
     // Execution Planning sub-items
     SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan Outline'),
-    SidebarItem(checkpoint: 'execution_plan_strategy', label: 'Execution Plan Solutions'),
-    SidebarItem(checkpoint: 'execution_plan_details', label: 'Execution Plan Details'),
-    SidebarItem(checkpoint: 'execution_early_works', label: 'Execution Early Works'),
-    SidebarItem(checkpoint: 'execution_enabling_work_plan', label: 'Enabling Work Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_strategy',
+        label: 'Execution Plan Solutions'),
+    SidebarItem(
+        checkpoint: 'execution_plan_details', label: 'Execution Plan Details'),
+    SidebarItem(
+        checkpoint: 'execution_early_works', label: 'Execution Early Works'),
+    SidebarItem(
+        checkpoint: 'execution_enabling_work_plan',
+        label: 'Enabling Work Plan'),
     SidebarItem(
         checkpoint: 'execution_plan_construction_plan',
         label: 'Construction Plan'),
     SidebarItem(
         checkpoint: 'execution_plan_infrastructure_plan',
         label: 'Infrastructure Plan'),
+    // Agile Section sub-items
     SidebarItem(
         checkpoint: 'execution_plan_agile_delivery_plan',
         label: 'Agile Delivery Plan'),
-    SidebarItem(checkpoint: 'execution_issue_management', label: 'Execution Issue Management'),
-    SidebarItem(checkpoint: 'execution_plan_lessons_learned', label: 'Execution Lessons Learned'),
-    SidebarItem(checkpoint: 'execution_plan_best_practices', label: 'Execution Best Practices'),
-    SidebarItem(checkpoint: 'execution_plan_stakeholder_identification', label: 'Execution Stakeholder Identification'),
-    SidebarItem(checkpoint: 'execution_plan_communication_plan', label: 'Execution Communication Plan'),
-    SidebarItem(checkpoint: 'execution_plan_interface_management', label: 'Execution Interface Management'),
-    SidebarItem(checkpoint: 'execution_plan_interface_management_plan', label: 'Execution Interface Management Plan'),
+    SidebarItem(
+        checkpoint: 'execution_issue_management',
+        label: 'Execution Issue Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_lessons_learned',
+        label: 'Execution Lessons Learned'),
+    SidebarItem(
+        checkpoint: 'execution_plan_best_practices',
+        label: 'Execution Best Practices'),
+    SidebarItem(
+        checkpoint: 'execution_plan_stakeholder_identification',
+        label: 'Execution Stakeholder Identification'),
+    SidebarItem(
+        checkpoint: 'execution_plan_communication_plan',
+        label: 'Execution Communication Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management',
+        label: 'Execution Interface Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management_plan',
+        label: 'Execution Interface Management Plan'),
     // Roadmap Planning sub-items
-    SidebarItem(checkpoint: 'deliverables_roadmap_overview', label: 'Roadmap Overview'),
-    SidebarItem(checkpoint: 'deliverables_roadmap_detailed', label: 'Detailed Deliverables'),
-    SidebarItem(checkpoint: 'document_review_matrix', label: 'Document Review Matrix'),
+    SidebarItem(
+        checkpoint: 'deliverables_roadmap_overview', label: 'Roadmap Overview'),
+    SidebarItem(
+        checkpoint: 'deliverables_roadmap_detailed',
+        label: 'Detailed Deliverables'),
+    SidebarItem(
+        checkpoint: 'document_review_matrix', label: 'Document Review Matrix'),
     // Agile Planning sub-items
     SidebarItem(
         checkpoint: 'deliverable_roadmap_agile_map_out',
@@ -178,7 +203,8 @@ class SidebarNavigationService {
         checkpoint: 'agile_project_baseline', label: 'Agile Project Baseline'),
     // Design Planning sub-items
     SidebarItem(checkpoint: 'design', label: 'Design Planning'),
-    SidebarItem(checkpoint: 'technology', label: 'Technology Planning Overview'),
+    SidebarItem(
+        checkpoint: 'technology', label: 'Technology Planning Overview'),
     // Interface Planning
     SidebarItem(
         checkpoint: 'interface_management', label: 'Interface Management'),
@@ -246,6 +272,12 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'staff_team', label: 'Staff Team'),
     SidebarItem(checkpoint: 'team_meetings', label: 'Team Meetings'),
     SidebarItem(checkpoint: 'progress_tracking', label: 'Progress Tracking'),
+    SidebarItem(
+        checkpoint: 'deliverable_status_updates',
+        label: 'Deliverable Status Updates'),
+    SidebarItem(
+        checkpoint: 'recurring_deliverables', label: 'Recurring Deliverables'),
+    SidebarItem(checkpoint: 'status_reports', label: 'Status Reports'),
     SidebarItem(checkpoint: 'contracts_tracking', label: 'Contracts Tracking'),
     SidebarItem(checkpoint: 'vendor_tracking', label: 'Vendor Tracking'),
     SidebarItem(checkpoint: 'detailed_design', label: 'Detailed Design'),
@@ -298,6 +330,10 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'project_close_out', label: 'Project Close Out'),
     SidebarItem(checkpoint: 'demobilize_team', label: 'Demobilize Team'),
   ];
+
+  /// Ordered, read-only sidebar catalog for admin surfaces that need to mirror
+  /// the complete project navigation model.
+  static List<SidebarItem> get allItems => List.unmodifiable(_sidebarOrder);
 
   /// Get the next item in the sidebar order after the current checkpoint
   SidebarItem? getNextItem(String? currentCheckpoint) {

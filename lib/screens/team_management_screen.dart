@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -367,7 +366,10 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: ElevatedButton(
-                            onPressed: () => StakeholderManagementScreen.open(context),
+                            onPressed: () => PlanningPhaseNavigation.goToNext(
+                              context,
+                              'team_management',
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFFD700),
                               foregroundColor: const Color(0xFF111827),

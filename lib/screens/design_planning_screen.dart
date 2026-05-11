@@ -13,6 +13,7 @@ import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/design_planning_document.dart';
+import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -187,11 +188,14 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   bool _saving = false;
   bool _pendingSave = false;
   DateTime? _lastSavedAt;
+  // ValueNotifier for lightweight save-indicator rebuilds without full setState
+  final ValueNotifier<_SaveIndicatorState> _saveIndicatorNotifier =
+      ValueNotifier<_SaveIndicatorState>(_SaveIndicatorState(
+          saving: false, pending: false, lastSavedAt: null));
   final Map<String, bool> _aiGenerating = {};
   late Map<String, _SectionProgressState> _sectionProgress;
   late Map<String, bool> _sectionExpanded;
   late Map<String, int> _sectionTileVersion;
-  bool _showDesignSpecsPlanningConfig = false;
   String _activeSectionId = _sectionOrder.first.id;
 
   late DesignPlanningDocument _document;
@@ -263,12 +267,14 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         TextEditingController(text: _document.validationSummary);
     _governanceController =
         TextEditingController(text: _document.governanceNotes);
+    _ensureSpecificationRowKeys();
     _hydrateGuidedSectionState(data);
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _saveIndicatorNotifier.dispose();
     _scrollController.dispose();
     _overviewController.dispose();
     _designWhoController.dispose();
@@ -322,7 +328,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   Future<void> _openSpecificationsAndScrollToRow(String rowId) async {
     if (!mounted) return;
     setState(() {
-      _showDesignSpecsPlanningConfig = true;
       _sectionExpanded['design_specifications_workspace'] = true;
       _sectionTileVersion['design_specifications_workspace'] =
           (_sectionTileVersion['design_specifications_workspace'] ?? 0) + 1;
@@ -438,19 +443,27 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     if (!_canOpenSection(sectionId)) {
       _showLockedSectionFeedback(sectionId);
       setState(() {
-        _sectionExpanded = {
-          for (final section in _sectionOrder)
-            section.id: section.id == _activeSectionId,
-        };
+        // Collapse the section the user tried to open (it was auto-expanded
+        // by the ExpansionTile tap before this callback fired).
+        _sectionExpanded[sectionId] = false;
       });
       return;
     }
     setState(() {
+      // Collapse the previously active section, expand the new one.
+      // Modifying the existing map in-place avoids changing the ValueKey
+      // for sections whose expanded state didn't change, preventing
+      // unnecessary subtree recreation.
+      for (final section in _sectionOrder) {
+        final shouldExpand = section.id == sectionId;
+        if (_sectionExpanded[section.id] != shouldExpand) {
+          _sectionExpanded[section.id] = shouldExpand;
+          // Bump tile version so the ExpansionTile animates correctly.
+          _sectionTileVersion[section.id] =
+              (_sectionTileVersion[section.id] ?? 0) + 1;
+        }
+      }
       _activeSectionId = sectionId;
-      _sectionExpanded = {
-        for (final section in _sectionOrder)
-          section.id: section.id == sectionId,
-      };
     });
     await _scrollToSectionStart(sectionId);
   }
@@ -616,14 +629,24 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     _saveDebounce?.cancel();
     _pendingSave = true;
     _saveDebounce = Timer(const Duration(milliseconds: 600), _saveDocument);
-    if (mounted) setState(() {});
+    // Update save indicator via lightweight ValueNotifier — avoids full rebuild
+    _saveIndicatorNotifier.value = _SaveIndicatorState(
+      saving: _saving,
+      pending: _pendingSave,
+      lastSavedAt: _lastSavedAt,
+    );
   }
 
   Future<void> _saveDocument() async {
     if (!mounted || _saving) return;
     _updateCoreFields();
     _document.touch();
-    setState(() => _saving = true);
+    _saving = true;
+    _saveIndicatorNotifier.value = _SaveIndicatorState(
+      saving: _saving,
+      pending: _pendingSave,
+      lastSavedAt: _lastSavedAt,
+    );
     final data = ProjectDataHelper.getData(context);
     final notesPatch = {
       ...data.planningNotes,
@@ -664,13 +687,16 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
       },
     );
     if (!mounted) return;
-    setState(() {
-      _saving = false;
-      if (success) {
-        _pendingSave = false;
-        _lastSavedAt = DateTime.now();
-      }
-    });
+    _saving = false;
+    if (success) {
+      _pendingSave = false;
+      _lastSavedAt = DateTime.now();
+    }
+    _saveIndicatorNotifier.value = _SaveIndicatorState(
+      saving: _saving,
+      pending: _pendingSave,
+      lastSavedAt: _lastSavedAt,
+    );
   }
 
   void _showToast(String message) {
@@ -683,14 +709,28 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     );
   }
 
+  /// Pre-populate [_specificationRowKeys] for every row in
+  /// [_document.specifications] so that the build method never mutates state
+  /// via `putIfAbsent` / `??=`.
+  void _ensureSpecificationRowKeys() {
+    for (final row in _document.specifications) {
+      _specificationRowKeys.putIfAbsent(
+        row.id,
+        () => GlobalKey(debugLabel: 'spec_row_${row.id}'),
+      );
+    }
+  }
+
   void _addSpecificationRow() {
     setState(() {
-      _document.specifications.add(
-        DesignSpecificationPlanRow(
-          specificationType: _specificationTypeOptions[2],
-          sourceType: _specSourceTypeOptions.first,
-          ruleType: _specRuleTypeOptions.first,
-        ),
+      final newRow = DesignSpecificationPlanRow(
+        specificationType: _specificationTypeOptions[2],
+        sourceType: _specSourceTypeOptions.first,
+        ruleType: _specRuleTypeOptions.first,
+      );
+      _document.specifications.add(newRow);
+      _specificationRowKeys[newRow.id] = GlobalKey(
+        debugLabel: 'spec_row_${newRow.id}',
       );
     });
     _queueSave();
@@ -1845,10 +1885,13 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                 },
               ),
               const Spacer(),
-              _AutoSaveIndicator(
-                saving: _saving,
-                pending: _pendingSave,
-                lastSavedAt: _lastSavedAt,
+              ValueListenableBuilder<_SaveIndicatorState>(
+                valueListenable: _saveIndicatorNotifier,
+                builder: (context, state, _) => _AutoSaveIndicator(
+                  saving: state.saving,
+                  pending: state.pending,
+                  lastSavedAt: state.lastSavedAt,
+                ),
               ),
             ],
           ),
@@ -2170,24 +2213,30 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     required Color accent,
     required Widget child,
   }) {
+    final isExpanded = _sectionExpanded[sectionId] == true;
     return Container(
       key: sectionKey,
       child: _SectionCard(
         expansionKey: ValueKey(
-            'tile_${sectionId}_${_sectionExpanded[sectionId] == true}_${_sectionTileVersion[sectionId] ?? 0}'),
+            'tile_${sectionId}_${_sectionTileVersion[sectionId] ?? 0}'),
         title: title,
         subtitle: subtitle,
         accent: accent,
-        expanded: _sectionExpanded[sectionId] ?? false,
+        expanded: isExpanded,
         enabled: true,
         onExpansionChanged: (expanded) =>
             _onSectionExpansionChanged(sectionId, expanded),
-        child: Column(
-          children: [
-            _buildSectionProgressControls(sectionId),
-            child,
-          ],
-        ),
+        // Only build the full section content when expanded — prevents
+        // thousands of dropdown widgets from being created for collapsed
+        // sections on every rebuild.
+        child: isExpanded
+            ? Column(
+                children: [
+                  _buildSectionProgressControls(sectionId),
+                  child,
+                ],
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -2505,18 +2554,21 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
             runSpacing: 10,
             children: [
               _ActionButton(
-                label: _showDesignSpecsPlanningConfig
-                    ? 'Hide Planning Config'
-                    : 'Continue Planning Here',
-                icon: Icons.list_alt_outlined,
+                label: 'Open Design Phase Workspace',
+                icon: Icons.open_in_new,
                 onPressed: () {
-                  setState(() => _showDesignSpecsPlanningConfig =
-                      !_showDesignSpecsPlanningConfig);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DesignPhaseScreen(),
+                    ),
+                  );
                 },
               ),
             ],
           ),
           AnimatedCrossFade(
+            crossFadeState: CrossFadeState.showSecond,
+            duration: const Duration(milliseconds: 180),
             firstChild: const SizedBox.shrink(),
             secondChild: Padding(
               padding: const EdgeInsets.only(top: 14),
@@ -2587,13 +2639,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                         i < _document.specifications.length;
                         i++) ...[
                       Container(
-                        key: _specificationRowKeys.putIfAbsent(
-                          _document.specifications[i].id,
-                          () => GlobalKey(
-                            debugLabel:
-                                'spec_row_${_document.specifications[i].id}',
-                          ),
-                        ),
+                        key: _specificationRowKeys[
+                            _document.specifications[i].id],
                         child: _SpecificationPlanRowCard(
                           key: ValueKey(_document.specifications[i].id),
                           index: i + 1,
@@ -2669,10 +2716,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                 ),
               ),
             ),
-            crossFadeState: _showDesignSpecsPlanningConfig
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 180),
           ),
         ],
       ),
@@ -5287,6 +5330,20 @@ class _ActionButton extends StatelessWidget {
       style: style,
     );
   }
+}
+
+/// Lightweight state object for the auto-save indicator, used with
+/// [ValueNotifier] so that save-status updates do NOT trigger a full
+/// `setState` rebuild of the entire page.
+class _SaveIndicatorState {
+  const _SaveIndicatorState({
+    required this.saving,
+    required this.pending,
+    required this.lastSavedAt,
+  });
+  final bool saving;
+  final bool pending;
+  final DateTime? lastSavedAt;
 }
 
 class _AutoSaveIndicator extends StatelessWidget {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/project_data_model.dart';
@@ -50,20 +51,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _autoImportAttempted = false;
   bool _notesExpanded = false;
 
-  static const String _kScheduleInitializedNoteKey =
-      'planning_schedule_initialized';
-  static const String _kScheduleUserTouchedNoteKey =
-      'planning_schedule_user_touched';
-
-  bool _asPlanningFlag(Map<String, String> notes, String key) {
-    return (notes[key] ?? '').trim().toLowerCase() == 'true';
-  }
-
-  String _timelineView = 'Months';
   String? _selectedTaskId;
   String? _hoveredTaskId;
   int _selectedMainTab =
       0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
+  String _timelineSearchQuery = '';
+  String _workPackageSearchQuery = '';
+  String _ganttSearchQuery = '';
+  String _workPackageSortField = 'title'; // title, status, owner, phase, budget
+  bool _workPackageSortAscending = true;
+  String _listSortField = 'title'; // title, status, priority, assignee, startDate
+  bool _listSortAscending = true;
 
   @override
   void initState() {
@@ -79,6 +77,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               true
           ? data.planningNotes['planning_schedule_methodology']!
           : _selectedMethodology;
+      // Validate methodology against allowed options to prevent
+      // DropdownButton assertion failures.
+      const _allowedMethodologies = {'Waterfall', 'Agile', 'Hybrid'};
+      if (!_allowedMethodologies.contains(_selectedMethodology)) {
+        _selectedMethodology = 'Waterfall';
+      }
       final storedStart =
           data.planningNotes['planning_schedule_start_date']?.trim() ?? '';
       _scheduleStartDate = DateTime.tryParse(storedStart) ?? DateTime.now();
@@ -116,29 +120,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
-  Future<void> _persistSchedule({bool markTouched = true}) async {
+  Future<void> _persistSchedule() async {
     final success = await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
-      dataUpdater: (data) {
-        final nextNotes = Map<String, String>.from(data.planningNotes)
-          ..['planning_schedule_notes'] = _notesController.text.trim()
-          ..['planning_schedule_methodology'] = _selectedMethodology
-          ..['planning_schedule_start_date'] =
-              _scheduleStartDate?.toIso8601String() ?? ''
-          ..[_kScheduleInitializedNoteKey] = 'true';
-        if (markTouched) {
-          nextNotes[_kScheduleUserTouchedNoteKey] = 'true';
-        }
-        return data.copyWith(
-          planningNotes: nextNotes,
-          scheduleActivities: _buildScheduleActivities(),
-        );
-      },
+      checkpoint: 'schedule',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          'planning_schedule_notes': _notesController.text.trim(),
+          'planning_schedule_methodology': _selectedMethodology,
+          'planning_schedule_start_date':
+              _scheduleStartDate?.toIso8601String() ?? '',
+        },
+        scheduleActivities: _buildScheduleActivities(),
+      ),
       showSnackbar: false,
     );
     if (mounted && success) {
       setState(() => _lastSavedAt = DateTime.now());
+      if (_activityRows.isNotEmpty) {
+        await _markSectionInitialized('schedule_initialized');
+      }
     }
   }
 
@@ -151,7 +153,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final now = DateTime.now().toIso8601String();
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         scheduleBaselineActivities: _buildScheduleActivities(),
         scheduleBaselineDate: now,
@@ -205,33 +207,103 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<bool> _isSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .get();
+      return doc.data()?[flagKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markSectionInitialized(String flagKey) async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_meta')
+          .doc('initialization_flags')
+          .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
   void _loadScheduleActivities(ProjectDataModel data) {
     final usedIds = <String>{};
+    final idMapping = <String, String>{}; // old ID → new ID (when remapped)
+    final rows = data.scheduleActivities.map((activity) {
+      var id = activity.wbsId.isNotEmpty ? activity.wbsId : activity.id;
+      if (id.trim().isEmpty || usedIds.contains(id)) {
+        id = DateTime.now().microsecondsSinceEpoch.toString();
+      }
+      usedIds.add(id);
+      // Track the ID change if the activity's original ID was remapped
+      // (e.g. wbsId was used instead of activity.id, or a duplicate was
+      // regenerated). This prevents stale predecessor references.
+      if (activity.id != id) {
+        idMapping[activity.id] = id;
+      }
+      // Also track wbsId → id mapping, since predecessorIds may reference
+      // either the original activity.id or the wbsId.
+      if (activity.wbsId.isNotEmpty && activity.wbsId != id) {
+        idMapping[activity.wbsId] = id;
+      }
+      return _ScheduleRow.fromActivity(
+        activity,
+        idOverride: id,
+        onChanged: _handleActivityChanged,
+      );
+    }).toList();
+
+    // Remap predecessor/dependency IDs to match the new row IDs
+    for (final row in rows) {
+      if (row.predecessorId != null) {
+        if (idMapping.containsKey(row.predecessorId)) {
+          row.predecessorId = idMapping[row.predecessorId];
+        } else if (!usedIds.contains(row.predecessorId)) {
+          // Predecessor references a task that no longer exists — clear it
+          row.predecessorId = null;
+        }
+      }
+      row.dependencyIds = row.dependencyIds.map((depId) {
+        if (idMapping.containsKey(depId)) return idMapping[depId]!;
+        if (!usedIds.contains(depId)) return null; // will be filtered below
+        return depId;
+      }).whereType<String>().where((id) => id != row.id).toList();
+    }
+
     _activityRows
       ..clear()
-      ..addAll(data.scheduleActivities.map((activity) {
-        var id = activity.wbsId.isNotEmpty ? activity.wbsId : activity.id;
-        if (id.trim().isEmpty || usedIds.contains(id)) {
-          id = DateTime.now().microsecondsSinceEpoch.toString();
-        }
-        usedIds.add(id);
-        return _ScheduleRow.fromActivity(
-          activity,
-          idOverride: id,
-          onChanged: _handleActivityChanged,
-        );
-      }));
+      ..addAll(rows);
 
-    final scheduleInitialized =
-        _asPlanningFlag(data.planningNotes, _kScheduleInitializedNoteKey);
-    final scheduleUserTouched =
-        _asPlanningFlag(data.planningNotes, _kScheduleUserTouchedNoteKey);
-    if (_activityRows.isEmpty &&
-        data.wbsTree.isNotEmpty &&
-        !scheduleInitialized &&
-        !scheduleUserTouched) {
-      _autoImportAttempted = true;
-      _importFromWbs(showConfirm: false, markTouched: false);
+    if (_activityRows.isEmpty && data.wbsTree.isNotEmpty) {
+      _checkAndAutoImportSchedule();
+    }
+  }
+
+  Future<void> _checkAndAutoImportSchedule() async {
+    final scheduleInitialized = await _isSectionInitialized('schedule_initialized');
+    if (!scheduleInitialized && mounted) {
+      _importFromWbs(showConfirm: false);
+    }
+  }
+
+  Future<void> _checkAndAutoImportScheduleFromBuild() async {
+    final scheduleInitialized = await _isSectionInitialized('schedule_initialized');
+    if (!scheduleInitialized && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _importFromWbs(showConfirm: false);
+      });
     }
   }
 
@@ -383,10 +455,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return result;
   }
 
-  Future<void> _importFromWbs({
-    bool showConfirm = true,
-    bool markTouched = true,
-  }) async {
+  Future<void> _importFromWbs({bool showConfirm = true}) async {
     final data = ProjectDataHelper.getData(context);
     if (data.wbsTree.isEmpty) {
       _showInfo('No WBS items found.');
@@ -489,12 +558,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         }));
     });
 
-    if (markTouched) {
-      _handleActivityChanged();
-    } else {
-      await _persistSchedule(markTouched: false);
-      if (mounted) setState(() {});
-    }
+    _handleActivityChanged();
     _showInfo('Imported ${_activityRows.length} activities from WBS.');
   }
 
@@ -577,6 +641,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _handleActivityChanged();
   }
 
+  /// Resolves a raw activity ID (from `data.scheduleActivities`) to the
+  /// corresponding in-memory `_activityRows` ID. During
+  /// `_loadScheduleActivities()`, row IDs may be remapped (e.g. wbsId
+  /// overrides the original id), so raw activity IDs from the data model
+  /// may not match. This helper tries both the raw id and the wbsId.
+  String? _resolveActivityRowId(String rawId, String wbsId) {
+    // Try direct match first
+    if (_activityRows.any((row) => row.id == rawId)) return rawId;
+    // Try matching by wbsId
+    if (wbsId.isNotEmpty) {
+      final byWbs = _activityRows
+          .where((row) => row.wbsId == wbsId || row.id == wbsId)
+          .toList();
+      if (byWbs.length == 1) return byWbs.first.id;
+    }
+    // Try matching by original id stored in the row's wbsId field
+    for (final row in _activityRows) {
+      if (row.wbsId == rawId) return row.id;
+    }
+    return null;
+  }
+
   Future<void> _editTask(String taskId) async {
     final index = _activityRows.indexWhere((row) => row.id == taskId);
     if (index == -1) return;
@@ -632,10 +718,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<_TaskDraft?> _showTaskDialog({_ScheduleRow? row}) async {
     final data = ProjectDataHelper.getData(context);
-    final wbsItems = _flattenWbsItems(data.wbsTree);
-    final predecessorOptions = _activityRows
-        .where((candidate) => row == null || candidate.id != row.id)
-        .toList();
+    final rawWbsItems = _flattenWbsItems(data.wbsTree);
+    // Deduplicate WBS items by ID and filter out items with empty IDs.
+    // Duplicate or empty IDs cause DropdownButton assertion failures.
+    final seenWbsIds = <String>{};
+    final wbsItems = <Map<String, String>>[];
+    for (final item in rawWbsItems) {
+      final id = (item['id'] ?? '').trim();
+      if (id.isEmpty || seenWbsIds.contains(id)) continue;
+      seenWbsIds.add(id);
+      wbsItems.add(item);
+    }
+    // Deduplicate predecessor options by ID to prevent duplicate
+    // DropdownMenuItem values (causes assertion failure).
+    final seenPredIds = <String>{};
+    final predecessorOptions = <_ScheduleRow>[];
+    for (final candidate in _activityRows) {
+      if (row != null && candidate.id == row.id) continue;
+      if (candidate.id.trim().isEmpty || seenPredIds.contains(candidate.id)) continue;
+      seenPredIds.add(candidate.id);
+      predecessorOptions.add(candidate);
+    }
     String? selectedWbsRawId =
         row != null && row.wbsId.trim().isNotEmpty ? row.wbsId.trim() : null;
     final availableWbsIds = wbsItems
@@ -647,9 +750,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       selectedWbsRawId = null;
     }
     String? predecessorId = row?.predecessorId;
+    // Validate that predecessorId still exists in the available options.
+    // Stale predecessor IDs (from deleted tasks or ID remapping during load)
+    // cause DropdownButton assertion failures.
+    final predecessorIds = predecessorOptions.map((c) => c.id).toSet();
+    if (predecessorId != null && !predecessorIds.contains(predecessorId)) {
+      predecessorId = null;
+    }
     bool isMilestone = row?.isMilestone ?? false;
-    String status = row?.status ?? 'pending';
-    String priority = row?.priority ?? 'medium';
+    String status = _normalizeScheduleStatus(row?.status ?? 'pending');
+    String priority = _normalizeSchedulePriority(row?.priority ?? 'medium');
 
     final titleController = TextEditingController(
       text: row?.titleController.text.trim() ?? '',
@@ -697,11 +807,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             final isCreate = row == null;
             return AlertDialog(
               title: Text(isCreate ? 'Create Task' : 'Edit Task'),
-              content: SizedBox(
-                width: 640,
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: 720,
+                  maxWidth: MediaQuery.of(context).size.width * 0.85,
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (wbsItems.isNotEmpty)
                         DropdownButtonFormField<String>(
@@ -714,16 +829,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               value: '',
                               child: Text('None'),
                             ),
-                            ...wbsItems.map(
-                              (item) => DropdownMenuItem<String>(
-                                value: (item['id'] ?? '').trim(),
+                            for (final item in wbsItems)
+                              DropdownMenuItem<String>(
+                                value: item['id'] ?? '',
                                 child: Text(
                                   (item['title'] ?? '').trim().isEmpty
                                       ? 'Untitled'
                                       : (item['title'] ?? '').trim(),
                                 ),
                               ),
-                            ),
                           ],
                           onChanged: (value) {
                             final raw = (value ?? '').trim();
@@ -845,7 +959,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: priority,
@@ -889,7 +1003,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   labelText: 'Progress %'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: TextField(
                               controller: hoursController,
@@ -909,7 +1023,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   labelText: 'Start Date (YYYY-MM-DD)'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: TextField(
                               controller: dueDateController,
@@ -1083,18 +1197,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         .where((id) => id.isNotEmpty)
         .toSet();
     final unlinkedWbsCandidates = <WorkItem>[];
-    void visitLevel3(List<WorkItem> nodes, int depth) {
+    void visitLeafNodes(List<WorkItem> nodes) {
       for (final node in nodes) {
-        if (depth == 3 && !packageCandidateIds.contains(node.id)) {
-          unlinkedWbsCandidates.add(node);
-        }
-        if (depth < 3) {
-          visitLevel3(node.children, depth + 1);
+        if (node.children.isEmpty) {
+          // Leaf node at any depth — check if linked
+          if (!packageCandidateIds.contains(node.id)) {
+            unlinkedWbsCandidates.add(node);
+          }
+        } else {
+          visitLeafNodes(node.children);
         }
       }
     }
 
-    visitLevel3(data.wbsTree, 1);
+    visitLeafNodes(data.wbsTree);
 
     final missingEstimateBasis = activities.where((activity) {
       final isCritical = cpm.activitiesById[activity.id]?.isCritical ?? false;
@@ -1112,6 +1228,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       milestones: data.keyMilestones,
       activities: activities,
     );
+    final specCoverageWarnings = _buildSpecCoverageWarnings(
+      data: data,
+      workPackages: data.workPackages,
+    );
+
+    // Phase 5: Detect resource conflicts (same owner on overlapping packages)
+    final resourceConflicts =
+        IntegratedWorkPackageService.detectResourceConflicts(data.workPackages);
 
     return _ScheduleValidationReport(
       taskCount: _activityRows.length,
@@ -1129,7 +1253,91 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       contractAlignmentWarnings: contractAlignmentWarnings,
       baselineVarianceWarnings: baselineVarianceWarnings,
       milestoneWarnings: milestoneWarnings,
+      specCoverageWarnings: specCoverageWarnings,
+      resourceConflicts: resourceConflicts,
     );
+  }
+
+  List<_SpecCoverageWarning> _buildSpecCoverageWarnings({
+    required ProjectDataModel data,
+    required List<WorkPackage> workPackages,
+  }) {
+    final warnings = <_SpecCoverageWarning>[];
+    try {
+      final doc = DesignPlanningDocument.fromProjectData(data);
+      if (doc.specifications.isEmpty) return warnings;
+
+      // Collect all spec IDs that are already linked via
+      // WorkPackage.linkedDesignSpecificationIds or
+      // PackageDeliverable.linkedSpecificationIds
+      final linkedSpecIds = <String>{};
+      for (final wp in workPackages) {
+        linkedSpecIds.addAll(wp.linkedDesignSpecificationIds);
+        for (final d in wp.deliverables) {
+          linkedSpecIds.addAll(d.linkedSpecificationIds);
+        }
+      }
+
+      final wpIds = workPackages.map((wp) => wp.id.trim()).toSet();
+      final wpTitles = workPackages
+          .map((wp) => wp.title.trim().toLowerCase())
+          .toSet();
+
+      for (final spec in doc.specifications) {
+        final specTitle = spec.title.trim();
+        if (specTitle.isEmpty) continue;
+
+        // Check if spec is linked via the new traceability fields
+        final hasDirectLink = linkedSpecIds.contains(spec.id);
+        final hasLinkedWp = spec.wbsWorkPackageId.trim().isNotEmpty &&
+            wpIds.contains(spec.wbsWorkPackageId.trim());
+        final hasMatchingTitle =
+            wpTitles.contains(specTitle.toLowerCase());
+
+        if (!hasDirectLink && !hasLinkedWp && !hasMatchingTitle) {
+          warnings.add(_SpecCoverageWarning(
+            title: specTitle,
+            detail:
+                'Design specification has no linked work package. '
+                '${spec.discipline.isNotEmpty ? "Discipline: ${spec.discipline}." : ""} '
+                'Consider regenerating package chains to auto-link specs.',
+          ));
+        }
+      }
+
+      // Fix 1.4: Check for EWPs that are not released but have
+      // execution packages waiting on them.
+      final ewpById = <String, WorkPackage>{};
+      for (final wp in workPackages) {
+        if (wp.packageClassification == IntegratedWorkPackageService.engineeringEwp) {
+          ewpById[wp.id] = wp;
+        }
+      }
+      for (final wp in workPackages) {
+        if (wp.packageClassification != IntegratedWorkPackageService.constructionCwp &&
+            wp.packageClassification != IntegratedWorkPackageService.implementationWorkPackage &&
+            wp.packageClassification != IntegratedWorkPackageService.agileIterationPackage) {
+          continue;
+        }
+        for (final ewpId in wp.linkedEngineeringPackageIds) {
+          final ewp = ewpById[ewpId];
+          if (ewp != null && !ewp.isReleasedForExecution) {
+            final blockers = IntegratedWorkPackageService.checkEwpReleaseReadiness(ewp);
+            if (blockers.isNotEmpty) {
+              warnings.add(_SpecCoverageWarning(
+                title: 'EWP not released: ${ewp.title}',
+                detail: 'Execution package "${wp.title}" depends on an unreleased EWP. '
+                    '${blockers.length} blocker(s): ${blockers.take(3).join("; ")}'
+                    '${blockers.length > 3 ? "..." : ""}',
+              ));
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Design planning document may not exist yet — not a warning condition.
+    }
+    return warnings;
   }
 
   List<_ResourceWarning> _buildResourceWarnings(
@@ -1254,7 +1462,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _ContractAlignmentWarning(
             title: 'Contract ${entry.key}',
             detail:
-                'Mapped across multiple WBS Level 3 package candidates: ${entry.value.map((package) => package.title.isNotEmpty ? package.title : package.id).join(', ')}.',
+                'Mapped across multiple WBS package candidates: ${entry.value.map((package) => package.title.isNotEmpty ? package.title : package.id).join(', ')}.',
           ),
         );
       }
@@ -1502,6 +1710,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           Navigator.of(context).pop();
           _editWorkPackage(wp);
         },
+        // Fix 1.4: Release EWP for execution gate
+        onReleaseForExecution: () async {
+          try {
+            final released =
+                IntegratedWorkPackageService.releaseEwpForExecution(wp);
+            Navigator.of(context).pop(); // Close detail dialog
+            await _saveWorkPackages(
+              data.workPackages
+                  .map((p) => p.id == wp.id ? released : p)
+                  .toList(),
+            );
+            setState(() {});
+            if (mounted) {
+              _showInfo('EWP "${wp.title}" released for execution.');
+            }
+          } on StateError catch (e) {
+            Navigator.of(context).pop();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(e.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
@@ -1509,7 +1744,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _saveWorkPackages(List<WorkPackage> workPackages) async {
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         workPackages: workPackages,
       ),
@@ -1541,6 +1776,34 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           wbsLevel2Title: item.name,
         ));
       }
+      // Import design specification rows as work packages
+      final existingTitles = newPackages.map((wp) => wp.title.trim()).toSet();
+      for (final spec in doc.specifications) {
+        if (spec.title.trim().isEmpty) continue;
+        // Avoid duplicating a spec that was already imported as a module/journey
+        if (existingTitles.contains(spec.title.trim())) continue;
+        existingTitles.add(spec.title.trim());
+        newPackages.add(WorkPackage(
+          title: spec.title,
+          description: spec.details,
+          type: 'design',
+          phase: 'design',
+          status: spec.status.toLowerCase() == 'approved' ? 'completed' : 'planned',
+          owner: spec.owner,
+          discipline: spec.discipline,
+          areaOrSystem: spec.area,
+          wbsItemId: spec.wbsWorkPackageId,
+          wbsLevel2Title: spec.wbsWorkPackageTitle,
+          requirementIds: spec.attachedRequirementIds,
+          notes: [
+            if (spec.specificationType.isNotEmpty)
+              'Spec type: ${spec.specificationType}',
+            if (spec.ruleType.isNotEmpty) 'Rule: ${spec.ruleType}',
+            if (spec.sourceType.isNotEmpty) 'Source: ${spec.sourceType}',
+            if (spec.referenceLink.isNotEmpty) 'Ref: ${spec.referenceLink}',
+          ].join(' | '),
+        ));
+      }
     } catch (e) {
       debugPrint('Failed to load design planning document: $e');
     }
@@ -1563,7 +1826,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             type: type,
             phase: 'execution',
             status: entry.status.toLowerCase() == 'complete'
-                ? 'complete'
+                ? 'completed'
                 : 'planned',
             wbsLevel2Title: entry.title,
           ));
@@ -1581,7 +1844,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Import Work Packages'),
         content: Text(
-          'Found ${newPackages.length} work items from Design and Execution plans. '
+          'Found ${newPackages.length} work items from Design specs and Execution plans. '
           'Import them as Work Packages?',
         ),
         actions: [
@@ -1602,7 +1865,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final updatedPackages = [...data.workPackages, ...newPackages];
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(workPackages: updatedPackages),
       showSnackbar: false,
     );
@@ -1618,12 +1881,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
-    final generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
+    // Fix 1.2: Extract design specification rows from DesignPlanningDocument
+    // so they can be linked into EWP deliverables with traceability.
+    final designDoc = DesignPlanningDocument.fromProjectData(data);
+    final designSpecs = designDoc.specifications;
+
+    var generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
       wbsTree: data.wbsTree,
       methodology: _selectedMethodology,
+      designSpecifications: designSpecs,
     );
+
+    // Fix 1.1: Derive procurement scope from EWP deliverables
+    // so procurement packages know what design outputs they need.
+    generated = IntegratedWorkPackageService
+        .deriveProcurementScopeFromEwpDeliverables(generated);
+
+    // Phase 2.3: Roll up child costs/dates into parent packages
+    generated = IntegratedWorkPackageService
+        .rollUpChildCostsAndDates(generated);
+
+    // Phase 6: Enforce estimate basis (auto-populate missing fields)
+    generated = IntegratedWorkPackageService
+        .enforceEstimateBasis(generated, methodology: _selectedMethodology);
+
     if (generated.isEmpty) {
-      _showInfo('No WBS Level 3 package candidates found.');
+      _showInfo('No WBS leaf node package candidates found.');
       return;
     }
 
@@ -1635,13 +1918,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
+    // Count spec-linked deliverables for user info
+    final specLinkedCount = newPackages
+        .where((wp) => wp.packageClassification == IntegratedWorkPackageService.engineeringEwp)
+        .expand((wp) => wp.deliverables)
+        .where((d) => d.linkedSpecificationIds.isNotEmpty)
+        .length;
+
     final shouldImport = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Generate Integrated Package Chains'),
         content: Text(
           'Found ${newPackages.length} new EWP, procurement, and execution '
-          'packages from WBS Level 3 candidates. Generate them now?',
+          'packages from WBS leaf nodes (all depths).'
+          '${specLinkedCount > 0 ? "\n\n$specLinkedCount deliverable(s) linked to design specifications." : ""}'
+          '\n\nGenerate them now?',
         ),
         actions: [
           TextButton(
@@ -1660,14 +1952,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) =>
           data.copyWith(workPackages: [...data.workPackages, ...newPackages]),
       showSnackbar: false,
     );
 
     setState(() {});
-    _showInfo('Generated ${newPackages.length} integrated work packages.');
+    _showInfo('Generated ${newPackages.length} integrated work packages'
+        '${specLinkedCount > 0 ? " with $specLinkedCount spec-linked deliverables" : ""}.');
   }
 
   Future<void> _generateScheduleNetworkFromPackages() async {
@@ -1747,7 +2040,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     provider.updateField((data) => data.copyWith(keyMilestones: merged));
 
     final success =
-        await provider.saveToFirebase(checkpoint: 'planning_schedule');
+        await provider.saveToFirebase(checkpoint: 'schedule');
     if (!mounted) return;
     if (success) {
       _showInfo('Synced ${generated.length} schedule milestones.');
@@ -2039,7 +2332,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         scheduleActivities: updatedActivities,
         workPackages:
@@ -2064,15 +2357,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (!_autoImportAttempted &&
         _activityRows.isEmpty &&
-        data.wbsTree.isNotEmpty &&
-        !_asPlanningFlag(data.planningNotes, _kScheduleInitializedNoteKey) &&
-        !_asPlanningFlag(data.planningNotes, _kScheduleUserTouchedNoteKey)) {
+        data.wbsTree.isNotEmpty) {
       _autoImportAttempted = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _importFromWbs(showConfirm: false, markTouched: false);
-        }
-      });
+      _checkAndAutoImportScheduleFromBuild();
     }
 
     final computed = _computeSchedule(
@@ -2193,10 +2480,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           workPackages: data.workPackages,
           scheduleActivities: data.scheduleActivities,
           onWorkPackageTap: (wp) {
-            // Navigate to work package detail
+            _showWorkPackageDetail(wp);
           },
           onActivityTap: (activity) {
-            _editTask(activity.id);
+            // Resolve through _activityRows — the in-memory rows may have
+            // remapped IDs (e.g. wbsId overrides) that differ from the
+            // raw scheduleActivities data. Direct lookup avoids stale-ID
+            // mismatches that cause DropdownButton assertion failures.
+            final rowId = _resolveActivityRowId(activity.id, activity.wbsId);
+            if (rowId != null) _editTask(rowId);
           },
         );
       case 1:
@@ -2204,26 +2496,70 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           scheduleActivities: data.scheduleActivities,
           workPackages: data.workPackages,
           onActivityTap: (activity) {
-            _editTask(activity.id);
+            final rowId = _resolveActivityRowId(activity.id, activity.wbsId);
+            if (rowId != null) _editTask(rowId);
           },
           selectedActivityId: _selectedTaskId,
           hoveredActivityId: _hoveredTaskId,
         );
       case 2:
+        var filteredListRows = _timelineSearchQuery.isEmpty
+            ? _activityRows
+            : _activityRows
+                .where((r) =>
+                    r.titleController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.assigneeController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.disciplineController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.status
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.priority
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()))
+                .toList();
+        // Apply sort (P7)
+        filteredListRows.sort((a, b) {
+          int cmp;
+          switch (_listSortField) {
+            case 'status':
+              cmp = a.status.toLowerCase().compareTo(b.status.toLowerCase());
+            case 'priority':
+              cmp = a.priority.toLowerCase().compareTo(b.priority.toLowerCase());
+            case 'assignee':
+              cmp = a.assigneeController.text
+                  .toLowerCase()
+                  .compareTo(b.assigneeController.text.toLowerCase());
+            case 'startDate':
+              cmp = a.startDateController.text
+                  .compareTo(b.startDateController.text);
+            default:
+              cmp = a.titleController.text
+                  .toLowerCase()
+                  .compareTo(b.titleController.text.toLowerCase());
+          }
+          return _listSortAscending ? cmp : -cmp;
+        });
         return _TimelineWorkspaceCard(
-          selectedTab: 0, // Force List view
-          onTabChanged: (_) {},
-          timelineView: _timelineView,
-          onTimelineViewChanged: (value) {
-            if (value != null) {
-              setState(() => _timelineView = value);
-            }
-          },
           onPickStartDate: _pickStartDate,
           startDate: _scheduleStartDate,
           onValidate: _validateSchedule,
+          searchQuery: _timelineSearchQuery,
+          onSearchChanged: (q) => setState(() => _timelineSearchQuery = q),
+          sortField: _listSortField,
+          sortAscending: _listSortAscending,
+          onSortChanged: (field, ascending) =>
+              setState(() {
+                _listSortField = field;
+                _listSortAscending = ascending;
+              }),
           child: _TimelineList(
-            rows: _activityRows,
+            rows: filteredListRows,
             computed: computed,
             onChanged: _handleActivityChanged,
             onDelete: _deleteTask,
@@ -2231,20 +2567,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       case 3:
+        final filteredBoardRows = _timelineSearchQuery.isEmpty
+            ? _activityRows
+            : _activityRows
+                .where((r) =>
+                    r.titleController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.assigneeController.text
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()) ||
+                    r.status
+                        .toLowerCase()
+                        .contains(_timelineSearchQuery.toLowerCase()))
+                .toList();
         return _TimelineWorkspaceCard(
-          selectedTab: 1, // Force Board view
-          onTabChanged: (_) {},
-          timelineView: _timelineView,
-          onTimelineViewChanged: (value) {
-            if (value != null) {
-              setState(() => _timelineView = value);
-            }
-          },
           onPickStartDate: _pickStartDate,
           startDate: _scheduleStartDate,
           onValidate: _validateSchedule,
+          searchQuery: _timelineSearchQuery,
+          onSearchChanged: (q) => setState(() => _timelineSearchQuery = q),
           child: _TimelineBoard(
-            rows: _activityRows,
+            rows: filteredBoardRows,
             computed: computed,
             onMoveTaskToStatus: _moveTaskToStatus,
             onEditTask: _editTask,
@@ -2252,8 +2596,54 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       case 4:
+        var filteredWps = _workPackageSearchQuery.isEmpty
+            ? data.workPackages
+            : data.workPackages
+                .where((wp) =>
+                    wp.title
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.description
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.owner
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.type
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.status
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.phase
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.wbsLevel2Title
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()) ||
+                    wp.discipline
+                        .toLowerCase()
+                        .contains(_workPackageSearchQuery.toLowerCase()))
+                .toList();
+        // Apply sort (P7)
+        filteredWps.sort((a, b) {
+          int cmp;
+          switch (_workPackageSortField) {
+            case 'status':
+              cmp = a.status.toLowerCase().compareTo(b.status.toLowerCase());
+            case 'owner':
+              cmp = a.owner.toLowerCase().compareTo(b.owner.toLowerCase());
+            case 'phase':
+              cmp = a.phase.toLowerCase().compareTo(b.phase.toLowerCase());
+            case 'budget':
+              cmp = a.budgetedCost.compareTo(b.budgetedCost);
+            default:
+              cmp = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          }
+          return _workPackageSortAscending ? cmp : -cmp;
+        });
         return _WorkPackagesTab(
-          workPackages: data.workPackages,
+          workPackages: filteredWps,
           scheduleActivities: data.scheduleActivities,
           onWorkPackageTap: (wp) => _showWorkPackageDetail(wp),
           onImportFromPlans: _importWorkPackagesFromDesignAndExecution,
@@ -2262,6 +2652,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           onAddWorkPackage: _createWorkPackage,
           onEditWorkPackage: _editWorkPackage,
           onDeleteWorkPackage: _deleteWorkPackage,
+          searchQuery: _workPackageSearchQuery,
+          onSearchChanged: (q) => setState(() => _workPackageSearchQuery = q),
+          sortField: _workPackageSortField,
+          sortAscending: _workPackageSortAscending,
+          onSortChanged: (field, ascending) =>
+              setState(() {
+                _workPackageSortField = field;
+                _workPackageSortAscending = ascending;
+              }),
         );
       case 5:
         return _ProcurementTimelineTab(
@@ -2508,51 +2907,29 @@ class _WbsNodeTile extends StatelessWidget {
 
 class _TimelineWorkspaceCard extends StatelessWidget {
   const _TimelineWorkspaceCard({
-    required this.selectedTab,
-    required this.onTabChanged,
-    required this.timelineView,
-    required this.onTimelineViewChanged,
     required this.onPickStartDate,
     required this.startDate,
     required this.onValidate,
     required this.child,
+    this.searchQuery = '',
+    this.onSearchChanged,
+    this.sortField = 'title',
+    this.sortAscending = true,
+    this.onSortChanged,
   });
 
-  final int selectedTab;
-  final ValueChanged<int> onTabChanged;
-  final String timelineView;
-  final ValueChanged<String?> onTimelineViewChanged;
   final VoidCallback onPickStartDate;
   final DateTime? startDate;
   final VoidCallback onValidate;
   final Widget child;
+  final String searchQuery;
+  final ValueChanged<String>? onSearchChanged;
+  final String sortField;
+  final bool sortAscending;
+  final void Function(String field, bool ascending)? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Gantt', 'List', 'Board'];
-    final isCompact = MediaQuery.sizeOf(context).width < 980;
-
-    final tabChips = Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (int i = 0; i < tabs.length; i++)
-          ChoiceChip(
-            label: Text(tabs[i]),
-            selected: selectedTab == i,
-            onSelected: (_) => onTabChanged(i),
-            selectedColor: const Color(0xFFF59E0B),
-            labelStyle: TextStyle(
-              color: selectedTab == i
-                  ? const Color(0xFF111827)
-                  : const Color(0xFF4B5563),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-      ],
-    );
-
     final controls = Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -2565,25 +2942,6 @@ class _TimelineWorkspaceCard extends StatelessWidget {
             startDate == null
                 ? 'Start Date'
                 : 'Start: ${_formatDate(startDate!)}',
-          ),
-        ),
-        Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppSemanticColors.border),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: timelineView == 'Months' ? timelineView : 'Months',
-              onChanged: onTimelineViewChanged,
-              isDense: true,
-              items: const [
-                DropdownMenuItem(value: 'Months', child: Text('Months')),
-              ],
-            ),
           ),
         ),
         OutlinedButton.icon(
@@ -2604,28 +2962,125 @@ class _TimelineWorkspaceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Project Timeline',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
+          Row(
+            children: [
+              const Text(
+                'Project Timeline',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              controls,
+            ],
           ),
-          const SizedBox(height: 10),
-          if (isCompact) ...[
-            tabChips,
-            const SizedBox(height: 8),
-            controls,
-          ] else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: tabChips),
-                const SizedBox(width: 12),
-                controls,
-              ],
+          if (onSearchChanged != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 320,
+              height: 38,
+              child: TextField(
+                onChanged: onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search tasks...',
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  prefixIcon: const Icon(Icons.search,
+                      size: 18, color: Color(0xFF6B7280)),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => onSearchChanged!(''),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppSemanticColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppSemanticColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                        color: Color(0xFFF59E0B), width: 1.5),
+                  ),
+                ),
+              ),
             ),
+          ],
+          if (onSortChanged != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppSemanticColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.sort, size: 14, color: Color(0xFF6B7280)),
+                  const SizedBox(width: 4),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: sortField,
+                      onChanged: (value) {
+                        if (value != null) {
+                          onSortChanged!(value, sortAscending);
+                        }
+                      },
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'title', child: Text('Title')),
+                        DropdownMenuItem(
+                            value: 'status', child: Text('Status')),
+                        DropdownMenuItem(
+                            value: 'priority', child: Text('Priority')),
+                        DropdownMenuItem(
+                            value: 'assignee', child: Text('Assignee')),
+                        DropdownMenuItem(
+                            value: 'startDate', child: Text('Start Date')),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 16,
+                    ),
+                    onPressed: () {
+                      onSortChanged!(sortField, !sortAscending);
+                    },
+                    tooltip: sortAscending
+                        ? 'Sort ascending'
+                        : 'Sort descending',
+                    constraints: const BoxConstraints(
+                        minWidth: 28, minHeight: 28),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           child,
         ],
@@ -2673,395 +3128,6 @@ class _SectionEmpty extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
-class _TimelineGantt extends StatelessWidget {
-  const _TimelineGantt({
-    required this.computed,
-    required this.selectedTaskId,
-    required this.hoveredTaskId,
-    required this.onTaskTap,
-    required this.onTaskHover,
-  });
-
-  final _ComputedSchedule computed;
-  final String? selectedTaskId;
-  final String? hoveredTaskId;
-  final ValueChanged<String?> onTaskTap;
-  final ValueChanged<String?> onTaskHover;
-
-  static const double _leftColumnWidth = 280;
-  static const double _chartHeightPerRow = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    final start = computed.minDate ?? DateTime.now();
-    final end = computed.maxDate ?? start;
-    final monthSegments = _generateMonthSegments(start, end);
-    final totalDays = end.difference(start).inDays + 1;
-    final timelineWidth = (totalDays * 2.6).clamp(800.0, 2400.0);
-    final pxPerDay = timelineWidth / totalDays;
-    final chartHeight = computed.items.length * _chartHeightPerRow + 32;
-    final totalChartWidth = _leftColumnWidth + timelineWidth + 2;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        width: totalChartWidth,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppSemanticColors.border),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: const BoxDecoration(
-                border:
-                    Border(bottom: BorderSide(color: AppSemanticColors.border)),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: _leftColumnWidth,
-                    child: Text(
-                      'Task',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: timelineWidth,
-                    child: SizedBox(
-                      height: 18,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: Row(
-                          children: monthSegments.map((segment) {
-                            final segmentWidth = segment.dayCount * pxPerDay;
-                            return SizedBox(
-                              width: segmentWidth,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    segment.label,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF374151),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: chartHeight,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GanttGridPainter(
-                        leftColumnWidth: _leftColumnWidth,
-                        rowHeight: _chartHeightPerRow,
-                        rowCount: computed.items.length,
-                        monthSegments: monthSegments,
-                        pxPerDay: pxPerDay,
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _DependencyPainter(
-                        items: computed.items,
-                        leftColumnWidth: _leftColumnWidth,
-                        rowHeight: _chartHeightPerRow,
-                        startDate: start,
-                        pxPerDay: pxPerDay,
-                        selectedTaskId: selectedTaskId,
-                        hoveredTaskId: hoveredTaskId,
-                      ),
-                    ),
-                  ),
-                  for (int index = 0; index < computed.items.length; index++)
-                    _GanttRow(
-                      item: computed.items[index],
-                      index: index,
-                      startDate: start,
-                      leftColumnWidth: _leftColumnWidth,
-                      rowHeight: _chartHeightPerRow,
-                      pxPerDay: pxPerDay,
-                      isSelected: selectedTaskId == computed.items[index].id,
-                      onTap: () => onTaskTap(computed.items[index].id),
-                      onEnter: () => onTaskHover(computed.items[index].id),
-                      onExit: () => onTaskHover(null),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GanttRow extends StatelessWidget {
-  const _GanttRow({
-    required this.item,
-    required this.index,
-    required this.startDate,
-    required this.leftColumnWidth,
-    required this.rowHeight,
-    required this.pxPerDay,
-    required this.isSelected,
-    required this.onTap,
-    required this.onEnter,
-    required this.onExit,
-  });
-
-  final _ComputedItem item;
-  final int index;
-  final DateTime startDate;
-  final double leftColumnWidth;
-  final double rowHeight;
-  final double pxPerDay;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onEnter;
-  final VoidCallback onExit;
-
-  @override
-  Widget build(BuildContext context) {
-    final top = index * rowHeight + 6;
-    final leftOffset = item.startDate.difference(startDate).inDays * pxPerDay;
-    final durationDays = item.durationDays == 0 ? 1 : item.durationDays;
-    final width = (durationDays * pxPerDay).clamp(18.0, 600.0);
-
-    return Positioned(
-      left: 0,
-      right: 0,
-      top: top,
-      height: rowHeight - 10,
-      child: Row(
-        children: [
-          SizedBox(
-            width: leftColumnWidth,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                  ),
-                  if (item.isCritical)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'CP',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFB91C1C),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned(
-                  left: leftOffset,
-                  top: 3,
-                  child: MouseRegion(
-                    onEnter: (_) => onEnter(),
-                    onExit: (_) => onExit(),
-                    child: GestureDetector(
-                      onTap: onTap,
-                      child: Container(
-                        height: rowHeight - 16,
-                        width: width,
-                        decoration: BoxDecoration(
-                          color: item.isCritical
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFF3B82F6),
-                          borderRadius: BorderRadius.circular(8),
-                          border: isSelected
-                              ? Border.all(
-                                  color: const Color(0xFFF59E0B), width: 2)
-                              : null,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '${(item.progress * 100).round()}%',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GanttGridPainter extends CustomPainter {
-  const _GanttGridPainter({
-    required this.leftColumnWidth,
-    required this.rowHeight,
-    required this.rowCount,
-    required this.monthSegments,
-    required this.pxPerDay,
-  });
-
-  final double leftColumnWidth;
-  final double rowHeight;
-  final int rowCount;
-  final List<_TimelineSegment> monthSegments;
-  final double pxPerDay;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rowPaint = Paint()
-      ..color = const Color(0xFFE5E7EB)
-      ..strokeWidth = 1;
-
-    for (int row = 0; row <= rowCount; row++) {
-      final y = row * rowHeight;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), rowPaint);
-    }
-
-    final dividerPaint = Paint()
-      ..color = const Color(0xFFD1D5DB)
-      ..strokeWidth = 1;
-
-    double x = leftColumnWidth;
-    canvas.drawLine(Offset(x, 0), Offset(x, size.height), dividerPaint);
-    for (final segment in monthSegments) {
-      x += segment.dayCount * pxPerDay;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), dividerPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GanttGridPainter oldDelegate) => false;
-}
-
-class _DependencyPainter extends CustomPainter {
-  const _DependencyPainter({
-    required this.items,
-    required this.leftColumnWidth,
-    required this.rowHeight,
-    required this.startDate,
-    required this.pxPerDay,
-    required this.selectedTaskId,
-    required this.hoveredTaskId,
-  });
-
-  final List<_ComputedItem> items;
-  final double leftColumnWidth;
-  final double rowHeight;
-  final DateTime startDate;
-  final double pxPerDay;
-  final String? selectedTaskId;
-  final String? hoveredTaskId;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (selectedTaskId == null && hoveredTaskId == null) return;
-
-    final focusIds = <String>{};
-    if (selectedTaskId != null) focusIds.add(selectedTaskId!);
-    if (hoveredTaskId != null) focusIds.add(hoveredTaskId!);
-
-    final byId = {for (final item in items) item.id: item};
-
-    final paint = Paint()
-      ..color = const Color(0xFFF59E0B)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    for (final targetId in focusIds) {
-      final target = byId[targetId];
-      if (target == null) continue;
-
-      final targetRow = items.indexWhere((element) => element.id == target.id);
-      final targetY = targetRow * rowHeight + (rowHeight / 2);
-      final targetX = leftColumnWidth +
-          target.startDate.difference(startDate).inDays * pxPerDay;
-
-      for (final predecessorId in target.predecessorIds) {
-        final predecessor = byId[predecessorId];
-        if (predecessor == null) continue;
-
-        final predecessorRow =
-            items.indexWhere((element) => element.id == predecessor.id);
-        final predecessorY = predecessorRow * rowHeight + (rowHeight / 2);
-        final predecessorWidth =
-            (predecessor.durationDays == 0 ? 1 : predecessor.durationDays) *
-                pxPerDay;
-        final predecessorX = leftColumnWidth +
-            predecessor.startDate.difference(startDate).inDays * pxPerDay +
-            predecessorWidth;
-
-        final path = Path()
-          ..moveTo(predecessorX, predecessorY)
-          ..lineTo(predecessorX + 12, predecessorY)
-          ..lineTo(predecessorX + 12, targetY)
-          ..lineTo(targetX, targetY);
-        canvas.drawPath(path, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DependencyPainter oldDelegate) {
-    return oldDelegate.selectedTaskId != selectedTaskId ||
-        oldDelegate.hoveredTaskId != hoveredTaskId ||
-        oldDelegate.items != items;
-  }
-}
-
 class _TimelineList extends StatelessWidget {
   const _TimelineList({
     required this.rows,
@@ -3103,23 +3169,20 @@ class _TimelineList extends StatelessWidget {
         child: Table(
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           columnWidths: const {
-            0: FixedColumnWidth(160),
-            1: FixedColumnWidth(90),
-            2: FixedColumnWidth(85),
-            3: FixedColumnWidth(160),
-            4: FixedColumnWidth(110),
-            5: FixedColumnWidth(100),
-            6: FixedColumnWidth(130),
-            7: FixedColumnWidth(110),
-            8: FixedColumnWidth(110),
-            9: FixedColumnWidth(110),
-            10: FixedColumnWidth(110),
-            11: FixedColumnWidth(100),
-            12: FixedColumnWidth(160),
-            13: FixedColumnWidth(110),
-            14: FixedColumnWidth(110),
-            15: FixedColumnWidth(110),
-            16: FixedColumnWidth(48),
+            0: FixedColumnWidth(180),
+            1: FixedColumnWidth(100),
+            2: FixedColumnWidth(95),
+            3: FixedColumnWidth(170),
+            4: FixedColumnWidth(120),
+            5: FixedColumnWidth(110),
+            6: FixedColumnWidth(150),
+            7: FixedColumnWidth(120),
+            8: FixedColumnWidth(120),
+            9: FixedColumnWidth(120),
+            10: FixedColumnWidth(120),
+            11: FixedColumnWidth(110),
+            12: FixedColumnWidth(170),
+            13: FixedColumnWidth(48),
           },
           border: const TableBorder(
             horizontalInside: BorderSide(color: AppSemanticColors.border),
@@ -3135,8 +3198,17 @@ class _TimelineList extends StatelessWidget {
               final priorityValue = _normalizeSchedulePriority(row.priority);
               final predecessorCandidates =
                   rows.where((candidate) => candidate.id != row.id).toList();
+              // Deduplicate predecessor candidates by ID to prevent
+              // DropdownButton assertion failures from duplicate values.
+              final seenPredIds = <String>{};
+              final uniquePredecessorCandidates = <_ScheduleRow>[];
+              for (final c in predecessorCandidates) {
+                if (c.id.trim().isEmpty || seenPredIds.contains(c.id)) continue;
+                seenPredIds.add(c.id);
+                uniquePredecessorCandidates.add(c);
+              }
               final predecessorIds =
-                  predecessorCandidates.map((item) => item.id).toSet();
+                  uniquePredecessorCandidates.map((item) => item.id).toSet();
               final predecessorValue =
                   predecessorIds.contains(row.predecessorId)
                       ? row.predecessorId
@@ -3196,7 +3268,7 @@ class _TimelineList extends StatelessWidget {
                             value: null,
                             child: Text('None'),
                           ),
-                          ...predecessorCandidates.map((candidate) {
+                          ...uniquePredecessorCandidates.map((candidate) {
                             final label =
                                 candidate.titleController.text.trim().isEmpty
                                     ? 'Untitled task'
@@ -3369,44 +3441,6 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    Text(
-                      '\$${row.budgetedCost.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF111827),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  _cell(
-                    Text(
-                      '\$${row.actualCost.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF111827),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  _cell(
-                    Builder(
-                      builder: (context) {
-                        final variance = row.budgetedCost - row.actualCost;
-                        final varianceColor = variance >= 0
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444);
-                        return Text(
-                          '${variance >= 0 ? '+' : '-'}\$${variance.abs().toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: varianceColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  _cell(
                     IconButton(
                       onPressed: () => onDelete(row.id),
                       icon: const Icon(Icons.delete_outline, size: 18),
@@ -3450,9 +3484,6 @@ class _TimelineList extends StatelessWidget {
         label('Est. Hours'),
         label('Estimate Basis'),
         label('Milestone'),
-        label('Budgeted Cost'),
-        label('Actual Cost'),
-        label('Cost Variance'),
         label(''),
       ],
     );
@@ -3845,8 +3876,6 @@ class _ScheduleRow {
     this.wbsLevel2Id = '',
     this.wbsLevel2Title = '',
     this.contractId = '',
-    this.budgetedCost = 0,
-    this.actualCost = 0,
     this.onChanged,
   })  : status = _normalizeScheduleStatus(status),
         priority = _normalizeSchedulePriority(priority),
@@ -3906,8 +3935,6 @@ class _ScheduleRow {
   String wbsLevel2Id;
   String wbsLevel2Title;
   String contractId;
-  double budgetedCost;
-  double actualCost;
   final VoidCallback? onChanged;
 
   factory _ScheduleRow.fromActivity(
@@ -3946,8 +3973,6 @@ class _ScheduleRow {
       wbsLevel2Id: activity.wbsLevel2Id,
       wbsLevel2Title: activity.wbsLevel2Title,
       contractId: activity.contractId,
-      budgetedCost: activity.budgetedCost,
-      actualCost: activity.actualCost,
       onChanged: onChanged,
     );
   }
@@ -4026,6 +4051,8 @@ class _ScheduleValidationReport {
     required this.contractAlignmentWarnings,
     required this.baselineVarianceWarnings,
     required this.milestoneWarnings,
+    required this.specCoverageWarnings,
+    required this.resourceConflicts,
   });
 
   final int taskCount;
@@ -4039,6 +4066,8 @@ class _ScheduleValidationReport {
   final List<_ContractAlignmentWarning> contractAlignmentWarnings;
   final List<_BaselineVarianceWarning> baselineVarianceWarnings;
   final List<_MilestoneWarning> milestoneWarnings;
+  final List<_SpecCoverageWarning> specCoverageWarnings;
+  final List<ResourceConflict> resourceConflicts;
 }
 
 class _PackageWarning {
@@ -4077,6 +4106,16 @@ class _BaselineVarianceWarning {
 
 class _MilestoneWarning {
   const _MilestoneWarning({
+    required this.title,
+    required this.detail,
+  });
+
+  final String title;
+  final String detail;
+}
+
+class _SpecCoverageWarning {
+  const _SpecCoverageWarning({
     required this.title,
     required this.detail,
   });
@@ -4157,6 +4196,16 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     value: report.cpm.criticalPathIds.length.toString(),
                     color: const Color(0xFF7C3AED),
                   ),
+                  _ValidationStat(
+                    label: 'Spec Coverage',
+                    value: report.specCoverageWarnings.length.toString(),
+                    color: const Color(0xFF0891B2),
+                  ),
+                  _ValidationStat(
+                    label: 'Resource Conflicts',
+                    value: report.resourceConflicts.length.toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -4183,8 +4232,8 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     .toList(),
               ),
               _ValidationSection(
-                title: 'Unlinked WBS Level 3 Candidates',
-                emptyText: 'All WBS Level 3 candidates are linked to packages.',
+                title: 'Unlinked WBS Leaf Candidates',
+                emptyText: 'All WBS leaf candidates are linked to packages.',
                 children: report.unlinkedWbsCandidates
                     .map((item) => _ValidationLine(
                           title: item.title.isNotEmpty ? item.title : item.id,
@@ -4245,6 +4294,30 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     .map((warning) => _ValidationLine(
                           title: warning.title,
                           detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Design Specification Coverage',
+                emptyText:
+                    'All design specifications are linked to work packages.',
+                children: report.specCoverageWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Resource Conflicts',
+                emptyText: 'No resource over-allocation conflicts detected.',
+                children: report.resourceConflicts
+                    .map((conflict) => _ValidationLine(
+                          title: conflict.owner,
+                          detail: '"${conflict.packageA}" and '
+                              '"${conflict.packageB}" overlap by '
+                              '${conflict.overlapDays} day(s) '
+                              '(${conflict.overlapStart} to ${conflict.overlapEnd}).',
                         ))
                     .toList(),
               ),
@@ -4521,35 +4594,6 @@ _ComputedSchedule _computeSchedule(List<_ScheduleRow> rows, DateTime start) {
   );
 }
 
-class _TimelineSegment {
-  const _TimelineSegment({required this.label, required this.dayCount});
-
-  final String label;
-  final int dayCount;
-}
-
-List<_TimelineSegment> _generateMonthSegments(DateTime start, DateTime end) {
-  final segments = <_TimelineSegment>[];
-  final inclusiveEnd = DateTime(end.year, end.month, end.day);
-  DateTime cursor = DateTime(start.year, start.month, 1);
-
-  while (!cursor.isAfter(inclusiveEnd)) {
-    final bucketStart = cursor.isBefore(start) ? start : cursor;
-    final nextMonth = DateTime(cursor.year, cursor.month + 1, 1);
-    final bucketEnd = nextMonth.subtract(const Duration(days: 1));
-    final actualEnd =
-        bucketEnd.isAfter(inclusiveEnd) ? inclusiveEnd : bucketEnd;
-    final dayCount = actualEnd.difference(bucketStart).inDays + 1;
-
-    segments.add(
-      _TimelineSegment(label: _formatMonth(cursor), dayCount: dayCount),
-    );
-    cursor = nextMonth;
-  }
-
-  return segments;
-}
-
 DateTime? _parseDate(String raw) {
   final value = raw.trim();
   if (value.isEmpty) return null;
@@ -4561,24 +4605,6 @@ String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '$year-$month-$day';
-}
-
-String _formatMonth(DateTime date) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${months[date.month - 1]} ${date.year}';
 }
 
 String _titleCase(String value) {
@@ -4668,6 +4694,11 @@ class _WorkPackagesTab extends StatelessWidget {
     this.onAddWorkPackage,
     this.onEditWorkPackage,
     this.onDeleteWorkPackage,
+    this.searchQuery = '',
+    this.onSearchChanged,
+    this.sortField = 'title',
+    this.sortAscending = true,
+    this.onSortChanged,
   });
 
   final List<WorkPackage> workPackages;
@@ -4679,6 +4710,11 @@ class _WorkPackagesTab extends StatelessWidget {
   final VoidCallback? onAddWorkPackage;
   final ValueChanged<WorkPackage>? onEditWorkPackage;
   final ValueChanged<String>? onDeleteWorkPackage;
+  final String searchQuery;
+  final ValueChanged<String>? onSearchChanged;
+  final String sortField;
+  final bool sortAscending;
+  final void Function(String field, bool ascending)? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -4775,6 +4811,112 @@ class _WorkPackagesTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              if (onSearchChanged != null)
+                SizedBox(
+                  width: 260,
+                  height: 38,
+                  child: TextField(
+                    onChanged: onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Search work packages...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 18, color: Color(0xFF6B7280)),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () => onSearchChanged!(''),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            BorderSide(color: AppSemanticColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            BorderSide(color: AppSemanticColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFF59E0B), width: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+              if (onSearchChanged != null) const SizedBox(width: 12),
+              // Sort controls (P7)
+              if (onSortChanged != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppSemanticColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort, size: 14, color: Color(0xFF6B7280)),
+                      const SizedBox(width: 4),
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: sortField,
+                          onChanged: (value) {
+                            if (value != null) {
+                              onSortChanged!(value, sortAscending);
+                            }
+                          },
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'title', child: Text('Title')),
+                            DropdownMenuItem(
+                                value: 'status', child: Text('Status')),
+                            DropdownMenuItem(
+                                value: 'owner', child: Text('Owner')),
+                            DropdownMenuItem(
+                                value: 'phase', child: Text('Phase')),
+                            DropdownMenuItem(
+                                value: 'budget', child: Text('Budget')),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          sortAscending
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          size: 16,
+                        ),
+                        onPressed: () {
+                          onSortChanged!(sortField, !sortAscending);
+                        },
+                        tooltip: sortAscending
+                            ? 'Sort ascending'
+                            : 'Sort descending',
+                        constraints: const BoxConstraints(
+                            minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              if (onSortChanged != null) const SizedBox(width: 8),
               if (onGeneratePackageChains != null)
                 FilledButton.icon(
                   onPressed: onGeneratePackageChains,
@@ -4825,7 +4967,7 @@ class _WorkPackagesTab extends StatelessWidget {
   }
 }
 
-class _WorkPackageCard extends StatelessWidget {
+class _WorkPackageCard extends StatefulWidget {
   const _WorkPackageCard({
     required this.workPackage,
     required this.activities,
@@ -4841,15 +4983,45 @@ class _WorkPackageCard extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
+  State<_WorkPackageCard> createState() => _WorkPackageCardState();
+}
+
+class _WorkPackageCardState extends State<_WorkPackageCard> {
+  bool _activitiesExpanded = false;
+
+  Color _statusColor(String status) {
+    final normalized = status.toLowerCase();
+    switch (normalized) {
+      case 'in_progress':
+        return const Color(0xFF3B82F6);
+      case 'complete':
+      case 'completed':
+        return const Color(0xFF10B981);
+      case 'blocked':
+      case 'on_hold':
+        return const Color(0xFFEF4444);
+      case 'overdue':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final progress = workPackage.budgetedCost > 0
-        ? (workPackage.actualCost / workPackage.budgetedCost).clamp(0.0, 1.0)
+    final wp = widget.workPackage;
+    final activities = widget.activities;
+    final progress = wp.budgetedCost > 0
+        ? (wp.actualCost / wp.budgetedCost).clamp(0.0, 1.0)
         : 0.0;
     final readinessWarnings =
-        IntegratedWorkPackageService.validateReadiness(workPackage);
+        IntegratedWorkPackageService.validateReadiness(wp);
+    final displayedActivities =
+        _activitiesExpanded ? activities : activities.take(3).toList();
+    final hasMore = activities.length > 3 && !_activitiesExpanded;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -4865,8 +5037,8 @@ class _WorkPackageCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    workPackage.title.isNotEmpty
-                        ? workPackage.title
+                    wp.title.isNotEmpty
+                        ? wp.title
                         : 'Untitled Work Package',
                     style: const TextStyle(
                       fontSize: 16,
@@ -4879,11 +5051,11 @@ class _WorkPackageCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _statusColor(workPackage.status),
+                    color: _statusColor(wp.status),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    workPackage.status.toUpperCase(),
+                    wp.status.toUpperCase(),
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -4914,27 +5086,27 @@ class _WorkPackageCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (onEdit != null) ...[
+                if (widget.onEdit != null) ...[
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: onEdit,
+                    onPressed: widget.onEdit,
                     tooltip: 'Edit',
                   ),
                 ],
-                if (onDelete != null)
+                if (widget.onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline,
                         size: 18, color: Color(0xFFEF4444)),
-                    onPressed: onDelete,
+                    onPressed: widget.onDelete,
                     tooltip: 'Delete',
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            if (workPackage.description.isNotEmpty) ...[
+            if (wp.description.isNotEmpty) ...[
               Text(
-                workPackage.description,
+                wp.description,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF6B7280),
@@ -4950,8 +5122,8 @@ class _WorkPackageCard extends StatelessWidget {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.owner.isNotEmpty
-                      ? workPackage.owner
+                  wp.owner.isNotEmpty
+                      ? wp.owner
                       : 'Unassigned',
                   style:
                       const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
@@ -4961,8 +5133,8 @@ class _WorkPackageCard extends StatelessWidget {
                     size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  workPackage.type.isNotEmpty
-                      ? workPackage.type.toUpperCase()
+                  wp.type.isNotEmpty
+                      ? wp.type.toUpperCase()
                       : 'N/A',
                   style: const TextStyle(
                     fontSize: 11,
@@ -4972,7 +5144,7 @@ class _WorkPackageCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '\$${workPackage.budgetedCost.toStringAsFixed(0)}',
+                  '\$${wp.budgetedCost.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -4992,7 +5164,7 @@ class _WorkPackageCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              ...activities.take(3).map((activity) {
+              ...displayedActivities.map((activity) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 4),
                   padding:
@@ -5048,13 +5220,33 @@ class _WorkPackageCard extends StatelessWidget {
                   ),
                 );
               }),
-              if (activities.length > 3)
-                Text(
-                  '+ ${activities.length - 3} more...',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF6B7280),
-                    fontStyle: FontStyle.italic,
+              if (hasMore || _activitiesExpanded)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _activitiesExpanded = !_activitiesExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _activitiesExpanded
+                          ? 'Show less'
+                          : '+ ${activities.length - 3} more...',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4B5563),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
             ],
@@ -5073,20 +5265,6 @@ class _WorkPackageCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'in_progress':
-        return const Color(0xFF3B82F6);
-      case 'complete':
-        return const Color(0xFF10B981);
-      case 'blocked':
-      case 'on_hold':
-        return const Color(0xFFEF4444);
-      default:
-        return const Color(0xFFF59E0B);
-    }
   }
 }
 
@@ -5299,34 +5477,6 @@ class _ProcurementActivityCard extends StatelessWidget {
   }
 }
 
-class _EVMData {
-  const _EVMData({
-    required this.plannedValue,
-    required this.earnedValue,
-    required this.actualCost,
-    required this.scheduleVariance,
-    required this.costVariance,
-    required this.schedulePerformanceIndex,
-    required this.costPerformanceIndex,
-    required this.budgetAtCompletion,
-    required this.estimateAtCompletion,
-    required this.estimateToComplete,
-    required this.varianceAtCompletion,
-  });
-
-  final double plannedValue; // PV
-  final double earnedValue; // EV
-  final double actualCost; // AC
-  final double scheduleVariance; // SV = EV - PV
-  final double costVariance; // CV = EV - AC
-  final double schedulePerformanceIndex; // SPI = EV / PV
-  final double costPerformanceIndex; // CPI = EV / AC
-  final double budgetAtCompletion; // BAC
-  final double estimateAtCompletion; // EAC
-  final double estimateToComplete; // ETC
-  final double varianceAtCompletion; // VAC = BAC - EAC
-}
-
 class _CostVsScheduleTab extends StatelessWidget {
   const _CostVsScheduleTab({
     required this.workPackages,
@@ -5398,106 +5548,6 @@ class _CostVsScheduleTab extends StatelessWidget {
     return points;
   }
 
-  /// Calculate progress percentage for a work package based on linked activities
-  double _getWorkPackageProgress(WorkPackage wp) {
-    if (wp.scheduleActivityIds.isEmpty) {
-      // Fallback to status-based progress
-      switch (wp.status) {
-        case 'complete':
-          return 1.0;
-        case 'in_progress':
-          return 0.5;
-        default:
-          return 0.0;
-      }
-    }
-
-    final linkedActivities = scheduleActivities
-        .where((a) => wp.scheduleActivityIds.contains(a.id))
-        .toList();
-
-    if (linkedActivities.isEmpty) return 0.0;
-
-    final totalProgress = linkedActivities.fold<double>(
-      0,
-      (sum, act) => sum + act.progress.clamp(0.0, 1.0),
-    );
-
-    return totalProgress / linkedActivities.length;
-  }
-
-  /// Calculate Earned Value Management (EVM) metrics
-  _EVMData _calculateEVM() {
-    final now = DateTime.now();
-
-    // Planned Value (PV): Sum of budgeted costs for work scheduled to be completed by now
-    double plannedValue = 0;
-    for (final wp in workPackages) {
-      if (wp.plannedEnd != null) {
-        final endDate = DateTime.tryParse(wp.plannedEnd!);
-        if (endDate != null && !endDate.isAfter(now)) {
-          plannedValue += wp.budgetedCost;
-        }
-      }
-    }
-
-    // Earned Value (EV): Sum of budgeted costs for work actually completed
-    double earnedValue = 0;
-    for (final wp in workPackages) {
-      final progress = _getWorkPackageProgress(wp);
-      earnedValue += wp.budgetedCost * progress;
-    }
-
-    // Actual Cost (AC): Sum of actual costs incurred
-    double actualCost = workPackages.fold<double>(
-      0,
-      (sum, wp) => sum + wp.actualCost,
-    );
-
-    // Schedule Variance (SV) = EV - PV
-    final scheduleVariance = earnedValue - plannedValue;
-
-    // Cost Variance (CV) = EV - AC
-    final costVariance = earnedValue - actualCost;
-
-    // Schedule Performance Index (SPI) = EV / PV
-    final schedulePerformanceIndex =
-        plannedValue > 0 ? earnedValue / plannedValue : 0.0;
-
-    // Cost Performance Index (CPI) = EV / AC
-    final costPerformanceIndex =
-        actualCost > 0 ? earnedValue / actualCost : 0.0;
-
-    // Estimate at Completion (EAC) = BAC / CPI
-    final budgetAtCompletion = workPackages.fold<double>(
-      0,
-      (sum, wp) => sum + wp.budgetedCost,
-    );
-    final estimateAtCompletion = costPerformanceIndex > 0
-        ? budgetAtCompletion / costPerformanceIndex
-        : budgetAtCompletion;
-
-    // Estimate to Complete (ETC) = EAC - AC
-    final estimateToComplete = estimateAtCompletion - actualCost;
-
-    // Variance at Completion (VAC) = BAC - EAC
-    final varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
-
-    return _EVMData(
-      plannedValue: plannedValue,
-      earnedValue: earnedValue,
-      actualCost: actualCost,
-      scheduleVariance: scheduleVariance,
-      costVariance: costVariance,
-      schedulePerformanceIndex: schedulePerformanceIndex,
-      costPerformanceIndex: costPerformanceIndex,
-      budgetAtCompletion: budgetAtCompletion,
-      estimateAtCompletion: estimateAtCompletion,
-      estimateToComplete: estimateToComplete,
-      varianceAtCompletion: varianceAtCompletion,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final totalBudget = workPackages.fold<double>(
@@ -5518,7 +5568,6 @@ class _CostVsScheduleTab extends StatelessWidget {
     final variancePercent =
         totalBudget > 0 ? (variance / totalBudget * 100).abs() : 0.0;
 
-    final evmData = _calculateEVM();
     final plannedCurve = _generatePlannedCurve();
     final actualCurve = _generateActualCurve();
 
@@ -5571,85 +5620,6 @@ class _CostVsScheduleTab extends StatelessWidget {
                     ? const Color(0xFF10B981)
                     : const Color(0xFFEF4444),
                 subtitle: '${variancePercent.toStringAsFixed(1)}%',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // EVM Metrics Section
-          const Text(
-            'Earned Value Management (EVM) Metrics',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _EVMStatCard(
-                title: 'Planned Value (PV)',
-                value: '\$${evmData.plannedValue.toStringAsFixed(0)}',
-                color: const Color(0xFF3B82F6),
-              ),
-              _EVMStatCard(
-                title: 'Earned Value (EV)',
-                value: '\$${evmData.earnedValue.toStringAsFixed(0)}',
-                color: const Color(0xFF10B981),
-              ),
-              _EVMStatCard(
-                title: 'Actual Cost (AC)',
-                value: '\$${evmData.actualCost.toStringAsFixed(0)}',
-                color: const Color(0xFFF59E0B),
-              ),
-              _EVMStatCard(
-                title: 'Schedule Variance (SV)',
-                value: '\$${evmData.scheduleVariance.toStringAsFixed(0)}',
-                color: evmData.scheduleVariance >= 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFEF4444),
-              ),
-              _EVMStatCard(
-                title: 'Cost Variance (CV)',
-                value: '\$${evmData.costVariance.toStringAsFixed(0)}',
-                color: evmData.costVariance >= 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFEF4444),
-              ),
-              _EVMStatCard(
-                title: 'SPI',
-                value: evmData.schedulePerformanceIndex.toStringAsFixed(2),
-                color: evmData.schedulePerformanceIndex >= 1.0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-                subtitle: 'Schedule Performance',
-              ),
-              _EVMStatCard(
-                title: 'CPI',
-                value: evmData.costPerformanceIndex.toStringAsFixed(2),
-                color: evmData.costPerformanceIndex >= 1.0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
-                subtitle: 'Cost Performance',
-              ),
-              _EVMStatCard(
-                title: 'Estimate at Completion (EAC)',
-                value: '\$${evmData.estimateAtCompletion.toStringAsFixed(0)}',
-                color: const Color(0xFF8B5CF6),
-              ),
-              _EVMStatCard(
-                title: 'Estimate to Complete (ETC)',
-                value: '\$${evmData.estimateToComplete.toStringAsFixed(0)}',
-                color: const Color(0xFF6366F1),
-              ),
-              _EVMStatCard(
-                title: 'Variance at Completion (VAC)',
-                value: '\$${evmData.varianceAtCompletion.toStringAsFixed(0)}',
-                color: evmData.varianceAtCompletion >= 0
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFEF4444),
               ),
             ],
           ),
@@ -5806,67 +5776,6 @@ class _CostStatCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EVMStatCard extends StatelessWidget {
-  const _EVMStatCard({
-    required this.title,
-    required this.value,
-    required this.color,
-    this.subtitle,
-  });
-
-  final String title;
-  final String value;
-  final Color color;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 140,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: const TextStyle(
-                fontSize: 9,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/page_hint_model.dart';
+import 'package:ndu_project/services/sidebar_navigation_service.dart';
 
 /// Firestore-backed catalog for screen hint content and availability.
 class HintContentService {
@@ -8,11 +9,22 @@ class HintContentService {
   static const String _collectionName = 'page_hints';
   static final DateTime _seedTimestamp = DateTime(2024, 1, 1);
 
-  static List<PageHintConfig> defaults() => [
+  static List<PageHintConfig> defaults() {
+    final generated = <String, PageHintConfig>{
+      for (final hint in _sidebarDefaults()) hint.pageId: hint,
+    };
+    for (final hint in _curatedDefaults()) {
+      generated[hint.pageId] = hint;
+    }
+    final list = generated.values.toList()..sort(_sortHints);
+    return list;
+  }
+
+  static List<PageHintConfig> _curatedDefaults() => [
         PageHintConfig(
           id: 'initiation_phase',
           pageId: 'initiation_phase',
-          pageLabel: 'Initiation Phase',
+          pageLabel: 'Scope Statement',
           title: 'Business Case',
           message:
               'Enter your project notes and detailed business case here. Use the formatting toolbar above text fields for bold, underline, headings, and undo functionality.',
@@ -109,6 +121,29 @@ class HintContentService {
         ),
       ];
 
+  static List<PageHintConfig> _sidebarDefaults() {
+    return SidebarNavigationService.allItems.map((item) {
+      final pageId = _hintPageIdForCheckpoint(item.checkpoint);
+      final category =
+          SidebarNavigationService.phaseForCheckpoint(item.checkpoint) ??
+              'General';
+      return PageHintConfig(
+        id: pageId,
+        pageId: pageId,
+        pageLabel: item.label,
+        title: item.label,
+        message:
+            'Use this workspace to complete the ${item.label} section. Review project context, capture the required details, and save progress before moving to the next sidebar page.',
+        category: category,
+        description:
+            'Default guidance profile for the ${item.label} sidebar page.',
+        enabled: true,
+        createdAt: _seedTimestamp,
+        updatedAt: _seedTimestamp,
+      );
+    }).toList();
+  }
+
   static Stream<List<PageHintConfig>> watchHints() {
     return _firestore
         .collection(_collectionName)
@@ -138,7 +173,8 @@ class HintContentService {
 
   static Future<PageHintConfig?> getHint(String pageId) async {
     try {
-      final doc = await _firestore.collection(_collectionName).doc(pageId).get();
+      final doc =
+          await _firestore.collection(_collectionName).doc(pageId).get();
       if (!doc.exists) return null;
       final data = doc.data();
       if (data == null) return null;
@@ -218,7 +254,8 @@ class HintContentService {
         pageLabel: hint.pageLabel.trim(),
         title: hint.title.trim(),
         message: hint.message.trim(),
-        category: hint.category.trim().isEmpty ? 'General' : hint.category.trim(),
+        category:
+            hint.category.trim().isEmpty ? 'General' : hint.category.trim(),
         description: hint.description?.trim().isEmpty ?? true
             ? null
             : hint.description?.trim(),
@@ -271,10 +308,12 @@ class HintContentService {
     for (final hint in merged) {
       batch.set(
         collection.doc(hint.pageId),
-        hint.copyWith(
-          enabled: enabled,
-          updatedAt: now,
-        ).toJson(),
+        hint
+            .copyWith(
+              enabled: enabled,
+              updatedAt: now,
+            )
+            .toJson(),
         SetOptions(merge: true),
       );
     }
@@ -283,9 +322,26 @@ class HintContentService {
   }
 
   static int _sortHints(PageHintConfig a, PageHintConfig b) {
-    final category = a.category.toLowerCase().compareTo(b.category.toLowerCase());
+    final aIndex = _sidebarSortIndex(a.pageId);
+    final bIndex = _sidebarSortIndex(b.pageId);
+    if (aIndex != bIndex) return aIndex.compareTo(bIndex);
+    final category =
+        a.category.toLowerCase().compareTo(b.category.toLowerCase());
     if (category != 0) return category;
     return a.pageLabel.toLowerCase().compareTo(b.pageLabel.toLowerCase());
+  }
+
+  static String _hintPageIdForCheckpoint(String checkpoint) {
+    if (checkpoint == 'business_case') return 'initiation_phase';
+    return checkpoint;
+  }
+
+  static int _sidebarSortIndex(String pageId) {
+    final index = SidebarNavigationService.allItems.indexWhere(
+      (item) => _hintPageIdForCheckpoint(item.checkpoint) == pageId,
+    );
+    if (index == -1) return 10000;
+    return index;
   }
 
   static String _humanize(String value) {

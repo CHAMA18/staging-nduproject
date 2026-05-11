@@ -51,6 +51,8 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
   final List<_QueueBoardItem> _queueBoardItems = [];
   final List<_AllocationItem> _allocationItems = [];
   final List<_CapacityItem> _capacityItems = [];
+  final List<_ComplianceRegulationRow> _complianceRows = [];
+  bool _isLoadingCompliance = false;
 
   static const List<_StatItem> _defaultOverviewStats = [
     _StatItem('Team Members', '5 active', Icons.people, Colors.blue),
@@ -161,12 +163,208 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     _CapacityItem('Reporting', 0.83, Colors.purple),
   ];
 
+  static const List<_ComplianceRegulationRow> _defaultComplianceRows = [
+    _ComplianceRegulationRow(
+      regulation: 'EPA 40 CFR 260-270 (RCRA)',
+      category: 'Environmental',
+      complianceStatus: 'Compliant',
+      complianceScore: 96,
+      lastAuditDate: 'Apr 15, 2026',
+      nextAuditDue: 'Jul 15, 2026',
+      daysToExpiry: 70,
+      responsibleParty: 'Environmental Manager',
+      riskLevel: 'Low',
+      findings: 0,
+      correctiveActions: 0,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '2 hrs ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'OSHA 29 CFR 1910 (General Industry)',
+      category: 'Safety',
+      complianceStatus: 'Compliant',
+      complianceScore: 94,
+      lastAuditDate: 'Apr 10, 2026',
+      nextAuditDue: 'Oct 10, 2026',
+      daysToExpiry: 157,
+      responsibleParty: 'Safety Officer',
+      riskLevel: 'Low',
+      findings: 1,
+      correctiveActions: 1,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '5 hrs ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'ISO 14001:2015 (Environmental Mgmt)',
+      category: 'Environmental',
+      complianceStatus: 'Conditional',
+      complianceScore: 82,
+      lastAuditDate: 'Mar 28, 2026',
+      nextAuditDue: 'Jun 28, 2026',
+      daysToExpiry: 53,
+      responsibleParty: 'Compliance Lead',
+      riskLevel: 'Medium',
+      findings: 3,
+      correctiveActions: 2,
+      priority: 'P2',
+      status: 'Under Review',
+      lastUpdated: '1 day ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'Hazmat 49 CFR 171-180 (DOT)',
+      category: 'Safety',
+      complianceStatus: 'Renewal Due',
+      complianceScore: 71,
+      lastAuditDate: 'Feb 20, 2026',
+      nextAuditDue: 'May 20, 2026',
+      daysToExpiry: 14,
+      responsibleParty: 'Hazmat Coordinator',
+      riskLevel: 'High',
+      findings: 5,
+      correctiveActions: 4,
+      priority: 'P1',
+      status: 'Under Review',
+      lastUpdated: '3 hrs ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'ISO 45001:2018 (OH&S Mgmt)',
+      category: 'Health',
+      complianceStatus: 'Compliant',
+      complianceScore: 91,
+      lastAuditDate: 'Apr 5, 2026',
+      nextAuditDue: 'Oct 5, 2026',
+      daysToExpiry: 152,
+      responsibleParty: 'HSE Manager',
+      riskLevel: 'Low',
+      findings: 1,
+      correctiveActions: 0,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '1 week ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'NEPA (Environmental Impact)',
+      category: 'Environmental',
+      complianceStatus: 'Pending',
+      complianceScore: 55,
+      lastAuditDate: 'Jan 15, 2026',
+      nextAuditDue: 'May 15, 2026',
+      daysToExpiry: 9,
+      responsibleParty: 'Environmental Manager',
+      riskLevel: 'High',
+      findings: 7,
+      correctiveActions: 5,
+      priority: 'P1',
+      status: 'Under Review',
+      lastUpdated: '6 hrs ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'Clean Air Act (CAA) Title V',
+      category: 'Environmental',
+      complianceStatus: 'Compliant',
+      complianceScore: 88,
+      lastAuditDate: 'Mar 1, 2026',
+      nextAuditDue: 'Sep 1, 2026',
+      daysToExpiry: 118,
+      responsibleParty: 'Air Quality Engineer',
+      riskLevel: 'Low',
+      findings: 2,
+      correctiveActions: 1,
+      priority: 'P2',
+      status: 'Active',
+      lastUpdated: '2 days ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'Clean Water Act (CWA) NPDES',
+      category: 'Environmental',
+      complianceStatus: 'Compliant',
+      complianceScore: 93,
+      lastAuditDate: 'Apr 12, 2026',
+      nextAuditDue: 'Jul 12, 2026',
+      daysToExpiry: 67,
+      responsibleParty: 'Water Quality Specialist',
+      riskLevel: 'Low',
+      findings: 0,
+      correctiveActions: 0,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '4 hrs ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'RCRA Hazardous Waste Manifest',
+      category: 'Environmental',
+      complianceStatus: 'Non-Compliant',
+      complianceScore: 42,
+      lastAuditDate: 'Apr 1, 2026',
+      nextAuditDue: 'May 1, 2026',
+      daysToExpiry: -5,
+      responsibleParty: 'Waste Management Lead',
+      riskLevel: 'Critical',
+      findings: 9,
+      correctiveActions: 7,
+      priority: 'P1',
+      status: 'Under Review',
+      lastUpdated: '30 min ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'OSHA 29 CFR 1926 (Construction)',
+      category: 'Safety',
+      complianceStatus: 'Compliant',
+      complianceScore: 90,
+      lastAuditDate: 'Mar 20, 2026',
+      nextAuditDue: 'Jun 20, 2026',
+      daysToExpiry: 45,
+      responsibleParty: 'Construction Safety Lead',
+      riskLevel: 'Low',
+      findings: 2,
+      correctiveActions: 1,
+      priority: 'P2',
+      status: 'Active',
+      lastUpdated: '1 day ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'EPCRA Section 313 (TRI Reporting)',
+      category: 'Legal',
+      complianceStatus: 'Compliant',
+      complianceScore: 97,
+      lastAuditDate: 'Feb 28, 2026',
+      nextAuditDue: 'Jul 1, 2026',
+      daysToExpiry: 56,
+      responsibleParty: 'Regulatory Affairs',
+      riskLevel: 'Low',
+      findings: 0,
+      correctiveActions: 0,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '3 days ago',
+    ),
+    _ComplianceRegulationRow(
+      regulation: 'Asset Transfer & Disposal Records',
+      category: 'Financial',
+      complianceStatus: 'Compliant',
+      complianceScore: 95,
+      lastAuditDate: 'Apr 8, 2026',
+      nextAuditDue: 'Oct 8, 2026',
+      daysToExpiry: 155,
+      responsibleParty: 'Finance Controller',
+      riskLevel: 'Low',
+      findings: 0,
+      correctiveActions: 0,
+      priority: 'P3',
+      status: 'Active',
+      lastUpdated: '12 hrs ago',
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
     _applyDefaults();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoPopulateIfNeeded();
+      _loadComplianceFromFirestore();
     });
   }
 
@@ -192,6 +390,9 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     _capacityItems
       ..clear()
       ..addAll(_defaultCapacityItems);
+    _complianceRows
+      ..clear()
+      ..addAll(_defaultComplianceRows);
   }
 
   Future<void> _autoPopulateIfNeeded() async {
@@ -322,6 +523,55 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
       } else {
         _isAutoGenerating = false;
       }
+    }
+  }
+
+  Future<void> _loadComplianceFromFirestore() async {
+    final projectId = _getProjectId();
+    if (projectId == null || projectId.isEmpty) return;
+    setState(() => _isLoadingCompliance = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('salvage_compliance')
+          .doc('compliance_regulations')
+          .get();
+      final data = doc.data();
+      if (data != null && data['rows'] != null) {
+        final rows = (data['rows'] as List)
+            .map((e) => _ComplianceRegulationRow.fromMap(e as Map<String, dynamic>))
+            .toList();
+        if (rows.isNotEmpty) {
+          setState(() {
+            _complianceRows
+              ..clear()
+              ..addAll(rows);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Compliance load error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingCompliance = false);
+    }
+  }
+
+  Future<void> _saveComplianceToFirestore() async {
+    final projectId = _getProjectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('salvage_compliance')
+          .doc('compliance_regulations')
+          .set({
+        'rows': _complianceRows.map((e) => e.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Compliance save error: $e');
     }
   }
 
@@ -2679,79 +2929,555 @@ Execution snapshot:
   }
 
   Widget _buildCompliancePanel() {
+    final totalRegs = _complianceRows.length;
+    final compliantCount = _complianceRows.where((r) => r.complianceStatus == 'Compliant').length;
+    final nonCompliantCount = _complianceRows.where((r) => r.complianceStatus == 'Non-Compliant').length;
+    final renewalDueCount = _complianceRows.where((r) => r.complianceStatus == 'Renewal Due').length;
+    final pendingCount = _complianceRows.where((r) => r.complianceStatus == 'Pending').length;
+    final criticalRiskCount = _complianceRows.where((r) => r.riskLevel == 'Critical' || r.riskLevel == 'High').length;
+    final avgScore = totalRegs > 0 ? _complianceRows.fold<int>(0, (sum, r) => sum + r.complianceScore) / totalRegs : 0.0;
+    final totalFindings = _complianceRows.fold<int>(0, (sum, r) => sum + r.findings);
+    final totalCorrective = _complianceRows.fold<int>(0, (sum, r) => sum + r.correctiveActions);
+    final expiringSoon = _complianceRows.where((r) => r.daysToExpiry >= 0 && r.daysToExpiry <= 30).length;
+    final expired = _complianceRows.where((r) => r.daysToExpiry < 0).length;
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           const Text('Compliance & Regulations',
               style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF1A1D1F))),
-          const SizedBox(height: 4),
-          Text('Environmental and safety compliance tracking',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          const SizedBox(height: 20),
-          _buildComplianceItem('EPA Disposal Guidelines', 'Compliant',
-              Icons.check_circle, Colors.green),
-          _buildComplianceItem('OSHA Safety Standards', 'Compliant',
-              Icons.check_circle, Colors.green),
-          _buildComplianceItem('Hazmat Certification', 'Renewal Due',
-              Icons.warning, Colors.orange),
-          _buildComplianceItem('Asset Transfer Records', 'Compliant',
-              Icons.check_circle, Colors.green),
-          _buildComplianceItem('Environmental Impact Report', 'Pending',
-              Icons.schedule, Colors.blue),
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
+          Text('Environmental, safety, health, legal, and financial regulatory compliance tracking with audit scheduling, risk flagging, and corrective action management.',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          const SizedBox(height: 10),
+          // Summary bar
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFFCD34D)),
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Row(
+            child: Wrap(
+              spacing: 20,
+              runSpacing: 8,
+              alignment: WrapAlignment.start,
               children: [
-                const Icon(Icons.info, size: 18, color: Color(0xFFD97706)),
+                _complianceMetric(label: 'Total Regs', value: '$totalRegs', color: const Color(0xFF1E293B)),
+                _complianceMetric(label: 'Compliant', value: '$compliantCount', color: const Color(0xFF22C55E)),
+                _complianceMetric(label: 'Non-Compliant', value: '$nonCompliantCount', color: const Color(0xFFEF4444)),
+                _complianceMetric(label: 'Renewal Due', value: '$renewalDueCount', color: const Color(0xFFF59E0B)),
+                _complianceMetric(label: 'Pending', value: '$pendingCount', color: const Color(0xFF0EA5E9)),
+                _complianceMetric(label: 'Avg Score', value: '${avgScore.toStringAsFixed(0)}%', color: const Color(0xFF7C3AED)),
+                _complianceMetric(label: 'Open Findings', value: '$totalFindings', color: const Color(0xFFEA580C)),
+                _complianceMetric(label: 'Corrective Actions', value: '$totalCorrective', color: const Color(0xFF0284C7)),
+                _complianceMetric(label: 'Critical/High Risk', value: '$criticalRiskCount', color: const Color(0xFFEF4444)),
+                _complianceMetric(label: 'Expiring Soon', value: '$expiringSoon', color: const Color(0xFFF59E0B)),
+                if (expired > 0) _complianceMetric(label: 'Expired', value: '$expired', color: const Color(0xFFDC2626)),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Hazmat certification expires in 15 days. Schedule renewal.',
-                    style: TextStyle(fontSize: 12, color: Colors.amber[900]),
+                FilledButton.icon(
+                  onPressed: () => _showComplianceRegulationDialog(context),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Regulation'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: const Color(0xFF0EA5E9),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          // Alert banners
+          if (nonCompliantCount > 0 || expired > 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$nonCompliantCount non-compliant regulation(s) and $expired expired. Immediate corrective action required.',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFDC2626)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (renewalDueCount > 0 || expiringSoon > 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber, size: 16, color: Color(0xFFD97706)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$renewalDueCount renewal(s) due and $expiringSoon regulation(s) expiring within 30 days. Schedule renewals promptly.',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // Full-width DataTable
+          if (_isLoadingCompliance)
+            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                      headingRowHeight: 30,
+                      dataRowMinHeight: 22,
+                      dataRowMaxHeight: 28,
+                      headingTextStyle: const TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
+                      ),
+                      dataTextStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                      columnSpacing: 8,
+                      horizontalMargin: 8,
+                      columns: const [
+                        DataColumn(label: Text('Regulation/Standard')),
+                        DataColumn(label: Text('Category')),
+                        DataColumn(label: Text('Status')),
+                        DataColumn(label: Text('Score %'), numeric: true),
+                        DataColumn(label: Text('Last Audit')),
+                        DataColumn(label: Text('Next Audit')),
+                        DataColumn(label: Text('Days to Exp.'), numeric: true),
+                        DataColumn(label: Text('Responsible')),
+                        DataColumn(label: Text('Risk')),
+                        DataColumn(label: Text('Findings'), numeric: true),
+                        DataColumn(label: Text('Corr. Actions'), numeric: true),
+                        DataColumn(label: Text('Priority')),
+                        DataColumn(label: Text('Workflow')),
+                        DataColumn(label: Text('Updated')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: _complianceRows.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final row = entry.value;
+                        return DataRow(cells: [
+                          DataCell(Text(row.regulation, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11))),
+                          DataCell(_buildComplianceCategoryChip(row.category)),
+                          DataCell(_buildComplianceStatusChip(row.complianceStatus)),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 36,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: LinearProgressIndicator(
+                                    value: row.complianceScore / 100,
+                                    backgroundColor: const Color(0xFFE2E8F0),
+                                    valueColor: AlwaysStoppedAnimation(
+                                      row.complianceScore >= 90 ? const Color(0xFF22C55E) :
+                                      row.complianceScore >= 70 ? const Color(0xFF2563EB) :
+                                      row.complianceScore >= 50 ? const Color(0xFFF59E0B) :
+                                      const Color(0xFFEF4444),
+                                    ),
+                                    minHeight: 4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text('${row.complianceScore}', style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 11,
+                                color: row.complianceScore >= 90 ? const Color(0xFF22C55E) :
+                                       row.complianceScore >= 70 ? const Color(0xFF2563EB) :
+                                       row.complianceScore >= 50 ? const Color(0xFFF59E0B) :
+                                       const Color(0xFFEF4444),
+                              )),
+                            ],
+                          )),
+                          DataCell(Text(row.lastAuditDate, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)))),
+                          DataCell(Text(row.nextAuditDue, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)))),
+                          DataCell(Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: row.daysToExpiry < 0 ? const Color(0xFFFEF2F2) :
+                                     row.daysToExpiry <= 14 ? const Color(0xFFFFFBEB) :
+                                     row.daysToExpiry <= 30 ? const Color(0xFFFFFBEB) :
+                                     const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              row.daysToExpiry < 0 ? '${row.daysToExpiry}d (EXPIRED)' :
+                              row.daysToExpiry <= 14 ? '${row.daysToExpiry}d' :
+                              '${row.daysToExpiry}d',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 10,
+                                color: row.daysToExpiry < 0 ? const Color(0xFFDC2626) :
+                                       row.daysToExpiry <= 14 ? const Color(0xFFD97706) :
+                                       row.daysToExpiry <= 30 ? const Color(0xFFF59E0B) :
+                                       const Color(0xFF22C55E),
+                              ),
+                            ),
+                          )),
+                          DataCell(Text(row.responsibleParty, style: const TextStyle(fontSize: 10))),
+                          DataCell(_buildComplianceRiskChip(row.riskLevel)),
+                          DataCell(Text('${row.findings}', style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: row.findings > 5 ? const Color(0xFFEF4444) :
+                                   row.findings > 0 ? const Color(0xFFF59E0B) :
+                                   const Color(0xFF22C55E),
+                          ))),
+                          DataCell(Text('${row.correctiveActions}', style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: row.correctiveActions > 3 ? const Color(0xFFEF4444) :
+                                   row.correctiveActions > 0 ? const Color(0xFF2563EB) :
+                                   const Color(0xFF22C55E),
+                          ))),
+                          DataCell(_buildCompliancePriorityChip(row.priority)),
+                          DataCell(_buildComplianceWorkflowChip(row.status)),
+                          DataCell(Text(row.lastUpdated, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)))),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 14),
+                                onPressed: () => _showComplianceRegulationDialog(context, editIndex: idx),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                color: const Color(0xFF64748B),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 14),
+                                onPressed: () => _deleteComplianceRow(idx),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ],
+                          )),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildComplianceItem(
-      String label, String status, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+  Widget _complianceMetric({required String label, required String value, required Color color}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: color, fontFeatures: const [FontFeature.tabularFigures()])),
+        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: Color(0xFF94A3B8))),
+      ],
+    );
+  }
+
+  Widget _buildComplianceCategoryChip(String category) {
+    Color bg; Color fg;
+    switch (category.toLowerCase()) {
+      case 'environmental':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'safety':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'health':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); break;
+      case 'legal':
+        bg = const Color(0xFFF5F3FF); fg = const Color(0xFF7C3AED); break;
+      case 'financial':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'quality':
+        bg = const Color(0xFFF0F9FF); fg = const Color(0xFF0284C7); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(category, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildComplianceStatusChip(String status) {
+    Color bg; Color fg;
+    switch (status.toLowerCase()) {
+      case 'compliant':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'non-compliant':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'conditional':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'renewal due':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFEA580C); break;
+      case 'pending':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); break;
+      case 'expired':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFF991B1B); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildComplianceRiskChip(String risk) {
+    Color bg; Color fg;
+    switch (risk.toLowerCase()) {
+      case 'critical':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFF991B1B); break;
+      case 'high':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'medium':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'low':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(risk, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildCompliancePriorityChip(String priority) {
+    Color bg; Color fg;
+    switch (priority.toUpperCase()) {
+      case 'P1':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'P2':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'P3':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'P4':
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF64748B); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(priority, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg)),
+    );
+  }
+
+  Widget _buildComplianceWorkflowChip(String status) {
+    Color bg; Color fg;
+    switch (status.toLowerCase()) {
+      case 'active':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'under review':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'closed':
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF64748B); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  // ── Compliance & Regulations CRUD ──────────────────────────────────
+
+  void _showComplianceRegulationDialog(BuildContext context, {int? editIndex}) {
+    final isEdit = editIndex != null;
+    final existing = isEdit ? _complianceRows[editIndex] : null;
+    final regulationCtrl = TextEditingController(text: existing?.regulation ?? '');
+    final lastAuditCtrl = TextEditingController(text: existing?.lastAuditDate ?? '');
+    final nextAuditCtrl = TextEditingController(text: existing?.nextAuditDue ?? '');
+    final daysToExpiryCtrl = TextEditingController(text: existing != null ? '${existing.daysToExpiry}' : '90');
+    final responsibleCtrl = TextEditingController(text: existing?.responsibleParty ?? '');
+    final findingsCtrl = TextEditingController(text: existing != null ? '${existing.findings}' : '0');
+    final correctiveCtrl = TextEditingController(text: existing != null ? '${existing.correctiveActions}' : '0');
+    final scoreCtrl = TextEditingController(text: existing != null ? '${existing.complianceScore}' : '100');
+    final lastUpdatedCtrl = TextEditingController(text: existing?.lastUpdated ?? 'Just now');
+    String category = existing?.category ?? 'Environmental';
+    String complianceStatus = existing?.complianceStatus ?? 'Compliant';
+    String riskLevel = existing?.riskLevel ?? 'Low';
+    String priority = existing?.priority ?? 'P3';
+    String status = existing?.status ?? 'Active';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Regulation' : 'Add Regulation'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: regulationCtrl, decoration: const InputDecoration(labelText: 'Regulation/Standard', border: OutlineInputBorder())),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: DropdownButtonFormField<String>(
+                      value: category,
+                      decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                      items: ['Environmental', 'Safety', 'Health', 'Legal', 'Financial', 'Quality'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                      onChanged: (v) => setDialogState(() => category = v ?? 'Environmental'),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(child: DropdownButtonFormField<String>(
+                      value: complianceStatus,
+                      decoration: const InputDecoration(labelText: 'Compliance Status', border: OutlineInputBorder()),
+                      items: ['Compliant', 'Non-Compliant', 'Conditional', 'Renewal Due', 'Pending', 'Expired'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                      onChanged: (v) => setDialogState(() => complianceStatus = v ?? 'Compliant'),
+                    )),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: scoreCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Compliance Score %', border: OutlineInputBorder()))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: daysToExpiryCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Days to Expiry', border: OutlineInputBorder()))),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: lastAuditCtrl, decoration: const InputDecoration(labelText: 'Last Audit Date', border: OutlineInputBorder()))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: nextAuditCtrl, decoration: const InputDecoration(labelText: 'Next Audit Due', border: OutlineInputBorder()))),
+                  ]),
+                  const SizedBox(height: 14),
+                  TextField(controller: responsibleCtrl, decoration: const InputDecoration(labelText: 'Responsible Party', border: OutlineInputBorder())),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: DropdownButtonFormField<String>(
+                      value: riskLevel,
+                      decoration: const InputDecoration(labelText: 'Risk Level', border: OutlineInputBorder()),
+                      items: ['Critical', 'High', 'Medium', 'Low'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                      onChanged: (v) => setDialogState(() => riskLevel = v ?? 'Low'),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(child: DropdownButtonFormField<String>(
+                      value: priority,
+                      decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
+                      items: ['P1', 'P2', 'P3', 'P4'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                      onChanged: (v) => setDialogState(() => priority = v ?? 'P3'),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(child: DropdownButtonFormField<String>(
+                      value: status,
+                      decoration: const InputDecoration(labelText: 'Workflow', border: OutlineInputBorder()),
+                      items: ['Active', 'Under Review', 'Closed'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                      onChanged: (v) => setDialogState(() => status = v ?? 'Active'),
+                    )),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: findingsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Findings', border: OutlineInputBorder()))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: correctiveCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Corrective Actions', border: OutlineInputBorder()))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()))),
+                  ]),
+                ],
+              ),
             ),
-            child: Text(status,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0EA5E9)),
+              onPressed: () {
+                final row = _ComplianceRegulationRow(
+                  regulation: regulationCtrl.text.trim(),
+                  category: category,
+                  complianceStatus: complianceStatus,
+                  complianceScore: int.tryParse(scoreCtrl.text) ?? 0,
+                  lastAuditDate: lastAuditCtrl.text.trim(),
+                  nextAuditDue: nextAuditCtrl.text.trim(),
+                  daysToExpiry: int.tryParse(daysToExpiryCtrl.text) ?? 0,
+                  responsibleParty: responsibleCtrl.text.trim(),
+                  riskLevel: riskLevel,
+                  findings: int.tryParse(findingsCtrl.text) ?? 0,
+                  correctiveActions: int.tryParse(correctiveCtrl.text) ?? 0,
+                  priority: priority,
+                  status: status,
+                  lastUpdated: lastUpdatedCtrl.text.trim().isNotEmpty ? lastUpdatedCtrl.text.trim() : 'Just now',
+                );
+                setState(() {
+                  if (isEdit) {
+                    _complianceRows[editIndex] = row;
+                  } else {
+                    _complianceRows.add(row);
+                  }
+                });
+                _saveComplianceToFirestore();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(isEdit ? 'Regulation updated successfully.' : 'Regulation added successfully.'),
+                  backgroundColor: const Color(0xFF0EA5E9),
+                  behavior: SnackBarBehavior.floating,
+                ));
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _deleteComplianceRow(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Regulation'),
+        content: Text('Are you sure you want to delete "${_complianceRows[index].regulation}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _complianceRows.removeAt(index));
+              _saveComplianceToFirestore();
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Regulation deleted.'),
+                backgroundColor: Color(0xFFEF4444),
+                behavior: SnackBarBehavior.floating,
+              ));
+            },
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -3201,4 +3927,72 @@ class _CapacityItem {
   final Color color;
 
   const _CapacityItem(this.label, this.value, this.color);
+}
+
+class _ComplianceRegulationRow {
+  const _ComplianceRegulationRow({
+    required this.regulation,
+    required this.category,
+    required this.complianceStatus,
+    required this.complianceScore,
+    required this.lastAuditDate,
+    required this.nextAuditDue,
+    required this.daysToExpiry,
+    required this.responsibleParty,
+    required this.riskLevel,
+    required this.findings,
+    required this.correctiveActions,
+    required this.priority,
+    required this.status,
+    this.lastUpdated = '',
+  });
+
+  final String regulation;
+  final String category;
+  final String complianceStatus;
+  final int complianceScore;
+  final String lastAuditDate;
+  final String nextAuditDue;
+  final int daysToExpiry;
+  final String responsibleParty;
+  final String riskLevel;
+  final int findings;
+  final int correctiveActions;
+  final String priority;
+  final String status;
+  final String lastUpdated;
+
+  Map<String, dynamic> toMap() => {
+    'regulation': regulation,
+    'category': category,
+    'complianceStatus': complianceStatus,
+    'complianceScore': complianceScore,
+    'lastAuditDate': lastAuditDate,
+    'nextAuditDue': nextAuditDue,
+    'daysToExpiry': daysToExpiry,
+    'responsibleParty': responsibleParty,
+    'riskLevel': riskLevel,
+    'findings': findings,
+    'correctiveActions': correctiveActions,
+    'priority': priority,
+    'status': status,
+    'lastUpdated': lastUpdated,
+  };
+
+  static _ComplianceRegulationRow fromMap(Map<String, dynamic> map) => _ComplianceRegulationRow(
+    regulation: map['regulation']?.toString() ?? '',
+    category: map['category']?.toString() ?? 'Environmental',
+    complianceStatus: map['complianceStatus']?.toString() ?? 'Compliant',
+    complianceScore: (map['complianceScore'] is int) ? map['complianceScore'] as int : int.tryParse(map['complianceScore'].toString()) ?? 0,
+    lastAuditDate: map['lastAuditDate']?.toString() ?? '',
+    nextAuditDue: map['nextAuditDue']?.toString() ?? '',
+    daysToExpiry: (map['daysToExpiry'] is int) ? map['daysToExpiry'] as int : int.tryParse(map['daysToExpiry'].toString()) ?? 0,
+    responsibleParty: map['responsibleParty']?.toString() ?? '',
+    riskLevel: map['riskLevel']?.toString() ?? 'Low',
+    findings: (map['findings'] is int) ? map['findings'] as int : int.tryParse(map['findings'].toString()) ?? 0,
+    correctiveActions: (map['correctiveActions'] is int) ? map['correctiveActions'] as int : int.tryParse(map['correctiveActions'].toString()) ?? 0,
+    priority: map['priority']?.toString() ?? 'P3',
+    status: map['status']?.toString() ?? 'Active',
+    lastUpdated: map['lastUpdated']?.toString() ?? '',
+  );
 }

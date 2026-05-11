@@ -96,6 +96,21 @@ class PlanningPhaseNavigation {
       builder: (_) => const QualityManagementScreen(),
     ),
     PlanningPage(
+      id: 'design',
+      title: 'Design Planning',
+      builder: (_) => const DesignPlanningScreen(),
+    ),
+    PlanningPage(
+      id: 'technology',
+      title: 'Technology Planning',
+      builder: (_) => const PlanningTechnologyScreen(),
+    ),
+    PlanningPage(
+      id: 'interface_management',
+      title: 'Interface Management',
+      builder: (_) => const InterfaceManagementScreen(),
+    ),
+    PlanningPage(
       id: 'execution_plan_construction_plan',
       title: 'Construction Plan',
       builder: (_) => const ExecutionPlanConstructionPlanScreen(),
@@ -124,21 +139,6 @@ class PlanningPhaseNavigation {
       id: 'document_review_matrix',
       title: 'Document Review Matrix',
       builder: (_) => const DocumentReviewMatrixScreen(),
-    ),
-    PlanningPage(
-      id: 'design',
-      title: 'Design Planning',
-      builder: (_) => const DesignPlanningScreen(),
-    ),
-    PlanningPage(
-      id: 'technology',
-      title: 'Technology Planning',
-      builder: (_) => const PlanningTechnologyScreen(),
-    ),
-    PlanningPage(
-      id: 'interface_management',
-      title: 'Interface Management',
-      builder: (_) => const InterfaceManagementScreen(),
     ),
     PlanningPage(
       id: 'risk_assessment',

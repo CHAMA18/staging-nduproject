@@ -3017,6 +3017,7 @@ class _TimelineWorkspaceCard extends StatelessWidget {
                 ),
               ),
             ),
+          ],
           if (onSortChanged != null) ...[
             const SizedBox(height: 8),
             Container(

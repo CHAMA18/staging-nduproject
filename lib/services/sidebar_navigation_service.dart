@@ -143,6 +143,11 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'team_management', label: 'Team Management'),
     SidebarItem(checkpoint: 'ssher', label: 'SSHER'),
     SidebarItem(checkpoint: 'quality_management', label: 'Quality Management'),
+    // Design & Technology — now before Execution Plan
+    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
+    SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
+    SidebarItem(
+        checkpoint: 'interface_management', label: 'Interface Management'),
     // Execution Plan sub-items
     SidebarItem(
         checkpoint: 'execution_plan_construction_plan',
@@ -161,11 +166,6 @@ class SidebarNavigationService {
         label: 'Detailed Deliverables'),
     SidebarItem(
         checkpoint: 'document_review_matrix', label: 'Document Review Matrix'),
-    // Design & Technology
-    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
-    SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
-    SidebarItem(
-        checkpoint: 'interface_management', label: 'Interface Management'),
     // Risk & Contracts
     SidebarItem(checkpoint: 'risk_assessment', label: 'Risk Assessment'),
     SidebarItem(checkpoint: 'contracts', label: 'Contract'),

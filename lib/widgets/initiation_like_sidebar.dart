@@ -305,10 +305,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     ..._organizationPlanLabels,
     'SSHER',
     'Quality Management',
-    ..._executionPlanLabels,
     'Design Planning',
     ..._technologyPlanningLabels,
     'Interface Management',
+    ..._executionPlanLabels,
     'Risk Assessment',
     'Contract',
     'Contract Planning',
@@ -396,7 +396,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   bool _expandForActiveLabel() {
     bool changed = false;
 
-    void expandIf(Set<String> labels, bool currentValue, void Function() apply) {
+    void expandIf(
+        Set<String> labels, bool currentValue, void Function() apply) {
       if (_activeIn(labels) && !currentValue) {
         apply();
         changed = true;
@@ -427,13 +428,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       _organizationPlanExpanded = true;
       _sharedOrganizationPlanExpanded = true;
     });
-    expandIf(_executionPlanLabels, _executionPlanExpanded, () {
-      _executionPlanExpanded = true;
-      _sharedExecutionPlanExpanded = true;
-    });
     expandIf(_technologyPlanningLabels, _technologyPlanningExpanded, () {
       _technologyPlanningExpanded = true;
       _sharedTechnologyPlanningExpanded = true;
+    });
+    expandIf(_executionPlanLabels, _executionPlanExpanded, () {
+      _executionPlanExpanded = true;
+      _sharedExecutionPlanExpanded = true;
     });
     expandIf(_costEstimateLabels, _costEstimateExpanded, () {
       _costEstimateExpanded = true;
@@ -1199,8 +1200,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   void _openStatusReports() {
-    _navigateWithCheckpoint(
-        'status_reports', const StatusReportsScreen());
+    _navigateWithCheckpoint('status_reports', const StatusReportsScreen());
   }
 
   void _openGapAnalysisAndScopeReconcillation() {
@@ -2149,94 +2149,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Quality Management',
             onTap: _openQualityManagement,
             isActive: widget.activeItemLabel == 'Quality Management'),
-        _buildSubExpandableHeader(
-          'Execution Plan',
-          expanded: _executionPlanExpanded,
-          onTap: () => setState(() {
-            _executionPlanExpanded = !_executionPlanExpanded;
-            _sharedExecutionPlanExpanded = _executionPlanExpanded;
-          }),
-          isActive: _activeIn(_executionPlanLabels),
-        ),
-        if (_executionPlanExpanded) ...[
-          _buildSubSubMenuItem(
-            'Overview',
-            onTap: _openExecutionPlan,
-            isActive: widget.activeItemLabel == 'Execution Plan Overview',
-          ),
-          _buildSubSubMenuItem(
-            'Executive Plan Strategy',
-            onTap: _openExecutionPlanStrategy,
-            isActive: widget.activeItemLabel == 'Executive Plan Strategy',
-          ),
-          _buildSubSubMenuItem(
-            'Execution Plan Details',
-            onTap: _openExecutionPlanDetails,
-            isActive: widget.activeItemLabel == 'Execution Plan Details',
-          ),
-          _buildSubSubMenuItem(
-            'Execution Early Works',
-            onTap: _openExecutionEarlyWorks,
-            isActive: widget.activeItemLabel == 'Execution Early Works',
-          ),
-          _buildSubSubMenuItem(
-            'Execution Enabling Work Plan',
-            onTap: _openExecutionEnablingWorkPlan,
-            isActive:
-                widget.activeItemLabel == 'Execution Enabling Work Plan',
-          ),
-          _buildSubSubMenuItem(
-            'Execution Issue Management',
-            onTap: _openExecutionIssueManagement,
-            isActive: widget.activeItemLabel == 'Execution Issue Management',
-          ),
-          _buildSubSubMenuItem('Construction Plan',
-              onTap: _openExecutionPlanConstructionPlan,
-              isActive: widget.activeItemLabel ==
-                  'Execution Plan - Construction Plan'),
-          _buildSubSubMenuItem('Infrastructure Plan',
-              onTap: _openExecutionPlanInfrastructurePlan,
-              isActive: widget.activeItemLabel ==
-                  'Execution Plan - Infrastructure Plan'),
-          _buildSubSubMenuItem('Agile Delivery Plan',
-              onTap: _openExecutionPlanAgileDeliveryPlan,
-              isActive: widget.activeItemLabel ==
-                  'Execution Plan - Agile Delivery Plan'),
-          _buildSubSubMenuItem(
-            'Lessons Learned',
-            onTap: _openExecutionPlanLessonsLearned,
-            isActive: widget.activeItemLabel == 'Execution Plan - Lesson Learned',
-          ),
-          _buildSubSubMenuItem(
-            'Best Practices',
-            onTap: _openExecutionPlanBestPractices,
-            isActive: widget.activeItemLabel == 'Execution Plan - Best Practices',
-          ),
-          _buildSubSubMenuItem(
-            'Interface Management',
-            onTap: _openExecutionPlanInterfaceManagement,
-            isActive:
-                widget.activeItemLabel == 'Execution Plan - Interface Management',
-          ),
-          _buildSubSubMenuItem(
-            'Communication Plan',
-            onTap: _openExecutionPlanCommunicationPlan,
-            isActive:
-                widget.activeItemLabel == 'Execution Plan - Communication Plan',
-          ),
-          _buildSubSubMenuItem(
-            'Interface Management Plan',
-            onTap: _openExecutionPlanInterfaceManagementPlan,
-            isActive: widget.activeItemLabel ==
-                'Execution Plan - Interface Management Plan',
-          ),
-          _buildSubSubMenuItem(
-            'Interface Management Overview',
-            onTap: _openExecutionPlanInterfaceManagementOverview,
-            isActive: widget.activeItemLabel ==
-                'Execution Plan - Interface Management Overview',
-          ),
-        ],
         _buildSubMenuItem('Design Planning',
             onTap: _openDesign,
             isActive: widget.activeItemLabel == 'Design Planning'),
@@ -2287,6 +2199,95 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           isActive: widget.activeItemLabel == 'Interface Management',
           isDisabled: lockInterfaceManagement,
         ),
+        _buildSubExpandableHeader(
+          'Execution Plan',
+          expanded: _executionPlanExpanded,
+          onTap: () => setState(() {
+            _executionPlanExpanded = !_executionPlanExpanded;
+            _sharedExecutionPlanExpanded = _executionPlanExpanded;
+          }),
+          isActive: _activeIn(_executionPlanLabels),
+        ),
+        if (_executionPlanExpanded) ...[
+          _buildSubSubMenuItem(
+            'Overview',
+            onTap: _openExecutionPlan,
+            isActive: widget.activeItemLabel == 'Execution Plan Overview',
+          ),
+          _buildSubSubMenuItem(
+            'Executive Plan Strategy',
+            onTap: _openExecutionPlanStrategy,
+            isActive: widget.activeItemLabel == 'Executive Plan Strategy',
+          ),
+          _buildSubSubMenuItem(
+            'Execution Plan Details',
+            onTap: _openExecutionPlanDetails,
+            isActive: widget.activeItemLabel == 'Execution Plan Details',
+          ),
+          _buildSubSubMenuItem(
+            'Execution Early Works',
+            onTap: _openExecutionEarlyWorks,
+            isActive: widget.activeItemLabel == 'Execution Early Works',
+          ),
+          _buildSubSubMenuItem(
+            'Execution Enabling Work Plan',
+            onTap: _openExecutionEnablingWorkPlan,
+            isActive: widget.activeItemLabel == 'Execution Enabling Work Plan',
+          ),
+          _buildSubSubMenuItem(
+            'Execution Issue Management',
+            onTap: _openExecutionIssueManagement,
+            isActive: widget.activeItemLabel == 'Execution Issue Management',
+          ),
+          _buildSubSubMenuItem('Construction Plan',
+              onTap: _openExecutionPlanConstructionPlan,
+              isActive: widget.activeItemLabel ==
+                  'Execution Plan - Construction Plan'),
+          _buildSubSubMenuItem('Infrastructure Plan',
+              onTap: _openExecutionPlanInfrastructurePlan,
+              isActive: widget.activeItemLabel ==
+                  'Execution Plan - Infrastructure Plan'),
+          _buildSubSubMenuItem('Agile Delivery Plan',
+              onTap: _openExecutionPlanAgileDeliveryPlan,
+              isActive: widget.activeItemLabel ==
+                  'Execution Plan - Agile Delivery Plan'),
+          _buildSubSubMenuItem(
+            'Lessons Learned',
+            onTap: _openExecutionPlanLessonsLearned,
+            isActive:
+                widget.activeItemLabel == 'Execution Plan - Lesson Learned',
+          ),
+          _buildSubSubMenuItem(
+            'Best Practices',
+            onTap: _openExecutionPlanBestPractices,
+            isActive:
+                widget.activeItemLabel == 'Execution Plan - Best Practices',
+          ),
+          _buildSubSubMenuItem(
+            'Interface Management',
+            onTap: _openExecutionPlanInterfaceManagement,
+            isActive: widget.activeItemLabel ==
+                'Execution Plan - Interface Management',
+          ),
+          _buildSubSubMenuItem(
+            'Communication Plan',
+            onTap: _openExecutionPlanCommunicationPlan,
+            isActive:
+                widget.activeItemLabel == 'Execution Plan - Communication Plan',
+          ),
+          _buildSubSubMenuItem(
+            'Interface Management Plan',
+            onTap: _openExecutionPlanInterfaceManagementPlan,
+            isActive: widget.activeItemLabel ==
+                'Execution Plan - Interface Management Plan',
+          ),
+          _buildSubSubMenuItem(
+            'Interface Management Overview',
+            onTap: _openExecutionPlanInterfaceManagementOverview,
+            isActive: widget.activeItemLabel ==
+                'Execution Plan - Interface Management Overview',
+          ),
+        ],
         _buildSubMenuItem('Risk Assessment',
             onTap: _openRiskAssessment,
             isActive: widget.activeItemLabel == 'Risk Assessment'),
@@ -3254,8 +3255,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           isActive: widget.activeItemLabel == 'Recurring Deliverables'));
     }
     if ('status reports'.contains(query) || 'reports'.contains(query)) {
-      results.add(_buildMenuItem(
-          Icons.description_outlined, 'Status Reports',
+      results.add(_buildMenuItem(Icons.description_outlined, 'Status Reports',
           onTap: _openStatusReports,
           isActive: widget.activeItemLabel == 'Status Reports'));
     }

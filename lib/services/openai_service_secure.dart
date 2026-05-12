@@ -1756,21 +1756,48 @@ $trimmedContext
       return const DesignDeliverablesData(
         pipeline: [
           DesignDeliverablePipelineItem(
-              label: 'High-Level Design Document', status: 'Draft'),
+              label: 'Scope baseline and design inputs verified',
+              status: 'In progress'),
           DesignDeliverablePipelineItem(
-              label: 'API Specification', status: 'Pending'),
+              label:
+                  'Design package authored with traceable acceptance criteria',
+              status: 'Pending'),
           DesignDeliverablePipelineItem(
-              label: 'Database Schema', status: 'Pending'),
+              label: 'Review, approval, and handoff evidence completed',
+              status: 'Pending'),
         ],
         register: [
           DesignDeliverableRegisterItem(
-              name: 'System Architecture',
-              owner: 'Architect',
-              status: 'In Review',
-              due: 'TBD',
-              risk: 'Low'),
+              name: 'DD-001 Requirements Traceability & Acceptance Matrix',
+              owner: 'Business Analyst',
+              status: 'In progress',
+              due: 'Gate 1',
+              risk: 'Medium'),
+          DesignDeliverableRegisterItem(
+              name: 'DD-002 Architecture Decision Pack & Solution Intent',
+              owner: 'Architecture',
+              status: 'In review',
+              due: 'Build Readiness',
+              risk: 'Medium'),
+          DesignDeliverableRegisterItem(
+              name: 'DD-003 Interface, Data, Security & NFR Design Spec',
+              owner: 'Engineering',
+              status: 'Pending',
+              due: 'Transition Gate',
+              risk: 'High'),
         ],
-        approvals: ['Design Review Pending'],
+        approvals: [
+          'Formal approval requires acceptance criteria, verification evidence, and accountable approver.',
+          'Agile approval requires Definition of Done, sprint review evidence, and backlog traceability.'
+        ],
+        dependencies: [
+          'Requirements baseline, architecture decisions, interface contracts, and design system assets.',
+          'Quality, security, accessibility, and operational handoff reviewers.'
+        ],
+        handoffChecklist: [
+          'Deliverable is versioned, traceable, reviewed, and linked to acceptance evidence.',
+          'Open risks, assumptions, waivers, and change-control decisions are captured.'
+        ],
       );
     }
 
@@ -1788,8 +1815,18 @@ $trimmedContext
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a design delivery manager. Return JSON with "pipeline": [{ "deliverable", "owner", "dueDate", "status" }], "register": [{ "title", "type", "status", "version", "risk" }], "approvals": [{"item", "approver", "date", "status" }].'
+          'content': '''
+You are a senior design delivery manager and product/program governance lead.
+Create a rigorous design deliverables package suitable for waterfall stage gates, hybrid governance, Scrum/Kanban delivery, and scaled agile solution intent.
+Ground the output in unique/verifiable deliverables, acceptance criteria, traceability, version/configuration control, quality review, accessibility/security/NFR evidence, stakeholder approval, change control, and operational handoff.
+Return JSON with:
+- "pipeline": [{ "label", "status" }]
+- "register": [{ "name", "owner", "status", "due", "risk" }]
+- "approvals": [string]
+- "dependencies": [string]
+- "handoffChecklist": [string]
+Use concise professional language. Status should use In progress, Pending, In review, Approved, Complete, or Blocked. Risk should use Low, Medium, or High.
+'''
         },
         {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
       ],
@@ -1825,6 +1862,17 @@ $trimmedContext
         pipeline: pipeline,
         register: register,
         approvals: approvals,
+        dependencies: (parsed['dependencies'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        handoffChecklist: (parsed['handoffChecklist'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            (parsed['handoff_checklist'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
       );
     } catch (e) {
       debugPrint('Error generating design deliverables: $e');
@@ -1857,11 +1905,14 @@ $trimmedContext
         {
           'role': 'system',
           'content': '''
-You are a software architect. Identify technical alignment items based on project context.
+You are a senior enterprise architect and delivery-methodology advisor.
+Create a rigorous technical alignment register that would satisfy waterfall stage gates, hybrid governance, Scrum/Kanban delivery, and scaled agile portfolio alignment.
+Ground the response in requirements traceability, architecture decisions, interface control, non-functional requirements, data governance, security/privacy, observability, release readiness, operational support, risk ownership, and evidence-based approval.
 Return JSON with:
 - "constraints": [{ "constraint", "guardrail", "owner", "status" }]
 - "mappings": [{ "requirement", "approach", "status" }]
 - "dependencies": [{ "item", "detail", "owner", "status" }]
+Use concise professional language. Status must be one of: Approved, Aligned, Ready, In review, Draft, Pending, At risk.
 '''
         },
         {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
@@ -3319,16 +3370,14 @@ $domainHints
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final bodyText = utf8.decode(response.bodyBytes).toLowerCase();
-      if (response.statusCode == 400 &&
-          bodyText.contains('response_format')) {
+      if (response.statusCode == 400 && bodyText.contains('response_format')) {
         throw const _ResponseFormatUnsupportedException();
       }
       throw Exception(
           'OpenAI API error ${response.statusCode}: ${response.body}');
     }
 
-    return jsonDecode(utf8.decode(response.bodyBytes))
-        as Map<String, dynamic>;
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
 
   List<Map<String, String>> _normalizeRequirementItems(List<dynamic> items) {
@@ -3336,10 +3385,8 @@ $domainHints
         .whereType<Map>()
         .map((entry) => Map<String, dynamic>.from(entry))
         .map((item) {
-          final requirement =
-              _stripAsterisks((item['requirement'] ?? item['text'] ?? '')
-                  .toString()
-                  .trim());
+          final requirement = _stripAsterisks(
+              (item['requirement'] ?? item['text'] ?? '').toString().trim());
           final requirementType = _stripAsterisks((item['requirementType'] ??
                   item['requirement_type'] ??
                   item['type'] ??
@@ -6601,11 +6648,9 @@ $escaped
       final monthlyCost =
           (map['monthlyCost'] ?? map['monthlyRate'] ?? map['cost'] ?? '')
               .toString();
-      final description = (map['roleDescription'] ??
-              map['description'] ??
-              map['summary'] ??
-              '')
-          .toString();
+      final description =
+          (map['roleDescription'] ?? map['description'] ?? map['summary'] ?? '')
+              .toString();
       final skillRequirements =
           _formatSkillRequirements(map['skillRequirements'] ?? map['skills']);
       final status =
@@ -6744,8 +6789,7 @@ $escaped
     return _fallbackMeetingRows(availableRoles);
   }
 
-  String _meetingRowsPrompt(
-      String context, List<String> roles, int maxRows) {
+  String _meetingRowsPrompt(String context, List<String> roles, int maxRows) {
     final escaped = _escape(context);
     final rolesLine =
         roles.isEmpty ? 'No roles provided' : roles.map(_escape).join(', ');
@@ -6839,7 +6883,8 @@ $escaped
         keyParticipants: participants,
         durationHours: '1',
         meetingObjective: 'Align on weekly priorities and blockers.',
-        actionItems: '. Share updates\n. Resolve blockers\n. Confirm next steps',
+        actionItems:
+            '. Share updates\n. Resolve blockers\n. Confirm next steps',
         status: 'Scheduled',
       ),
       MeetingRow(
@@ -6864,12 +6909,12 @@ $escaped
   }) async {
     final trimmedContext = context.trim();
     if (trimmedContext.isEmpty) {
-      return _fallbackSecurityRolesPermissions(trimmedContext, maxRoles,
-          maxPermissions);
+      return _fallbackSecurityRolesPermissions(
+          trimmedContext, maxRoles, maxPermissions);
     }
     if (!OpenAiConfig.isConfigured) {
-      return _fallbackSecurityRolesPermissions(trimmedContext, maxRoles,
-          maxPermissions);
+      return _fallbackSecurityRolesPermissions(
+          trimmedContext, maxRoles, maxPermissions);
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -7029,19 +7074,23 @@ $escaped
     final roles = [
       {
         'name': 'Security Lead',
-        'description': 'Owns security controls and risk mitigation for $assetName.',
+        'description':
+            'Owns security controls and risk mitigation for $assetName.',
       },
       {
         'name': 'IT Administrator',
-        'description': 'Manages system access, credentials, and infrastructure safeguards.',
+        'description':
+            'Manages system access, credentials, and infrastructure safeguards.',
       },
       {
         'name': 'Compliance Officer',
-        'description': 'Ensures regulatory and policy compliance across delivery.',
+        'description':
+            'Ensures regulatory and policy compliance across delivery.',
       },
       {
         'name': 'Vendor Security Coordinator',
-        'description': 'Tracks vendor access, NDA compliance, and third-party risks.',
+        'description':
+            'Tracks vendor access, NDA compliance, and third-party risks.',
       },
     ].take(maxRoles).toList();
 

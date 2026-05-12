@@ -1555,7 +1555,7 @@ class _SettingInputRow extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                borderSide: const BorderSide(color: Color(0xFFFFD700)),
               ),
             ),
           ),
@@ -1600,7 +1600,7 @@ class _LogsSearchField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2563EB)),
+              borderSide: const BorderSide(color: Color(0xFFFFD700)),
             ),
           ),
         );

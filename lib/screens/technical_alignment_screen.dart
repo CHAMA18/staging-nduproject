@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/models/user_role.dart';
+import 'package:ndu_project/providers/user_role_provider.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
@@ -21,6 +23,7 @@ import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
 
@@ -41,78 +44,114 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
 
   final List<ConstraintRow> _constraints = [
     ConstraintRow(
-      constraint: 'Legacy integrations and API boundaries',
+      constraint: 'Architecture decision baseline and change control',
       guardrail:
-          'Old ERP sync windows, payment gateway rate limits, and adapter patterns must be defined before detailed design.',
-      owner: 'Integration',
+          'Every material technology choice must be linked to a requirement, constraint, ADR, decision owner, reversibility rating, and approval path before downstream design is locked.',
+      owner: 'Architecture',
+      status: 'Approved',
+    ),
+    ConstraintRow(
+      constraint: 'Requirements traceability and acceptance evidence',
+      guardrail:
+          'Functional, non-functional, regulatory, data, integration, and operational requirements must map to design components, test evidence, and release acceptance criteria.',
+      owner: 'Business Analyst',
       status: 'In review',
     ),
     ConstraintRow(
-      constraint: 'Historic venue fabric and installation load',
+      constraint: 'Non-functional requirement budgets',
       guardrail:
-          'Screens, banners, and wayfinding structures must respect non-invasive mounting rules and material weight limits.',
-      owner: 'Venue Ops',
-      status: 'Pending',
+          'Latency, availability, security, privacy, accessibility, capacity, resilience, observability, and recovery targets must have measurable thresholds and verification methods.',
+      owner: 'Engineering',
+      status: 'In review',
     ),
     ConstraintRow(
-      constraint: 'Peak traffic, power, and connectivity resilience',
+      constraint: 'Integration and interface control',
       guardrail:
-          'Designs must hold under live queue spikes, patchy site Wi-Fi, and limited power drops near the foyer.',
-      owner: 'Engineering',
+          'APIs, file exchanges, event contracts, third-party systems, data ownership, rate limits, SLAs, and failure handling must be agreed through an interface control record.',
+      owner: 'Integration',
+      status: 'Ready',
+    ),
+    ConstraintRow(
+      constraint: 'Delivery model governance',
+      guardrail:
+          'Waterfall gates, hybrid phase boundaries, agile sprint reviews, and scaled dependency syncs must share one evidence standard for technical readiness decisions.',
+      owner: 'PMO',
       status: 'Draft',
     ),
   ];
 
   final List<RequirementMappingRow> _mappings = [
     RequirementMappingRow(
-      requirement: 'Real-time guest check-in and access validation',
+      requirement: 'Business capability and value stream alignment',
       approach:
-          'QR workflow backed by cloud validation, offline fallback cache, and a supervised exception queue.',
+          'Map each requirement to a capability, user journey, system component, data entity, integration touchpoint, delivery increment, and measurable outcome.',
       status: 'Aligned',
     ),
     RequirementMappingRow(
-      requirement: 'Sponsor content approval and print distribution',
+      requirement: 'Waterfall baseline readiness',
       approach:
-          'Versioned asset library, print-ready PDF export, and sign-off checkpoints for banners and floor plans.',
+          'Use signed requirements, architecture views, interface specifications, verification plans, configuration control, and formal stage-gate acceptance.',
       status: 'In review',
     ),
     RequirementMappingRow(
-      requirement: 'Venue systems visibility for ops and safety teams',
+      requirement: 'Hybrid delivery alignment',
       approach:
-          'Integration layer for occupancy, HVAC, and alert status so design dashboards reflect live venue conditions.',
+          'Separate fixed governance artifacts from iterative delivery slices, with rolling-wave elaboration, release trains, dependency boards, and integrated change control.',
+      status: 'Aligned',
+    ),
+    RequirementMappingRow(
+      requirement: 'Agile product and engineering alignment',
+      approach:
+          'Use backlog refinement, Definition of Ready, Definition of Done, architecture runway, sprint review evidence, automated quality gates, and working increments.',
+      status: 'Aligned',
+    ),
+    RequirementMappingRow(
+      requirement: 'Operational readiness and service transition',
+      approach:
+          'Connect design choices to support model, monitoring, incident response, runbooks, training, release rollback, data migration, and handover acceptance.',
       status: 'Draft',
     ),
   ];
 
   final List<DependencyDecisionRow> _dependencies = [
     DependencyDecisionRow(
-      item: 'Old ERP attendee export window',
+      item: 'Architecture Decision Record approval',
       detail:
-          'Registration design assumes a 15-minute sync until the adapter service is approved for near-real-time updates.',
-      owner: 'Integration',
+          'Critical design decisions need owner, context, alternatives, selected option, consequences, expiry/revisit trigger, and link to requirements and risk register.',
+      owner: 'Architecture',
       status: 'Pending',
     ),
     DependencyDecisionRow(
-      item: 'Venue HVAC and occupancy feed',
+      item: 'Interface contract sign-off',
       detail:
-          'Ops dashboard concepts depend on the venue BMS exposing either webhook or polling access for live status.',
-      owner: 'Venue Tech',
+          'External systems, vendor APIs, data providers, and downstream consumers must confirm protocol, schema, security, error handling, test data, and support SLAs.',
+      owner: 'Integration',
       status: 'In review',
     ),
     DependencyDecisionRow(
-      item: 'Rigging and signage safety sign-off',
+      item: 'Environment and release path readiness',
       detail:
-          'Large-format screens and banner modules need approval on material weight, fix points, and emergency egress clearances.',
-      owner: 'Safety',
+          'Development, test, staging, production, access controls, CI/CD gates, rollback path, observability, and release approvals must exist before implementation starts.',
+      owner: 'DevOps',
       status: 'Draft',
+    ),
+    DependencyDecisionRow(
+      item: 'Data governance and migration decision',
+      detail:
+          'Data classification, retention, privacy controls, source-of-truth ownership, cleansing approach, migration rehearsal, and reconciliation criteria must be accepted.',
+      owner: 'Data Lead',
+      status: 'Pending',
     ),
   ];
 
   final List<String> _statusOptions = const [
+    'Approved',
     'Aligned',
+    'Ready',
     'In review',
     'Draft',
-    'Pending'
+    'Pending',
+    'At risk',
   ];
 
   String _normalize(String value) {
@@ -245,6 +284,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Future<void> _saveToFirestore() async {
+    if (!_canCreateAlignment && !_canEditAlignment) return;
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
     if (projectId == null || projectId.isEmpty) return;
@@ -265,6 +305,50 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   bool _isGenerating = false;
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
 
+  String get _currentProjectId {
+    final provider = ProjectDataInherited.maybeOf(context);
+    return provider?.projectData.projectId ?? '';
+  }
+
+  bool get _canCreateAlignment {
+    final role = context.roleProvider;
+    final projectId = _currentProjectId;
+    return role.hasPermission(Permission.createContent) ||
+        (projectId.isNotEmpty && role.canEditProject(projectId));
+  }
+
+  bool get _canEditAlignment {
+    final role = context.roleProvider;
+    final projectId = _currentProjectId;
+    return role.hasPermission(Permission.editAnyContent) ||
+        (projectId.isNotEmpty && role.canEditProject(projectId));
+  }
+
+  bool get _canDeleteAlignment {
+    final role = context.roleProvider;
+    final projectId = _currentProjectId;
+    return role.hasPermission(Permission.deleteAnyContent) ||
+        (projectId.isNotEmpty && role.canDeleteProject(projectId));
+  }
+
+  bool get _canUseAlignmentAi {
+    return context.roleProvider.hasPermission(Permission.useAiGeneration) &&
+        (_canCreateAlignment || _canEditAlignment);
+  }
+
+  bool get _canExportAlignment {
+    return context.roleProvider.hasPermission(Permission.exportData);
+  }
+
+  void _showPermissionSnackBar(String action) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('You do not have permission to $action.'),
+        backgroundColor: const Color(0xFFB91C1C),
+      ),
+    );
+  }
+
   void _navigateToRequirementsImplementation() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -282,6 +366,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Future<void> _generateAllAlignment() async {
+    if (!_canUseAlignmentAi) {
+      _showPermissionSnackBar('generate technical alignment content');
+      return;
+    }
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
     if (projectId == null) {
@@ -421,6 +509,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
 
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Alignment',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(
@@ -492,83 +581,69 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       child: ListView(
         padding: EdgeInsets.all(padding),
         children: [
-          _buildStableHeaderCard(),
+          _buildStableHeaderCard(snapshot),
           const SizedBox(height: 24),
           Wrap(
             spacing: 16,
             runSpacing: 16,
             children: [
               _buildStableMetricCard(
-                'Constraints',
+                'Control Areas',
                 '${_constraints.length}',
                 const Color(0xFF1D4ED8),
               ),
               _buildStableMetricCard(
-                'Mappings',
+                'Trace Links',
                 '${_mappings.length}',
                 const Color(0xFF0F766E),
               ),
               _buildStableMetricCard(
-                'Dependencies',
+                'Decisions',
                 '${_dependencies.length}',
                 const Color(0xFFD97706),
               ),
               _buildStableMetricCard(
-                'Owners',
-                '${ownerOptions.length}',
+                'Delivery Models',
+                '${_methodologyStandards.length}',
                 const Color(0xFF7C3AED),
               ),
             ],
           ),
           const SizedBox(height: 24),
+          _buildStableMethodologyMatrix(),
+          const SizedBox(height: 24),
+          _buildStableReadinessGateTable(),
+          const SizedBox(height: 24),
+          _buildStableTraceabilityTable(),
+          const SizedBox(height: 24),
           _buildStableSectionCard(
-            title: 'Alignment Notes',
+            title: 'Technical Alignment Notes',
             child: TextField(
               controller: _notesController,
+              enabled: _canEditAlignment || _canCreateAlignment,
               minLines: 6,
               maxLines: 10,
               decoration: const InputDecoration(
                 hintText:
-                    'Capture technical constraints, feasibility risks, and cross-team decisions...',
+                    'Capture assumptions, unresolved trade-offs, architectural decisions, interface risks, non-functional gaps, delivery-model exceptions, and approval evidence...',
                 border: OutlineInputBorder(),
               ),
             ),
           ),
           const SizedBox(height: 24),
           _buildStableSectionCard(
-            title: 'Constraint Register',
-            child: Column(
-              children: _constraints.take(5).map((row) {
-                return _buildStableListTile(
-                  title: row.constraint,
-                  subtitle: '${row.guardrail} · ${row.owner} · ${row.status}',
-                );
-              }).toList(),
-            ),
+            title: 'Constraint And Guardrail Register',
+            child: _buildStableConstraintTable(),
           ),
           const SizedBox(height: 24),
           _buildStableSectionCard(
-            title: 'Requirement Mapping',
-            child: Column(
-              children: _mappings.take(5).map((row) {
-                return _buildStableListTile(
-                  title: row.requirement,
-                  subtitle: '${row.approach} · ${row.status}',
-                );
-              }).toList(),
-            ),
+            title: 'Requirement To Solution Mapping',
+            child: _buildStableMappingTable(),
           ),
           const SizedBox(height: 24),
           _buildStableSectionCard(
-            title: 'Dependency Watchlist',
-            child: Column(
-              children: _dependencies.take(5).map((row) {
-                return _buildStableListTile(
-                  title: row.item,
-                  subtitle: '${row.detail} · ${row.owner} · ${row.status}',
-                );
-              }).toList(),
-            ),
+            title: 'Dependency And Decision Watchlist',
+            child: _buildStableDependencyTable(),
           ),
           const SizedBox(height: 24),
           Container(
@@ -585,6 +660,25 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   onPressed: _navigateToRequirementsImplementation,
                   child: const Text('Back: Requirements Implementation'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: _isGenerating || !_canUseAlignmentAi
+                      ? null
+                      : _generateAllAlignment,
+                  icon: _isGenerating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(_isGenerating ? 'Generating...' : 'Generate'),
+                ),
+                OutlinedButton.icon(
+                  onPressed:
+                      _canExportAlignment ? _exportAlignmentSummary : null,
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Export'),
+                ),
                 ElevatedButton(
                   onPressed: _navigateToDevelopmentSetUp,
                   child: const Text('Next: Development Set Up'),
@@ -592,17 +686,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Stable web mode keeps Technical Alignment visible while the heavier dashboard widgets remain isolated.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
+          const SizedBox(height: 24),
+          _buildDetailedRegistersPanel(ownerOptions),
         ],
       ),
     );
   }
 
-  Widget _buildStableHeaderCard() {
+  Widget _buildStableHeaderCard(_TechnicalAlignmentDashboardSnapshot snapshot) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -626,10 +717,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             tooltip: 'Back',
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Technical Alignment',
-              style: TextStyle(
+              'Technical Alignment: ${snapshot.projectLabel}',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF111827),
@@ -740,6 +831,278 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
   }
 
+  Widget _buildStableMethodologyMatrix() {
+    return _buildStableSectionCard(
+      title: 'Delivery Model Alignment Standard',
+      child: _buildStableDataTable(
+        columns: const [
+          _StableTableColumn('Model', 190),
+          _StableTableColumn('Best-fit Use', 250),
+          _StableTableColumn('Required Alignment Evidence', 360),
+          _StableTableColumn('Technical Control Focus', 320),
+          _StableTableColumn('Exit Standard', 260),
+        ],
+        rows: _methodologyStandards
+            .map(
+              (item) => [
+                item.model,
+                item.bestFit,
+                item.evidence,
+                item.controls,
+                item.exitStandard,
+              ],
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildStableReadinessGateTable() {
+    return _buildStableSectionCard(
+      title: 'Technical Readiness Gate',
+      child: _buildStableDataTable(
+        columns: const [
+          _StableTableColumn('Control Domain', 220),
+          _StableTableColumn('What Must Be True', 380),
+          _StableTableColumn('Evidence To Attach', 330),
+          _StableTableColumn('Owner', 160),
+          _StableTableColumn('Decision', 160),
+        ],
+        rows: _readinessGateItems
+            .map(
+              (item) => [
+                item.domain,
+                item.standard,
+                item.evidence,
+                item.owner,
+                item.decision,
+              ],
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildStableTraceabilityTable() {
+    return _buildStableSectionCard(
+      title: 'Traceability And Verification Matrix',
+      child: _buildStableDataTable(
+        columns: const [
+          _StableTableColumn('Trace Object', 210),
+          _StableTableColumn('Technical Alignment Question', 360),
+          _StableTableColumn('Verification Method', 280),
+          _StableTableColumn('Waterfall Evidence', 260),
+          _StableTableColumn('Agile / Hybrid Evidence', 280),
+        ],
+        rows: _traceabilityItems
+            .map(
+              (item) => [
+                item.object,
+                item.question,
+                item.verification,
+                item.waterfallEvidence,
+                item.agileEvidence,
+              ],
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildStableConstraintTable() {
+    return _buildStableDataTable(
+      columns: const [
+        _StableTableColumn('Constraint', 260),
+        _StableTableColumn('Guardrail', 520),
+        _StableTableColumn('Owner', 180),
+        _StableTableColumn('Status', 150),
+      ],
+      rows: _constraints
+          .map(
+            (row) => [
+              row.constraint,
+              row.guardrail,
+              row.owner,
+              row.status,
+            ],
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildStableMappingTable() {
+    return _buildStableDataTable(
+      columns: const [
+        _StableTableColumn('Requirement Area', 280),
+        _StableTableColumn('Technical Approach', 620),
+        _StableTableColumn('Status', 150),
+      ],
+      rows: _mappings
+          .map(
+            (row) => [
+              row.requirement,
+              row.approach,
+              row.status,
+            ],
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildStableDependencyTable() {
+    return _buildStableDataTable(
+      columns: const [
+        _StableTableColumn('Dependency / Decision', 280),
+        _StableTableColumn('Detail', 560),
+        _StableTableColumn('Owner', 180),
+        _StableTableColumn('Status', 150),
+      ],
+      rows: _dependencies
+          .map(
+            (row) => [
+              row.item,
+              row.detail,
+              row.owner,
+              row.status,
+            ],
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildStableDataTable({
+    required List<_StableTableColumn> columns,
+    required List<List<String>> rows,
+  }) {
+    final tableWidth = columns.fold<double>(
+      0,
+      (total, column) => total + column.width,
+    );
+
+    return Scrollbar(
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: tableWidth,
+          child: Column(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    for (final column in columns)
+                      SizedBox(
+                        width: column.width,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          child: Text(
+                            column.label.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (int rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
+                Container(
+                  decoration: BoxDecoration(
+                    color: rowIndex.isEven
+                        ? Colors.white
+                        : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int cellIndex = 0;
+                          cellIndex < columns.length;
+                          cellIndex++)
+                        SizedBox(
+                          width: columns[cellIndex].width,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            child: cellIndex == columns.length - 1 &&
+                                    _looksLikeStatus(rows[rowIndex][cellIndex])
+                                ? Align(
+                                    alignment: Alignment.topLeft,
+                                    child: _buildStatusBadge(
+                                      rows[rowIndex][cellIndex],
+                                      _stableStatusColor(
+                                        rows[rowIndex][cellIndex],
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    rows[rowIndex][cellIndex].trim().isEmpty
+                                        ? 'Not assigned'
+                                        : rows[rowIndex][cellIndex],
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      height: 1.45,
+                                      fontWeight: cellIndex == 0
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                      color: cellIndex == 0
+                                          ? const Color(0xFF0F172A)
+                                          : const Color(0xFF475569),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (rowIndex != rows.length - 1) const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _looksLikeStatus(String value) {
+    return _statusOptions.contains(value) ||
+        const ['Go', 'Conditional', 'No-go'].contains(value);
+  }
+
+  Color _stableStatusColor(String status) {
+    switch (status) {
+      case 'Approved':
+      case 'Aligned':
+      case 'Ready':
+      case 'Go':
+        return AppSemanticColors.success;
+      case 'At risk':
+      case 'No-go':
+        return const Color(0xFFDC2626);
+      case 'Pending':
+      case 'Conditional':
+        return AppSemanticColors.warning;
+      default:
+        return AppSemanticColors.info;
+    }
+  }
+
   void _openStableDesignItem(String label) {
     Widget? destination;
     switch (label) {
@@ -773,7 +1136,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     required _TechnicalAlignmentDashboardSnapshot snapshot,
   }) {
     final primaryAction = FilledButton.icon(
-      onPressed: _isGenerating ? null : _generateAllAlignment,
+      onPressed:
+          _isGenerating || !_canUseAlignmentAi ? null : _generateAllAlignment,
       icon: _isGenerating
           ? const SizedBox(
               width: 16,
@@ -797,7 +1161,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
 
     final secondaryAction = OutlinedButton.icon(
-      onPressed: _exportAlignmentSummary,
+      onPressed: _canExportAlignment ? _exportAlignmentSummary : null,
       icon: const Icon(Icons.download_rounded, size: 18),
       label: const Text('Export summary'),
       style: OutlinedButton.styleFrom(
@@ -1089,6 +1453,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
             child: TextField(
               controller: _notesController,
+              enabled: _canEditAlignment || _canCreateAlignment,
               maxLines: null,
               minLines: 4,
               keyboardType: TextInputType.multiline,
@@ -1231,8 +1596,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: _severityColor(item.severity)
-                            .withOpacity(0.14),
+                        color: _severityColor(item.severity).withOpacity(0.14),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1724,8 +2088,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color:
-                            _protocolColor(item.status).withOpacity(0.12),
+                        color: _protocolColor(item.status).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -2204,6 +2567,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 'World-class guardrails that clarify what must never drift.',
             actionLabel: 'Add constraint',
             onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add constraints');
+                return;
+              }
               setState(() {
                 _constraints.add(
                   ConstraintRow(
@@ -2234,6 +2601,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               message: 'No constraints captured yet. Add the first guardrail.',
               actionLabel: 'Add constraint',
               onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add constraints');
+                  return;
+                }
                 setState(() {
                   _constraints.add(
                     ConstraintRow(
@@ -2288,6 +2659,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 'Exceptional clarity on how requirements become technical choices.',
             actionLabel: 'Add mapping',
             onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add requirement mappings');
+                return;
+              }
               setState(() {
                 _mappings.add(
                   RequirementMappingRow(
@@ -2317,6 +2692,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   'No mappings yet. Add the first requirement-to-solution entry.',
               actionLabel: 'Add mapping',
               onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add requirement mappings');
+                  return;
+                }
                 setState(() {
                   _mappings.add(
                     RequirementMappingRow(
@@ -2370,6 +2749,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 'World-class visibility into what must land before build.',
             actionLabel: 'Add dependency',
             onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add dependencies');
+                return;
+              }
               setState(() {
                 _dependencies.add(
                   DependencyDecisionRow(
@@ -2401,6 +2784,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   'No dependencies yet. Add the first decision or external dependency.',
               actionLabel: 'Add dependency',
               onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add dependencies');
+                  return;
+                }
                 setState(() {
                   _dependencies.add(
                     DependencyDecisionRow(
@@ -2429,7 +2816,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _exportAlignmentSummary,
+              onPressed: _canExportAlignment ? _exportAlignmentSummary : null,
               icon: const Icon(Icons.download, size: 18),
               label: const Text('Export alignment summary'),
               style: ElevatedButton.styleFrom(
@@ -2447,6 +2834,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Future<void> _exportAlignmentSummary() async {
+    if (!_canExportAlignment) {
+      _showPermissionSnackBar('export technical alignment data');
+      return;
+    }
     final doc = pw.Document();
     final notes = _notesController.text.trim();
 
@@ -2640,7 +3031,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
+                    letterSpacing: 0,
                     color: Color(0xFF475467),
                   ),
                   textAlign: TextAlign.center,
@@ -2672,6 +3063,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.constraint,
               hintText: 'Constraint',
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.constraint = value;
                 _scheduleSave();
@@ -2686,6 +3078,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               hintText: 'Guardrail',
               maxLines: null,
               minLines: 1,
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.guardrail = value;
                 _scheduleSave();
@@ -2698,6 +3091,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.owner = value;
                 _scheduleSave();
@@ -2714,6 +3108,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 _scheduleSave();
               },
               accent: const Color(0xFF1D4ED8),
+              enabled: _canEditAlignment,
             ),
           ),
           const SizedBox(width: 10),
@@ -2752,6 +3147,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.requirement,
               hintText: 'Requirement',
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.requirement = value;
                 _scheduleSave();
@@ -2766,6 +3162,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               hintText: 'Technical approach',
               maxLines: null,
               minLines: 1,
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.approach = value;
                 _scheduleSave();
@@ -2782,6 +3179,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 _scheduleSave();
               },
               accent: const Color(0xFF0F766E),
+              enabled: _canEditAlignment,
             ),
           ),
           const SizedBox(width: 10),
@@ -2824,6 +3222,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.item,
               hintText: 'Dependency or decision',
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.item = value;
                 _scheduleSave();
@@ -2838,6 +3237,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               hintText: 'Detail',
               maxLines: null,
               minLines: 1,
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.detail = value;
                 _scheduleSave();
@@ -2850,6 +3250,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
+              enabled: _canEditAlignment,
               onChanged: (value) {
                 row.owner = value;
                 _scheduleSave();
@@ -2866,6 +3267,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 _scheduleSave();
               },
               accent: const Color(0xFF9333EA),
+              enabled: _canEditAlignment,
             ),
           ),
           const SizedBox(width: 10),
@@ -2893,10 +3295,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     required String hintText,
     int? maxLines,
     int minLines = 1,
+    bool enabled = true,
     ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       initialValue: initialValue,
+      enabled: enabled,
       minLines: minLines,
       maxLines: maxLines,
       textAlign: TextAlign.start,
@@ -2932,28 +3336,35 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     required String value,
     required ValueChanged<String> onChanged,
     required Color accent,
+    bool enabled = true,
   }) {
+    final normalized = value.trim();
+    final items = normalized.isEmpty || _statusOptions.contains(normalized)
+        ? _statusOptions
+        : [normalized, ..._statusOptions];
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      initialValue: normalized.isEmpty ? items.first : normalized,
       alignment: Alignment.center,
       isExpanded: true,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      selectedItemBuilder: (context) => _statusOptions
+      selectedItemBuilder: (context) => items
           .map((status) => Align(
                 alignment: Alignment.center,
                 child: Text(status, textAlign: TextAlign.center),
               ))
           .toList(),
-      items: _statusOptions
+      items: items
           .map((status) => DropdownMenuItem(
                 value: status,
                 child: Center(child: Text(status, textAlign: TextAlign.center)),
               ))
           .toList(),
-      onChanged: (newValue) {
-        if (newValue == null) return;
-        onChanged(newValue);
-      },
+      onChanged: enabled
+          ? (newValue) {
+              if (newValue == null) return;
+              onChanged(newValue);
+            }
+          : null,
       decoration: InputDecoration(
         isDense: true,
         filled: true,
@@ -2980,13 +3391,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     required String value,
     required List<String> options,
     required ValueChanged<String> onChanged,
+    bool enabled = true,
   }) {
     final normalized = value.trim();
     final items = normalized.isEmpty || options.contains(normalized)
         ? options
         : [normalized, ...options];
     return DropdownButtonFormField<String>(
-      initialValue: items.first,
+      initialValue: normalized.isEmpty ? items.first : normalized,
       alignment: Alignment.center,
       isExpanded: true,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
@@ -3002,10 +3414,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 child: Center(child: Text(owner, textAlign: TextAlign.center)),
               ))
           .toList(),
-      onChanged: (newValue) {
-        if (newValue == null) return;
-        onChanged(newValue);
-      },
+      onChanged: enabled
+          ? (newValue) {
+              if (newValue == null) return;
+              onChanged(newValue);
+            }
+          : null,
       decoration: InputDecoration(
         isDense: true,
         filled: true,
@@ -3030,9 +3444,11 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
 
   Widget _buildDeleteAction(Future<void> Function() onDelete) {
     return TextButton.icon(
-      onPressed: () async {
-        await onDelete();
-      },
+      onPressed: _canDeleteAlignment
+          ? () async {
+              await onDelete();
+            }
+          : null,
       icon: const Icon(Icons.delete_outline, size: 18),
       label: const Text('Delete'),
       style: TextButton.styleFrom(
@@ -3596,7 +4012,9 @@ class _TechnicalAlignmentDashboardSnapshot {
 
   static String _scoreFromStatus(String status) {
     switch (status) {
+      case 'Approved':
       case 'Aligned':
+      case 'Ready':
         return 'High';
       case 'In review':
         return 'Medium';
@@ -3701,6 +4119,220 @@ class _DebtDashboardItem {
   final String owner;
   final String severity;
 }
+
+class _StableTableColumn {
+  const _StableTableColumn(this.label, this.width);
+
+  final String label;
+  final double width;
+}
+
+class _MethodologyStandard {
+  const _MethodologyStandard({
+    required this.model,
+    required this.bestFit,
+    required this.evidence,
+    required this.controls,
+    required this.exitStandard,
+  });
+
+  final String model;
+  final String bestFit;
+  final String evidence;
+  final String controls;
+  final String exitStandard;
+}
+
+class _ReadinessGateItem {
+  const _ReadinessGateItem({
+    required this.domain,
+    required this.standard,
+    required this.evidence,
+    required this.owner,
+    required this.decision,
+  });
+
+  final String domain;
+  final String standard;
+  final String evidence;
+  final String owner;
+  final String decision;
+}
+
+class _TraceabilityItem {
+  const _TraceabilityItem({
+    required this.object,
+    required this.question,
+    required this.verification,
+    required this.waterfallEvidence,
+    required this.agileEvidence,
+  });
+
+  final String object;
+  final String question;
+  final String verification;
+  final String waterfallEvidence;
+  final String agileEvidence;
+}
+
+const List<_MethodologyStandard> _methodologyStandards = [
+  _MethodologyStandard(
+    model: 'Waterfall / Predictive',
+    bestFit:
+        'Stable scope, high compliance burden, contractual acceptance, capital approval, or regulated delivery.',
+    evidence:
+        'Signed requirements baseline, architecture views, interface specifications, verification matrix, risk register, change-control log, and stage-gate sign-off.',
+    controls:
+        'Configuration management, formal traceability, design reviews, quality plans, procurement lead times, security and safety approval, and acceptance test readiness.',
+    exitStandard:
+        'No unresolved critical requirements, interfaces, or compliance obligations before detailed design/build gate.',
+  ),
+  _MethodologyStandard(
+    model: 'Agile Scrum',
+    bestFit:
+        'Evolving product scope where frequent inspection, user feedback, and working increments reduce uncertainty.',
+    evidence:
+        'Product goal, ordered backlog, refined epics/stories, Definition of Ready, Definition of Done, sprint review evidence, test automation, and release criteria.',
+    controls:
+        'Backlog quality, technical spikes, architecture runway, automated quality gates, security-by-design checks, observable increments, and dependency escalation.',
+    exitStandard:
+        'Stories are ready, technically feasible, testable, sized, and linked to acceptance criteria before sprint commitment.',
+  ),
+  _MethodologyStandard(
+    model: 'Kanban / Flow',
+    bestFit:
+        'Operational, support, enhancement, integration, or continuous improvement work with variable demand.',
+    evidence:
+        'Service policies, classes of service, WIP limits, intake rules, flow metrics, blocker aging, technical debt register, and release readiness checklist.',
+    controls:
+        'Cycle-time predictability, dependency visibility, operational risk limits, explicit pull criteria, reversible release practices, and incident feedback loops.',
+    exitStandard:
+        'Work items meet explicit policies, have no hidden technical blockers, and can move without breaching WIP or service-risk limits.',
+  ),
+  _MethodologyStandard(
+    model: 'Hybrid',
+    bestFit:
+        'Fixed governance, budget, procurement, or compliance boundaries with iterative product/design elaboration inside phases.',
+    evidence:
+        'Phase baseline, rolling-wave plan, integrated roadmap, dependency board, decision log, release plan, backlog traceability, and formal change approvals.',
+    controls:
+        'Gate-to-increment traceability, change impact analysis, milestone dependency management, release train alignment, and shared acceptance evidence.',
+    exitStandard:
+        'Governance artifacts stay controlled while iterative increments prove feasibility and reduce delivery uncertainty.',
+  ),
+  _MethodologyStandard(
+    model: 'Scaled Agile / Portfolio',
+    bestFit:
+        'Multiple teams, shared platforms, enterprise architecture constraints, high dependency density, or portfolio funding.',
+    evidence:
+        'Capability map, architectural runway, program board, enabler backlog, PI objectives, dependency map, NFRs, risk ROAM, and system demo outcomes.',
+    controls:
+        'Platform standards, cross-team interface contracts, release train synchronization, enabler capacity, observability standards, and enterprise risk governance.',
+    exitStandard:
+        'Teams share the same technical baseline, dependencies are owned, and runway exists for committed business features.',
+  ),
+];
+
+const List<_ReadinessGateItem> _readinessGateItems = [
+  _ReadinessGateItem(
+    domain: 'Architecture Baseline',
+    standard:
+        'Target architecture, transition states, major technology decisions, constraints, and trade-offs are explicit and approved.',
+    evidence:
+        'Architecture diagrams, ADRs, options analysis, assumptions log, and impacted components list.',
+    owner: 'Architecture',
+    decision: 'Conditional',
+  ),
+  _ReadinessGateItem(
+    domain: 'Requirements Traceability',
+    standard:
+        'Every priority requirement has a technical approach, acceptance criteria, verification method, and owner.',
+    evidence:
+        'Traceability matrix, backlog links, acceptance criteria, test strategy, and sign-off record.',
+    owner: 'BA / PO',
+    decision: 'Go',
+  ),
+  _ReadinessGateItem(
+    domain: 'Non-Functional Requirements',
+    standard:
+        'Performance, availability, security, privacy, accessibility, scalability, resilience, and recovery targets are measurable.',
+    evidence:
+        'NFR catalogue, SLO/SLA targets, threat model, capacity model, accessibility checklist, and recovery objectives.',
+    owner: 'Engineering',
+    decision: 'Conditional',
+  ),
+  _ReadinessGateItem(
+    domain: 'Interfaces And Data',
+    standard:
+        'Inbound and outbound contracts define schemas, protocols, ownership, quality controls, environments, and failure behaviour.',
+    evidence:
+        'API specs, ICDs, data dictionary, sample payloads, test stubs, privacy review, and vendor SLA notes.',
+    owner: 'Integration',
+    decision: 'Conditional',
+  ),
+  _ReadinessGateItem(
+    domain: 'Delivery And Release',
+    standard:
+        'Build path, environments, CI/CD, rollback, deployment approvals, release calendar, and operational handover are known.',
+    evidence:
+        'Environment plan, release checklist, branching strategy, deployment runbook, monitoring plan, and support model.',
+    owner: 'DevOps',
+    decision: 'No-go',
+  ),
+];
+
+const List<_TraceabilityItem> _traceabilityItems = [
+  _TraceabilityItem(
+    object: 'Business Requirement',
+    question:
+        'Does the selected technical approach preserve the intended business outcome and contractual acceptance condition?',
+    verification:
+        'Review against acceptance criteria, business rules, and benefit metrics.',
+    waterfallEvidence: 'Signed requirements baseline and V-model test mapping.',
+    agileEvidence:
+        'Epic/story links, acceptance tests, and sprint review evidence.',
+  ),
+  _TraceabilityItem(
+    object: 'Architecture Decision',
+    question:
+        'Is the decision justified, reversible where possible, and connected to risks, constraints, and alternatives?',
+    verification: 'ADR review, options analysis, and risk impact assessment.',
+    waterfallEvidence: 'Architecture review board minutes and design baseline.',
+    agileEvidence: 'ADR in repository, enabler story, and team review record.',
+  ),
+  _TraceabilityItem(
+    object: 'Interface / Dependency',
+    question:
+        'Are data contracts, service expectations, ownership, environments, and failure paths clear enough for build?',
+    verification:
+        'Contract testing, mock service validation, vendor confirmation, and dependency burn-down.',
+    waterfallEvidence:
+        'Interface control document and formal dependency sign-off.',
+    agileEvidence:
+        'Dependency board, API contract tests, and integration demo.',
+  ),
+  _TraceabilityItem(
+    object: 'Non-Functional Requirement',
+    question:
+        'Can the system prove security, performance, accessibility, reliability, observability, and recovery standards?',
+    verification:
+        'Automated tests, threat modelling, load testing, accessibility checks, monitoring trials, and recovery exercises.',
+    waterfallEvidence:
+        'Quality plan, test scripts, and readiness gate evidence.',
+    agileEvidence:
+        'Definition of Done controls, pipeline gates, and system demo metrics.',
+  ),
+  _TraceabilityItem(
+    object: 'Operational Readiness',
+    question:
+        'Can support teams operate, monitor, recover, and improve the solution after release?',
+    verification:
+        'Runbook review, support rehearsal, incident workflow check, and service transition acceptance.',
+    waterfallEvidence: 'Operational acceptance test and handover sign-off.',
+    agileEvidence:
+        'Release checklist, support story completion, and production telemetry review.',
+  ),
+];
 
 class _TableColumn {
   const _TableColumn({

@@ -2183,7 +2183,7 @@ class _ContractTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
         ),
       ),
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
@@ -2237,7 +2237,7 @@ class _ContractDropdownField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
         ),
       ),
       dropdownColor: Colors.white,
@@ -2860,7 +2860,7 @@ class _CollapsibleAiTextCardState extends State<_CollapsibleAiTextCard> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+            borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
           ),
         ),
         style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
@@ -6767,7 +6767,7 @@ class _ContractorSearchField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
         ),
       ),
       style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
@@ -6811,7 +6811,7 @@ class _ContractorStatusDropdown extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
         ),
       ),
       style: const TextStyle(

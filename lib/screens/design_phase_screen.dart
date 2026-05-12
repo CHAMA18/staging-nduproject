@@ -10,6 +10,7 @@ import 'package:ndu_project/screens/technical_alignment_screen.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/architecture_canvas.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -29,6 +30,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/web_utils.dart';
 import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -326,6 +328,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
     return ResponsiveScaffold(
       activeItemLabel: widget.activeItemLabel,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(

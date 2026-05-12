@@ -1680,7 +1680,7 @@ class _TextCellState extends State<_TextCell> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+            borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -1734,7 +1734,7 @@ class _DropdownCell extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+            borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.2),
           ),
           filled: true,
           fillColor: Colors.white,

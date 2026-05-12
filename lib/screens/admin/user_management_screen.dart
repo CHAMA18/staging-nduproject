@@ -197,7 +197,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             label: const Text('Show Inactive'),
             selected: _showInactiveUsers,
             onSelected: (v) => setState(() => _showInactiveUsers = v),
-            checkmarkColor: const WidgetStatePropertyAll<Color?>(Colors.white),
+            checkmarkColor: Colors.white,
           ),
         ],
       ),
@@ -1126,7 +1126,7 @@ class _UserPermissionsDialogState extends State<_UserPermissionsDialog> {
                       ),
                     ),
                   ),
-                ),
+                );
               }),
               const SizedBox(height: 24),
               Row(

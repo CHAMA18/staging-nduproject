@@ -1,31 +1,28 @@
+// ignore_for_file: unused_element
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ndu_project/screens/design_deliverables_screen.dart';
-import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/screens/long_lead_equipment_ordering_screen.dart';
+import 'package:ndu_project/screens/technical_development_screen.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/theme.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
-
-const Color _kSpecSurface = Colors.white;
-const Color _kSpecBorder = Color(0xFFDCE4F2);
-const Color _kSpecPanel = Color(0xFFEAF1FF);
-const Color _kSpecPanelSoft = Color(0xFFF8FAFF);
-const Color _kSpecPrimary = Color(0xFF0B4DBB);
-const Color _kSpecPrimaryDeep = Color(0xFF082A63);
-const Color _kSpecTeal = Color(0xFF0B7D68);
-const Color _kSpecText = Color(0xFF111827);
-const Color _kSpecSubtext = Color(0xFF667085);
-const Color _kSpecError = Color(0xFFB42318);
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SpecializedDesignScreen extends StatefulWidget {
   const SpecializedDesignScreen({super.key});
+
+  static void open(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SpecializedDesignScreen()),
+    );
+  }
 
   @override
   State<SpecializedDesignScreen> createState() =>
@@ -33,2752 +30,1044 @@ class SpecializedDesignScreen extends StatefulWidget {
 }
 
 class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
-  final TextEditingController _notesController = TextEditingController();
-  Timer? _saveDebounce;
+  final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   String? _loadError;
-  bool _didAttemptAutoGeneration = false;
 
-  final List<SecurityPatternRow> _securityRows = [];
+  final Set<String> _selectedFilters = {'All items'};
 
-  final List<PerformancePatternRow> _performanceRows = [];
+  // Registers
+  List<SecurityPatternRow> _securityRows = [];
+  List<PerformancePatternRow> _performanceRows = [];
+  List<IntegrationFlowRow> _integrationRows = [];
+  List<_ComplianceRow> _complianceRows = [];
+  List<_ReviewGateRow> _reviewGates = [];
 
-  final List<IntegrationFlowRow> _integrationRows = [];
-
-  final List<String> _statusOptions = const [
+  static const List<String> _statusOptions = [
     'Ready',
     'In review',
     'Draft',
     'Pending',
-    'In progress'
+    'In progress',
+    'Deprecated',
+  ];
+
+  static const List<String> _complianceStatusOptions = [
+    'Compliant',
+    'Non-compliant',
+    'In progress',
+    'Not assessed',
+    'Partial',
+  ];
+
+  static const List<String> _reviewGateStatusOptions = [
+    'Pending',
+    'In Review',
+    'Approved',
+    'Rejected',
+    'Waived',
+    'Not Started',
   ];
 
   String _normalizeStatus(String value) {
-    final normalized = _normalize(value);
+    final normalized = value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return 'Draft';
-
     for (final option in _statusOptions) {
-      if (_normalize(option) == normalized) return option;
+      if (option.toLowerCase().replaceAll(RegExp(r'\s+'), ' ') == normalized) return option;
     }
-
     const aliases = <String, String>{
-      'recommended': 'In review',
-      'recommend': 'In review',
-      'under review': 'In review',
-      'complete': 'Ready',
-      'completed': 'Ready',
-      'done': 'Ready',
-      'todo': 'Draft',
-      'to do': 'Draft',
-      'not started': 'Draft',
-      'inreview': 'In review',
-      'in-review': 'In review',
-      'inprogress': 'In progress',
-      'in-progress': 'In progress',
+      'recommended': 'In review', 'under review': 'In review',
+      'complete': 'Ready', 'completed': 'Ready', 'done': 'Ready',
+      'todo': 'Draft', 'not started': 'Draft',
     };
-
     return aliases[normalized] ?? 'Draft';
   }
 
-  String _normalize(String value) {
-    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-  }
-
-  List<SecurityPatternRow> _dedupeSecurityRows(
-      Iterable<SecurityPatternRow> rows) {
-    final seen = <String>{};
-    final deduped = <SecurityPatternRow>[];
-    for (final row in rows) {
-      final key =
-          '${_normalize(row.pattern)}|${_normalize(row.decision)}|${_normalize(row.owner)}|${_normalize(row.status)}';
-      if (key == '|||') continue;
-      if (seen.add(key)) deduped.add(row);
+  String? get _projectId {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
     }
-    return deduped;
-  }
-
-  List<PerformancePatternRow> _dedupePerformanceRows(
-      Iterable<PerformancePatternRow> rows) {
-    final seen = <String>{};
-    final deduped = <PerformancePatternRow>[];
-    for (final row in rows) {
-      final key =
-          '${_normalize(row.hotspot)}|${_normalize(row.focus)}|${_normalize(row.sla)}|${_normalize(row.status)}';
-      if (key == '|||') continue;
-      if (seen.add(key)) deduped.add(row);
-    }
-    return deduped;
-  }
-
-  List<IntegrationFlowRow> _dedupeIntegrationRows(
-      Iterable<IntegrationFlowRow> rows) {
-    final seen = <String>{};
-    final deduped = <IntegrationFlowRow>[];
-    for (final row in rows) {
-      final key =
-          '${_normalize(row.flow)}|${_normalize(row.owner)}|${_normalize(row.system)}|${_normalize(row.status)}';
-      if (key == '|||') continue;
-      if (seen.add(key)) deduped.add(row);
-    }
-    return deduped;
   }
 
   @override
   void initState() {
     super.initState();
+    _securityRows = _defaultSecurityRows();
+    _performanceRows = _defaultPerformanceRows();
+    _integrationRows = _defaultIntegrationRows();
+    _complianceRows = _defaultComplianceRows();
+    _reviewGates = _defaultReviewGates();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   @override
   void dispose() {
-    _notesController.dispose();
-    _saveDebounce?.cancel();
+    _saveDebouncer.dispose();
     super.dispose();
   }
 
-  String? _currentProjectId() {
-    final provider = ProjectDataInherited.maybeOf(context);
-    final projectId = provider?.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return null;
-    return projectId;
-  }
-
-  Future<void> _loadData() async {
-    final projectId = _currentProjectId();
-    if (projectId == null) return;
-
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
-
-    try {
-      // 1. Try loading from new service
-      var data =
-          await DesignPhaseService.instance.loadSpecializedDesign(projectId);
-
-      // 2. Fallback: If empty, check generic ProjectData from provider (legacy migration)
-      final bool isEmpty = data.notes.isEmpty &&
-          data.securityPatterns.isEmpty &&
-          data.performancePatterns.isEmpty &&
-          data.integrationFlows.isEmpty;
-
-      if (isEmpty) {
-        // No migration performed here: specialized design is stored under
-        // `projects/{id}/design_phase_sections/specialized_design`.
-        // Keeping this block makes the intent explicit without introducing extra reads.
-      }
-
-      setState(() {
-        _notesController.text = data.notes;
-        _securityRows
-          ..clear()
-          ..addAll(_dedupeSecurityRows(data.securityPatterns));
-        for (final row in _securityRows) {
-          row.status = _normalizeStatus(row.status);
-        }
-        _performanceRows
-          ..clear()
-          ..addAll(_dedupePerformanceRows(data.performancePatterns));
-        for (final row in _performanceRows) {
-          row.status = _normalizeStatus(row.status);
-        }
-        _integrationRows
-          ..clear()
-          ..addAll(_dedupeIntegrationRows(data.integrationFlows));
-        for (final row in _integrationRows) {
-          row.status = _normalizeStatus(row.status);
-        }
-        _isLoading = false;
-      });
-
-      final sectionIsEmpty = _notesController.text.trim().isEmpty &&
-          _securityRows.isEmpty &&
-          _performanceRows.isEmpty &&
-          _integrationRows.isEmpty;
-      if (sectionIsEmpty && !_didAttemptAutoGeneration) {
-        _didAttemptAutoGeneration = true;
-        await _generateAllSpecializedDesign(showSnackbar: false);
-      }
-    } catch (e) {
-      debugPrint('Error loading specialized design: $e');
-      setState(() {
-        _isLoading = false;
-        _loadError = 'Unable to load specialized design data.';
-      });
-    }
+  DocumentReference<Map<String, dynamic>> _docFor(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('design_phase_sections')
+        .doc('specialized_design');
   }
 
   void _scheduleSave() {
-    _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(milliseconds: 600), _saveToService);
+    _saveDebouncer.run(_saveToFirestore);
   }
 
-  Future<void> _saveToService() async {
-    final projectId = _currentProjectId();
-    if (projectId == null) return;
-
-    final data = SpecializedDesignData(
-      notes: _notesController.text.trim(),
-      securityPatterns: _dedupeSecurityRows(_securityRows),
-      performancePatterns: _dedupePerformanceRows(_performanceRows),
-      integrationFlows: _dedupeIntegrationRows(_integrationRows),
-    );
-
-    await DesignPhaseService.instance.saveSpecializedDesign(projectId, data);
-    _logActivity('Updated Specialized Design data');
-  }
-
-  bool _isGenerating = false;
-  final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
-
-  Future<void> _generateAllSpecializedDesign({bool showSnackbar = true}) async {
-    final projectId = _currentProjectId();
-    if (projectId == null) {
-      if (showSnackbar) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: No active project found.')),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _isGenerating = true;
-      _loadError = null;
-    });
-
+  Future<void> _loadData() async {
+    final projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _isLoading = true);
     try {
-      // Build context
-      final provider = ProjectDataInherited.maybeOf(context);
-      final data = provider!.projectData;
-      final contextBuffer = StringBuffer();
-      contextBuffer.writeln('Project: ${data.projectName}');
-      contextBuffer.writeln('Description: ${data.projectDescription}');
-      contextBuffer.writeln('Goals: ${data.projectGoals.join(", ")}');
-      contextBuffer.writeln('Tech Stack: ${data.technology}');
-      contextBuffer
-          .writeln('Requirements: ${data.frontEndPlanningData.requirements}');
-
-      final result = await _openAi.generateSpecializedDesign(
-        context: contextBuffer.toString(),
-      );
-
+      final data = await DesignPhaseService.instance.loadSpecializedDesign(projectId);
+      final doc = await _docFor(projectId).get();
+      final extra = doc.data() ?? {};
+      _suspendSave = true;
       if (!mounted) return;
-
+      final complianceRows = _ComplianceRow.fromList(extra['complianceRows']);
+      final reviewGates = _ReviewGateRow.fromList(extra['reviewGates']);
       setState(() {
-        if (result.notes.isNotEmpty && _notesController.text.isEmpty) {
-          _notesController.text = result.notes;
-        }
-
-        if (result.securityPatterns.isNotEmpty) {
-          _securityRows
-            ..clear()
-            ..addAll(_dedupeSecurityRows(result.securityPatterns));
-          for (final row in _securityRows) {
-            row.status = _normalizeStatus(row.status);
-          }
-        }
-
-        if (result.performancePatterns.isNotEmpty) {
-          _performanceRows
-            ..clear()
-            ..addAll(_dedupePerformanceRows(result.performancePatterns));
-          for (final row in _performanceRows) {
-            row.status = _normalizeStatus(row.status);
-          }
-        }
-
-        if (result.integrationFlows.isNotEmpty) {
-          _integrationRows
-            ..clear()
-            ..addAll(_dedupeIntegrationRows(result.integrationFlows));
-          for (final row in _integrationRows) {
-            row.status = _normalizeStatus(row.status);
-          }
-        }
+        _securityRows = data.securityPatterns.isNotEmpty ? data.securityPatterns : _defaultSecurityRows();
+        for (final row in _securityRows) { row.status = _normalizeStatus(row.status); }
+        _performanceRows = data.performancePatterns.isNotEmpty ? data.performancePatterns : _defaultPerformanceRows();
+        for (final row in _performanceRows) { row.status = _normalizeStatus(row.status); }
+        _integrationRows = data.integrationFlows.isNotEmpty ? data.integrationFlows : _defaultIntegrationRows();
+        for (final row in _integrationRows) { row.status = _normalizeStatus(row.status); }
+        _complianceRows = complianceRows.isNotEmpty ? complianceRows : _defaultComplianceRows();
+        _reviewGates = reviewGates.isNotEmpty ? reviewGates : _defaultReviewGates();
       });
-
-      _scheduleSave();
-
-      _logActivity('Generated Specialized Design with AI');
-
-      if (showSnackbar && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Specialized Design generated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
     } catch (e) {
-      debugPrint('Error generating specialized design: $e');
-      if (mounted) {
-        setState(() {
-          _loadError =
-              'Unable to generate specialized design with AI right now.';
-        });
-        if (showSnackbar) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('AI Generation failed: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      debugPrint('Error loading specialized design: $e');
+      setState(() => _loadError = 'Unable to load specialized design data.');
     } finally {
-      if (mounted) setState(() => _isGenerating = false);
+      _suspendSave = false;
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  bool get _isSpecializedDesignEmpty =>
-      _notesController.text.trim().isEmpty &&
-      _securityRows.isEmpty &&
-      _performanceRows.isEmpty &&
-      _integrationRows.isEmpty;
+  bool _suspendSave = false;
+
+  Future<void> _saveToFirestore() async {
+    final projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      final data = SpecializedDesignData(
+        securityPatterns: _dedupeSecurityRows(_securityRows),
+        performancePatterns: _dedupePerformanceRows(_performanceRows),
+        integrationFlows: _dedupeIntegrationRows(_integrationRows),
+      );
+      await DesignPhaseService.instance.saveSpecializedDesign(projectId, data);
+      await _docFor(projectId).set({
+        'complianceRows': _complianceRows.map((e) => e.toMap()).toList(),
+        'reviewGates': _reviewGates.map((e) => e.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      _logActivity('Updated Specialized Design data');
+    } catch (e) {
+      debugPrint('Error saving specialized design: $e');
+    }
+  }
+
+  List<SecurityPatternRow> _dedupeSecurityRows(Iterable<SecurityPatternRow> rows) {
+    final seen = <String>{};
+    return rows.where((r) {
+      final key = '${r.pattern}|${r.decision}|${r.owner}|${r.status}';
+      if (key == '|||' || !seen.add(key)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<PerformancePatternRow> _dedupePerformanceRows(Iterable<PerformancePatternRow> rows) {
+    final seen = <String>{};
+    return rows.where((r) {
+      final key = '${r.hotspot}|${r.focus}|${r.sla}|${r.status}';
+      if (key == '|||' || !seen.add(key)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<IntegrationFlowRow> _dedupeIntegrationRows(Iterable<IntegrationFlowRow> rows) {
+    final seen = <String>{};
+    return rows.where((r) {
+      final key = '${r.flow}|${r.owner}|${r.system}|${r.status}';
+      if (key == '|||' || !seen.add(key)) return false;
+      return true;
+    }).toList();
+  }
 
   void _logActivity(String action, {Map<String, dynamic>? details}) {
-    final projectId = _currentProjectId();
+    final projectId = _projectId;
     if (projectId == null) return;
-    unawaited(
-      ActivityLogService.instance.logActivity(
-        projectId: projectId,
-        phase: 'Design Phase',
-        page: 'Specialized Design',
-        action: action,
-        details: details,
-      ),
-    );
+    unawaited(ActivityLogService.instance.logActivity(
+      projectId: projectId, phase: 'Design Phase', page: 'Specialized Design',
+      action: action, details: details,
+    ));
   }
 
-  // Helper to build list of context-aware options (Project members)
-  List<String> _ownerOptions() {
-    final data = ProjectDataHelper.getData(context);
-    final members = data.teamMembers
-        .map((m) {
-          final name = m.name.trim();
-          final role = m.role.trim();
-          if (name.isEmpty) return '';
-          return role.isEmpty ? name : '$name ($role)';
-        })
-        .where((s) => s.isNotEmpty)
-        .toSet()
-        .toList();
+  // ─── Default Data ────────────────────────────────────────────────
 
-    if (members.isEmpty) {
-      return ['Unassigned', 'External Vendor', 'Client Team'];
-    }
-    return ['Unassigned', ...members];
+  List<SecurityPatternRow> _defaultSecurityRows() {
+    return [
+      SecurityPatternRow(pattern: 'Zero Trust Network Architecture', decision: 'Implement micro-segmentation with identity-based access control. Every request must be authenticated, authorized, and encrypted regardless of network location. Aligns with NIST SP 800-207 Zero Trust Architecture.', owner: 'Security Architect', status: 'In review'),
+      SecurityPatternRow(pattern: 'Data-at-Rest Encryption (AES-256)', decision: 'All persistent storage encrypted using AES-256-GCM with customer-managed keys (CMK). Key rotation every 90 days. Aligns with SOC 2 Type II and GDPR Article 32.', owner: 'Security Lead', status: 'Ready'),
+      SecurityPatternRow(pattern: 'Multi-Factor Authentication (MFA)', decision: 'Hardware-backed MFA required for all privileged accounts. FIDO2/WebAuthn as primary, TOTP as fallback. Session timeout 15 minutes for admin roles, 4 hours for standard users.', owner: 'Identity Lead', status: 'Ready'),
+      SecurityPatternRow(pattern: 'API Gateway Rate Limiting & Throttling', decision: 'Implement tiered rate limiting: 100 req/min standard, 1000 req/min premium. DDoS protection via WAF with OWASP Top 10 rule set. Circuit breaker pattern for downstream services.', owner: 'Platform Engineer', status: 'Draft'),
+      SecurityPatternRow(pattern: 'Audit Logging & SIEM Integration', decision: 'Centralized audit trail for all data access and configuration changes. Forward to SIEM with real-time alerting on anomaly detection. Retention period 7 years per regulatory requirement.', owner: 'Compliance Officer', status: 'In progress'),
+    ];
   }
+
+  List<PerformancePatternRow> _defaultPerformanceRows() {
+    return [
+      PerformancePatternRow(hotspot: 'Database query optimization', focus: 'Implement read replicas for reporting queries. Add composite indexes on frequently filtered columns. Query timeout 30s with automatic EXPLAIN analysis on slow queries.', sla: 'p99 < 200ms', status: 'In progress'),
+      PerformancePatternRow(hotspot: 'API response latency', focus: 'Implement response caching with 5-minute TTL for reference data. Use GraphQL for selective field retrieval. Add connection pooling with max 100 concurrent connections per service.', sla: 'p95 < 150ms', status: 'Draft'),
+      PerformancePatternRow(hotspot: 'File upload throughput', focus: 'Implement chunked upload (5MB chunks) with resume capability. Use pre-signed URLs for direct-to-S3 uploads. Parallel chunk upload with 4 concurrent streams per client.', sla: '> 50 MB/s', status: 'Draft'),
+      PerformancePatternRow(hotspot: 'Real-time notification delivery', focus: 'WebSocket connection pooling with auto-reconnect. Message queue (Kafka/RabbitMQ) for guaranteed delivery. Batch push notifications every 30 seconds for non-critical alerts.', sla: '< 500ms latency', status: 'Pending'),
+      PerformancePatternRow(hotspot: 'Report generation', focus: 'Asynchronous report generation with progress polling. Pre-compute daily aggregates for standard reports. PDF export offloaded to dedicated worker pool with 4 vCPU / 8GB RAM.', sla: '< 30s for 10K rows', status: 'Draft'),
+    ];
+  }
+
+  List<IntegrationFlowRow> _defaultIntegrationRows() {
+    return [
+      IntegrationFlowRow(flow: 'Identity Provider SSO (SAML 2.0 / OIDC)', owner: 'Identity Lead', system: 'Azure AD / Okta', status: 'Ready'),
+      IntegrationFlowRow(flow: 'ERP bi-directional sync (SAP / Oracle)', owner: 'Integration Architect', system: 'SAP S/4HANA', status: 'In review'),
+      IntegrationFlowRow(flow: 'Payment gateway (Stripe / Adyen)', owner: 'Fintech Lead', system: 'Stripe API v2024', status: 'Draft'),
+      IntegrationFlowRow(flow: 'CI/CD pipeline integration (GitHub Actions)', owner: 'DevOps Lead', system: 'GitHub Enterprise', status: 'Ready'),
+      IntegrationFlowRow(flow: 'Monitoring & observability (Datadog / Grafana)', owner: 'SRE Lead', system: 'Datadog APM', status: 'In progress'),
+    ];
+  }
+
+  List<_ComplianceRow> _defaultComplianceRows() {
+    return [
+      _ComplianceRow(id: _newId(), standard: 'SOC 2 Type II', description: 'Service Organization Control audit covering security, availability, processing integrity, confidentiality, and privacy. Annual audit cycle with quarterly readiness assessments.', status: 'Compliant', owner: 'Compliance Officer', evidence: 'Audit report Q3 2025'),
+      _ComplianceRow(id: _newId(), standard: 'GDPR (EU Data Protection)', description: 'General Data Protection Regulation compliance including data residency, right to erasure, data portability, and privacy impact assessments for EU data subjects.', status: 'In progress', owner: 'DPO', evidence: 'DPIA v2.1 in review'),
+      _ComplianceRow(id: _newId(), standard: 'ISO 27001 Annex A', description: 'Information Security Management System controls covering 93 security controls across organizational, people, physical, and technological domains.', status: 'Partial', owner: 'CISO', evidence: 'Gap assessment 78% complete'),
+      _ComplianceRow(id: _newId(), standard: 'PCI DSS v4.0', description: 'Payment Card Industry Data Security Standard for handling cardholder data. Requirements for network segmentation, encryption, access control, and regular penetration testing.', status: 'Not assessed', owner: 'Security Architect', evidence: 'Scope assessment pending'),
+      _ComplianceRow(id: _newId(), standard: 'WCAG 2.1 AA', description: 'Web Content Accessibility Guidelines ensuring digital interfaces are perceivable, operable, understandable, and robust for users with disabilities.', status: 'In progress', owner: 'UX Lead', evidence: 'Automated scan: 92% pass rate'),
+    ];
+  }
+
+  List<_ReviewGateRow> _defaultReviewGates() {
+    return [
+      _ReviewGateRow(id: _newId(), gate: 'Security Architecture Review', description: 'Validate security patterns, threat model, encryption standards, and access control architecture against NIST CSF and organizational security policies.', approver: 'CISO', department: 'Security', priority: 'Critical', status: 'In Review', targetDate: 'TBD'),
+      _ReviewGateRow(id: _newId(), gate: 'Performance Baseline Acceptance', description: 'Confirm performance SLA targets are achievable under load testing. Validate caching strategy, database query performance, and auto-scaling thresholds.', approver: 'VP Engineering', department: 'Engineering', priority: 'Critical', status: 'Pending', targetDate: 'TBD'),
+      _ReviewGateRow(id: _newId(), gate: 'Integration Contract Sign-off', description: 'Validate API contracts, data schemas, authentication flows, and error handling patterns for all external system integrations before development begins.', approver: 'Integration Architect', department: 'Architecture', priority: 'High', status: 'Pending', targetDate: 'TBD'),
+      _ReviewGateRow(id: _newId(), gate: 'Compliance Readiness Review', description: 'Verify all applicable regulatory standards (SOC 2, GDPR, PCI DSS) have documented controls, evidence collection processes, and remediation plans for gaps.', approver: 'Compliance Officer', department: 'Legal/Compliance', priority: 'High', status: 'Not Started', targetDate: 'TBD'),
+      _ReviewGateRow(id: _newId(), gate: 'Disaster Recovery Validation', description: 'Test failover procedures, confirm RTO (4 hours) and RPO (1 hour) targets are achievable, and validate backup integrity and restoration procedures.', approver: 'SRE Lead', department: 'Operations', priority: 'Critical', status: 'Not Started', targetDate: 'TBD'),
+      _ReviewGateRow(id: _newId(), gate: 'Specialized Design Handoff', description: 'Final review confirming all specialized design decisions are documented, implementation-ready, and accepted by engineering leads for build phase entry.', approver: 'Technical Lead', department: 'Engineering', priority: 'High', status: 'Not Started', targetDate: 'TBD'),
+    ];
+  }
+
+  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  // ─── Build ────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
-    final double padding = isMobile ? 16 : 24;
-    final ownerOptions = _ownerOptions();
+    final isNarrow = MediaQuery.sizeOf(context).width < 980;
+    final padding = AppBreakpoints.pagePadding(context);
 
     return ResponsiveScaffold(
       activeItemLabel: 'Specialized Design',
-      body: Column(
-        children: [
-          const PlanningPhaseHeader(
-            title: 'Specialized Design',
-            showImportButton: false,
-            showContentButton: false,
-            showNavigationButtons: false,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(padding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeroSection(isMobile),
-                  const SizedBox(height: 24),
-                  _buildStatusStrip(),
-                  const SizedBox(height: 24),
-                  _buildUpperInsightGrid(),
-                  const SizedBox(height: 24),
-                  _buildMiddleInsightGrid(),
-                  const SizedBox(height: 24),
-                  _buildLowerInsightGrid(),
-                  const SizedBox(height: 24),
-                  _buildWorkingNotesCard(),
-                  const SizedBox(height: 24),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: _kSpecSurface,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: _kSpecBorder),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 22,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Working Track Registers',
-                          style: TextStyle(
-                            fontSize: isMobile ? 24 : 28,
-                            fontWeight: FontWeight.w900,
-                            color: _kSpecPrimaryDeep,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'This is the editable execution layer. Use it to lock down the exact specialized controls, performance hotspots, and integration contracts that engineering and reviewers will follow.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _kSpecSubtext,
-                            height: 1.55,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_isLoading)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        children: [
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 10),
-                          Text('Loading specialized design data...',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600])),
-                        ],
-                      ),
-                    ),
-                  if (_loadError != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF5F5),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFFECACA)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _loadError!,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Color(0xFFB91C1C)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          OutlinedButton(
-                            onPressed: () => _generateAllSpecializedDesign(
-                                showSnackbar: true),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_isGenerating && _isSpecializedDesignEmpty)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: _kSpecBorder),
-                      ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(strokeWidth: 3),
-                          ),
-                          SizedBox(height: 14),
-                          Text(
-                            'Generating Specialized Design with AI...',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF111827),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  _buildSecurityPatternsCard(ownerOptions),
-                  const SizedBox(height: 20),
-                  _buildPerformancePatternsCard(),
-                  const SizedBox(height: 20),
-                  _buildIntegrationFlowsCard(ownerOptions),
-                  const SizedBox(height: 32),
-                  _buildBottomNavigation(isMobile),
-                ],
-              ),
+      backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_isLoading) const SizedBox(height: 16),
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 20),
+            _buildFrameworkGuide(),
+            const SizedBox(height: 24),
+            if (_showSecurity) _buildSecurityRegister(),
+            if (_showSecurity) const SizedBox(height: 20),
+            if (_showPerformance) _buildPerformanceRegister(),
+            if (_showPerformance) const SizedBox(height: 20),
+            if (_showIntegration) _buildIntegrationRegister(),
+            if (_showIntegration) const SizedBox(height: 20),
+            if (_showCompliance) _buildComplianceRegister(),
+            if (_showCompliance) const SizedBox(height: 20),
+            if (_showReviewGates) _buildReviewGatesPanel(),
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Technical Development',
+              nextLabel: 'Next: Long Lead Equipment Ordering',
+              onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TechnicalDevelopmentScreen())),
+              onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LongLeadEquipmentOrderingScreen())),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeroSection(bool isMobile) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isMobile ? 22 : 30),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF9FBFF), Color(0xFFEAF1FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: _kSpecBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: const [
-              _HeroChip(
-                label: 'Security Track',
-                icon: Icons.shield_outlined,
-                selected: true,
-              ),
-              _HeroChip(
-                label: 'Accessibility',
-                icon: Icons.visibility_outlined,
-              ),
-              _HeroChip(
-                label: 'Structural',
-                icon: Icons.architecture_outlined,
-              ),
-              _HeroChip(
-                label: 'SME Validation',
-                icon: Icons.verified_user_outlined,
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 860;
-              final headline = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'DESIGN PHASE: SPECIALIZED TRACKS',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: LightModeColors.accent,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'High-fidelity validation and sign-off architecture for critical design paths',
-                    style: TextStyle(
-                      fontSize: isMobile ? 28 : 38,
-                      fontWeight: FontWeight.w900,
-                      color: _kSpecPrimaryDeep,
-                      height: 1.12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'This workspace captures the non-generic design logic that determines whether the project is secure, compliant, resilient, and implementation-ready.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: _kSpecSubtext,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              );
+  bool get _showSecurity => _selectedFilters.contains('All items') || _selectedFilters.contains('Security');
+  bool get _showPerformance => _selectedFilters.contains('All items') || _selectedFilters.contains('Performance');
+  bool get _showIntegration => _selectedFilters.contains('All items') || _selectedFilters.contains('Integrations');
+  bool get _showCompliance => _selectedFilters.contains('All items') || _selectedFilters.contains('Compliance');
+  bool get _showReviewGates => _selectedFilters.contains('All items') || _selectedFilters.contains('Review pending');
 
-              final actionButton = _isGenerating
-                  ? const SizedBox(
-                      height: 56,
-                      width: 56,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    )
-                  : ElevatedButton.icon(
-                      onPressed: _generateAllSpecializedDesign,
-                      icon: const Icon(Icons.auto_awesome, size: 18),
-                      label: const Text('Generate Audit Report'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _kSpecPrimary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 18,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    );
+  // ─── Header ────────────────────────────────────────────────────────
 
-              if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    headline,
-                    const SizedBox(height: 18),
-                    actionButton,
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: headline),
-                  const SizedBox(width: 20),
-                  actionButton,
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusStrip() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        const _InfoPill(
-          label: 'Track: Security-first review',
-          color: _kSpecPrimary,
-          background: Color(0xFFE6EEFF),
-          icon: Icons.shield_rounded,
-        ),
-        _InfoPill(
-          label: _isLoading ? 'Loading data' : 'Data connected',
-          color: _isLoading ? _kSpecPrimary : _kSpecTeal,
-          background:
-              _isLoading ? const Color(0xFFE6EEFF) : const Color(0xFFEAF8F3),
-          icon: _isLoading ? Icons.sync : Icons.cloud_done_outlined,
-        ),
-        _InfoPill(
-          label: _loadError == null ? 'Review flow healthy' : _loadError!,
-          color: _loadError == null ? _kSpecTeal : _kSpecError,
-          background: _loadError == null
-              ? const Color(0xFFEAF8F3)
-              : const Color(0xFFFEE4E2),
-          icon: _loadError == null
-              ? Icons.verified_outlined
-              : Icons.error_outline,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUpperInsightGrid() {
+  Widget _buildHeader(bool isNarrow) {
     return Column(
-      children: [
-        _DashboardPanel(
-          title: 'Compliance & Regulatory Standards',
-          icon: Icons.fact_check_outlined,
-          accent: _kSpecPrimary,
-          child: Column(
-            children: const [
-              _ComplianceRow(
-                  name: 'GDPR (Data Residency)', status: 'Mandatory'),
-              _ComplianceRow(
-                  name: 'SOC2 Type II (Annual)', status: 'Mandatory'),
-              _ComplianceRow(name: 'ISO 27001 Annex A', status: 'Optional'),
-              _ComplianceRow(name: 'FedRAMP Compliance', status: 'Mandatory'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _DashboardPanel(
-          title: 'Specialized Technical Specifications',
-          icon: Icons.settings_input_component_outlined,
-          accent: _kSpecPrimary,
-          child: Column(
-            children: const [
-              _SpecGrid(),
-              SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  'VIEW FULL ARCHITECTURAL MANIFESTO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: _kSpecPrimary,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiddleInsightGrid() {
-    return const Column(
-      children: [
-        _DashboardPanel(
-          title: 'Subject Matter Experts',
-          icon: Icons.groups_outlined,
-          accent: _kSpecPrimary,
-          child: Column(
-            children: [
-              _PersonRow(
-                name: 'Marcus Thorne',
-                role: 'Security Architect',
-                badge: 'Sign-off',
-                badgeColor: _kSpecTeal,
-              ),
-              SizedBox(height: 10),
-              _PersonRow(
-                name: 'Elena Vance',
-                role: 'Structural Lead',
-                badge: 'Review',
-                badgeColor: _kSpecPrimary,
-              ),
-              SizedBox(height: 10),
-              _PersonRow(
-                name: 'Julian Sterling',
-                role: 'Regulatory Officer',
-                badge: 'Sign-off',
-                badgeColor: _kSpecTeal,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 20),
-        _DashboardPanel(
-          title: 'Validation Criteria',
-          icon: Icons.biotech_outlined,
-          accent: _kSpecPrimary,
-          child: Column(
-            children: [
-              _ValidationRow(
-                label: 'Penetration Testing (L3)',
-                status: 'Pass',
-                statusColor: _kSpecTeal,
-                icon: Icons.check_circle,
-              ),
-              _ValidationRow(
-                label: 'Structural Load Simulation',
-                status: 'Fail',
-                statusColor: _kSpecError,
-                icon: Icons.cancel,
-              ),
-              _ValidationRow(
-                label: 'WCAG 2.1 Compliance Audit',
-                status: 'Pass',
-                statusColor: _kSpecTeal,
-                icon: Icons.check_circle,
-              ),
-              _ValidationRow(
-                label: 'Disaster Recovery (RTO 4h)',
-                status: 'Queued',
-                statusColor: _kSpecPrimary,
-                icon: Icons.hourglass_empty,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 20),
-        _DashboardPanel(
-          title: 'Certifications',
-          icon: Icons.article_outlined,
-          accent: _kSpecPrimary,
-          child: Column(
-            children: [
-              _DocumentRow(
-                title: 'Fire Safety Cert (Class A)',
-                subtitle: 'Validated: 12 Oct 2023',
-                status: 'Uploaded',
-                pending: false,
-              ),
-              SizedBox(height: 10),
-              _DocumentRow(
-                title: 'Data Privacy Impact (DPIA)',
-                subtitle: 'Awaiting Final Draft',
-                status: 'Pending',
-                pending: true,
-              ),
-              SizedBox(height: 10),
-              _DocumentRow(
-                title: 'SLA Tier 1 Agreement',
-                subtitle: 'Validated: 15 Oct 2023',
-                status: 'Uploaded',
-                pending: false,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLowerInsightGrid() {
-    return Column(
-      children: [
-        const _DashboardPanel(
-          title: 'Risk & Mitigation Strategy',
-          icon: Icons.report_problem_outlined,
-          accent: _kSpecError,
-          child: Column(
-            children: [
-              _RiskRow(
-                profile: 'Data Breach (Unauthorized Access)',
-                control: 'Hardware-backed MFA & Zero Trust tunnels',
-                impact: 'Critical',
-                critical: true,
-              ),
-              _RiskRow(
-                profile: 'Structural Fatigue (Vibration)',
-                control: 'Passive damper systems & real-time sensors',
-                impact: 'Moderate',
-              ),
-              _RiskRow(
-                profile: 'Supply Chain Delay (Lead times)',
-                control: 'Dual-sourcing Tier 1 components',
-                impact: 'Low',
-                low: true,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _DashboardPanel(
-          title: 'Cross-System Integration Points',
-          icon: Icons.hub_outlined,
-          accent: _kSpecPrimary,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return GridView.count(
-                crossAxisCount: constraints.maxWidth < 680 ? 1 : 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: constraints.maxWidth < 680 ? 2.8 : 1.65,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: const [
-                  _IntegrationInsightCard(
-                    title: 'Structural pillars block sightlines in Sector 4G',
-                    area: 'Impact Area: Physical/Visibility',
-                    detail: 'Re-routing required',
-                    state: 'Active Conflict',
-                    accent: _kSpecError,
-                  ),
-                  _IntegrationInsightCard(
-                    title: 'SAML 2.0 Identity bridge to Legacy CRM',
-                    area: 'Impact Area: Digital Architecture',
-                    detail: 'Testing complete',
-                    state: 'Resolved',
-                    accent: _kSpecTeal,
-                  ),
-                  _IntegrationInsightCard(
-                    title: 'Power load for GPU cluster cooling',
-                    area: 'Impact Area: HVAC/Environmental',
-                    detail: 'Under Review',
-                    state: 'Draft Stage',
-                    accent: _kSpecPrimary,
-                  ),
-                  _IntegrationInsightCard(
-                    title: 'Maintenance corridor access control',
-                    area: 'Impact Area: Operations',
-                    detail: 'Dual-key validated',
-                    state: 'Resolved',
-                    accent: _kSpecTeal,
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWorkingNotesCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: _kSpecSurface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _kSpecBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8EEFF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child:
-                    const Icon(Icons.edit_note_rounded, color: _kSpecPrimary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Specialized Working Notes',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: _kSpecPrimaryDeep,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Capture the high-risk specialized decisions that should survive handoff without interpretation loss.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _kSpecSubtext,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _notesController,
-            minLines: 3,
-            maxLines: 8,
-            onChanged: (_) => _scheduleSave(),
-            style:
-                const TextStyle(fontSize: 14, color: _kSpecText, height: 1.5),
-            decoration: InputDecoration(
-              hintText:
-                  'Summarize the specialized design choices here: security zones, compliance obligations, performance hot paths, integration contracts, and validation caveats that must not be lost.',
-              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-              filled: true,
-              fillColor: _kSpecPanelSoft,
-              contentPadding: const EdgeInsets.all(18),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: const BorderSide(color: _kSpecBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: const BorderSide(color: _kSpecBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: const BorderSide(color: _kSpecPrimary, width: 2),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityPatternsCard(List<String> ownerOptions) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            icon: Icons.verified_user_outlined,
-            color: const Color(0xFF1D4ED8),
-            title: 'Security & compliance patterns',
-            subtitle:
-                'Exceptional guardrails for world-class data protection and access control.',
-            actionLabel: 'Add control',
-            onAction: () =>
-                _openSecurityPatternDialog(ownerOptions: ownerOptions),
-          ),
-          const SizedBox(height: 16),
-          _buildTableHeaderRow(
-            columns: const [
-              _TableColumn(label: 'Pattern', flex: 3),
-              _TableColumn(label: 'Decision and scope', flex: 5),
-              _TableColumn(label: 'Owner', flex: 2),
-              _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(
-                  label: 'Action', flex: 2, alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_securityRows.isEmpty)
-            _buildEmptyTableState(
-              message:
-                  'No security patterns captured yet. Add your first control.',
-              actionLabel: 'Add control',
-              onAction: () =>
-                  _openSecurityPatternDialog(ownerOptions: ownerOptions),
-            )
-          else
-            for (int i = 0; i < _securityRows.length; i++) ...[
-              _buildSecurityRow(
-                _securityRows[i],
-                index: i,
-                isStriped: i.isOdd,
-                ownerOptions: ownerOptions,
-              ),
-              if (i != _securityRows.length - 1) const SizedBox(height: 8),
-            ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPerformancePatternsCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            icon: Icons.auto_graph_outlined,
-            color: const Color(0xFF0F766E),
-            title: 'Performance & scale patterns',
-            subtitle:
-                'Exceptional performance decisions that keep the system stable at peak load.',
-            actionLabel: 'Add hotspot',
-            onAction: _openPerformancePatternDialog,
-          ),
-          const SizedBox(height: 16),
-          _buildTableHeaderRow(
-            columns: const [
-              _TableColumn(label: 'Service hotspot', flex: 3),
-              _TableColumn(label: 'Design focus', flex: 5),
-              _TableColumn(label: 'SLA target', flex: 2),
-              _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(
-                  label: 'Action', flex: 2, alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_performanceRows.isEmpty)
-            _buildEmptyTableState(
-              message:
-                  'No performance hotspots yet. Add the first scaling decision.',
-              actionLabel: 'Add hotspot',
-              onAction: _openPerformancePatternDialog,
-            )
-          else
-            for (int i = 0; i < _performanceRows.length; i++) ...[
-              _buildPerformanceRow(_performanceRows[i],
-                  index: i, isStriped: i.isOdd),
-              if (i != _performanceRows.length - 1) const SizedBox(height: 8),
-            ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegrationFlowsCard(List<String> ownerOptions) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            icon: Icons.account_tree_outlined,
-            color: const Color(0xFF9333EA),
-            title: 'Complex data & integration flows',
-            subtitle:
-                'World-class clarity for every system boundary and data contract.',
-            actionLabel: 'Add flow',
-            onAction: () =>
-                _openIntegrationFlowDialog(ownerOptions: ownerOptions),
-          ),
-          const SizedBox(height: 16),
-          _buildTableHeaderRow(
-            columns: const [
-              _TableColumn(label: 'Flow or contract', flex: 4),
-              _TableColumn(label: 'Owner', flex: 2),
-              _TableColumn(label: 'System', flex: 2),
-              _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(
-                  label: 'Action', flex: 2, alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_integrationRows.isEmpty)
-            _buildEmptyTableState(
-              message:
-                  'No integration flows yet. Add the first contract or system boundary.',
-              actionLabel: 'Add flow',
-              onAction: () =>
-                  _openIntegrationFlowDialog(ownerOptions: ownerOptions),
-            )
-          else
-            for (int i = 0; i < _integrationRows.length; i++) ...[
-              _buildIntegrationRow(
-                _integrationRows[i],
-                index: i,
-                isStriped: i.isOdd,
-                ownerOptions: ownerOptions,
-              ),
-              if (i != _integrationRows.length - 1) const SizedBox(height: 8),
-            ],
-          const SizedBox(height: 16),
-          // Export button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _showExportFeedback,
-              icon: const Icon(Icons.download, size: 18),
-              label: const Text('Export specialized design brief'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: LightModeColors.accent,
-                foregroundColor: Colors.black87,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required String actionLabel,
-    required VoidCallback onAction,
-  }) {
-    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 44,
-          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.18)),
+            color: const Color(0xFFFFC812),
+            borderRadius: BorderRadius.circular(6),
           ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: _kSpecPrimaryDeep)),
-              const SizedBox(height: 4),
-              Text(subtitle,
-                  style: const TextStyle(
-                      fontSize: 13, color: _kSpecSubtext, height: 1.5)),
-            ],
+          child: const Text(
+            'SPECIALIZED TRACKS',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: onAction,
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(actionLabel),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: color,
-            side: const BorderSide(color: _kSpecBorder),
-            backgroundColor: _kSpecPanelSoft,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = isNarrow || constraints.maxWidth < 1040;
+            final titleBlock = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('Specialized Design', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                SizedBox(height: 6),
+                Text(
+                  'Manage security patterns, performance engineering, integration contracts, and compliance requirements for the project. '
+                  'Aligned with NIST Cybersecurity Framework, ISO 27001, SOC 2 Type II, and PCI DSS standards. '
+                  'This register ensures specialized design decisions remain traceable, validated, and reviewable throughout the design phase.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                ),
+              ],
+            );
+            if (compact) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [titleBlock, const SizedBox(height: 12), _buildHeaderActions()]);
+            }
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: titleBlock), const SizedBox(width: 20), Flexible(child: _buildHeaderActions())]);
+          },
         ),
       ],
     );
   }
 
-  Widget _buildTableHeaderRow({required List<_TableColumn> columns}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: _kSpecPanelSoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          for (final column in columns)
-            Expanded(
-              flex: column.flex,
-              child: Align(
-                alignment: column.alignment,
-                child: Text(
-                  column.label.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
-                    color: _kSpecSubtext,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityRow(
-    SecurityPatternRow row, {
-    required int index,
-    required bool isStriped,
-    required List<String> ownerOptions,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? _kSpecPanelSoft : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: _buildTableField(
-              initialValue: row.pattern,
-              hintText: 'Security pattern',
-              onChanged: (value) {
-                row.pattern = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 5,
-            child: _buildTableField(
-              initialValue: row.decision,
-              hintText: 'Decision and scope',
-              maxLines: 2,
-              onChanged: (value) {
-                row.decision = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildOwnerDropdown(
-              value: row.owner,
-              options: ownerOptions,
-              onChanged: (value) {
-                row.owner = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildStatusDropdown(
-              value: row.status,
-              onChanged: (value) {
-                setState(() => _securityRows[index].status = value);
-                _scheduleSave();
-              },
-              accent: const Color(0xFF1D4ED8),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.center,
-              child: _buildDeleteAction(() async {
-                final confirmed = await _confirmDelete('security pattern');
-                if (!confirmed) return;
-                setState(() => _securityRows.removeAt(index));
-                _scheduleSave();
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPerformanceRow(PerformancePatternRow row,
-      {required int index, required bool isStriped}) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? _kSpecPanelSoft : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: _buildTableField(
-              initialValue: row.hotspot,
-              hintText: 'Service hotspot',
-              onChanged: (value) {
-                row.hotspot = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 5,
-            child: _buildTableField(
-              initialValue: row.focus,
-              hintText: 'Design focus',
-              maxLines: 2,
-              onChanged: (value) {
-                row.focus = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildTableField(
-              initialValue: row.sla,
-              hintText: 'SLA target',
-              onChanged: (value) {
-                row.sla = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildStatusDropdown(
-              value: row.status,
-              onChanged: (value) {
-                setState(() => _performanceRows[index].status = value);
-                _scheduleSave();
-              },
-              accent: const Color(0xFF0F766E),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.center,
-              child: _buildDeleteAction(() async {
-                final confirmed = await _confirmDelete('performance pattern');
-                if (!confirmed) return;
-                setState(() => _performanceRows.removeAt(index));
-                _scheduleSave();
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegrationRow(
-    IntegrationFlowRow row, {
-    required int index,
-    required bool isStriped,
-    required List<String> ownerOptions,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? _kSpecPanelSoft : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: _buildTableField(
-              initialValue: row.flow,
-              hintText: 'Flow or contract',
-              maxLines: 2,
-              onChanged: (value) {
-                row.flow = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildOwnerDropdown(
-              value: row.owner,
-              options: ownerOptions,
-              onChanged: (value) {
-                row.owner = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildTableField(
-              initialValue: row.system,
-              hintText: 'System',
-              onChanged: (value) {
-                row.system = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildStatusDropdown(
-              value: row.status,
-              onChanged: (value) {
-                setState(() => _integrationRows[index].status = value);
-                _scheduleSave();
-              },
-              accent: const Color(0xFF9333EA),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.center,
-              child: _buildDeleteAction(() async {
-                final confirmed = await _confirmDelete('integration flow');
-                if (!confirmed) return;
-                setState(() => _integrationRows.removeAt(index));
-                _scheduleSave();
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableField({
-    required String initialValue,
-    required String hintText,
-    int maxLines = 1,
-    ValueChanged<String>? onChanged,
-  }) {
-    return TextFormField(
-      initialValue: initialValue,
-      minLines: 1,
-      maxLines: null,
-      textAlign: TextAlign.center,
-      textAlignVertical: TextAlignVertical.center,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
-        isDense: true,
-        filled: true,
-        fillColor: _kSpecPanelSoft,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecPrimary, width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOwnerDropdown({
-    required String value,
-    required List<String> options,
-    required ValueChanged<String> onChanged,
-  }) {
-    final normalized = value.trim();
-    final items = normalized.isEmpty || options.contains(normalized)
-        ? options
-        : [normalized, ...options];
-    return DropdownButtonFormField<String>(
-      initialValue: items.first,
-      alignment: Alignment.center,
-      isExpanded: true,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      selectedItemBuilder: (context) => items
-          .map((owner) => Align(
-                alignment: Alignment.center,
-                child: Text(owner, textAlign: TextAlign.center),
-              ))
-          .toList(),
-      items: items
-          .map((owner) => DropdownMenuItem(
-                value: owner,
-                child: Center(child: Text(owner, textAlign: TextAlign.center)),
-              ))
-          .toList(),
-      onChanged: (newValue) {
-        if (newValue == null) return;
-        onChanged(newValue);
-      },
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: _kSpecPanelSoft,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecPrimary, width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyTableState({
-    required String message,
-    required String actionLabel,
-    required VoidCallback onAction,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: _kSpecPanelSoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ),
-          OutlinedButton(
-            onPressed: onAction,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1A1D1F),
-              side: const BorderSide(color: _kSpecBorder),
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: Text(actionLabel),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusDropdown({
-    required String value,
-    required ValueChanged<String> onChanged,
-    required Color accent,
-  }) {
-    final normalizedValue = _normalizeStatus(value);
-    return DropdownButtonFormField<String>(
-      initialValue: normalizedValue,
-      alignment: Alignment.center,
-      isExpanded: true,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      selectedItemBuilder: (context) => _statusOptions
-          .map((status) => Align(
-                alignment: Alignment.center,
-                child: Text(status, textAlign: TextAlign.center),
-              ))
-          .toList(),
-      items: _statusOptions
-          .map((status) => DropdownMenuItem(
-                value: status,
-                child: Center(child: Text(status, textAlign: TextAlign.center)),
-              ))
-          .toList(),
-      onChanged: (newValue) {
-        if (newValue == null) return;
-        onChanged(newValue);
-      },
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: _kSpecPanelSoft,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kSpecBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: accent, width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteAction(Future<void> Function() onDelete) {
-    return TextButton.icon(
-      onPressed: () async {
-        await onDelete();
-      },
-      icon: const Icon(Icons.delete_outline, size: 18),
-      label: const Text('Delete'),
-      style: TextButton.styleFrom(
-        foregroundColor: _kSpecError,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      ),
-    );
-  }
-
-  Future<bool> _confirmDelete(String label) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete row?'),
-        content: Text('Remove this $label from the table?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style:
-                TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    return result ?? false;
-  }
-
-  Future<void> _openSecurityPatternDialog({
-    required List<String> ownerOptions,
-  }) async {
-    final patternController = TextEditingController();
-    final decisionController = TextEditingController();
-    String owner = ownerOptions.first;
-    String status = 'Draft';
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: const Text('Add security control'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: patternController,
-                  decoration: const InputDecoration(
-                    labelText: 'Pattern',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: decisionController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Decision and scope',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: owner,
-                  items: ownerOptions
-                      .map((option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() => owner = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Owner',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: status,
-                  items: _statusOptions
-                      .map((option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() => status = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Add control'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved != true) return;
-    setState(() {
-      _securityRows.add(
-        SecurityPatternRow(
-          pattern: patternController.text.trim(),
-          decision: decisionController.text.trim(),
-          owner: owner,
-          status: status,
-        ),
-      );
-    });
-    _scheduleSave();
-  }
-
-  Future<void> _openPerformancePatternDialog() async {
-    final hotspotController = TextEditingController();
-    final focusController = TextEditingController();
-    final slaController = TextEditingController();
-    String status = 'Draft';
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: const Text('Add performance hotspot'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: hotspotController,
-                  decoration: const InputDecoration(
-                    labelText: 'Service hotspot',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: focusController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Design focus',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: slaController,
-                  decoration: const InputDecoration(
-                    labelText: 'SLA target',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: status,
-                  items: _statusOptions
-                      .map((option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() => status = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Add hotspot'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved != true) return;
-    setState(() {
-      _performanceRows.add(
-        PerformancePatternRow(
-          hotspot: hotspotController.text.trim(),
-          focus: focusController.text.trim(),
-          sla: slaController.text.trim(),
-          status: status,
-        ),
-      );
-    });
-    _scheduleSave();
-  }
-
-  Future<void> _openIntegrationFlowDialog({
-    required List<String> ownerOptions,
-  }) async {
-    final flowController = TextEditingController();
-    final systemController = TextEditingController();
-    String owner = ownerOptions.first;
-    String status = 'Draft';
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: const Text('Add integration flow'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: flowController,
-                  decoration: const InputDecoration(
-                    labelText: 'Flow or contract',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: systemController,
-                  decoration: const InputDecoration(
-                    labelText: 'System',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: owner,
-                  items: ownerOptions
-                      .map((option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() => owner = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Owner',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: status,
-                  items: _statusOptions
-                      .map((option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() => status = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Add flow'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved != true) return;
-    setState(() {
-      _integrationRows.add(
-        IntegrationFlowRow(
-          flow: flowController.text.trim(),
-          owner: owner,
-          system: systemController.text.trim(),
-          status: status,
-        ),
-      );
-    });
-    _scheduleSave();
-  }
-
-  void _showExportFeedback() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Specialized design brief export will use the latest saved rows.',
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigation(bool isMobile) {
-    const accent = LightModeColors.lightPrimary;
-    return Column(
+  Widget _buildHeaderActions() {
+    return Wrap(
+      spacing: 10, runSpacing: 10,
       children: [
-        const Divider(),
-        const SizedBox(height: 16),
-        if (isMobile)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Design phase · Specialized design',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, size: 18),
-                label: const Text('Back: Long lead equipment ordering'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: accent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  side: const BorderSide(color: accent),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () => DesignDeliverablesScreen.open(context),
-                icon: const Icon(Icons.arrow_forward, size: 18),
-                label: const Text('Next: Design deliverables'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accent,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          )
-        else
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, size: 18),
-                label: const Text('Back: Long lead equipment ordering'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: accent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  side: const BorderSide(color: accent),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text('Design phase · Specialized design',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () => DesignDeliverablesScreen.open(context),
-                icon: const Icon(Icons.arrow_forward, size: 18),
-                label: const Text('Next: Design deliverables'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accent,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        const SizedBox(height: 16),
-        // Footer hint
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.lightbulb_outline,
-                size: 18, color: LightModeColors.accent),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Only capture the opinions that truly shape implementation: anything that affects security posture, resilience, data integrity, or cross-team contracts should live in this specialized design summary.',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ),
-          ],
-        ),
+        _actionButton(Icons.add, 'Add control', onPressed: () => _showSecurityDialog()),
+        _actionButton(Icons.upload_outlined, 'Import patterns', onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import patterns from security tooling is available from the Security Register.')));
+        }),
+        _actionButton(Icons.description_outlined, 'Export spec', onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Export specification is queued. Use the registers while export tools are finalized.')));
+        }),
+        _primaryButton('Start security review'),
       ],
     );
   }
-}
 
-class _TableColumn {
-  const _TableColumn({
-    required this.label,
-    this.flex = 1,
-    this.alignment = Alignment.center,
-  });
-
-  final String label;
-  final int flex;
-  final Alignment alignment;
-}
-
-class _HeroChip extends StatelessWidget {
-  const _HeroChip({
-    required this.label,
-    required this.icon,
-    this.selected = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: selected ? _kSpecPanel : _kSpecSurface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-            color: selected ? const Color(0xFFC6D7FF) : _kSpecBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: selected ? _kSpecPrimary : _kSpecSubtext),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: selected ? _kSpecPrimary : _kSpecSubtext,
-            ),
-          ),
-        ],
+  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
+    return OutlinedButton.icon(
+      onPressed: onPressed ?? () {},
+      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
-}
 
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({
-    required this.label,
-    required this.color,
-    required this.background,
-    required this.icon,
-  });
-
-  final String label;
-  final Color color;
-  final Color background;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
+  Widget _primaryButton(String label) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        setState(() { _selectedFilters..clear()..add('Review pending'); });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Security review started. Filter set to items pending review.')));
+      },
+      icon: const Icon(Icons.play_arrow, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF0EA5E9), foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
-}
 
-class _DashboardPanel extends StatelessWidget {
-  const _DashboardPanel({
-    required this.title,
-    required this.icon,
-    required this.accent,
-    required this.child,
-  });
+  // ─── Filter Chips ────────────────────────────────────────────────
 
-  final String title;
-  final IconData icon;
-  final Color accent;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: _kSpecSurface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _kSpecBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: _kSpecPrimaryDeep,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          child,
-        ],
-      ),
+  Widget _buildFilterChips() {
+    const filters = ['All items', 'Security', 'Performance', 'Integrations', 'Compliance', 'Review pending'];
+    return Wrap(
+      spacing: 10, runSpacing: 10,
+      children: filters.map((filter) {
+        final selected = _selectedFilters.contains(filter);
+        return ChoiceChip(
+          label: Text(filter, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : const Color(0xFF475569))),
+          selected: selected,
+          selectedColor: const Color(0xFF111827),
+          backgroundColor: Colors.white,
+          shape: StadiumBorder(side: BorderSide(color: const Color(0xFFE5E7EB))),
+          onSelected: (value) {
+            setState(() {
+              if (value) {
+                if (filter == 'All items') { _selectedFilters..clear()..add(filter); }
+                else { _selectedFilters..remove('All items')..add(filter); }
+              } else {
+                _selectedFilters.remove(filter);
+                if (_selectedFilters.isEmpty) _selectedFilters.add('All items');
+              }
+            });
+          },
+        );
+      }).toList(),
     );
   }
-}
 
-class _ComplianceRow extends StatelessWidget {
-  const _ComplianceRow({required this.name, required this.status});
+  // ─── Stats Row ────────────────────────────────────────────────────
 
-  final String name;
-  final String status;
+  Widget _buildStatsRow(bool isNarrow) {
+    final securityReady = _securityRows.where((r) => r.status == 'Ready').length;
+    final perfDraft = _performanceRows.where((r) => r.status == 'Draft' || r.status == 'Pending').length;
+    final integrationReady = _integrationRows.where((r) => r.status == 'Ready').length;
+    final reviewPending = _reviewGates.where((g) => g.status == 'Pending' || g.status == 'In Review').length;
 
-  @override
-  Widget build(BuildContext context) {
-    final mandatory = status.toLowerCase() == 'mandatory';
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kSpecBorder)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _kSpecText,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color:
-                  mandatory ? const Color(0xFFEAF8F3) : const Color(0xFFEAF1FF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              status.toUpperCase(),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: mandatory ? _kSpecTeal : _kSpecPrimary,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SpecGrid extends StatelessWidget {
-  const _SpecGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      ('Encryption Standard', 'AES-256 GCM (Encrypted at Rest)'),
-      ('Load Capacity', '500kg/m² (Seismic Grade B)'),
-      ('Auth Protocol', 'OpenID Connect + mTLS'),
-      ('HVAC Redundancy', 'N+2 Parallel Configuration'),
-      ('Network Latency', '< 15ms Intra-Regional'),
-      ('API Rate Limit', '5,000 Req/min (Burst 10k)'),
+    final stats = [
+      _StatCardData('${_securityRows.length}', 'Security Controls', '$securityReady ready', const Color(0xFF0EA5E9)),
+      _StatCardData('$perfDraft', 'Performance Pending', 'SLA targets pending', const Color(0xFF10B981)),
+      _StatCardData('${_integrationRows.length}', 'Integrations', '$integrationReady contract-ready', const Color(0xFFF97316)),
+      _StatCardData('$reviewPending', 'Pending Reviews', reviewPending > 0 ? 'Require attention' : 'All reviewed', const Color(0xFF6366F1)),
     ];
 
-    return Wrap(
-      spacing: 14,
-      runSpacing: 14,
-      children: [
-        for (final item in items)
-          SizedBox(
-            width: 280,
-            child: Container(
-              padding: const EdgeInsets.only(bottom: 12),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: _kSpecBorder)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.$1.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: _kSpecSubtext,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.$2,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: _kSpecPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
+    if (isNarrow) {
+      return Column(children: [for (int i = 0; i < stats.length; i++) ...[SizedBox(width: double.infinity, child: _buildStatCard(stats[i])), if (i < stats.length - 1) const SizedBox(height: 12)]]);
+    }
+    return Row(children: [for (int i = 0; i < stats.length; i++) ...[Expanded(child: _buildStatCard(stats[i])), if (i < stats.length - 1) const SizedBox(width: 12)]]);
   }
-}
 
-class _PersonRow extends StatelessWidget {
-  const _PersonRow({
-    required this.name,
-    required this.role,
-    required this.badge,
-    required this.badgeColor,
-  });
-
-  final String name;
-  final String role;
-  final String badge;
-  final Color badgeColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _kSpecPanelSoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: const Color(0xFFDCE7FF),
-            child: Text(
-              name.split(' ').map((e) => e[0]).take(2).join(),
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                color: _kSpecPrimaryDeep,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: _kSpecText,
-                  ),
-                ),
-                Text(
-                  role.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: _kSpecSubtext,
-                    letterSpacing: 0.7,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              badge.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                color: badgeColor,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ValidationRow extends StatelessWidget {
-  const _ValidationRow({
-    required this.label,
-    required this.status,
-    required this.statusColor,
-    required this.icon,
-  });
-
-  final String label;
-  final String status;
-  final Color statusColor;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kSpecBorder)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _kSpecText,
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Icon(icon, size: 18, color: statusColor),
-              const SizedBox(width: 6),
-              Text(
-                status.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: statusColor,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocumentRow extends StatelessWidget {
-  const _DocumentRow({
-    required this.title,
-    required this.subtitle,
-    required this.status,
-    required this.pending,
-  });
-
-  final String title;
-  final String subtitle;
-  final String status;
-  final bool pending;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _kSpecPanelSoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            pending ? Icons.cloud_upload_outlined : Icons.description_outlined,
-            color: _kSpecSubtext,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: pending ? _kSpecSubtext : _kSpecText,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _kSpecSubtext,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            status.toUpperCase(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              color: pending ? _kSpecError : _kSpecTeal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RiskRow extends StatelessWidget {
-  const _RiskRow({
-    required this.profile,
-    required this.control,
-    required this.impact,
-    this.critical = false,
-    this.low = false,
-  });
-
-  final String profile;
-  final String control;
-  final String impact;
-  final bool critical;
-  final bool low;
-
-  @override
-  Widget build(BuildContext context) {
-    final badgeColor = critical
-        ? const Color(0xFFFEE4E2)
-        : low
-            ? const Color(0xFFE6EEFF)
-            : const Color(0xFFEAF1FF);
-    final textColor = critical
-        ? _kSpecError
-        : low
-            ? _kSpecPrimary
-            : _kSpecPrimaryDeep;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _kSpecBorder)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              profile,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: _kSpecText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 3,
-            child: Text(
-              control,
-              style: const TextStyle(
-                fontSize: 12,
-                color: _kSpecSubtext,
-                height: 1.5,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-            decoration: BoxDecoration(
-              color: badgeColor,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              impact.toUpperCase(),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: textColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IntegrationInsightCard extends StatelessWidget {
-  const _IntegrationInsightCard({
-    required this.title,
-    required this.area,
-    required this.detail,
-    required this.state,
-    required this.accent,
-  });
-
-  final String title;
-  final String area;
-  final String detail;
-  final String state;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStatCard(_StatCardData data) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kSpecPanelSoft,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kSpecBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            area.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: _kSpecSubtext,
-              letterSpacing: 0.7,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: _kSpecText,
-              height: 1.4,
-            ),
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  detail,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _kSpecSubtext,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-              Text(
-                state.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: accent,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
+        const SizedBox(height: 6),
+        Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        const SizedBox(height: 6),
+        Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+      ]),
     );
   }
+
+  // ─── Framework Guide ────────────────────────────────────────────────
+
+  Widget _buildFrameworkGuide() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Specialized design framework', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+        const SizedBox(height: 6),
+        const Text(
+          'Grounded in NIST Cybersecurity Framework (CSF), ISO/IEC 27001:2022 Annex A controls, '
+          'SOC 2 Type II trust service criteria, and PCI DSS v4.0 requirements. Effective specialized '
+          'design ensures that security controls, performance targets, integration contracts, and regulatory '
+          'compliance obligations remain validated, testable, and auditable throughout the project lifecycle.',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+        ),
+        const SizedBox(height: 18),
+        Column(children: [
+          _buildGuideCard(Icons.shield_outlined, 'Security & Access Control', 'Implement defense-in-depth with Zero Trust architecture, encryption at rest and in transit, MFA enforcement, and continuous audit logging. Align with NIST SP 800-207 and CIS Controls v8.', const Color(0xFF2563EB)),
+          const SizedBox(height: 12),
+          _buildGuideCard(Icons.speed_outlined, 'Performance & Scalability', 'Define SLA targets, implement caching strategies, optimize database queries, and establish auto-scaling thresholds. Validate under load testing with p95/p99 latency benchmarks.', const Color(0xFF10B981)),
+          const SizedBox(height: 12),
+          _buildGuideCard(Icons.hub_outlined, 'Integration Contracts', 'Formalize API contracts, authentication flows, error handling patterns, and data schemas for all external system integrations before development begins. Use OpenAPI 3.1 specifications.', const Color(0xFFF59E0B)),
+          const SizedBox(height: 12),
+          _buildGuideCard(Icons.verified_user_outlined, 'Compliance & Certification', 'Map design decisions to regulatory requirements (SOC 2, GDPR, PCI DSS, ISO 27001). Maintain evidence trails, conduct gap assessments, and schedule certification audits.', const Color(0xFFEF4444)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _buildGuideCard(IconData icon, String title, String description, Color color) {
+    return Container(
+      width: double.infinity, padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: color.withOpacity(0.04), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.12))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 16, color: color)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color))),
+        ]),
+        const SizedBox(height: 10),
+        Text(description, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF4B5563), height: 1.5)),
+      ]),
+    );
+  }
+
+  // ─── Panel Shell ────────────────────────────────────────────────
+
+  Widget _buildPanelShell({required String title, required String subtitle, Widget? trailing, required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(20), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+            const SizedBox(height: 4),
+            Text(subtitle, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.45)),
+          ])),
+          if (trailing != null) ...[const SizedBox(width: 12), trailing],
+        ])),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        child,
+      ]),
+    );
+  }
+
+  // ─── Table Helpers ────────────────────────────────────────────────
+
+  Widget _buildTableHeader(List<_ColDef> columns) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+      child: Row(children: columns.map((col) {
+        if (col.flex != null) return Expanded(flex: col.flex!, child: Text(col.label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8)));
+        return SizedBox(width: col.width, child: Text(col.label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center));
+      }).toList()),
+    );
+  }
+
+  Widget _buildTableRow({required List<Widget> cells, required bool isLast}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(border: isLast ? null : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: cells),
+    );
+  }
+
+  Widget _buildStatusTag(String status) {
+    Color color;
+    switch (status) {
+      case 'Ready': color = const Color(0xFF10B981); break;
+      case 'In review': color = const Color(0xFF0EA5E9); break;
+      case 'In progress': color = const Color(0xFF8B5CF6); break;
+      case 'Draft': case 'Pending': color = const Color(0xFFF59E0B); break;
+      case 'Deprecated': color = const Color(0xFF9CA3AF); break;
+      default: color = const Color(0xFF6B7280);
+    }
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)));
+  }
+
+  Widget _buildPriorityTag(String priority) {
+    Color color;
+    switch (priority) {
+      case 'Critical': color = const Color(0xFFEF4444); break;
+      case 'High': color = const Color(0xFFF97316); break;
+      case 'Medium': color = const Color(0xFFF59E0B); break;
+      default: color = const Color(0xFF6B7280);
+    }
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(priority, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)));
+  }
+
+  Widget _buildComplianceStatusTag(String status) {
+    Color color;
+    switch (status) {
+      case 'Compliant': color = const Color(0xFF10B981); break;
+      case 'Non-compliant': color = const Color(0xFFEF4444); break;
+      case 'In progress': color = const Color(0xFF0EA5E9); break;
+      case 'Partial': color = const Color(0xFFF59E0B); break;
+      case 'Not assessed': color = const Color(0xFF9CA3AF); break;
+      default: color = const Color(0xFF6B7280);
+    }
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)));
+  }
+
+  Widget _buildReviewGateStatusTag(String status) {
+    Color color;
+    switch (status) {
+      case 'Approved': color = const Color(0xFF10B981); break;
+      case 'In Review': color = const Color(0xFF0EA5E9); break;
+      case 'Pending': color = const Color(0xFFF59E0B); break;
+      case 'Rejected': color = const Color(0xFFEF4444); break;
+      case 'Waived': color = const Color(0xFF8B5CF6); break;
+      case 'Not Started': color = const Color(0xFF9CA3AF); break;
+      default: color = const Color(0xFF6B7280);
+    }
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)));
+  }
+
+  Widget _crudButtons(VoidCallback onEdit, VoidCallback onDelete) {
+    return SizedBox(width: 60, child: Row(mainAxisSize: MainAxisSize.min, children: [
+      IconButton(icon: const Icon(Icons.edit_outlined, size: 16), onPressed: onEdit, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+      IconButton(icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)), onPressed: onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+    ]));
+  }
+
+  // ─── Security Register ──────────────────────────────────────────
+
+  Widget _buildSecurityRegister() {
+    return _buildPanelShell(
+      title: 'Security & compliance patterns register',
+      subtitle: 'Track security controls, access patterns, and encryption decisions aligned with NIST CSF and ISO 27001 Annex A controls.',
+      trailing: OutlinedButton.icon(
+        onPressed: () => _showSecurityDialog(),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Add control', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF475569), side: const BorderSide(color: Color(0xFFE2E8F0)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+      child: _securityRows.isEmpty
+          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No security patterns defined. Add a control to start tracking.', style: TextStyle(color: Color(0xFF64748B)))))
+          : Column(children: [
+              _buildTableHeader([_ColDef('PATTERN', flex: 3), _ColDef('DECISION & SCOPE', flex: 5), _ColDef('OWNER', width: 120), _ColDef('STATUS', width: 100), _ColDef('', width: 60)]),
+              ...List.generate(_securityRows.length, (i) {
+                final row = _securityRows[i];
+                return _buildTableRow(isLast: i == _securityRows.length - 1, cells: [
+                  Expanded(flex: 3, child: Text(row.pattern, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
+                  Expanded(flex: 5, child: Text(row.decision, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
+                  SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  _crudButtons(() => _showSecurityDialog(existing: row), () => _confirmDelete(() { setState(() => _securityRows.remove(row)); _scheduleSave(); })),
+                ]);
+              }),
+            ]),
+    );
+  }
+
+  // ─── Performance Register ────────────────────────────────────────
+
+  Widget _buildPerformanceRegister() {
+    return _buildPanelShell(
+      title: 'Performance & scale patterns register',
+      subtitle: 'Track performance hotspots, SLA targets, and scaling decisions aligned with SRE best practices and Google SRE handbook principles.',
+      trailing: OutlinedButton.icon(
+        onPressed: () => _showPerformanceDialog(),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Add hotspot', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF475569), side: const BorderSide(color: Color(0xFFE2E8F0)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+      child: _performanceRows.isEmpty
+          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No performance hotspots defined. Add a scaling decision to start tracking.', style: TextStyle(color: Color(0xFF64748B)))))
+          : Column(children: [
+              _buildTableHeader([_ColDef('HOTSPOT', flex: 3), _ColDef('DESIGN FOCUS', flex: 5), _ColDef('SLA', width: 130), _ColDef('STATUS', width: 100), _ColDef('', width: 60)]),
+              ...List.generate(_performanceRows.length, (i) {
+                final row = _performanceRows[i];
+                return _buildTableRow(isLast: i == _performanceRows.length - 1, cells: [
+                  Expanded(flex: 3, child: Text(row.hotspot, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
+                  Expanded(flex: 5, child: Text(row.focus, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
+                  SizedBox(width: 130, child: Text(row.sla, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0EA5E9)))),
+                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  _crudButtons(() => _showPerformanceDialog(existing: row), () => _confirmDelete(() { setState(() => _performanceRows.remove(row)); _scheduleSave(); })),
+                ]);
+              }),
+            ]),
+    );
+  }
+
+  // ─── Integration Register ────────────────────────────────────────
+
+  Widget _buildIntegrationRegister() {
+    return _buildPanelShell(
+      title: 'Integration contracts register',
+      subtitle: 'Track integration flows, API contracts, and system connections aligned with OpenAPI 3.1 and event-driven architecture patterns.',
+      trailing: OutlinedButton.icon(
+        onPressed: () => _showIntegrationDialog(),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Add flow', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF475569), side: const BorderSide(color: Color(0xFFE2E8F0)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+      child: _integrationRows.isEmpty
+          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No integration flows defined. Add an integration contract to start tracking.', style: TextStyle(color: Color(0xFF64748B)))))
+          : Column(children: [
+              _buildTableHeader([_ColDef('FLOW', flex: 4), _ColDef('SYSTEM', width: 150), _ColDef('OWNER', width: 120), _ColDef('STATUS', width: 100), _ColDef('', width: 60)]),
+              ...List.generate(_integrationRows.length, (i) {
+                final row = _integrationRows[i];
+                return _buildTableRow(isLast: i == _integrationRows.length - 1, cells: [
+                  Expanded(flex: 4, child: Text(row.flow, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
+                  SizedBox(width: 150, child: Text(row.system, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+                  SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  _crudButtons(() => _showIntegrationDialog(existing: row), () => _confirmDelete(() { setState(() => _integrationRows.remove(row)); _scheduleSave(); })),
+                ]);
+              }),
+            ]),
+    );
+  }
+
+  // ─── Compliance Register ────────────────────────────────────────
+
+  Widget _buildComplianceRegister() {
+    return _buildPanelShell(
+      title: 'Compliance & certification register',
+      subtitle: 'Track regulatory compliance status, certification progress, and evidence collection aligned with SOC 2, GDPR, PCI DSS, and ISO 27001 requirements.',
+      trailing: OutlinedButton.icon(
+        onPressed: () => _showComplianceDialog(),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Add standard', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF475569), side: const BorderSide(color: Color(0xFFE2E8F0)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+      child: _complianceRows.isEmpty
+          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No compliance standards defined. Add a standard to start tracking.', style: TextStyle(color: Color(0xFF64748B)))))
+          : Column(children: [
+              _buildTableHeader([_ColDef('STANDARD', flex: 3), _ColDef('DESCRIPTION', flex: 4), _ColDef('OWNER', width: 120), _ColDef('STATUS', width: 110), _ColDef('', width: 60)]),
+              ...List.generate(_complianceRows.length, (i) {
+                final row = _complianceRows[i];
+                return _buildTableRow(isLast: i == _complianceRows.length - 1, cells: [
+                  Expanded(flex: 3, child: Text(row.standard, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
+                  Expanded(flex: 4, child: Text(row.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
+                  SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+                  SizedBox(width: 110, child: _buildComplianceStatusTag(row.status)),
+                  _crudButtons(() => _showComplianceDialog(existing: row), () => _confirmDelete(() { setState(() => _complianceRows.removeWhere((r) => r.id == row.id)); _scheduleSave(); })),
+                ]);
+              }),
+            ]),
+    );
+  }
+
+  // ─── Review Gates ────────────────────────────────────────────────
+
+  Widget _buildReviewGatesPanel() {
+    return _buildPanelShell(
+      title: 'Specialized design review gates',
+      subtitle: 'Approval checkpoints aligned with NIST CSF and ISO 27001 design review cycles. Each gate must be cleared before proceeding to the next specialized design maturity level.',
+      trailing: OutlinedButton.icon(
+        onPressed: () => _showReviewGateDialog(),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Add gate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF475569), side: const BorderSide(color: Color(0xFFE2E8F0)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+      child: _reviewGates.isEmpty
+          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No review gates defined. Add a gate to start tracking specialized design reviews.', style: TextStyle(color: Color(0xFF64748B)))))
+          : Column(children: [
+              _buildTableHeader([_ColDef('GATE', flex: 4), _ColDef('APPROVER', width: 130), _ColDef('PRIORITY', width: 80), _ColDef('STATUS', width: 100), _ColDef('', width: 60)]),
+              ...List.generate(_reviewGates.length, (i) {
+                final row = _reviewGates[i];
+                return _buildTableRow(isLast: i == _reviewGates.length - 1, cells: [
+                  Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(row.gate, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                    const SizedBox(height: 2),
+                    Text(row.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4)),
+                  ])),
+                  SizedBox(width: 130, child: Text(row.approver, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+                  SizedBox(width: 80, child: _buildPriorityTag(row.priority)),
+                  SizedBox(width: 100, child: _buildReviewGateStatusTag(row.status)),
+                  _crudButtons(() => _showReviewGateDialog(existing: row), () => _confirmDelete(() { setState(() => _reviewGates.removeWhere((g) => g.id == row.id)); _scheduleSave(); })),
+                ]);
+              }),
+            ]),
+    );
+  }
+
+  // ─── CRUD Dialogs ─────────────────────────────────────────────────
+
+  Future<void> _showSecurityDialog({SecurityPatternRow? existing}) async {
+    final patternCtrl = TextEditingController(text: existing?.pattern ?? '');
+    final decisionCtrl = TextEditingController(text: existing?.decision ?? '');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    String status = existing?.status ?? 'Draft';
+
+    final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
+      title: Text(existing == null ? 'Add security control' : 'Edit security control'),
+      content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: patternCtrl, decoration: const InputDecoration(labelText: 'Pattern name', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        TextField(controller: decisionCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Decision & scope', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
+        ]),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(existing == null ? 'Add control' : 'Save')),
+      ],
+    )));
+    if (saved != true) return;
+    setState(() {
+      if (existing == null) {
+        _securityRows.add(SecurityPatternRow(pattern: patternCtrl.text.trim(), decision: decisionCtrl.text.trim(), owner: ownerCtrl.text.trim(), status: status));
+      } else {
+        existing.pattern = patternCtrl.text.trim();
+        existing.decision = decisionCtrl.text.trim();
+        existing.owner = ownerCtrl.text.trim();
+        existing.status = status;
+      }
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _showPerformanceDialog({PerformancePatternRow? existing}) async {
+    final hotspotCtrl = TextEditingController(text: existing?.hotspot ?? '');
+    final focusCtrl = TextEditingController(text: existing?.focus ?? '');
+    final slaCtrl = TextEditingController(text: existing?.sla ?? '');
+    String status = existing?.status ?? 'Draft';
+
+    final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
+      title: Text(existing == null ? 'Add performance hotspot' : 'Edit performance hotspot'),
+      content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: hotspotCtrl, decoration: const InputDecoration(labelText: 'Service hotspot', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        TextField(controller: focusCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Design focus', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: slaCtrl, decoration: const InputDecoration(labelText: 'SLA target', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
+        ]),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(existing == null ? 'Add hotspot' : 'Save')),
+      ],
+    )));
+    if (saved != true) return;
+    setState(() {
+      if (existing == null) {
+        _performanceRows.add(PerformancePatternRow(hotspot: hotspotCtrl.text.trim(), focus: focusCtrl.text.trim(), sla: slaCtrl.text.trim(), status: status));
+      } else {
+        existing.hotspot = hotspotCtrl.text.trim();
+        existing.focus = focusCtrl.text.trim();
+        existing.sla = slaCtrl.text.trim();
+        existing.status = status;
+      }
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _showIntegrationDialog({IntegrationFlowRow? existing}) async {
+    final flowCtrl = TextEditingController(text: existing?.flow ?? '');
+    final systemCtrl = TextEditingController(text: existing?.system ?? '');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    String status = existing?.status ?? 'Draft';
+
+    final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
+      title: Text(existing == null ? 'Add integration flow' : 'Edit integration flow'),
+      content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: flowCtrl, decoration: const InputDecoration(labelText: 'Flow name', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        TextField(controller: systemCtrl, decoration: const InputDecoration(labelText: 'External system', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
+        ]),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(existing == null ? 'Add flow' : 'Save')),
+      ],
+    )));
+    if (saved != true) return;
+    setState(() {
+      if (existing == null) {
+        _integrationRows.add(IntegrationFlowRow(flow: flowCtrl.text.trim(), owner: ownerCtrl.text.trim(), system: systemCtrl.text.trim(), status: status));
+      } else {
+        existing.flow = flowCtrl.text.trim();
+        existing.owner = ownerCtrl.text.trim();
+        existing.system = systemCtrl.text.trim();
+        existing.status = status;
+      }
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _showComplianceDialog({_ComplianceRow? existing}) async {
+    final standardCtrl = TextEditingController(text: existing?.standard ?? '');
+    final descCtrl = TextEditingController(text: existing?.description ?? '');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    final evidenceCtrl = TextEditingController(text: existing?.evidence ?? '');
+    String status = existing?.status ?? 'Not assessed';
+
+    final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
+      title: Text(existing == null ? 'Add compliance standard' : 'Edit compliance standard'),
+      content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: standardCtrl, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        TextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: DropdownButtonFormField<String>(value: status, items: _complianceStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
+        ]),
+        const SizedBox(height: 12),
+        TextField(controller: evidenceCtrl, decoration: const InputDecoration(labelText: 'Evidence / notes', border: OutlineInputBorder())),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(existing == null ? 'Add standard' : 'Save')),
+      ],
+    )));
+    if (saved != true) return;
+    setState(() {
+      if (existing == null) {
+        _complianceRows.add(_ComplianceRow(id: _newId(), standard: standardCtrl.text.trim(), description: descCtrl.text.trim(), owner: ownerCtrl.text.trim(), status: status, evidence: evidenceCtrl.text.trim()));
+      } else {
+        existing.standard = standardCtrl.text.trim();
+        existing.description = descCtrl.text.trim();
+        existing.owner = ownerCtrl.text.trim();
+        existing.status = status;
+        existing.evidence = evidenceCtrl.text.trim();
+      }
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _showReviewGateDialog({_ReviewGateRow? existing}) async {
+    final gateCtrl = TextEditingController(text: existing?.gate ?? '');
+    final descCtrl = TextEditingController(text: existing?.description ?? '');
+    final approverCtrl = TextEditingController(text: existing?.approver ?? '');
+    final deptCtrl = TextEditingController(text: existing?.department ?? '');
+    String priority = existing?.priority ?? 'High';
+    String status = existing?.status ?? 'Pending';
+
+    final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
+      title: Text(existing == null ? 'Add review gate' : 'Edit review gate'),
+      content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: gateCtrl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        TextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: approverCtrl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()))),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: DropdownButtonFormField<String>(value: priority, items: ['Critical', 'High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => priority = v); }, decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()))),
+          const SizedBox(width: 12),
+          Expanded(child: DropdownButtonFormField<String>(value: status, items: _reviewGateStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
+        ]),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(existing == null ? 'Add gate' : 'Save')),
+      ],
+    )));
+    if (saved != true) return;
+    setState(() {
+      if (existing == null) {
+        _reviewGates.add(_ReviewGateRow(id: _newId(), gate: gateCtrl.text.trim(), description: descCtrl.text.trim(), approver: approverCtrl.text.trim(), department: deptCtrl.text.trim(), priority: priority, status: status, targetDate: 'TBD'));
+      } else {
+        existing.gate = gateCtrl.text.trim();
+        existing.description = descCtrl.text.trim();
+        existing.approver = approverCtrl.text.trim();
+        existing.department = deptCtrl.text.trim();
+        existing.priority = priority;
+        existing.status = status;
+      }
+    });
+    _scheduleSave();
+  }
+
+  void _confirmDelete(VoidCallback onDelete) {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Confirm delete'),
+      content: const Text('Are you sure you want to delete this item? This action cannot be undone.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+          onPressed: () { Navigator.of(ctx).pop(); onDelete(); }, child: const Text('Delete')),
+      ],
+    ));
+  }
+}
+
+// ─── Data Models ──────────────────────────────────────────────────────
+
+class _ComplianceRow {
+  String id;
+  String standard;
+  String description;
+  String status;
+  String owner;
+  String evidence;
+
+  _ComplianceRow({required this.id, required this.standard, required this.description, required this.status, required this.owner, required this.evidence});
+
+  Map<String, dynamic> toMap() => {'id': id, 'standard': standard, 'description': description, 'status': status, 'owner': owner, 'evidence': evidence};
+
+  static List<_ComplianceRow> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((e) {
+      final m = e as Map<String, dynamic>;
+      return _ComplianceRow(id: m['id'] ?? '', standard: m['standard'] ?? '', description: m['description'] ?? '', status: m['status'] ?? 'Not assessed', owner: m['owner'] ?? '', evidence: m['evidence'] ?? '');
+    }).toList();
+  }
+}
+
+class _ReviewGateRow {
+  String id;
+  String gate;
+  String description;
+  String approver;
+  String department;
+  String priority;
+  String status;
+  String targetDate;
+
+  _ReviewGateRow({required this.id, required this.gate, required this.description, required this.approver, required this.department, required this.priority, required this.status, required this.targetDate});
+
+  Map<String, dynamic> toMap() => {'id': id, 'gate': gate, 'description': description, 'approver': approver, 'department': department, 'priority': priority, 'status': status, 'targetDate': targetDate};
+
+  static List<_ReviewGateRow> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((e) {
+      final m = e as Map<String, dynamic>;
+      return _ReviewGateRow(id: m['id'] ?? '', gate: m['gate'] ?? '', description: m['description'] ?? '', approver: m['approver'] ?? '', department: m['department'] ?? '', priority: m['priority'] ?? 'High', status: m['status'] ?? 'Pending', targetDate: m['targetDate'] ?? 'TBD');
+    }).toList();
+  }
+}
+
+class _StatCardData {
+  final String value;
+  final String label;
+  final String supporting;
+  final Color color;
+  _StatCardData(this.value, this.label, this.supporting, this.color);
+}
+
+class _ColDef {
+  final String label;
+  final int? flex;
+  final double? width;
+  _ColDef(this.label, {this.flex, this.width});
+}
+
+class _Debouncer {
+  Timer? _timer;
+  void run(VoidCallback action) { _timer?.cancel(); _timer = Timer(const Duration(milliseconds: 600), action); }
+  void dispose() => _timer?.cancel();
 }

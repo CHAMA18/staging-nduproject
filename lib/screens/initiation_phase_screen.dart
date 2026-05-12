@@ -2353,7 +2353,7 @@ class _MobileBottomItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF2563EB) : const Color(0xFF94A3B8);
+    final color = active ? const Color(0xFFD97706) : const Color(0xFF94A3B8);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),

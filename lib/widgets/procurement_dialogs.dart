@@ -552,7 +552,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
@@ -1322,7 +1322,7 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
@@ -1700,7 +1700,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
@@ -2112,7 +2112,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
@@ -2508,7 +2508,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }

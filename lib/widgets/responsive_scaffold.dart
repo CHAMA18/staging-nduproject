@@ -96,6 +96,7 @@ class _MobileScaffold extends StatelessWidget {
       body: SafeArea(
         top: !showSidebar, // SafeArea top only if no AppBar
         child: Stack(
+          fit: StackFit.expand,
           children: [
             body,
             if (floatingActionButton != null)
@@ -141,6 +142,7 @@ class _DesktopScaffold extends StatelessWidget {
               ),
             Expanded(
               child: Stack(
+                fit: StackFit.expand,
                 children: [
                   body,
                   if (floatingActionButton != null)

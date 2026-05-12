@@ -14,6 +14,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -22,6 +23,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/requirements_traceability_dashboard.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class RequirementsImplementationScreen extends StatefulWidget {
   const RequirementsImplementationScreen({super.key});
@@ -39,6 +41,7 @@ class _RequirementsImplementationScreenState
   bool _suspendSave = false;
   bool _showAllRows = false;
   int _selectedRequirementIndex = 0;
+  final Set<String> _selectedFilters = {'All requirements'};
   String _sectionApprovalStatus = 'Draft';
   final TextEditingController _sectionApprovedByController =
       TextEditingController();
@@ -704,6 +707,7 @@ class _RequirementsImplementationScreenState
 
     return ResponsiveScaffold(
       activeItemLabel: 'Design Specifications',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(
@@ -1066,14 +1070,15 @@ class _RequirementsImplementationScreenState
     );
   }
 
+  // =========================================================================
+  // WEB SCREEN — World-class Design Specifications layout
+  // =========================================================================
+
   Widget _buildStableWebScreen({
     required double horizontalPadding,
     required ProjectDataModel projectData,
   }) {
-    final closedCount = _requirementRows
-        .where((row) => row.gapStatus.toLowerCase() == 'closed')
-        .length;
-    final pendingCount = _requirementRows.length - closedCount;
+    final ownerOptions = _ownerOptions(projectData);
 
     return DesignPhaseStableShell(
       activeLabel: 'Design Specifications',
@@ -1086,164 +1091,444 @@ class _RequirementsImplementationScreenState
           32,
         ),
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x12000000),
-                  blurRadius: 18,
-                  offset: Offset(0, 10),
+          // 1. Header Section
+          _buildWebHeader(projectData),
+          const SizedBox(height: 16),
+
+          // 2. Filter Chips Row
+          _buildWebFilterChips(),
+          const SizedBox(height: 20),
+
+          // 3. Stats Row
+          _buildWebStatsRow(),
+          const SizedBox(height: 20),
+
+          // 4. Design Specifications Framework Guide
+          _buildWebFrameworkGuide(),
+          const SizedBox(height: 24),
+
+          // 5. Requirements Register Table (MAIN)
+          _buildWebRequirementsRegister(ownerOptions),
+          const SizedBox(height: 20),
+
+          // 6. Acceptance Criteria & Verification Panel
+          _buildWebVerificationPanel(ownerOptions),
+          const SizedBox(height: 20),
+
+          // 7. Gap & Exception Analysis Panel
+          _buildWebGapAnalysisPanel(),
+          const SizedBox(height: 20),
+
+          // 8. Approval Readiness Panel
+          _buildWebApprovalReadinessPanel(),
+          const SizedBox(height: 20),
+
+          // 9. Section Approval Card
+          _buildSectionApprovalCard(ownerOptions),
+          const SizedBox(height: 20),
+
+          // 10. Documents & Links Register
+          _buildDocumentsRegister(ownerOptions),
+          const SizedBox(height: 20),
+
+          // Working Notes
+          _buildWebWorkingNotes(),
+          const SizedBox(height: 24),
+
+          // Navigation
+          LaunchPhaseNavigation(
+            backLabel: 'Back: Design Management',
+            nextLabel: 'Next: Technical Alignment',
+            onBack: _navigateToDesignOverview,
+            onNext: _tryNavigateToTechnicalAlignment,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 1. Header Section
+  // -------------------------------------------------------------------------
+  Widget _buildWebHeader(ProjectDataModel projectData) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Yellow badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFC812),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Text(
+            'DESIGN SPECIFICATIONS',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 1040;
+            final titleBlock = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Design Specifications',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Track requirement traceability from source through design verification. '
+                  'Aligned with PMI PMBOK Collect Requirements (5.2), IEEE 830 Software Requirements '
+                  'Specification, ISO/IEC/IEEE 29148 Requirement Engineering Lifecycle, and INCOSE '
+                  'systems engineering practices. Every requirement is linked to design artifacts, '
+                  'acceptance criteria, and validation evidence before Technical Alignment.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                 ),
               ],
-            ),
-            child: Column(
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleBlock,
+                  const SizedBox(height: 12),
+                  _buildWebHeaderActions(projectData),
+                ],
+              );
+            }
+
+            return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: _navigateToDesignOverview,
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      tooltip: 'Back',
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Design Specifications',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Stable web mode is active so the design specifications workspace remains visible while the heavier dashboard layout is isolated.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    height: 1.5,
-                  ),
-                ),
+                Expanded(child: titleBlock),
+                const SizedBox(width: 20),
+                Flexible(child: _buildWebHeaderActions(projectData)),
               ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebHeaderActions(ProjectDataModel projectData) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _webActionButton(Icons.add, 'Add requirement',
+            onPressed: () => _addRequirement(projectData)),
+        _webActionButton(Icons.sync_outlined, 'Sync from scope',
+            onPressed: () async {
+          await _syncAndLoad();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Requirements synced from project scope.'),
+                backgroundColor: Color(0xFF16A34A),
+              ),
+            );
+          }
+        }),
+        _webActionButton(Icons.description_outlined, 'Export register',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Export register is queued. Use the requirements table while export tools are finalized.'),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _webActionButton(IconData icon, String label,
+      {VoidCallback? onPressed}) {
+    return OutlinedButton.icon(
+      onPressed: onPressed ?? () {},
+      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF64748B),
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. Filter Chips Row
+  // -------------------------------------------------------------------------
+  Widget _buildWebFilterChips() {
+    const filters = [
+      'All requirements',
+      'Mapped',
+      'Unmapped',
+      'Pending approval',
+      'Closed'
+    ];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: filters.map((filter) {
+        final selected = _selectedFilters.contains(filter);
+        return ChoiceChip(
+          label: Text(
+            filter,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : const Color(0xFF475569),
             ),
           ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
+          selected: selected,
+          selectedColor: const Color(0xFF111827),
+          backgroundColor: Colors.white,
+          shape: StadiumBorder(
+            side: BorderSide(color: const Color(0xFFE5E7EB)),
+          ),
+          onSelected: (value) {
+            setState(() {
+              if (value) {
+                if (filter == 'All requirements') {
+                  _selectedFilters
+                    ..clear()
+                    ..add(filter);
+                } else {
+                  _selectedFilters
+                    ..remove('All requirements')
+                    ..add(filter);
+                }
+              } else {
+                _selectedFilters.remove(filter);
+                if (_selectedFilters.isEmpty) {
+                  _selectedFilters.add('All requirements');
+                }
+              }
+            });
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  /// Filter requirement rows based on selected filter chips.
+  List<RequirementRow> get _filteredRequirementRows {
+    if (_selectedFilters.contains('All requirements')) {
+      return _requirementRows;
+    }
+    return _requirementRows.where((row) {
+      if (_selectedFilters.contains('Mapped') &&
+          row.validationStatus.trim().toLowerCase() == 'mapped') {
+        return true;
+      }
+      if (_selectedFilters.contains('Unmapped') &&
+          row.validationStatus.trim().toLowerCase() == 'unmapped') {
+        return true;
+      }
+      if (_selectedFilters.contains('Pending approval') &&
+          row.gapStatus.trim().toLowerCase() == 'pending approval') {
+        return true;
+      }
+      if (_selectedFilters.contains('Closed') &&
+          row.gapStatus.trim().toLowerCase() == 'closed') {
+        return true;
+      }
+      return false;
+    }).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Stats Row
+  // -------------------------------------------------------------------------
+  Widget _buildWebStatsRow() {
+    final totalReq = _requirementRows.length;
+    final mappedCount = _requirementRows
+        .where((r) => r.validationStatus.trim().toLowerCase() == 'mapped')
+        .length;
+    final pendingApprovalCount = _requirementRows
+        .where((r) => r.gapStatus.trim().toLowerCase() == 'pending approval')
+        .length;
+    final gapCount = _requirementRows
+        .where((r) =>
+            r.gapStatus.trim().toLowerCase() != 'closed' &&
+            r.gapStatus.trim().toLowerCase() != '')
+        .length;
+
+    final stats = [
+      _StatCardData(
+        'Total Requirements',
+        '$totalReq',
+        totalReq == 1 ? '1 item registered' : '$totalReq items registered',
+        const Color(0xFF0EA5E9),
+      ),
+      _StatCardData(
+        'Mapped to Design',
+        '$mappedCount',
+        mappedCount == totalReq ? 'All mapped' : '${totalReq - mappedCount} unmapped',
+        const Color(0xFF10B981),
+      ),
+      _StatCardData(
+        'Pending Approval',
+        '$pendingApprovalCount',
+        pendingApprovalCount > 0 ? 'Require attention' : 'All resolved',
+        const Color(0xFFF97316),
+      ),
+      _StatCardData(
+        'Gap Items',
+        '$gapCount',
+        gapCount > 0 ? 'Open gaps' : 'No gaps',
+        const Color(0xFF8B5CF6),
+      ),
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: stats.map(_buildWebStatCard).toList(),
+    );
+  }
+
+  Widget _buildWebStatCard(_StatCardData data) {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            data.value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: data.color,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            data.label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            data.supporting,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: data.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. Design Specifications Framework Guide
+  // -------------------------------------------------------------------------
+  Widget _buildWebFrameworkGuide() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Design specifications framework',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Grounded in IEEE 830 Software Requirements Specification, '
+            'ISO/IEC/IEEE 29148 Requirement Engineering Lifecycle, PMI PMBOK '
+            'Collect Requirements (5.2), and INCOSE systems engineering '
+            'lifecycle practices. Effective requirement traceability ensures '
+            'every specification is linked to design artifacts, acceptance '
+            'criteria, and validation evidence before proceeding to Technical Alignment.',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF6B7280),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Column(
             children: [
-              _buildStableMetricCard(
-                'Requirements',
-                '${_requirementRows.length}',
-                const Color(0xFF1D4ED8),
+              _buildWebGuideCard(
+                Icons.account_tree_outlined,
+                'Requirements Traceability',
+                'The Requirements Traceability Matrix (RTM) connects each requirement '
+                'to design artifacts, test cases, and source documents. Every mapped '
+                'requirement should have an unbroken chain from origin through '
+                'implementation to verification.',
+                const Color(0xFF2563EB),
               ),
-              _buildStableMetricCard(
-                'Closed',
-                '$closedCount',
-                const Color(0xFF0F766E),
+              const SizedBox(height: 12),
+              _buildWebGuideCard(
+                Icons.verified_outlined,
+                'Validation & Evidence',
+                'Each mapped requirement must have acceptance criteria and a defined '
+                'test method. Validation evidence demonstrates that the design artifact '
+                'satisfies the requirement intent and can be independently verified.',
+                const Color(0xFF10B981),
               ),
-              _buildStableMetricCard(
-                'Pending',
-                '$pendingCount',
-                const Color(0xFFD97706),
+              const SizedBox(height: 12),
+              _buildWebGuideCard(
+                Icons.warning_amber_outlined,
+                'Gap Management',
+                'Track unmapped requirements and resolve conflicts before proceeding '
+                'to Technical Alignment. Pending approval gaps indicate design decisions '
+                'that still need stakeholder resolution or additional evidence.',
+                const Color(0xFFF59E0B),
               ),
-              _buildStableMetricCard(
-                'Owners',
-                '${_ownerOptions(projectData).length}',
-                const Color(0xFF7C3AED),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildStableSectionCard(
-            title: 'Current Requirements Snapshot',
-            child: Column(
-              children: _requirementRows.take(6).map((row) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${row.requirementId} · ${row.title}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          row.definition,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.45,
-                            color: Color(0xFF4B5563),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildTag('Owner: ${row.owner}'),
-                            _buildTag('Status: ${row.gapStatus}'),
-                            _buildTag('Validation: ${row.validationStatus}'),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildStableSectionCard(
-            title: 'Working Notes',
-            child: TextField(
-              controller: _notesController,
-              minLines: 8,
-              maxLines: 14,
-              decoration: const InputDecoration(
-                hintText:
-                    'Capture implementation notes, handoff decisions, and traceability comments...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              OutlinedButton(
-                onPressed: _navigateToDesignOverview,
-                child: const Text('Back: Design Management'),
-              ),
-              ElevatedButton(
-                onPressed: _saveNotesNow,
-                child: const Text('Save Notes'),
-              ),
-              ElevatedButton(
-                onPressed: _tryNavigateToTechnicalAlignment,
-                child: const Text('Next: Technical Alignment'),
+              const SizedBox(height: 12),
+              _buildWebGuideCard(
+                Icons.admin_panel_settings_outlined,
+                'Approval Gates',
+                'Section-level approval is required before the project can advance '
+                'to Technical Alignment. All gaps must be resolved, acceptance criteria '
+                'defined for mapped items, and the section approver must sign off.',
+                const Color(0xFFEF4444),
               ),
             ],
           ),
@@ -1252,6 +1537,1795 @@ class _RequirementsImplementationScreenState
     );
   }
 
+  Widget _buildWebGuideCard(
+      IconData icon, String title, String description, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4B5563),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. Requirements Register Table (MAIN TABLE)
+  // -------------------------------------------------------------------------
+  Widget _buildWebRequirementsRegister(List<String> ownerOptions) {
+    final filteredRows = _filteredRequirementRows;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel header with add button
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Requirements register',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${filteredRows.length} requirements${filteredRows.length != _requirementRows.length ? ' (filtered from ${_requirementRows.length})' : ''}. '
+                        'Each row maps a requirement to its design artifact, validation status, and gap resolution.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    final provider = ProjectDataInherited.maybeOf(context);
+                    _addRequirement(provider?.projectData ?? ProjectDataModel());
+                  },
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add requirement',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF475569),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+
+          // Empty state
+          if (filteredRows.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.assignment_outlined,
+                        color: Color(0xFF9CA3AF), size: 32),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No requirements found. Add requirements or adjust filters.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // Table header
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              child: const Row(
+                children: [
+                  Expanded(
+                      flex: 1,
+                      child: Text('REQ ID',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8))),
+                  Expanded(
+                      flex: 3,
+                      child: Text('TITLE',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8))),
+                  Expanded(
+                      flex: 1,
+                      child: Text('OWNER',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8))),
+                  Expanded(
+                      flex: 1,
+                      child: Text('TYPE',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                  Expanded(
+                      flex: 1,
+                      child: Text('VALIDATION',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                  Expanded(
+                      flex: 1,
+                      child: Text('GAP STATUS',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                  SizedBox(
+                      width: 80,
+                      child: Text('ACTIONS',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                ],
+              ),
+            ),
+            // Table data rows
+            ...List.generate(filteredRows.length, (index) {
+              final row = filteredRows[index];
+              final actualIndex = _requirementRows.indexOf(row);
+              final isSelected = actualIndex == _selectedRequirementIndex;
+              final isLast = index == filteredRows.length - 1;
+              return _buildWebRequirementTableRow(
+                row: row,
+                actualIndex: actualIndex,
+                isSelected: isSelected,
+                isStriped: index.isOdd,
+                showDivider: !isLast,
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebRequirementTableRow({
+    required RequirementRow row,
+    required int actualIndex,
+    required bool isSelected,
+    required bool isStriped,
+    required bool showDivider,
+  }) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _selectRequirement(actualIndex),
+        child: Container(
+          color: isSelected
+              ? const Color(0xFFEFF6FF)
+              : isStriped
+                  ? const Color(0xFFF9FAFB)
+                  : Colors.white,
+          child: Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // REQ ID
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        row.requirementId.trim().isEmpty
+                            ? '—'
+                            : row.requirementId,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                    // TITLE
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        row.title.trim().isEmpty ? 'Untitled' : row.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: row.title.trim().isEmpty
+                              ? const Color(0xFF9CA3AF)
+                              : const Color(0xFF111827),
+                        ),
+                      ),
+                    ),
+                    // OWNER
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        row.owner.trim().isEmpty ? '—' : row.owner,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                    // TYPE
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Text(
+                          row.requirementType,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // VALIDATION STATUS (badge)
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _validationColor(row.validationStatus)
+                                .withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            row.validationStatus,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _validationColor(row.validationStatus),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // GAP STATUS (badge)
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _gapStatusColor(row.gapStatus).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            row.gapStatus,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _gapStatusColor(row.gapStatus),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // ACTIONS
+                    SizedBox(
+                      width: 80,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined,
+                                size: 16, color: Color(0xFF64748B)),
+                            onPressed: () =>
+                                _showRequirementEditDialog(actualIndex),
+                            tooltip: 'Edit',
+                            padding: EdgeInsets.zero,
+                            constraints:
+                                const BoxConstraints(minWidth: 28, minHeight: 28),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.visibility_outlined,
+                                size: 16, color: Color(0xFF64748B)),
+                            onPressed: () => _selectRequirement(actualIndex),
+                            tooltip: 'View detail',
+                            padding: EdgeInsets.zero,
+                            constraints:
+                                const BoxConstraints(minWidth: 28, minHeight: 28),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                size: 16, color: Color(0xFF9CA3AF)),
+                            onPressed: () => _deleteRequirement(actualIndex),
+                            tooltip: 'Delete',
+                            padding: EdgeInsets.zero,
+                            constraints:
+                                const BoxConstraints(minWidth: 28, minHeight: 28),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (showDivider)
+                const Divider(
+                    height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 6. Acceptance Criteria & Verification Panel
+  // -------------------------------------------------------------------------
+  Widget _buildWebVerificationPanel(List<String> ownerOptions) {
+    final selected = _requirementRows.isEmpty
+        ? null
+        : _requirementRows[_safeSelectedRequirementIndex];
+
+    if (selected == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text('Select a requirement from the register above to view details.',
+                style: TextStyle(color: Color(0xFF64748B))),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Acceptance criteria & verification — ${selected.requirementId}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        selected.title,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showRequirementEditDialog(
+                      _safeSelectedRequirementIndex),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit all fields',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF475569),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+
+          // Editable fields in a grid
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Row 1: ID, Owner, Type
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Requirement ID',
+                        value: selected.requirementId,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(requirementId: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebOwnerDropdown(
+                        label: 'Owner',
+                        value: selected.owner,
+                        options: ownerOptions,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(owner: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebDropdownField(
+                        label: 'Requirement Type',
+                        value: selected.requirementType,
+                        options: const [
+                          'Functional',
+                          'Non-Functional',
+                          'Constraint',
+                          'Performance',
+                          'Security'
+                        ],
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(requirementType: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Row 2: Source, Source Type
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebDropdownField(
+                        label: 'Source (Rule Type)',
+                        value: selected.ruleType,
+                        options: const [
+                          'Internal',
+                          'External',
+                        ],
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(ruleType: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebDropdownField(
+                        label: 'Source Type',
+                        value: selected.sourceType,
+                        options: const [
+                          'Contract',
+                          'Vendor',
+                          'Regulatory',
+                          'Standard',
+                          'Stakeholder',
+                        ],
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(sourceType: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebDropdownField(
+                        label: 'Validation Status',
+                        value: selected.validationStatus,
+                        options: const ['Mapped', 'Unmapped', 'In Review'],
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(validationStatus: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Row 3: Description, Definition
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Description / Title',
+                        value: selected.title,
+                        maxLines: 2,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(title: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Definition / Intent',
+                        value: selected.definition,
+                        maxLines: 2,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(definition: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Row 4: Design artifact fields
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebDropdownField(
+                        label: 'Design Artifact Type',
+                        value: selected.designArtifactType,
+                        options: const [
+                          'Figma',
+                          'PDF',
+                          'Confluence',
+                          'Jira',
+                          'Miro',
+                          'Spreadsheet',
+                          'Code',
+                          'Other',
+                        ],
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(designArtifactType: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Artifact Label',
+                        value: selected.designArtifactLabel,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(designArtifactLabel: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Row 5: Acceptance Criteria, Test Method
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Acceptance Criteria',
+                        value: selected.acceptanceCriteria,
+                        maxLines: 2,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(acceptanceCriteria: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Test Method',
+                        value: selected.testMethod,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(testMethod: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Row 6: Source Document, Artifact URL
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebInlineField(
+                        label: 'Source Document',
+                        value: selected.sourceDocument,
+                        onChanged: (v) => _updateSelectedRequirement(
+                            (r) => r.copyWith(sourceDocument: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildWebInlineField(
+                              label: 'Artifact URL',
+                              value: selected.designArtifactUrl,
+                              onChanged: (v) => _updateSelectedRequirement(
+                                  (r) => r.copyWith(designArtifactUrl: v)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                _uploadArtifactForRequirement(selected),
+                            icon: const Icon(Icons.upload_file,
+                                size: 16, color: Color(0xFF64748B)),
+                            label: const Text('Upload'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF64748B),
+                              side:
+                                  const BorderSide(color: Color(0xFFE2E8F0)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 7. Gap & Exception Analysis Panel
+  // -------------------------------------------------------------------------
+  Widget _buildWebGapAnalysisPanel() {
+    final gapItems = _requirementRows
+        .where((r) => r.gapStatus.trim().toLowerCase() != 'closed')
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Gap & exception analysis',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Requirements with unresolved gaps or pending approval status. '
+            'Resolve all gaps before proceeding to Technical Alignment.',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF6B7280),
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (gapItems.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      color: Color(0xFF10B981), size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'All requirements have closed gap status. No outstanding exceptions.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF166534),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...gapItems.map((row) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_outlined,
+                              color: Color(0xFFF59E0B), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${row.requirementId} · ${row.title}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF92400E),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _gapStatusColor(row.gapStatus)
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              row.gapStatus,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _gapStatusColor(row.gapStatus),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (row.conflictNote.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Conflict: ${row.conflictNote}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF92400E),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                      if (row.conflictImpact.trim().isNotEmpty &&
+                          row.conflictImpact.toLowerCase() != 'low') ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Impact: ${row.conflictImpact}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFDC2626),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 8. Approval Readiness Panel
+  // -------------------------------------------------------------------------
+  Widget _buildWebApprovalReadinessPanel() {
+    // Compute gate statuses from actual data
+    final reqsComplete = _requirementRows.isNotEmpty &&
+        _requirementRows.every((r) =>
+            r.title.trim().isNotEmpty &&
+            r.owner.trim().isNotEmpty &&
+            r.definition.trim().isNotEmpty);
+    final artifactsLinked = _requirementRows.isNotEmpty &&
+        _requirementRows
+            .where((r) => r.validationStatus.trim().toLowerCase() == 'mapped')
+            .every((r) => r.designArtifactLabel.trim().isNotEmpty);
+    final criteriaDefined = _requirementRows.isNotEmpty &&
+        _requirementRows
+            .where((r) => r.validationStatus.trim().toLowerCase() == 'mapped')
+            .every((r) =>
+                r.acceptanceCriteria.trim().isNotEmpty &&
+                r.testMethod.trim().isNotEmpty);
+    final gapsResolved = _requirementRows.isEmpty ||
+        !_requirementRows.any((r) =>
+            r.gapStatus.trim().toLowerCase() == 'pending approval');
+    final sectionApproved =
+        _sectionApprovalStatus == 'In Review' ||
+            _sectionApprovalStatus == 'Approved';
+
+    final gates = [
+      _ApprovalGateData(
+        gate: 'Requirements Complete',
+        description:
+            'All requirements have title, owner, and definition of intent populated.',
+        approver: 'Product Lead',
+        priority: 'Critical',
+        status: _requirementRows.isEmpty
+            ? 'Not Started'
+            : reqsComplete
+                ? 'Complete'
+                : 'In Review',
+      ),
+      _ApprovalGateData(
+        gate: 'Artifacts Linked',
+        description:
+            'All mapped requirements have design artifact labels and types defined.',
+        approver: 'Design Lead',
+        priority: 'High',
+        status: _requirementRows.isEmpty
+            ? 'Not Started'
+            : artifactsLinked
+                ? 'Complete'
+                : 'Pending',
+      ),
+      _ApprovalGateData(
+        gate: 'Acceptance Criteria Defined',
+        description:
+            'All mapped requirements include acceptance criteria and test methods.',
+        approver: 'QA Lead',
+        priority: 'High',
+        status: _requirementRows.isEmpty
+            ? 'Not Started'
+            : criteriaDefined
+                ? 'Complete'
+                : 'Pending',
+      ),
+      _ApprovalGateData(
+        gate: 'Gap Items Resolved',
+        description:
+            'No pending approval gaps remain. All conflict notes are addressed.',
+        approver: 'Project Manager',
+        priority: 'Critical',
+        status: gapsResolved ? 'Complete' : 'In Review',
+      ),
+      _ApprovalGateData(
+        gate: 'Section Approval',
+        description:
+            'Section-level approval status is In Review or Approved.',
+        approver: 'Section Approver',
+        priority: 'Critical',
+        status: sectionApproved ? 'Complete' : 'Not Started',
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel header
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Approval readiness',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Gates that must be cleared before advancing to Technical Alignment. '
+                  'Each gate is auto-computed from the requirements register data.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          if (gates.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(
+                child: Text('No approval gates defined.',
+                    style: TextStyle(color: Color(0xFF64748B))),
+              ),
+            )
+          else ...[
+            // Table header
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              child: const Row(
+                children: [
+                  Expanded(
+                      flex: 4,
+                      child: Text('GATE',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8))),
+                  Expanded(
+                      flex: 4,
+                      child: Text('DESCRIPTION',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8))),
+                  SizedBox(
+                      width: 110,
+                      child: Text('STATUS',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                  Expanded(
+                      flex: 2,
+                      child: Text('APPROVER',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                  SizedBox(
+                      width: 90,
+                      child: Text('PRIORITY',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF6B7280),
+                              letterSpacing: 0.8),
+                          textAlign: TextAlign.center)),
+                ],
+              ),
+            ),
+            // Table rows
+            ...List.generate(gates.length, (index) {
+              final gate = gates[index];
+              final isLast = index == gates.length - 1;
+              return _buildWebApprovalGateRow(
+                gate: gate,
+                showDivider: !isLast,
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebApprovalGateRow({
+    required _ApprovalGateData gate,
+    required bool showDivider,
+  }) {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // GATE
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    gate.gate,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                // DESCRIPTION
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    gate.description,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                // STATUS
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _approvalStatusColor(gate.status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        gate.status,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _approvalStatusColor(gate.status),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // APPROVER
+                Expanded(
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      gate.approver,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // PRIORITY
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _priorityColor(gate.priority).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        gate.priority,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _priorityColor(gate.priority),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Working Notes Panel
+  // -------------------------------------------------------------------------
+  Widget _buildWebWorkingNotes() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Working notes',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesController,
+            minLines: 4,
+            maxLines: 10,
+            decoration: const InputDecoration(
+              hintText:
+                  'Capture implementation notes, handoff decisions, and traceability comments...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Full Edit Dialog for a Requirement Row
+  // -------------------------------------------------------------------------
+  void _showRequirementEditDialog(int index) {
+    if (index < 0 || index >= _requirementRows.length) return;
+    final row = _requirementRows[index];
+
+    final reqIdController = TextEditingController(text: row.requirementId);
+    final titleController = TextEditingController(text: row.title);
+    final ownerController = TextEditingController(text: row.owner);
+    final definitionController = TextEditingController(text: row.definition);
+    var selectedReqType = row.requirementType;
+    var selectedRuleType = row.ruleType;
+    var selectedSourceType = row.sourceType;
+    final artifactLabelController =
+        TextEditingController(text: row.designArtifactLabel);
+    var selectedArtifactType = row.designArtifactType;
+    var selectedValidationStatus = row.validationStatus;
+    final criteriaController =
+        TextEditingController(text: row.acceptanceCriteria);
+    final testMethodController = TextEditingController(text: row.testMethod);
+    final sourceDocController = TextEditingController(text: row.sourceDocument);
+    final artifactUrlController =
+        TextEditingController(text: row.designArtifactUrl);
+    var selectedGapStatus = row.gapStatus;
+    final conflictNoteController = TextEditingController(text: row.conflictNote);
+    var selectedConflictImpact = row.conflictImpact;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            'Edit Requirement — ${row.requirementId}',
+            style: const TextStyle(fontSize: 18),
+          ),
+          content: SizedBox(
+            width: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Row 1: ID, Type
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: reqIdController,
+                          decoration: const InputDecoration(
+                            labelText: 'Requirement ID *',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedReqType,
+                          decoration: const InputDecoration(
+                            labelText: 'Requirement Type *',
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Functional',
+                            'Non-Functional',
+                            'Constraint',
+                            'Performance',
+                            'Security'
+                          ]
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedReqType = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Title
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Owner
+                  TextField(
+                    controller: ownerController,
+                    decoration: const InputDecoration(
+                      labelText: 'Owner *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Definition
+                  TextField(
+                    controller: definitionController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Definition / Intent *',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Rule Type, Source Type
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedRuleType,
+                          decoration: const InputDecoration(
+                            labelText: 'Rule Type',
+                            isDense: true,
+                          ),
+                          items: const ['Internal', 'External']
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedRuleType = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedSourceType,
+                          decoration: const InputDecoration(
+                            labelText: 'Source Type',
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Contract',
+                            'Vendor',
+                            'Regulatory',
+                            'Standard',
+                            'Stakeholder'
+                          ]
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedSourceType = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Artifact Type, Artifact Label
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedArtifactType,
+                          decoration: const InputDecoration(
+                            labelText: 'Artifact Type',
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Figma',
+                            'PDF',
+                            'Confluence',
+                            'Jira',
+                            'Miro',
+                            'Spreadsheet',
+                            'Code',
+                            'Other'
+                          ]
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedArtifactType = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: artifactLabelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Artifact Label',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Validation Status, Gap Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedValidationStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Validation Status',
+                            isDense: true,
+                          ),
+                          items: const ['Mapped', 'Unmapped', 'In Review']
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(
+                                  () => selectedValidationStatus = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedGapStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Gap Status',
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Closed',
+                            'Pending Approval',
+                            'Open',
+                            'Deferred'
+                          ]
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedGapStatus = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Acceptance Criteria
+                  TextField(
+                    controller: criteriaController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Acceptance Criteria',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Test Method, Source Document
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: testMethodController,
+                          decoration: const InputDecoration(
+                            labelText: 'Test Method',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: sourceDocController,
+                          decoration: const InputDecoration(
+                            labelText: 'Source Document',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Artifact URL
+                  TextField(
+                    controller: artifactUrlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Artifact URL',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Conflict Note, Conflict Impact
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: conflictNoteController,
+                          decoration: const InputDecoration(
+                            labelText: 'Conflict Note',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedConflictImpact,
+                          decoration: const InputDecoration(
+                            labelText: 'Impact',
+                            isDense: true,
+                          ),
+                          items: const ['Low', 'Medium', 'High', 'Critical']
+                              .map((v) => DropdownMenuItem(
+                                  value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(
+                                  () => selectedConflictImpact = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final updated = row.copyWith(
+                  requirementId: reqIdController.text.trim(),
+                  title: titleController.text.trim(),
+                  owner: ownerController.text.trim(),
+                  definition: definitionController.text.trim(),
+                  requirementType: selectedReqType,
+                  ruleType: selectedRuleType,
+                  sourceType: selectedSourceType,
+                  designArtifactType: selectedArtifactType,
+                  designArtifactLabel: artifactLabelController.text.trim(),
+                  validationStatus: selectedValidationStatus,
+                  acceptanceCriteria: criteriaController.text.trim(),
+                  testMethod: testMethodController.text.trim(),
+                  sourceDocument: sourceDocController.text.trim(),
+                  designArtifactUrl: artifactUrlController.text.trim(),
+                  gapStatus: selectedGapStatus,
+                  conflictNote: conflictNoteController.text.trim(),
+                  conflictImpact: selectedConflictImpact,
+                );
+                _updateRequirement(index, (_) => updated);
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Requirement ${updated.requirementId} updated.'),
+                    backgroundColor: const Color(0xFF16A34A),
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Inline editable field helper
+  // -------------------------------------------------------------------------
+  Widget _buildWebInlineField({
+    required String label,
+    required String value,
+    int maxLines = 1,
+    required ValueChanged<String> onChanged,
+  }) {
+    return TextField(
+      controller: TextEditingController(text: value),
+      onChanged: onChanged,
+      maxLines: maxLines,
+      style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebDropdownField({
+    required String label,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    final safeOptions = options.contains(value) ? options : [value, ...options];
+    return DropdownButtonFormField<String>(
+      initialValue: safeOptions.contains(value) ? value : safeOptions.first,
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        ),
+      ),
+      items: safeOptions
+          .map((v) =>
+              DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 13))))
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
+
+  Widget _buildWebOwnerDropdown({
+    required String label,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    final safeOptions = <String>{
+      ...options,
+      if (value.trim().isNotEmpty) value.trim(),
+    }.toList()
+      ..sort();
+    return DropdownButtonFormField<String>(
+      initialValue: safeOptions.contains(value.trim()) ? value.trim() : (safeOptions.isEmpty ? null : safeOptions.first),
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        ),
+      ),
+      items: safeOptions
+          .map((v) =>
+              DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 13))))
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Color helpers for badges
+  // -------------------------------------------------------------------------
+  Color _validationColor(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'mapped':
+        return const Color(0xFF10B981);
+      case 'unmapped':
+        return const Color(0xFFF59E0B);
+      case 'in review':
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  Color _gapStatusColor(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'closed':
+        return const Color(0xFF10B981);
+      case 'pending approval':
+        return const Color(0xFFF59E0B);
+      case 'open':
+        return const Color(0xFFEF4444);
+      case 'deferred':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  Color _approvalStatusColor(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'complete':
+        return const Color(0xFF10B981);
+      case 'in review':
+        return const Color(0xFF2563EB);
+      case 'pending':
+        return const Color(0xFFF59E0B);
+      case 'not started':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  Color _priorityColor(String priority) {
+    switch (priority.trim().toLowerCase()) {
+      case 'critical':
+        return const Color(0xFFEF4444);
+      case 'high':
+        return const Color(0xFFF97316);
+      case 'medium':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Navigation helper for stable shell sidebar
+  // -------------------------------------------------------------------------
   void _openStableDesignItem(String label) {
     Widget? destination;
     switch (label) {
@@ -1277,722 +3351,6 @@ class _RequirementsImplementationScreenState
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => destination!),
-    );
-  }
-
-  Widget _buildStableMetricCard(String label, String value, Color color) {
-    return Container(
-      width: 180,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStableSectionCard({
-    required String title,
-    required Widget child,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTag(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1D4ED8),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRequirementsBreakdownCard(List<String> ownerOptions) {
-    final rowCount = _requirementRows.length;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionIcon(
-                  Icons.view_list_rounded, const Color(0xFF1D4ED8)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Requirements breakdown',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1D1F),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'World-class requirements ledger for implementation-ready scope.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _requirementRows.add(
-                      RequirementRow(
-                        title: 'New requirement',
-                        owner: 'Owner',
-                        definition: 'Define acceptance criteria and evidence.',
-                      ),
-                    );
-                    _scheduleSave();
-                  });
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add row'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1D4ED8),
-                  side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildTableHeaderRow(
-            columns: const [
-              _TableColumn(label: 'Requirement group', flex: 3),
-              _TableColumn(label: 'Owner', flex: 2),
-              _TableColumn(label: 'Definition of ready', flex: 4),
-              _TableColumn(
-                  label: 'Action', flex: 2, alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (int i = 0; i < rowCount; i++) ...[
-            _buildRequirementRow(
-              _requirementRows[i],
-              index: i,
-              isStriped: i.isOdd,
-              ownerOptions: ownerOptions,
-            ),
-            if (i != rowCount - 1) const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _requirementRows.add(
-                      RequirementRow(
-                        title: 'New requirement',
-                        owner: 'Owner',
-                        definition: 'Define acceptance criteria and evidence.',
-                      ),
-                    );
-                    _scheduleSave();
-                  });
-                },
-                icon: const Icon(Icons.add_circle_outline, size: 18),
-                label: const Text('Add requirement row'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1A1D1F),
-                  side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-              const SizedBox(width: 12),
-              TextButton.icon(
-                onPressed: _syncAndLoad,
-                icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                label: const Text('Refresh from context'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF475569),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadinessChecklistCard(List<String> ownerOptions) {
-    final rowCount = _checklistItems.length;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionIcon(
-                  Icons.fact_check_outlined, const Color(0xFF16A34A)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Readiness checklist',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1D1F),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Exceptional readiness table for confident technical alignment.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _checklistItems.add(
-                      RequirementChecklistItem(
-                        title: 'New checklist item',
-                        description: 'Describe the evidence required.',
-                        status: ChecklistStatus.pending,
-                      ),
-                    );
-                    _scheduleSave();
-                  });
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add item'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF16A34A),
-                  side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildTableHeaderRow(
-            columns: const [
-              _TableColumn(label: 'Checklist item', flex: 4),
-              _TableColumn(label: 'Owner', flex: 2),
-              _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(
-                  label: 'Action', flex: 2, alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (int i = 0; i < rowCount; i++) ...[
-            _buildChecklistRow(
-              _checklistItems[i],
-              index: i,
-              isStriped: i.isOdd,
-              ownerOptions: ownerOptions,
-            ),
-            if (i != rowCount - 1) const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 16),
-          Text(
-            'Implementation notes',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            maxLines: null,
-            minLines: 3,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-            decoration: InputDecoration(
-              hintText:
-                  'Capture sequencing decisions, launch scope, and deferred items.',
-              hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: Color(0xFF16A34A), width: 2),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _saveNotesNow,
-              icon: const Icon(Icons.save_outlined, size: 18),
-              label: const Text('Save notes'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1A1D1F),
-                side: const BorderSide(color: Color(0xFFD6DCE8)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionIcon(IconData icon, Color color) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Icon(icon, color: color, size: 22),
-    );
-  }
-
-  Widget _buildTableHeaderRow({required List<_TableColumn> columns}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: Row(
-        children: [
-          for (final column in columns)
-            Expanded(
-              flex: column.flex,
-              child: Align(
-                alignment: column.alignment,
-                child: Text(
-                  column.label.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: Color(0xFF475467),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRequirementRow(
-    RequirementRow row, {
-    required int index,
-    required bool isStriped,
-    required List<String> ownerOptions,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: _buildTableField(
-              initialValue: row.title,
-              hintText: 'Requirement group',
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildOwnerDropdown(
-              value: row.owner,
-              options: ownerOptions,
-              onChanged: (value) {
-                setState(() {
-                  _requirementRows[index].owner = value;
-                  _scheduleSave();
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 4,
-            child: _buildTableField(
-              initialValue: row.definition,
-              hintText: 'Definition of ready',
-              maxLines: null,
-              minLines: 1,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.center,
-              child: TextButton.icon(
-                onPressed: () async {
-                  final confirmed = await _confirmDelete('requirement');
-                  if (!confirmed) return;
-                  setState(() {
-                    _requirementRows.removeAt(index);
-                    _scheduleSave();
-                  });
-                },
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Delete'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFB91C1C),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChecklistRow(
-    RequirementChecklistItem item, {
-    required int index,
-    required bool isStriped,
-    required List<String> ownerOptions,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTableField(
-                  initialValue: item.title,
-                  hintText: 'Checklist item',
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.description,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: _buildOwnerDropdown(
-              value: item.owner ?? '',
-              options: ownerOptions,
-              onChanged: (value) {
-                setState(() {
-                  _checklistItems[index].owner = value;
-                  _scheduleSave();
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: DropdownButtonFormField<ChecklistStatus>(
-              initialValue: item.status,
-              alignment: Alignment.center,
-              isExpanded: true,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-              selectedItemBuilder: (context) => ChecklistStatus.values
-                  .map(
-                    (status) => Align(
-                      alignment: Alignment.center,
-                      child: Text(_statusLabel(status),
-                          textAlign: TextAlign.center),
-                    ),
-                  )
-                  .toList(),
-              items: ChecklistStatus.values
-                  .map(
-                    (status) => DropdownMenuItem(
-                      value: status,
-                      child: Center(
-                        child: Text(_statusLabel(status),
-                            textAlign: TextAlign.center),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _checklistItems[index].status = value;
-                  _scheduleSave();
-                });
-              },
-              decoration: InputDecoration(
-                isDense: true,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF16A34A), width: 2),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.center,
-              child: TextButton.icon(
-                onPressed: () async {
-                  final confirmed = await _confirmDelete('checklist item');
-                  if (!confirmed) return;
-                  setState(() {
-                    _checklistItems.removeAt(index);
-                    _scheduleSave();
-                  });
-                },
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Delete'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFB91C1C),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableField({
-    required String initialValue,
-    required String hintText,
-    int? maxLines,
-    int minLines = 1,
-  }) {
-    return TextFormField(
-      initialValue: initialValue,
-      maxLines: maxLines,
-      minLines: minLines,
-      keyboardType: TextInputType.multiline,
-      textAlign: TextAlign.start,
-      textAlignVertical: TextAlignVertical.top,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
-        isDense: true,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF1D4ED8), width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOwnerDropdown({
-    required String value,
-    required List<String> options,
-    required ValueChanged<String> onChanged,
-  }) {
-    final normalized = value.trim();
-    final items = normalized.isEmpty || options.contains(normalized)
-        ? options
-        : [normalized, ...options];
-    return DropdownButtonFormField<String>(
-      initialValue: items.first,
-      alignment: Alignment.center,
-      isExpanded: true,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      selectedItemBuilder: (context) => items
-          .map((owner) => Align(
-                alignment: Alignment.center,
-                child: Text(owner, textAlign: TextAlign.center),
-              ))
-          .toList(),
-      items: items
-          .map((owner) => DropdownMenuItem(
-                value: owner,
-                child: Center(child: Text(owner, textAlign: TextAlign.center)),
-              ))
-          .toList(),
-      onChanged: (newValue) {
-        if (newValue == null) return;
-        onChanged(newValue);
-      },
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF1D4ED8), width: 2),
-        ),
-      ),
     );
   }
 
@@ -2033,6 +3391,29 @@ class _RequirementsImplementationScreenState
 }
 
 // End of _RequirementsImplementationScreenState
+
+class _StatCardData {
+  const _StatCardData(this.label, this.value, this.supporting, this.color);
+  final String label;
+  final String value;
+  final String supporting;
+  final Color color;
+}
+
+class _ApprovalGateData {
+  const _ApprovalGateData({
+    required this.gate,
+    required this.description,
+    required this.approver,
+    required this.priority,
+    required this.status,
+  });
+  final String gate;
+  final String description;
+  final String approver;
+  final String priority;
+  final String status;
+}
 
 class _TableColumn {
   const _TableColumn({

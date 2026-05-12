@@ -476,7 +476,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
               borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2563EB))),
+              borderSide: const BorderSide(color: Color(0xFFFFD700))),
         ),
         onChanged: (v) {
           _debriefNotes = LaunchClosureNotes(notes: v);

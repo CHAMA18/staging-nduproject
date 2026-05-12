@@ -332,9 +332,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Expanded(child: _buildStatCard('Total Users', Icons.people, 248, const Color(0xFF6366F1))),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard('Projects', Icons.folder, 12, const Color(0xFF10B981)),
+        Expanded(child: _buildStatCard('Projects', Icons.folder, 12, const Color(0xFF10B981))),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard('Programs', Icons.folder_copy, 5, const Color(0xFFF59E0B)),
+        Expanded(child: _buildStatCard('Programs', Icons.folder_copy, 5, const Color(0xFFF59E0B))),
         const SizedBox(width: 16),
         Expanded(child: _buildStatCard('Portfolios', Icons.account_tree, 3, const Color(0xFF8B5CF6))),
       ],

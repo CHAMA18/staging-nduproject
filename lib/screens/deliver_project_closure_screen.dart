@@ -411,7 +411,7 @@ class _DeliverProjectClosureScreenState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2563EB)),
+            borderSide: const BorderSide(color: Color(0xFFFFD700)),
           ),
         ),
         onChanged: (v) {

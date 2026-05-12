@@ -234,7 +234,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh,
-                        size: 18, color: Color(0xFF2563EB)),
+                        size: 18, color: Color(0xFFD97706)),
               ),
               IconButton(
                 tooltip: 'Undo last AI regenerate',
@@ -276,24 +276,25 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             decoration: InputDecoration(
               hintText: widget.hintText,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: borderColor),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: borderColor),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                   color: hasError
                       ? const Color(0xFFEF4444)
-                      : const Color(0xFF2563EB),
+                      : const Color(0xFFFFD700),
+                  width: 1.6,
                 ),
               ),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.all(12),
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             ),
             style: const TextStyle(fontSize: 14),
           ),

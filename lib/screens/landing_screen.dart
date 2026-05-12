@@ -393,11 +393,14 @@ class _LandingScreenState extends State<LandingScreen>
           backgroundColor: LightModeColors.accent,
           foregroundColor: const Color(0xFF151515),
           padding: EdgeInsets.symmetric(
-              horizontal: fullWidth ? 16 : 26, vertical: 14),
+              horizontal: fullWidth ? 28 : 28, vertical: 16),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
-          minimumSize: const Size(0, 48),
+          minimumSize: const Size(200, 52),
+          fixedSize: fullWidth
+              ? const Size(double.infinity, 52)
+              : null,
         ),
         child: const Text('Start Your Project',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
@@ -426,8 +429,8 @@ class _LandingScreenState extends State<LandingScreen>
             const SizedBox(width: 12),
           ],
           buildSignInButton(),
-          const SizedBox(width: 12),
-          Flexible(child: buildStartProjectButton()),
+          const SizedBox(width: 16),
+          buildStartProjectButton(),
         ],
       );
     }
@@ -2347,41 +2350,45 @@ class _LandingScreenState extends State<LandingScreen>
                 fontSize: 17, color: Colors.white.withValues(alpha: 0.78)),
           ),
           const SizedBox(height: 32),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            alignment: WrapAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: _handleStartProject,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: LightModeColors.accent,
-                  foregroundColor: const Color(0xFF151515),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 42, vertical: 20),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
+          SizedBox(
+            width: isDesktop ? 500 : double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: _handleStartProject,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LightModeColors.accent,
+                    foregroundColor: const Color(0xFF151515),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 48, vertical: 22),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                    minimumSize: const Size(double.infinity, 58),
+                  ),
+                  child: const Text('Start Your Project',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
                 ),
-                child: const Text('Start your project',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              ),
-              OutlinedButton(
-                onPressed: () => _launchExternalLink('https://calendar.app.google/aGQDFPpmEK9eDh5W6'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                  side: const BorderSide(color: Colors.white, width: 2),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () => _launchExternalLink('https://calendar.app.google/aGQDFPpmEK9eDh5W6'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 48, vertical: 22),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.6), width: 2),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    minimumSize: const Size(double.infinity, 58),
+                  ),
+                  child: const Text('Contact Us',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
                 ),
-                child: const Text('Contact Us',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

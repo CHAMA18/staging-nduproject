@@ -7,6 +7,7 @@ import 'package:ndu_project/screens/long_lead_equipment_ordering_screen.dart';
 import 'package:ndu_project/screens/technical_development_screen.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -278,39 +279,51 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
       activeItemLabel: 'Specialized Design',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-            if (_isLoading) const SizedBox(height: 16),
-            _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 20),
-            _buildStatsRow(isNarrow),
-            const SizedBox(height: 20),
-            _buildFrameworkGuide(),
-            const SizedBox(height: 24),
-            if (_showSecurity) _buildSecurityRegister(),
-            if (_showSecurity) const SizedBox(height: 20),
-            if (_showPerformance) _buildPerformanceRegister(),
-            if (_showPerformance) const SizedBox(height: 20),
-            if (_showIntegration) _buildIntegrationRegister(),
-            if (_showIntegration) const SizedBox(height: 20),
-            if (_showCompliance) _buildComplianceRegister(),
-            if (_showCompliance) const SizedBox(height: 20),
-            if (_showReviewGates) _buildReviewGatesPanel(),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Technical Development',
-              nextLabel: 'Next: Long Lead Equipment Ordering',
-              onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TechnicalDevelopmentScreen())),
-              onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LongLeadEquipmentOrderingScreen())),
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'Specialized Design',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildHeader(isNarrow),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(isNarrow),
+                  const SizedBox(height: 20),
+                  _buildFrameworkGuide(),
+                  const SizedBox(height: 24),
+                  if (_showSecurity) _buildSecurityRegister(),
+                  if (_showSecurity) const SizedBox(height: 20),
+                  if (_showPerformance) _buildPerformanceRegister(),
+                  if (_showPerformance) const SizedBox(height: 20),
+                  if (_showIntegration) _buildIntegrationRegister(),
+                  if (_showIntegration) const SizedBox(height: 20),
+                  if (_showCompliance) _buildComplianceRegister(),
+                  if (_showCompliance) const SizedBox(height: 20),
+                  if (_showReviewGates) _buildReviewGatesPanel(),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Technical Development',
+                    nextLabel: 'Next: Long Lead Equipment Ordering',
+                    onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TechnicalDevelopmentScreen())),
+                    onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LongLeadEquipmentOrderingScreen())),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

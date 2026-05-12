@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -1977,43 +1978,55 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
       activeItemLabel: 'Engineering',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-            if (_isLoading) const SizedBox(height: 16),
-            _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 20),
-            _buildStatsRow(),
-            const SizedBox(height: 20),
-            _buildFrameworkGuide(),
-            const SizedBox(height: 24),
-            _buildStructuralRegister(),
-            const SizedBox(height: 20),
-            _buildComponentsRegister(),
-            const SizedBox(height: 20),
-            _buildCalculationsRegister(),
-            const SizedBox(height: 20),
-            _buildComplianceRegister(),
-            const SizedBox(height: 20),
-            _buildEcnRegister(),
-            const SizedBox(height: 20),
-            _buildReadinessGatesPanel(),
-            const SizedBox(height: 20),
-            _buildEngineeringBriefCard(),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Backend Design',
-              nextLabel: 'Next: Technical Development',
-              onBack: () => context.go('/backend-design'),
-              onNext: () => context.go('/technical-development'),
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'Engineering',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildHeader(isNarrow),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(),
+                  const SizedBox(height: 20),
+                  _buildFrameworkGuide(),
+                  const SizedBox(height: 24),
+                  _buildStructuralRegister(),
+                  const SizedBox(height: 20),
+                  _buildComponentsRegister(),
+                  const SizedBox(height: 20),
+                  _buildCalculationsRegister(),
+                  const SizedBox(height: 20),
+                  _buildComplianceRegister(),
+                  const SizedBox(height: 20),
+                  _buildEcnRegister(),
+                  const SizedBox(height: 20),
+                  _buildReadinessGatesPanel(),
+                  const SizedBox(height: 20),
+                  _buildEngineeringBriefCard(),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Backend Design',
+                    nextLabel: 'Next: Technical Development',
+                    onBack: () => context.go('/backend-design'),
+                    onNext: () => context.go('/technical-development'),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

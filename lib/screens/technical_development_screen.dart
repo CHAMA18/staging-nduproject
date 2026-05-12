@@ -11,6 +11,7 @@ import 'package:ndu_project/services/project_navigation_service.dart';
 // Theme constants used via AppSemanticColors and LightModeColors are
 // imported transitively through project_data_provider.
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
@@ -567,45 +568,57 @@ class _TechnicalDevelopmentScreenState
       activeItemLabel: 'Technical Development',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-            if (_isLoading) const SizedBox(height: 16),
-            _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 20),
-            _buildStatsRow(isNarrow),
-            const SizedBox(height: 24),
-            _buildFrameworkGuide(isNarrow),
-            const SizedBox(height: 24),
-            _buildWorkstreamRegisterPanel(),
-            const SizedBox(height: 20),
-            _buildComponentBuildPanel(),
-            const SizedBox(height: 20),
-            _buildIntegrationPanel(),
-            const SizedBox(height: 20),
-            _buildIssueTrackerPanel(),
-            const SizedBox(height: 20),
-            _buildRiskSignalsPanel(),
-            const SizedBox(height: 20),
-            _buildReadinessChecklistPanel(),
-            const SizedBox(height: 20),
-            _buildStandardsGatesPanel(),
-            const SizedBox(height: 20),
-            _buildDocumentationPanel(),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Engineering Design',
-              nextLabel: 'Next: Tools Integration',
-              onBack: () => context.go('/${AppRoutes.engineeringDesign}'),
-              onNext: () => context.push('/${AppRoutes.toolsIntegration}'),
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'Technical Development',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildHeader(isNarrow),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(isNarrow),
+                  const SizedBox(height: 24),
+                  _buildFrameworkGuide(isNarrow),
+                  const SizedBox(height: 24),
+                  _buildWorkstreamRegisterPanel(),
+                  const SizedBox(height: 20),
+                  _buildComponentBuildPanel(),
+                  const SizedBox(height: 20),
+                  _buildIntegrationPanel(),
+                  const SizedBox(height: 20),
+                  _buildIssueTrackerPanel(),
+                  const SizedBox(height: 20),
+                  _buildRiskSignalsPanel(),
+                  const SizedBox(height: 20),
+                  _buildReadinessChecklistPanel(),
+                  const SizedBox(height: 20),
+                  _buildStandardsGatesPanel(),
+                  const SizedBox(height: 20),
+                  _buildDocumentationPanel(),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Engineering Design',
+                    nextLabel: 'Next: Tools Integration',
+                    onBack: () => context.go('/${AppRoutes.engineeringDesign}'),
+                    onNext: () => context.push('/${AppRoutes.toolsIntegration}'),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

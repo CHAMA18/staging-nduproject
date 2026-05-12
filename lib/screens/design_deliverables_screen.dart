@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/specialized_design_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
@@ -740,45 +741,57 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       activeItemLabel: 'Design Deliverables',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            if (_loading) const SizedBox(height: 16),
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 20),
-            _buildStatsRow(),
-            const SizedBox(height: 20),
-            _buildFrameworkGuide(),
-            const SizedBox(height: 24),
-            _buildDeliverableRegister(),
-            const SizedBox(height: 20),
-            _buildAcceptanceEvidencePanel(),
-            const SizedBox(height: 20),
-            _buildHandoffGovernancePanel(),
-            const SizedBox(height: 20),
-            _buildApprovalGatesPanel(),
-            const SizedBox(height: 20),
-            _buildPipelinePanel(),
-            const SizedBox(height: 20),
-            _buildDependenciesPanel(),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Specialized Design',
-              nextLabel: 'Next: Staff Team',
-              onBack: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                    builder: (_) => const SpecializedDesignScreen()),
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'Design Deliverables',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_loading) const LinearProgressIndicator(minHeight: 2),
+                  if (_loading) const SizedBox(height: 16),
+                  _buildHeader(),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(),
+                  const SizedBox(height: 20),
+                  _buildFrameworkGuide(),
+                  const SizedBox(height: 24),
+                  _buildDeliverableRegister(),
+                  const SizedBox(height: 20),
+                  _buildAcceptanceEvidencePanel(),
+                  const SizedBox(height: 20),
+                  _buildHandoffGovernancePanel(),
+                  const SizedBox(height: 20),
+                  _buildApprovalGatesPanel(),
+                  const SizedBox(height: 20),
+                  _buildPipelinePanel(),
+                  const SizedBox(height: 20),
+                  _buildDependenciesPanel(),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Specialized Design',
+                    nextLabel: 'Next: Staff Team',
+                    onBack: () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                          builder: (_) => const SpecializedDesignScreen()),
+                    ),
+                    onNext: () => StaffTeamScreen.open(context),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
-              onNext: () => StaffTeamScreen.open(context),
             ),
-            const SizedBox(height: 40),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -9,6 +9,7 @@ import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/backend_design_screen.dart';
@@ -529,39 +530,51 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
       activeItemLabel: 'UI/UX Design',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-            if (_isLoading) const SizedBox(height: 16),
-            _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 20),
-            _buildStatsRow(isNarrow),
-            const SizedBox(height: 20),
-            _buildUXFrameworkGuide(),
-            const SizedBox(height: 24),
-            _buildJourneyRegister(),
-            const SizedBox(height: 20),
-            _buildInterfaceRegister(),
-            const SizedBox(height: 20),
-            _buildDesignTokenRegister(),
-            const SizedBox(height: 20),
-            _buildUsabilityRegister(),
-            const SizedBox(height: 20),
-            _buildReviewGatesPanel(),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Development Set Up',
-              nextLabel: 'Next: Backend Design',
-              onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevelopmentSetUpScreen())),
-              onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackendDesignScreen())),
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'UI/UX Design',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildHeader(isNarrow),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(isNarrow),
+                  const SizedBox(height: 20),
+                  _buildUXFrameworkGuide(),
+                  const SizedBox(height: 24),
+                  _buildJourneyRegister(),
+                  const SizedBox(height: 20),
+                  _buildInterfaceRegister(),
+                  const SizedBox(height: 20),
+                  _buildDesignTokenRegister(),
+                  const SizedBox(height: 20),
+                  _buildUsabilityRegister(),
+                  const SizedBox(height: 20),
+                  _buildReviewGatesPanel(),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Development Set Up',
+                    nextLabel: 'Next: Backend Design',
+                    onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevelopmentSetUpScreen())),
+                    onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackendDesignScreen())),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

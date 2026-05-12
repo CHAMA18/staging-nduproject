@@ -12,10 +12,10 @@ import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/integration_oauth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ToolsIntegrationScreen extends StatefulWidget {
   const ToolsIntegrationScreen({super.key});
@@ -446,51 +446,63 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       activeItemLabel: 'Tools Integration',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-            if (_isLoading) const SizedBox(height: 16),
-            if (_loadError != null) ...[
-              _buildLoadErrorCard(),
-              const SizedBox(height: 16),
-            ],
-            _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
-            const SizedBox(height: 14),
-            _buildGovernanceStrip(),
-            const SizedBox(height: 20),
-            _buildStatsRow(isNarrow),
-            const SizedBox(height: 20),
-            _buildFrameworkGuide(),
-            const SizedBox(height: 24),
-            Column(
-              children: [
-                _buildIntegrationRegister(),
-                const SizedBox(height: 20),
-                _buildConnectionHealthPanel(),
-                const SizedBox(height: 20),
-                _buildRiskSignalsPanel(),
-                const SizedBox(height: 20),
-                _buildActionItemsPanel(),
-                const SizedBox(height: 20),
-                _buildApprovalGatesPanel(),
-                const SizedBox(height: 20),
-                _buildDataFlowPanel(),
-              ],
+      body: Column(
+        children: [
+          const PlanningPhaseHeader(
+            title: 'Tools Integration',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  if (_loadError != null) ...[
+                    _buildLoadErrorCard(),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildHeader(isNarrow),
+                  const SizedBox(height: 16),
+                  _buildFilterChips(),
+                  const SizedBox(height: 14),
+                  _buildGovernanceStrip(),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(isNarrow),
+                  const SizedBox(height: 20),
+                  _buildFrameworkGuide(),
+                  const SizedBox(height: 24),
+                  Column(
+                    children: [
+                      _buildIntegrationRegister(),
+                      const SizedBox(height: 20),
+                      _buildConnectionHealthPanel(),
+                      const SizedBox(height: 20),
+                      _buildRiskSignalsPanel(),
+                      const SizedBox(height: 20),
+                      _buildActionItemsPanel(),
+                      const SizedBox(height: 20),
+                      _buildApprovalGatesPanel(),
+                      const SizedBox(height: 20),
+                      _buildDataFlowPanel(),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  LaunchPhaseNavigation(
+                    backLabel: 'Back: Technical Development',
+                    nextLabel: 'Next: Long Lead Equipment',
+                    onBack: () => context.go('/${AppRoutes.technicalDevelopment}'),
+                    onNext: () => context.go('/${AppRoutes.longLeadEquipmentOrdering}'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            LaunchPhaseNavigation(
-              backLabel: 'Back: Technical Development',
-              nextLabel: 'Next: Long Lead Equipment',
-              onBack: () => context.go('/${AppRoutes.technicalDevelopment}'),
-              onNext: () => context.go('/${AppRoutes.longLeadEquipmentOrdering}'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -34,8 +34,7 @@
 
   <!-- Firebase SDK Configuration managed by FlutterFire -->
   <script>
-    // Align with FlutterFire tested version to avoid runtime issues
-    window.flutterfire_web_sdk_version = '12.3.0';
+    window.flutterfire_web_sdk_version = '12.7.0';
   </script>
   <style>
     /* System font fallback to avoid Google Fonts CDN dependency */
@@ -43,6 +42,19 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     }
   </style>
+  <script>
+    // Flutter web uses hash routes in local/dev builds. Normalize accidental
+    // mixed URLs such as /contracts-tracking#/dashboard to /#/contracts-tracking
+    // so deep links open the intended workspace instead of reflecting dashboard.
+    (function normalizeFlutterHashRoute() {
+      var path = window.location.pathname.replace(/\/+$/, '');
+      var hash = window.location.hash || '';
+      if (!path || path === '/') return;
+      if (path.indexOf('.') !== -1) return;
+      if (hash && hash !== '#/' && hash !== '#/dashboard') return;
+      window.history.replaceState(null, '', '/#' + path);
+    })();
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

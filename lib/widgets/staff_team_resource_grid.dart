@@ -602,7 +602,7 @@ class _PremiumSuggestionPill extends StatelessWidget {
           border: Border.all(color: const Color(0xFFC4B5FD)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -873,7 +873,7 @@ class _PremiumStaffingRowState extends State<_PremiumStaffingRow> {
                           color: _statusBg(_row.status),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: _statusColor(_row.status).withValues(alpha: 0.2),
+                            color: _statusColor(_row.status).withOpacity(0.2),
                           ),
                         ),
                         child: Text(

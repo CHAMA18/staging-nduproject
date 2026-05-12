@@ -327,6 +327,10 @@ class _RecurringDeliverablesScreenState
           'on a fixed cadence, accumulating completion counts over the project lifecycle. '
           'They anchor the project\'s operational heartbeat and provide predictable '
           'touchpoints for governance, quality assurance, and team coordination.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.schedule_outlined,
+      headerIconColor: const Color(0xFF7C3AED),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -368,9 +372,9 @@ class _RecurringDeliverablesScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
+        color: color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        border: Border.all(color: color.withOpacity(0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,7 +382,7 @@ class _RecurringDeliverablesScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(

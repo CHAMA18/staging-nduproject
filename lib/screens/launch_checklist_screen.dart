@@ -37,18 +37,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   bool _autoGenerationTriggered = false;
   bool _isAutoGenerating = false;
 
-  List<_StatusMetricData> _statusMetrics = [];
   List<_ChecklistItemData> _checklistItems = [];
   List<_ApprovalData> _approvals = [];
   List<_MilestoneData> _milestones = [];
   List<_TimelineStage> _timelineStages = [];
-
-  String _confidencePercent = '72';
-  String _confidenceStatus = 'On track';
-  String _confidenceNote = 'Launch readiness progressing per plan';
-  String _readinessSummary = '5 of 7 critical items cleared';
-  double _readinessProgress = 0.72;
-  String _timelineSummary = 'Go / no-go rehearsal in 2 days';
 
   String _coordinatorName = '';
   String _coordinatorRole = '';
@@ -58,7 +50,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   @override
   void initState() {
     super.initState();
-    _statusMetrics = _defaultStatusMetrics();
     _checklistItems = _defaultChecklistItems();
     _approvals = _defaultApprovals();
     _milestones = _defaultMilestones();
@@ -92,14 +83,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           .get();
       final data = doc.data() ?? {};
 
-      final metrics = _StatusMetricData.fromList(data['statusMetrics']);
       final checklist = _ChecklistItemData.fromList(data['checklistItems']);
       final approvals = _ApprovalData.fromList(data['approvals']);
       final milestones = _MilestoneData.fromList(data['milestones']);
       final stages = _TimelineStage.fromList(data['timelineStages']);
 
-      final hasContent = metrics.isNotEmpty ||
-          checklist.isNotEmpty ||
+      final hasContent = checklist.isNotEmpty ||
           approvals.isNotEmpty ||
           milestones.isNotEmpty ||
           stages.isNotEmpty;
@@ -107,18 +96,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       _suspendSave = true;
       if (!mounted) return;
       setState(() {
-        _statusMetrics = metrics.isEmpty ? _defaultStatusMetrics() : metrics;
         _checklistItems = checklist.isEmpty ? _defaultChecklistItems() : checklist;
         _approvals = approvals.isEmpty ? _defaultApprovals() : approvals;
         _milestones = milestones.isEmpty ? _defaultMilestones() : milestones;
         _timelineStages = stages.isEmpty ? _defaultTimelineStages() : stages;
-
-        _confidencePercent = data['confidencePercent']?.toString() ?? '72';
-        _confidenceStatus = data['confidenceStatus']?.toString() ?? 'On track';
-        _confidenceNote = data['confidenceNote']?.toString() ?? 'Launch readiness progressing per plan';
-        _readinessSummary = data['readinessSummary']?.toString() ?? '5 of 7 critical items cleared';
-        _readinessProgress = (double.tryParse(data['readinessProgress']?.toString() ?? '') ?? 0.72).clamp(0.0, 1.0);
-        _timelineSummary = data['timelineSummary']?.toString() ?? 'Go / no-go rehearsal in 2 days';
 
         final coordinator = Map<String, dynamic>.from(data['coordinator'] as Map? ?? {});
         _coordinatorName = coordinator['name']?.toString() ?? '';
@@ -149,7 +130,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         context: context,
         section: 'Launch Checklist',
         sections: const {
-          'status_metrics': 'Status metrics for launch readiness',
           'checklist_items': 'Launch checklist action items with owners and due',
           'approvals': 'Approvals and sign-offs required',
           'milestones': 'Key launch milestones with due dates',
@@ -158,15 +138,11 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         itemsPerSection: 3,
       );
 
-      final metrics = generated['status_metrics'] ?? const [];
       final checklist = generated['checklist_items'] ?? const [];
       final approvals = generated['approvals'] ?? const [];
       final milestones = generated['milestones'] ?? const [];
       final stages = generated['timeline_stages'] ?? const [];
 
-      if (metrics.isNotEmpty) {
-        _statusMetrics = _mapStatusMetrics(metrics);
-      }
       if (checklist.isNotEmpty) {
         _checklistItems = _mapChecklistItems(checklist);
       }
@@ -189,17 +165,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     } finally {
       _isAutoGenerating = false;
     }
-  }
-
-  List<_StatusMetricData> _mapStatusMetrics(List<LaunchEntry> entries) {
-    return entries.map((entry) => _StatusMetricData(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      label: entry.title,
-      value: entry.status ?? 'TBD',
-      detail: entry.details,
-      iconKey: _getIconForKey(entry.title),
-      accentColor: const Color(0xFF6366F1),
-    )).toList();
   }
 
   List<_ChecklistItemData> _mapChecklistItems(List<LaunchEntry> entries) {
@@ -248,30 +213,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     return match?.group(1)?.trim() ?? '';
   }
 
-  String _getIconForKey(String key) {
-    final lower = key.toLowerCase();
-    if (lower.contains('stage') || lower.contains('phase')) return 'stacked';
-    if (lower.contains('gate') || lower.contains('review')) return 'fact_check';
-    if (lower.contains('risk') || lower.contains('blocker')) return 'warning';
-    if (lower.contains('support') || lower.contains('hypercare')) return 'support';
-    if (lower.contains('milestone') || lower.contains('date')) return 'calendar';
-    return 'info';
-  }
-
-  IconData _iconDataForKey(String key) {
-    final lower = key.toLowerCase();
-    if (lower.contains('stacked') || lower.contains('stage')) return Icons.layers_outlined;
-    if (lower.contains('fact') || lower.contains('check')) return Icons.fact_check_outlined;
-    if (lower.contains('warning') || lower.contains('risk')) return Icons.warning_amber_rounded;
-    if (lower.contains('support') || lower.contains('help')) return Icons.support_agent_outlined;
-    if (lower.contains('calendar') || lower.contains('date')) return Icons.calendar_today_outlined;
-    if (lower.contains('event')) return Icons.event_outlined;
-    if (lower.contains('people') || lower.contains('group')) return Icons.groups_outlined;
-    if (lower.contains('security')) return Icons.security_outlined;
-    if (lower.contains('campaign')) return Icons.campaign_outlined;
-    return Icons.info_outline;
-  }
-
   Future<void> _saveToFirestore() async {
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
@@ -283,17 +224,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           .collection('execution_phase_sections')
           .doc('launch_checklist')
           .set({
-        'statusMetrics': _statusMetrics.map((e) => e.toMap()).toList(),
         'checklistItems': _checklistItems.map((e) => e.toMap()).toList(),
         'approvals': _approvals.map((e) => e.toMap()).toList(),
         'milestones': _milestones.map((e) => e.toMap()).toList(),
         'timelineStages': _timelineStages.map((e) => e.toMap()).toList(),
-        'confidencePercent': _confidencePercent,
-        'confidenceStatus': _confidenceStatus,
-        'confidenceNote': _confidenceNote,
-        'readinessSummary': _readinessSummary,
-        'readinessProgress': _readinessProgress,
-        'timelineSummary': _timelineSummary,
         'coordinator': {
           'name': _coordinatorName,
           'role': _coordinatorRole,
@@ -308,41 +242,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   }
 
   // Defaults
-  List<_StatusMetricData> _defaultStatusMetrics() => [
-    _StatusMetricData(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      label: 'Current stage',
-      value: 'Final readiness review',
-      detail: 'All cutover artefacts verified',
-      iconKey: 'stacked',
-      accentColor: const Color(0xFF6366F1),
-    ),
-    _StatusMetricData(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      label: 'Next gate',
-      value: 'Go / no-go rehearsal',
-      detail: 'Scheduled in 2 days',
-      iconKey: 'fact_check',
-      accentColor: const Color(0xFF0EA5E9),
-    ),
-    _StatusMetricData(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      label: 'Risk posture',
-      value: '1 watch item',
-      detail: 'No critical blockers',
-      iconKey: 'warning',
-      accentColor: const Color(0xFFF59E0B),
-    ),
-    _StatusMetricData(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      label: 'Hypercare',
-      value: '14-day coverage',
-      detail: 'Roster confirmed',
-      iconKey: 'support',
-      accentColor: const Color(0xFF10B981),
-    ),
-  ];
-
   List<_ChecklistItemData> _defaultChecklistItems() => [
     _ChecklistItemData(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -508,8 +407,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               child: CircularProgressIndicator(),
             )),
           ] else ...[
-            _buildStatusOverview(),
-            const SizedBox(height: 28),
             _buildChecklistSection(),
             const SizedBox(height: 28),
             _buildApprovalsSection(),
@@ -666,286 +563,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     );
   }
 
-  Widget _buildStatusOverview() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 8)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.analytics_outlined,
-                    size: 20, color: Color(0xFF4338CA)),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Status Overview',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Launch readiness metrics at a glance',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              // Confidence Gauge
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F3FF),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFEDE9FE)),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  value: (double.tryParse(_confidencePercent) ?? 72) / 100,
-                                  strokeWidth: 10,
-                                  backgroundColor: const Color(0xFFE0E7FF),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                                ),
-                                Text(
-                                  _confidencePercent,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF312E81),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Confidence',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF4C1D95),
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'On track',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF312E81),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          _confidenceNote,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF5B21B6),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Readiness Progress
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD1FAE5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Readiness',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF065F46),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      LinearProgressIndicator(
-                        value: _readinessProgress,
-                        minHeight: 10,
-                        backgroundColor: const Color(0xFFD1FAE5),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _readinessSummary,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF047857),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Timeline
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFBAE6FD)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Timeline',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF075985),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _timelineSummary,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0C4A6E),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Status Metrics Grid
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _statusMetrics.map((metric) => _buildStatusMetricCard(metric)).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusMetricCard(_StatusMetricData metric) {
-    return Container(
-      width: 280,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: metric.accentColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(_iconDataForKey(metric.iconKey),
-                size: 20, color: metric.accentColor),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  metric.label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  metric.value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildChecklistSection() {
     return _buildSectionCard(
       icon: Icons.checklist_rounded,
@@ -989,7 +606,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
+              color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -1053,9 +670,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
+              color: statusColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
             ),
             child: Text(
               item.status,
@@ -1117,7 +734,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
+              color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -1155,9 +772,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
+              color: statusColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
             ),
             child: Text(
               item.status,
@@ -1283,9 +900,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
+              color: statusColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
             ),
             child: Text(
               item.status,
@@ -2342,48 +1959,6 @@ class _Debouncer {
 }
 
 // Data Models
-class _StatusMetricData {
-  const _StatusMetricData({
-    required this.id,
-    required this.label,
-    required this.value,
-    required this.detail,
-    required this.iconKey,
-    required this.accentColor,
-  });
-
-  final String id;
-  final String label;
-  final String value;
-  final String detail;
-  final String iconKey;
-  final Color accentColor;
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'label': label,
-        'value': value,
-        'detail': detail,
-        'iconKey': iconKey,
-        'accentColor': accentColor.toARGB32(),
-      };
-
-  static List<_StatusMetricData> fromList(dynamic data) {
-    if (data is! List) return [];
-    return data.map((item) {
-      final map = Map<String, dynamic>.from(item as Map? ?? {});
-      return _StatusMetricData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        label: map['label']?.toString() ?? '',
-        value: map['value']?.toString() ?? '',
-        detail: map['detail']?.toString() ?? '',
-        iconKey: map['iconKey']?.toString() ?? 'info',
-        accentColor: Color(map['accentColor'] is int ? map['accentColor'] as int : 0xFF6366F1),
-      );
-    }).toList();
-  }
-}
-
 class _ChecklistItemData {
   const _ChecklistItemData({
     required this.id,

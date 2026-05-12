@@ -200,7 +200,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: _colorForCategory(hint.category).withValues(alpha: 0.12),
+                      color: _colorForCategory(hint.category).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
@@ -331,7 +331,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
             icon: const Icon(Icons.add_circle_outline),
             label: const Text('Create Hint'),
             style: TextButton.styleFrom(
-              backgroundColor: _hintActionColor.withValues(alpha: 0.18),
+              backgroundColor: _hintActionColor.withOpacity(0.18),
               foregroundColor: _hintActionForegroundColor,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -435,7 +435,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: Colors.black.withOpacity(0.07),
             blurRadius: 28,
             offset: const Offset(0, 14),
           ),
@@ -464,7 +464,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827).withValues(alpha: 0.06),
+                        color: const Color(0xFF111827).withOpacity(0.06),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Text(
@@ -674,7 +674,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -757,11 +757,11 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
           label: Text(option == 'all' ? 'All' : _chipTitle(option)),
           selected: selected == option,
           onSelected: (_) => onSelected(option),
-          selectedColor: _colorForCategory(option).withValues(alpha: 0.14),
+          selectedColor: _colorForCategory(option).withOpacity(0.14),
           backgroundColor: const Color(0xFFF8FAFC),
           side: BorderSide(
             color: selected == option
-                ? _colorForCategory(option).withValues(alpha: 0.35)
+                ? _colorForCategory(option).withOpacity(0.35)
                 : const Color(0xFFE5E7EB),
           ),
           shape: RoundedRectangleBorder(
@@ -915,7 +915,7 @@ class _HintCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -930,7 +930,7 @@ class _HintCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
+                  color: accent.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(Icons.tips_and_updates_outlined, color: accent),
@@ -1033,10 +1033,10 @@ class _HintCard extends StatelessWidget {
                   icon: const Icon(Icons.visibility_outlined, size: 16),
                   label: const Text('Preview'),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: _hintActionColor.withValues(alpha: 0.12),
+                    backgroundColor: _hintActionColor.withOpacity(0.12),
                     foregroundColor: _hintActionForegroundColor,
                     side:
-                        BorderSide(color: _hintActionColor.withValues(alpha: 0.7)),
+                        BorderSide(color: _hintActionColor.withOpacity(0.7)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -1419,12 +1419,12 @@ class _HintPreviewPane extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 16,
                   offset: const Offset(0, 10),
                 ),
               ],
-              border: Border.all(color: accent.withValues(alpha: 0.18)),
+              border: Border.all(color: accent.withOpacity(0.18)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1435,7 +1435,7 @@ class _HintPreviewPane extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.12),
+                        color: accent.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(Icons.info_outline, color: accent),
@@ -1529,7 +1529,7 @@ class _CommandPanel extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1599,7 +1599,7 @@ class _HeroMetricCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: data.color.withValues(alpha: 0.12),
+              color: data.color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(data.icon, color: data.color),
@@ -1687,7 +1687,7 @@ class _MetaChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
+        border: Border.all(color: accent.withOpacity(0.16)),
       ),
       child: RichText(
         text: TextSpan(
@@ -1734,7 +1734,7 @@ class _ActionPillButton extends StatelessWidget {
       icon: Icon(icon, size: 18),
       label: Text(label),
       style: FilledButton.styleFrom(
-        backgroundColor: accent.withValues(alpha: 0.12),
+        backgroundColor: accent.withOpacity(0.12),
         foregroundColor: accent,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),

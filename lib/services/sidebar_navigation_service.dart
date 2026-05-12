@@ -122,7 +122,7 @@ class SidebarNavigationService {
     SidebarItem(
         checkpoint: 'project_activities_log', label: 'Project Activities Log'),
 
-    // Planning Phase - Project Framework
+    // Planning Phase
     SidebarItem(checkpoint: 'project_framework', label: 'Project Details'),
     SidebarItem(
         checkpoint: 'work_breakdown_structure',
@@ -140,54 +140,59 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'team_training', label: 'Training & Team Building'),
     SidebarItem(
         checkpoint: 'stakeholder_management', label: 'Stakeholder Management'),
-    // SSHER
+    SidebarItem(checkpoint: 'team_management', label: 'Team Management'),
     SidebarItem(checkpoint: 'ssher', label: 'SSHER'),
-    // Quality Management
     SidebarItem(checkpoint: 'quality_management', label: 'Quality Management'),
-    // Execution Planning sub-items
-    SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan Outline'),
+    // Design & Technology — now before Execution Plan
+    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
+    SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
+    SidebarItem(
+        checkpoint: 'interface_management', label: 'Interface Management'),
+    // Execution Plan sub-items (full flow matching sidebar order)
+    SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan Overview'),
     SidebarItem(
         checkpoint: 'execution_plan_strategy',
-        label: 'Execution Plan Solutions'),
+        label: 'Executive Plan Strategy'),
     SidebarItem(
         checkpoint: 'execution_plan_details', label: 'Execution Plan Details'),
     SidebarItem(
         checkpoint: 'execution_early_works', label: 'Execution Early Works'),
     SidebarItem(
         checkpoint: 'execution_enabling_work_plan',
-        label: 'Enabling Work Plan'),
+        label: 'Execution Enabling Work Plan'),
+    SidebarItem(
+        checkpoint: 'execution_issue_management',
+        label: 'Execution Issue Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_stakeholder_identification',
+        label: 'Stakeholder Identification'),
     SidebarItem(
         checkpoint: 'execution_plan_construction_plan',
         label: 'Construction Plan'),
     SidebarItem(
         checkpoint: 'execution_plan_infrastructure_plan',
         label: 'Infrastructure Plan'),
-    // Agile Section sub-items
     SidebarItem(
         checkpoint: 'execution_plan_agile_delivery_plan',
         label: 'Agile Delivery Plan'),
     SidebarItem(
-        checkpoint: 'execution_issue_management',
-        label: 'Execution Issue Management'),
-    SidebarItem(
         checkpoint: 'execution_plan_lessons_learned',
-        label: 'Execution Lessons Learned'),
+        label: 'Lessons Learned'),
     SidebarItem(
         checkpoint: 'execution_plan_best_practices',
-        label: 'Execution Best Practices'),
-    SidebarItem(
-        checkpoint: 'execution_plan_stakeholder_identification',
-        label: 'Execution Stakeholder Identification'),
-    SidebarItem(
-        checkpoint: 'execution_plan_communication_plan',
-        label: 'Execution Communication Plan'),
+        label: 'Best Practices'),
     SidebarItem(
         checkpoint: 'execution_plan_interface_management',
-        label: 'Execution Interface Management'),
+        label: 'Interface Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_communication_plan',
+        label: 'Communication Plan'),
     SidebarItem(
         checkpoint: 'execution_plan_interface_management_plan',
-        label: 'Execution Interface Management Plan'),
-    // Roadmap Planning sub-items
+        label: 'Interface Management Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management_overview',
+        label: 'Interface Management Overview'),
     SidebarItem(
         checkpoint: 'deliverables_roadmap_overview', label: 'Roadmap Overview'),
     SidebarItem(
@@ -195,43 +200,18 @@ class SidebarNavigationService {
         label: 'Detailed Deliverables'),
     SidebarItem(
         checkpoint: 'document_review_matrix', label: 'Document Review Matrix'),
-    // Agile Planning sub-items
-    SidebarItem(
-        checkpoint: 'deliverable_roadmap_agile_map_out',
-        label: 'Agile Map Out'),
-    SidebarItem(
-        checkpoint: 'agile_project_baseline', label: 'Agile Project Baseline'),
-    // Design Planning sub-items
-    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
-    SidebarItem(
-        checkpoint: 'technology', label: 'Technology Planning Overview'),
-    // Interface Planning
-    SidebarItem(
-        checkpoint: 'interface_management', label: 'Interface Management'),
-    // Risk Planning
+    // Risk & Contracts
     SidebarItem(checkpoint: 'risk_assessment', label: 'Risk Assessment'),
-    // Contract & Procurement Planning
     SidebarItem(checkpoint: 'contracts', label: 'Contract'),
     SidebarItem(checkpoint: 'procurement', label: 'Procurement'),
-    // Schedule Planning sub-items
+    // Schedule & Cost
     SidebarItem(checkpoint: 'schedule', label: 'Schedule'),
-    SidebarItem(
-        checkpoint: 'project_plan_level1_schedule',
-        label: 'Level 1 - Project Schedule'),
-    SidebarItem(
-        checkpoint: 'project_plan_detailed_schedule',
-        label: 'Detailed Project Schedule'),
-    SidebarItem(
-        checkpoint: 'project_plan_condensed_summary',
-        label: 'Condensed Project Summary'),
-    // Cost Planning
     SidebarItem(checkpoint: 'cost_estimate', label: 'Cost Estimate Overview'),
     // Scope & Change Management
     SidebarItem(
         checkpoint: 'scope_tracking_plan', label: 'Scope Tracking Plan'),
     SidebarItem(checkpoint: 'change_management', label: 'Change Management'),
     SidebarItem(checkpoint: 'issue_management', label: 'Issue Management'),
-    // Project Knowledge
     SidebarItem(checkpoint: 'lessons_learned', label: 'Lessons Learned'),
     // Start-Up Planning sub-items
     SidebarItem(checkpoint: 'startup_planning', label: 'Start-Up Planning'),
@@ -243,8 +223,24 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'startup_planning_devops', label: 'DevOps'),
     SidebarItem(
         checkpoint: 'startup_planning_closeout', label: 'Close Out Plan'),
-    // Project Baseline sub-items
+    SidebarItem(
+        checkpoint: 'deliverables_roadmap', label: 'Deliverables Roadmap'),
+    SidebarItem(
+        checkpoint: 'deliverable_roadmap_agile_map_out',
+        label: 'Agile Map Out'),
+    SidebarItem(
+        checkpoint: 'agile_project_baseline', label: 'Agile Project Baseline'),
+    // Project Plan sub-items
     SidebarItem(checkpoint: 'project_plan', label: 'Project Plan Overview'),
+    SidebarItem(
+        checkpoint: 'project_plan_level1_schedule',
+        label: 'Level 1 - Project Schedule'),
+    SidebarItem(
+        checkpoint: 'project_plan_detailed_schedule',
+        label: 'Detailed Project Schedule'),
+    SidebarItem(
+        checkpoint: 'project_plan_condensed_summary',
+        label: 'Condensed Project Summary'),
     SidebarItem(checkpoint: 'project_baseline', label: 'Project Baseline'),
 
     // Design Phase

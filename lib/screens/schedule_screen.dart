@@ -50,7 +50,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isGeneratingSchedule = false;
   bool _autoImportAttempted = false;
   bool _notesExpanded = false;
-
   String? _selectedTaskId;
   String? _hoveredTaskId;
   int _selectedMainTab =
@@ -4616,7 +4615,12 @@ String _titleCase(String value) {
 }
 
 String _normalizeScheduleStatus(String raw) {
-  final value = raw.trim().toLowerCase().replaceAll(' ', '_');
+  var value = raw.trim().toLowerCase().replaceAll(' ', '_');
+  // P6: Normalize 'complete' → 'completed' to fix status string inconsistency.
+  // The WorkPackage model uses 'complete' (see project_data_model.dart:3396),
+  // while ScheduleActivity consistently uses 'completed'. This normalization
+  // ensures all schedule-related statuses resolve to 'completed'.
+  if (value == 'complete') value = 'completed';
   const allowed = {'pending', 'in_progress', 'completed', 'overdue'};
   return allowed.contains(value) ? value : 'pending';
 }

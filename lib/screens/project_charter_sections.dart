@@ -96,7 +96,7 @@ class CharterExecutiveSnapshot extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: Colors.white.withOpacity(0.6),
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.0,
@@ -120,7 +120,7 @@ class CharterExecutiveSnapshot extends StatelessWidget {
     return Container(
       height: 40,
       width: 1,
-      color: Colors.white.withValues(alpha: 0.2),
+      color: Colors.white.withOpacity(0.2),
     );
   }
 
@@ -768,7 +768,7 @@ class CharterScope extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.1),
+            color: accentColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(title,
@@ -789,7 +789,7 @@ class CharterScope extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.check_circle_outline,
-                    color: accentColor.withValues(alpha: 0.1),
+                    color: accentColor.withOpacity(0.1),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1278,7 +1278,7 @@ class CharterRisks extends StatelessWidget {
         Text(label,
             style: TextStyle(
                 fontSize: 11,
-                color: color.withValues(alpha: 0.8),
+                color: color.withOpacity(0.8),
                 fontWeight: FontWeight.w500)),
       ],
     );
@@ -1571,7 +1571,7 @@ class CharterMilestoneVisualizer extends StatelessWidget {
                                   if (isFuture)
                                     BoxShadow(
                                         color:
-                                            Colors.grey.withValues(alpha: 0.1),
+                                            Colors.grey.withOpacity(0.1),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2))
                                 ],
@@ -2088,7 +2088,7 @@ class CharterTechnicalEnvironment extends StatelessWidget {
               decoration: BoxDecoration(
                   color: bg,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: color.withValues(alpha: 0.2))),
+                  border: Border.all(color: color.withOpacity(0.2))),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2102,7 +2102,7 @@ class CharterTechnicalEnvironment extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: color.withValues(alpha: 0.82))),
+                          color: color.withOpacity(0.82))),
                   const SizedBox(height: 10),
                   Text(subtitle,
                       style:

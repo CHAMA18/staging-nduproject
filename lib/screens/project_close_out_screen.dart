@@ -428,6 +428,10 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Lessons Learned',
       subtitle:
           'What went well, what to improve, and recommendations for future projects.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.auto_stories_outlined,
+      headerIconColor: const Color(0xFFF59E0B),
       child: TextFormField(
         initialValue: _lessonsLearned.notes,
         maxLines: 8,
@@ -466,6 +470,10 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       ExecutionPanelShell(
         title: 'Close-Out Summary',
         subtitle: 'Aggregated view of all close-out progress.',
+        collapsible: true,
+        initiallyExpanded: true,
+        headerIcon: Icons.assignment_outlined,
+        headerIconColor: const Color(0xFF10B981),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -510,6 +518,10 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         title: 'Approvals Snapshot',
         subtitle:
             '${_approvals.where((a) => a.status == 'Approved').length} of ${_approvals.length} approved.',
+        collapsible: true,
+        initiallyExpanded: true,
+        headerIcon: Icons.fact_check_outlined,
+        headerIconColor: const Color(0xFF6366F1),
         child: _approvals.isEmpty
             ? const Text('No approvals captured yet.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)))

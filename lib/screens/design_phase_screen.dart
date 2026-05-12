@@ -1187,8 +1187,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     bool showExternalIcon = false,
   }) {
     final backgroundColor = isSelected
-        ? Colors.blue.withValues(alpha: 0.1)
-        : Colors.grey.withValues(alpha: 0.06);
+        ? Colors.blue.withOpacity(0.1)
+        : Colors.grey.withOpacity(0.06);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1330,7 +1330,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: color.withValues(alpha: 0.2),
+            backgroundColor: color.withOpacity(0.2),
             child: Text(initials,
                 style: TextStyle(
                     fontSize: 12, color: color, fontWeight: FontWeight.bold)),
@@ -1399,7 +1399,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1492,7 +1492,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
+                  color: Colors.blue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text('Required',
@@ -2036,7 +2036,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.06),
+              color: Colors.grey.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade200),
             ),
@@ -2384,7 +2384,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isDragging
-            ? LightModeColors.accent.withValues(alpha: 0.15)
+            ? LightModeColors.accent.withOpacity(0.15)
             : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppSemanticColors.border),

@@ -993,7 +993,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1032,7 +1032,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1071,7 +1071,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1112,7 +1112,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1850,7 +1850,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (_) => const _LoadingDialog(),
     );
 

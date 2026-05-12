@@ -834,7 +834,7 @@ class _WorkBreakdownStructureBodyState
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -942,7 +942,7 @@ class _WorkBreakdownStructureBodyState
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: (_kAccentColor.withValues(alpha: 0.2)),
+                          color: (_kAccentColor.withOpacity(0.2)),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Icon(Icons.add,
@@ -966,7 +966,7 @@ class _WorkBreakdownStructureBodyState
         width: 280,
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.4),
+          color: Colors.white.withOpacity(0.4),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _kCardBorder, style: BorderStyle.none),
         ),
@@ -1471,7 +1471,7 @@ class _WorkBreakdownStructureBodyState
         border: Border.all(color: _kCardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

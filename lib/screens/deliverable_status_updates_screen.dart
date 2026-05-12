@@ -307,6 +307,10 @@ class _DeliverableStatusUpdatesScreenState
           'The at-risk and overdue indicators help teams proactively address issues before they '
           'become blockers. Status reports should flow from deliverable data to maintain '
           'consistency between execution tracking and stakeholder communication.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.lightbulb_outline_rounded,
+      headerIconColor: const Color(0xFFF59E0B),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

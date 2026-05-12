@@ -139,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   onPressed: handleBackNavigation,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black,
-                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
+                    side: BorderSide(color: Colors.grey.withOpacity(0.4)),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 18, vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -327,7 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFC107).withValues(alpha: 0.18),
+                        color: const Color(0xFFFFC107).withOpacity(0.18),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.settings_outlined,
@@ -381,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.2)),
+                            color: Colors.grey.withOpacity(0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,7 +646,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.18),
+                color: accent.withOpacity(0.18),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text('Executive Summary',
@@ -667,7 +667,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         Text(
           'StackOne delivery is pacing ahead of target, with stakeholder sentiment at an all-time high.\nWe are on track for the Q4 milestone with strong compliance posture and predictable burn.',
           style: theme.textTheme.bodyLarge?.copyWith(
-              color: Colors.white.withValues(alpha: 0.78), height: 1.45),
+              color: Colors.white.withOpacity(0.78), height: 1.45),
         ),
         const SizedBox(height: 18),
         Wrap(
@@ -683,8 +683,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     final highlightCard = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        color: Colors.white.withValues(alpha: 0.12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        color: Colors.white.withOpacity(0.12),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -714,7 +714,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               child: LinearProgressIndicator(
                 value: 0.94,
                 minHeight: 10,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: Colors.white.withOpacity(0.2),
                 valueColor: AlwaysStoppedAnimation(accent),
               ),
             ),
@@ -771,7 +771,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         color: Colors.white,
         boxShadow: const [
           BoxShadow(
@@ -785,7 +785,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.18),
+              color: accent.withOpacity(0.18),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(data.icon, color: accent, size: 24),
@@ -824,7 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: LinearProgressIndicator(
               value: data.progress,
               minHeight: 10,
-              backgroundColor: Colors.grey.withValues(alpha: 0.12),
+              backgroundColor: Colors.grey.withOpacity(0.12),
               valueColor: AlwaysStoppedAnimation(accent),
             ),
           ),
@@ -843,7 +843,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -898,18 +898,18 @@ class _SettingsScreenState extends State<SettingsScreen>
     final heatMap = {
       'Delivery': {
         'High': accent,
-        'Medium': accent.withValues(alpha: 0.6),
-        'Low': accent.withValues(alpha: 0.25)
+        'Medium': accent.withOpacity(0.6),
+        'Low': accent.withOpacity(0.25)
       },
       'Security': {
         'High': Colors.redAccent,
         'Medium': Colors.orangeAccent,
-        'Low': Colors.orange.withValues(alpha: 0.4)
+        'Low': Colors.orange.withOpacity(0.4)
       },
       'People': {
         'High': Colors.blue,
-        'Medium': Colors.blueAccent.withValues(alpha: 0.6),
-        'Low': Colors.blueAccent.withValues(alpha: 0.3)
+        'Medium': Colors.blueAccent.withOpacity(0.6),
+        'Low': Colors.blueAccent.withOpacity(0.3)
       },
     };
 
@@ -918,7 +918,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -937,7 +937,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           const SizedBox(height: 20),
           Table(
             border: TableBorder.symmetric(
-                inside: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                inside: BorderSide(color: Colors.grey.withOpacity(0.2))),
             columnWidths: const {0: IntrinsicColumnWidth()},
             children: [
               TableRow(
@@ -1002,7 +1002,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -1051,7 +1051,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -1076,7 +1076,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.18),
+                      color: accent.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.insert_drive_file_outlined,
@@ -1150,7 +1150,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.18),
+                        color: accent.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(Icons.edit_note, color: accent, size: 28),
@@ -1179,13 +1179,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: isEditMode
-                        ? Colors.green.withValues(alpha: 0.08)
-                        : Colors.grey.withValues(alpha: 0.06),
+                        ? Colors.green.withOpacity(0.08)
+                        : Colors.grey.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                         color: isEditMode
-                            ? Colors.green.withValues(alpha: 0.3)
-                            : Colors.grey.withValues(alpha: 0.2)),
+                            ? Colors.green.withOpacity(0.3)
+                            : Colors.grey.withOpacity(0.2)),
                   ),
                   child: Row(
                     children: [
@@ -1193,8 +1193,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isEditMode
-                              ? Colors.green.withValues(alpha: 0.18)
-                              : Colors.grey.withValues(alpha: 0.12),
+                              ? Colors.green.withOpacity(0.18)
+                              : Colors.grey.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -1288,10 +1288,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.08),
+                    color: Colors.blue.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
                     border:
-                        Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                        Border.all(color: Colors.blue.withOpacity(0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1325,13 +1325,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: contentProvider.showEditButton
-                        ? Colors.red.withValues(alpha: 0.08)
-                        : Colors.green.withValues(alpha: 0.06),
+                        ? Colors.red.withOpacity(0.08)
+                        : Colors.green.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                         color: contentProvider.showEditButton
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.green.withValues(alpha: 0.2)),
+                            ? Colors.red.withOpacity(0.3)
+                            : Colors.green.withOpacity(0.2)),
                   ),
                   child: Row(
                     children: [
@@ -1339,8 +1339,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: contentProvider.showEditButton
-                              ? Colors.red.withValues(alpha: 0.18)
-                              : Colors.green.withValues(alpha: 0.12),
+                              ? Colors.red.withOpacity(0.18)
+                              : Colors.green.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -1449,7 +1449,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.08),
+                          color: statusColor.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(
@@ -1482,10 +1482,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.08),
+                        color: Colors.grey.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.25)),
+                            color: Colors.grey.withOpacity(0.25)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1533,7 +1533,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.black,
                           side: BorderSide(
-                              color: Colors.grey.withValues(alpha: 0.4)),
+                              color: Colors.grey.withOpacity(0.4)),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1656,8 +1656,8 @@ class _InsightBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withValues(alpha: 0.12),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        color: Colors.white.withOpacity(0.12),
+        border: Border.all(color: accent.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1692,8 +1692,8 @@ class _VelocitySparkline extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: Colors.grey.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.14)),
+        color: Colors.grey.withOpacity(0.08),
+        border: Border.all(color: Colors.grey.withOpacity(0.14)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1752,8 +1752,8 @@ class _VelocitySparklinePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          accent.withValues(alpha: 0.28),
-          accent.withValues(alpha: 0.04)
+          accent.withOpacity(0.28),
+          accent.withOpacity(0.04)
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -1798,7 +1798,7 @@ class _TrendStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.grey.withValues(alpha: 0.08),
+        color: Colors.grey.withOpacity(0.08),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1924,8 +1924,8 @@ class _ActionItemRow extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: Colors.grey.withValues(alpha: 0.06),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        color: Colors.grey.withOpacity(0.06),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1936,7 +1936,7 @@ class _ActionItemRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: priorityColor.withValues(alpha: 0.16),
+                  color: priorityColor.withOpacity(0.16),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text('Priority $priorityLabel',
@@ -1967,7 +1967,7 @@ class _ActionItemRow extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: accent.withValues(alpha: 0.2),
+                backgroundColor: accent.withOpacity(0.2),
                 child: const Icon(Icons.person_outline, color: Colors.black87),
               ),
               const SizedBox(width: 12),
@@ -2058,7 +2058,7 @@ class _BillingHeroBanner extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.18),
+                      color: accent.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text('Billing & Subscription',
@@ -2079,7 +2079,7 @@ class _BillingHeroBanner extends StatelessWidget {
               Text(
                 'View your current plan, manage payment methods, and access your billing history.\nUpgrade anytime to unlock premium features.',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78), height: 1.45),
+                    color: Colors.white.withOpacity(0.78), height: 1.45),
               ),
               const SizedBox(height: 18),
               if (isLoading)
@@ -2107,8 +2107,8 @@ class _BillingHeroBanner extends StatelessWidget {
           final highlightCard = DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              color: Colors.white.withValues(alpha: 0.12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              color: Colors.white.withOpacity(0.12),
+              border: Border.all(color: Colors.white.withOpacity(0.18)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -2151,7 +2151,7 @@ class _BillingHeroBanner extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: billingProgress,
                       minHeight: 10,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                      backgroundColor: Colors.white.withOpacity(0.2),
                       valueColor: AlwaysStoppedAnimation(accent),
                     ),
                   ),
@@ -2203,8 +2203,8 @@ class _BillingStatBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withValues(alpha: 0.12),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        color: Colors.white.withOpacity(0.12),
+        border: Border.all(color: accent.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2276,7 +2276,7 @@ class _CurrentSubscriptionCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -2296,7 +2296,7 @@ class _CurrentSubscriptionCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.18),
+                        color: accent.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(Icons.workspace_premium,
@@ -2321,7 +2321,7 @@ class _CurrentSubscriptionCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
+                        color: statusColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
@@ -2348,10 +2348,10 @@ class _CurrentSubscriptionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.06),
+                    color: Colors.grey.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(16),
                     border:
-                        Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+                        Border.all(color: Colors.grey.withOpacity(0.12)),
                   ),
                   child: Column(
                     children: [
@@ -2475,7 +2475,7 @@ class _PaymentMethodsCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -2564,12 +2564,12 @@ class _PaymentProviderTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: isConnected
-            ? accent.withValues(alpha: 0.08)
-            : Colors.grey.withValues(alpha: 0.06),
+            ? accent.withOpacity(0.08)
+            : Colors.grey.withOpacity(0.06),
         border: Border.all(
             color: isConnected
-                ? accent.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.12)),
+                ? accent.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.12)),
       ),
       child: Row(
         children: [
@@ -2577,7 +2577,7 @@ class _PaymentProviderTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
+              color: iconColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -2598,7 +2598,7 @@ class _PaymentProviderTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.15),
+                          color: Colors.green.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text('Connected',
@@ -2644,7 +2644,7 @@ class _InvoicesCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: Colors.white,
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.withOpacity(0.12)),
         boxShadow: const [
           BoxShadow(
               blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))
@@ -2661,7 +2661,7 @@ class _InvoicesCard extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.18),
+                    color: accent.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.receipt_long, color: accent, size: 24),
@@ -2686,7 +2686,7 @@ class _InvoicesCard extends StatelessWidget {
                   label: const Text('Export All'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
-                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                    side: BorderSide(color: Colors.grey.withOpacity(0.3)),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     shape: RoundedRectangleBorder(
@@ -2881,11 +2881,11 @@ class _UpgradePlanCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accent.withValues(alpha: 0.15),
-            accent.withValues(alpha: 0.05)
+            accent.withOpacity(0.15),
+            accent.withOpacity(0.05)
           ],
         ),
-        border: Border.all(color: accent.withValues(alpha: 0.3)),
+        border: Border.all(color: accent.withOpacity(0.3)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -3175,7 +3175,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _accent.withValues(alpha: 0.18),
+                  color: _accent.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.admin_panel_settings_outlined,
@@ -3191,7 +3191,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
               Text(
                 'Invite collaborators, assign least-privilege roles, control project-level access, and review the RBAC policy before changes reach delivery data.',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.72), height: 1.45),
+                    color: Colors.white.withOpacity(0.72), height: 1.45),
               ),
             ],
           );
@@ -3398,7 +3398,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
               return FilterChip(
                 selected: selected,
                 label: Text(_permissionLabel(permission)),
-                selectedColor: _accent.withValues(alpha: 0.22),
+                selectedColor: _accent.withOpacity(0.22),
                 checkmarkColor: Colors.black,
                 onSelected: (value) {
                   setState(() {
@@ -3500,19 +3500,19 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: selected
-                    ? _accent.withValues(alpha: 0.12)
+                    ? _accent.withOpacity(0.12)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: selected
                         ? _accent
-                        : Colors.grey.withValues(alpha: 0.14)),
+                        : Colors.grey.withOpacity(0.14)),
               ),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: role.color.withValues(alpha: 0.14),
+                    backgroundColor: role.color.withOpacity(0.14),
                     child: Icon(_roleIcon(role), color: role.color, size: 18),
                   ),
                   const SizedBox(width: 12),
@@ -3653,7 +3653,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
                   child: Table(
                     border: TableBorder(
                       horizontalInside: BorderSide(
-                          color: Colors.grey.withValues(alpha: 0.12)),
+                          color: Colors.grey.withOpacity(0.12)),
                     ),
                     columnWidths: const {
                       0: FlexColumnWidth(2.6),
@@ -3726,11 +3726,11 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
       fillColor: const Color(0xFFF8FAFC),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.18)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
+        borderSide: BorderSide(color: Colors.grey.withOpacity(0.18)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -3760,7 +3760,7 @@ class _RbacCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.16)),
+        border: Border.all(color: Colors.grey.withOpacity(0.16)),
         boxShadow: const [
           BoxShadow(
             blurRadius: 18,
@@ -3779,7 +3779,7 @@ class _RbacCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC107).withValues(alpha: 0.16),
+                  color: const Color(0xFFFFC107).withOpacity(0.16),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: const Color(0xFFFFC107), size: 22),
@@ -3823,9 +3823,9 @@ class _AccessStat extends StatelessWidget {
       width: 118,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3838,7 +3838,7 @@ class _AccessStat extends StatelessWidget {
           const SizedBox(height: 4),
           Text(label,
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.65), fontSize: 12)),
+                  color: Colors.white.withOpacity(0.65), fontSize: 12)),
         ],
       ),
     );
@@ -3869,7 +3869,7 @@ class _PolicyToggle extends StatelessWidget {
         color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(14),
         border:
-            Border.all(color: const Color(0xFFFFC107).withValues(alpha: 0.28)),
+            Border.all(color: const Color(0xFFFFC107).withOpacity(0.28)),
       ),
       child: Row(
         children: [
@@ -3911,7 +3911,7 @@ class _CollaboratorTile extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: user.siteRole.color.withValues(alpha: 0.16),
+            backgroundColor: user.siteRole.color.withOpacity(0.16),
             child: Text(user.initials,
                 style: TextStyle(
                     color: user.siteRole.color, fontWeight: FontWeight.w800)),
@@ -4007,7 +4007,7 @@ class _RolePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: role.color.withValues(alpha: 0.12),
+        color: role.color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(role.displayName,
@@ -4160,7 +4160,7 @@ class _FeatureChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withValues(alpha: 0.3)),
+        border: Border.all(color: accent.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

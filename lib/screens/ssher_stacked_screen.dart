@@ -552,14 +552,14 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border:
-                        Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                        Border.all(color: Colors.grey.withOpacity(0.2)),
                   ),
                   child: Column(children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.08),
+                        color: Colors.blue.withOpacity(0.08),
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(12)),
                       ),
@@ -568,7 +568,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.15),
+                              color: Colors.blue.withOpacity(0.15),
                               shape: BoxShape.circle),
                           child: const Icon(Icons.receipt_long,
                               size: 18, color: Colors.blue),
@@ -592,7 +592,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.25)),
+                            color: Colors.grey.withOpacity(0.25)),
                       ),
                       child: EditableContentText(
                         contentKey: 'ssher_plan_summary_description',
@@ -612,10 +612,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                         horizontal: 20, vertical: 14),
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.08),
+                      color: Colors.blue.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                          Border.all(color: Colors.blue.withOpacity(0.3)),
                     ),
                     child: const Row(
                       children: [
@@ -641,7 +641,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                       color: Colors.grey[50],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: Colors.grey.withValues(alpha: 0.25)),
+                          color: Colors.grey.withOpacity(0.25)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

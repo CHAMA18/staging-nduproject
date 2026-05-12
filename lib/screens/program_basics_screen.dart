@@ -150,7 +150,7 @@ class _ProgramBasicsContentState extends State<_ProgramBasicsContentStateful> {
                           border: Border.all(color: _kSurfaceBorder),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black.withOpacity(0.04),
                               blurRadius: 18,
                               offset: const Offset(0, 12),
                             ),
@@ -357,7 +357,7 @@ class _CircularNavButton extends StatelessWidget {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -593,7 +593,7 @@ class _ProfileSummaryCard extends StatelessWidget {
         border: Border.all(color: _kSurfaceBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 12),
           ),
@@ -705,7 +705,7 @@ class _FrameworkDetailCard extends StatelessWidget {
         border: Border.all(color: _kSurfaceBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 26,
             offset: const Offset(0, 14),
           ),

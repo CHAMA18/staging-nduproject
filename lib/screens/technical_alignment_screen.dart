@@ -802,7 +802,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       label: const Text('Export summary'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+        side: BorderSide(color: Colors.white.withOpacity(0.24)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
@@ -853,7 +853,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       'Technical Alignment for ${snapshot.projectLabel}. This dashboard checks the design concept against real systems, legacy dependencies, venue conditions, security obligations, and operational workarounds.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.84),
+                        color: Colors.white.withOpacity(0.84),
                         height: 1.5,
                       ),
                     ),
@@ -893,10 +893,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
+                  color: Colors.white.withOpacity(0.10),
                 ),
               ),
               child: Text(
@@ -905,7 +905,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: Colors.white.withValues(alpha: 0.82),
+                  color: Colors.white.withOpacity(0.82),
                   height: 1.45,
                 ),
               ),
@@ -1232,7 +1232,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       height: 36,
                       decoration: BoxDecoration(
                         color: _severityColor(item.severity)
-                            .withValues(alpha: 0.14),
+                            .withOpacity(0.14),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1725,7 +1725,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       height: 34,
                       decoration: BoxDecoration(
                         color:
-                            _protocolColor(item.status).withValues(alpha: 0.12),
+                            _protocolColor(item.status).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -1932,9 +1932,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.10),
+                  color: accent.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: accent.withValues(alpha: 0.18)),
+                  border: Border.all(color: accent.withOpacity(0.18)),
                 ),
                 child: Icon(icon, color: accent),
               ),
@@ -1976,9 +1976,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1988,7 +1988,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.72),
+              color: Colors.white.withOpacity(0.72),
             ),
           ),
           const SizedBox(height: 4),
@@ -2009,9 +2009,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
+        border: Border.all(color: color.withOpacity(0.22)),
       ),
       child: Text(
         label,
@@ -2117,7 +2117,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.9)),
+        border: Border.all(color: color.withOpacity(0.9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2187,7 +2187,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -2271,7 +2271,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -2353,7 +2353,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -2586,9 +2586,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
+            border: Border.all(color: color.withOpacity(0.2)),
           ),
           child: Icon(icon, color: color, size: 22),
         ),

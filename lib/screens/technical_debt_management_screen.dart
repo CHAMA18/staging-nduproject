@@ -28,7 +28,6 @@ class TechnicalDebtManagementScreen extends StatefulWidget {
 
 class _TechnicalDebtManagementScreenState
     extends State<TechnicalDebtManagementScreen> {
-  final Set<String> _selectedFilters = {'All'};
   static const List<_GovernanceColorOption> _governanceColorOptions = [
     _GovernanceColorOption('Critical red', 0xFFEF4444),
     _GovernanceColorOption('High amber', 0xFFF97316),
@@ -69,43 +68,37 @@ class _TechnicalDebtManagementScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Debt Management',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
+                _buildDebtRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
+                _buildRemediationPanel(),
+                const SizedBox(height: 20),
+                _buildRootCausePanel(),
+                const SizedBox(height: 20),
+                _buildOwnershipPanel(),
                 const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildDebtRegister(),
-                    const SizedBox(height: 20),
-                    _buildRemediationPanel(),
-                    const SizedBox(height: 20),
-                    _buildRootCausePanel(),
-                    const SizedBox(height: 20),
-                    _buildOwnershipPanel(),
-                    const SizedBox(height: 24),
-                    LaunchPhaseNavigation(
-                      backLabel: 'Back: Punchlist Actions',
-                      nextLabel: 'Next: Identify & Staff Ops Team',
-                      onBack: () => PunchlistActionsScreen.open(context),
-                      onNext: () => IdentifyStaffOpsTeamScreen.open(context),
-                    ),
-                  ],
+                LaunchPhaseNavigation(
+                  backLabel: 'Back: Punchlist Actions',
+                  nextLabel: 'Next: Identify & Staff Ops Team',
+                  onBack: () => PunchlistActionsScreen.open(context),
+                  onNext: () => IdentifyStaffOpsTeamScreen.open(context),
                 ),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -217,50 +210,6 @@ class _TechnicalDebtManagementScreenState
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    const filters = [
-      'All',
-      'Critical',
-      'High impact',
-      'Due this month',
-      'Blocked'
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              if (selected) {
-                _selectedFilters.remove(filter);
-              } else {
-                _selectedFilters.add(filter);
-              }
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFF111827) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Text(
-              filter,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF475569),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -2033,7 +1982,7 @@ class _TechnicalDebtManagementScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(label,
@@ -2051,7 +2000,7 @@ class _TechnicalDebtManagementScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(label,
@@ -2384,7 +2333,7 @@ class _RiskTierCell extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -2417,7 +2366,7 @@ class _OwnerCoverageCell extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 15,
-          backgroundColor: const Color(0xFF0EA5E9).withValues(alpha: 0.14),
+          backgroundColor: const Color(0xFF0EA5E9).withOpacity(0.14),
           child: Text(
             initial,
             style: const TextStyle(

@@ -9,6 +9,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/salvage_service.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class SalvageDisposalTeamScreen extends StatefulWidget {
   const SalvageDisposalTeamScreen({super.key});
@@ -496,9 +497,46 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
             assetId: seed.id,
             name: seed.description,
             category: seed.category,
+            condition: '',
+            location: '',
+            disposalMethod: _disposalMethodFromStatus(seed.status),
             status: seed.status,
             estimatedValue: seed.value,
+            disposalCost: '',
             priority: seed.priority,
+            assignedTo: '',
+            targetDate: '',
+          );
+        }
+      }
+
+      // Auto-seed timeline if empty
+      final timelineSnap = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('salvage_timeline')
+          .limit(1)
+          .get();
+      if (timelineSnap.docs.isEmpty) {
+        final defaultTimeline = [
+          ('Asset Audit Complete', 'Complete physical inventory and condition assessment of all assets', 'Planning', 'Completed', 'Environmental Manager', '2026-03-01', '2026-03-15', 100, 'High'),
+          ('Vendor Bidding Opens', 'Issue RFPs and open bidding for disposal vendors', 'Execution', 'Completed', 'Procurement Lead', '2026-03-16', '2026-03-20', 100, 'High'),
+          ('Auction Date', 'Conduct public auction for high-value assets', 'Execution', 'In Progress', 'Auction Coordinator', '2026-03-21', '2026-03-28', 65, 'Critical'),
+          ('Final Disposal Report', 'Compile final disposal documentation and reconciliation report', 'Review', 'Not Started', 'Compliance Officer', '2026-03-29', '2026-04-05', 0, 'High'),
+          ('Project Closure', 'Formal project sign-off and archive disposal records', 'Closure', 'Not Started', 'Project Manager', '2026-04-06', '2026-04-15', 0, 'Medium'),
+        ];
+        for (final t in defaultTimeline) {
+          await SalvageService.createTimelineItem(
+            projectId: projectId,
+            milestone: t.$1,
+            description: t.$2,
+            phase: t.$3,
+            status: t.$4,
+            owner: t.$5,
+            startDate: t.$6,
+            dueDate: t.$7,
+            progress: t.$8,
+            priority: t.$9,
           );
         }
       }
@@ -775,6 +813,15 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     return 'Review';
   }
 
+  String _disposalMethodFromStatus(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains('auction')) return 'Auction';
+    if (lower.contains('completed')) return 'Resell';
+    if (lower.contains('approved')) return 'Recycle';
+    if (lower.contains('progress')) return 'Resell';
+    return 'Auction';
+  }
+
   String _focusFromRole(String role) {
     final lower = role.toLowerCase();
     if (lower.contains('compliance')) return 'Regulatory Review';
@@ -825,6 +872,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Salvage and/or Disposal Plan',
       backgroundColor: const Color(0xFFF8FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(padding),
         child: Column(
@@ -1001,8 +1049,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
       children: [
         _buildStatsRow(isNarrow, _queueStats),
         const SizedBox(height: 24),
-        if (isNarrow)
-          Column(
+        Column(
             children: [
               _buildQueueBoard(),
               const SizedBox(height: 24),
@@ -1011,32 +1058,6 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
               _buildCompliancePanel(),
               const SizedBox(height: 24),
               _buildTimelinePanel(),
-            ],
-          )
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    _buildQueueBoard(),
-                    const SizedBox(height: 24),
-                    _buildDisposalQueuePanel(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildCompliancePanel(),
-                    const SizedBox(height: 24),
-                    _buildTimelinePanel(),
-                  ],
-                ),
-              ),
             ],
           ),
       ],
@@ -1186,7 +1207,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: stat.color.withValues(alpha: 0.1),
+                  color: stat.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(stat.icon, size: 18, color: stat.color),
@@ -1862,75 +1883,234 @@ Execution snapshot:
     final nameController = TextEditingController(text: item?.name ?? '');
     final categoryController =
         TextEditingController(text: item?.category ?? '');
+    final conditionController =
+        TextEditingController(text: item?.condition ?? '');
+    final locationController =
+        TextEditingController(text: item?.location ?? '');
     final valueController =
         TextEditingController(text: item?.estimatedValue ?? '');
+    final disposalCostController =
+        TextEditingController(text: item?.disposalCost ?? '');
+    final assignedToController =
+        TextEditingController(text: item?.assignedTo ?? '');
+    final targetDateController =
+        TextEditingController(text: item?.targetDate ?? '');
     var selectedStatus = item?.status ?? 'Pending Review';
     var selectedPriority = item?.priority ?? 'Medium';
+    var selectedDisposalMethod = item?.disposalMethod.isNotEmpty == true ? item!.disposalMethod : 'Auction';
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(isEdit ? 'Edit Disposal Item' : 'Add Disposal Item'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: assetIdController,
-                  decoration: const InputDecoration(labelText: 'Asset ID *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Description *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: categoryController,
-                  decoration: const InputDecoration(labelText: 'Category *'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedStatus,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    'Pending Review',
-                    'Approved',
-                    'In Progress',
-                    'Pending Auction',
-                    'Completed',
-                  ]
-                      .map((value) =>
-                          DropdownMenuItem(value: value, child: Text(value)))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() => selectedStatus = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedPriority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const ['High', 'Medium', 'Low']
-                      .map((value) =>
-                          DropdownMenuItem(value: value, child: Text(value)))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() => selectedPriority = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: valueController,
-                  decoration:
-                      const InputDecoration(labelText: 'Estimated Value *'),
-                ),
-              ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Row 1: Asset ID & Description
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: assetIdController,
+                          decoration: const InputDecoration(
+                            labelText: 'Asset ID *',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description *',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 2: Category & Condition
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: categoryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Category *',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: conditionController.text.isEmpty
+                              ? 'Good'
+                              : conditionController.text,
+                          decoration: const InputDecoration(
+                            labelText: 'Condition',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Excellent', 'Good', 'Fair', 'Poor', 'Non-Functional'
+                          ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) conditionController.text = v;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 3: Location & Disposal Method
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: locationController,
+                          decoration: const InputDecoration(
+                            labelText: 'Location',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedDisposalMethod,
+                          decoration: const InputDecoration(
+                            labelText: 'Disposal Method',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Auction', 'Recycle', 'Donate', 'Scrap', 'Resell', 'Trade-In', 'Transfer'
+                          ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedDisposalMethod = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 4: Status & Priority
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const [
+                            'Pending Review',
+                            'Approved',
+                            'In Progress',
+                            'Pending Disposal',
+                            'Completed',
+                            'On Hold',
+                            'Cancelled',
+                          ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedStatus = v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPriority,
+                          decoration: const InputDecoration(
+                            labelText: 'Priority',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const ['Critical', 'High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedPriority = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 5: Est. Value & Disposal Cost
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: valueController,
+                          decoration: const InputDecoration(
+                            labelText: 'Estimated Value *',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            prefixText: '\$ ',
+                          ),
+                          keyboardType: TextInputType.text,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: disposalCostController,
+                          decoration: const InputDecoration(
+                            labelText: 'Disposal Cost',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            prefixText: '\$ ',
+                          ),
+                          keyboardType: TextInputType.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 6: Assigned To & Target Date
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: assignedToController,
+                          decoration: const InputDecoration(
+                            labelText: 'Assigned To',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: targetDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Target Date',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            hintText: 'e.g. 2026-06-15',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -1938,7 +2118,8 @@ Execution snapshot:
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0EA5E9)),
               onPressed: () async {
                 if (assetIdController.text.trim().isEmpty ||
                     nameController.text.trim().isEmpty ||
@@ -1959,9 +2140,15 @@ Execution snapshot:
                       assetId: assetIdController.text.trim(),
                       name: nameController.text.trim(),
                       category: categoryController.text.trim(),
+                      condition: conditionController.text.trim(),
+                      location: locationController.text.trim(),
+                      disposalMethod: selectedDisposalMethod,
                       status: selectedStatus,
                       priority: selectedPriority,
                       estimatedValue: valueController.text.trim(),
+                      disposalCost: disposalCostController.text.trim(),
+                      assignedTo: assignedToController.text.trim(),
+                      targetDate: targetDateController.text.trim(),
                     );
                   } else {
                     await SalvageService.createDisposalItem(
@@ -1969,9 +2156,15 @@ Execution snapshot:
                       assetId: assetIdController.text.trim(),
                       name: nameController.text.trim(),
                       category: categoryController.text.trim(),
+                      condition: conditionController.text.trim(),
+                      location: locationController.text.trim(),
+                      disposalMethod: selectedDisposalMethod,
                       status: selectedStatus,
                       priority: selectedPriority,
                       estimatedValue: valueController.text.trim(),
+                      disposalCost: disposalCostController.text.trim(),
+                      assignedTo: assignedToController.text.trim(),
+                      targetDate: targetDateController.text.trim(),
                     );
                   }
                   if (!context.mounted) return;
@@ -1983,6 +2176,8 @@ Execution snapshot:
                             ? 'Disposal item updated successfully.'
                             : 'Disposal item added successfully.',
                       ),
+                      backgroundColor: const Color(0xFF0EA5E9),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 } catch (e) {
@@ -2414,7 +2609,7 @@ Execution snapshot:
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text('$workload%',
@@ -2513,7 +2708,7 @@ Execution snapshot:
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(mode,
@@ -2671,7 +2866,7 @@ Execution snapshot:
                                       CircleAvatar(
                                         radius: 14,
                                         backgroundColor: const Color(0xFF0EA5E9)
-                                            .withValues(alpha: 0.1),
+                                            .withOpacity(0.1),
                                         child: Text(
                                           initial,
                                           style: const TextStyle(
@@ -2760,7 +2955,7 @@ Execution snapshot:
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1D1F))),
                     SizedBox(height: 4),
-                    Text('Track assets through the disposal workflow',
+                    Text('Track assets through the disposal workflow per ITAD / ISO 14001 / NIST SP 800-88 standards',
                         style:
                             TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                   ],
@@ -2816,98 +3011,109 @@ Execution snapshot:
                             BoxConstraints(minWidth: constraints.maxWidth),
                         child: DataTable(
                           headingRowColor:
-                              WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                              WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                          headingRowHeight: 32,
+                          dataRowMinHeight: 28,
+                          dataRowMaxHeight: 40,
+                          headingTextStyle: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3,
+                          ),
+                          dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                          columnSpacing: 10,
+                          horizontalMargin: 10,
                           columns: const [
-                            DataColumn(
-                                label: Text('Asset ID',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Description',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Category',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Status',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Est. Value',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Priority',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Actions',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Asset ID')),
+                            DataColumn(label: Text('Description')),
+                            DataColumn(label: Text('Category')),
+                            DataColumn(label: Text('Condition')),
+                            DataColumn(label: Text('Disposal Method')),
+                            DataColumn(label: Text('Status')),
+                            DataColumn(label: Text('Priority')),
+                            DataColumn(label: Text('Est. Value'), numeric: true),
+                            DataColumn(label: Text('Disp. Cost'), numeric: true),
+                            DataColumn(label: Text('Assigned To')),
+                            DataColumn(label: Text('Target Date')),
+                            DataColumn(label: Text('Location')),
+                            DataColumn(label: Text('Actions')),
                           ],
                           rows: items.isEmpty
-                              ? const [
+                              ? [
                                   DataRow(cells: [
                                     DataCell(Text(
                                         'No disposal items added yet.',
                                         style: TextStyle(
-                                            color: Color(0xFF64748B),
+                                            color: const Color(0xFF64748B),
                                             fontStyle: FontStyle.italic))),
-                                    DataCell(SizedBox()),
-                                    DataCell(SizedBox()),
-                                    DataCell(SizedBox()),
-                                    DataCell(SizedBox()),
-                                    DataCell(SizedBox()),
-                                    DataCell(SizedBox()),
+                                    for (var i = 0; i < 12; i++) const DataCell(SizedBox()),
                                   ]),
                                 ]
                               : items.map((item) {
-                                  final priorityColor = item.priority
-                                              .toLowerCase() ==
-                                          'high'
-                                      ? const Color(0xFFEF4444)
-                                      : item.priority.toLowerCase() == 'medium'
-                                          ? const Color(0xFFF59E0B)
-                                          : const Color(0xFF22C55E);
+                                  final priorityColor = _priorityColorFor(item.priority);
                                   return DataRow(
                                     cells: [
                                       DataCell(Text(item.assetId,
                                           style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
                                               color: Color(0xFF0EA5E9)))),
-                                      DataCell(Text(item.name,
-                                          style:
-                                              const TextStyle(fontSize: 13))),
-                                      DataCell(
-                                          _buildCategoryChip(item.category)),
+                                      DataCell(ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 160),
+                                        child: Text(item.name,
+                                            style: const TextStyle(fontSize: 12),
+                                            overflow: TextOverflow.ellipsis),
+                                      )),
+                                      DataCell(_buildCategoryChip(item.category)),
+                                      DataCell(_buildConditionChip(item.condition)),
+                                      DataCell(_buildDisposalMethodChip(item.disposalMethod)),
                                       DataCell(_buildStatusPill(item.status)),
+                                      DataCell(_buildPriorityBadge(item.priority, priorityColor)),
                                       DataCell(Text(item.estimatedValue,
                                           style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600))),
-                                      DataCell(_buildPriorityBadge(
-                                          item.priority, priorityColor)),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700))),
+                                      DataCell(Text(item.disposalCost.isNotEmpty ? item.disposalCost : '-',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: item.disposalCost.isNotEmpty ? const Color(0xFFEF4444) : const Color(0xFF94A3B8)))),
+                                      DataCell(Text(item.assignedTo.isNotEmpty ? item.assignedTo : '-',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: item.assignedTo.isNotEmpty ? const Color(0xFF1E293B) : const Color(0xFF94A3B8)))),
+                                      DataCell(Text(item.targetDate.isNotEmpty ? item.targetDate : '-',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: item.targetDate.isNotEmpty ? const Color(0xFF1E293B) : const Color(0xFF94A3B8)))),
+                                      DataCell(Text(item.location.isNotEmpty ? item.location : '-',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: item.location.isNotEmpty ? const Color(0xFF475569) : const Color(0xFF94A3B8)))),
                                       DataCell(
                                         Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.edit,
-                                                  size: 16),
+                                              icon: const Icon(Icons.edit_outlined, size: 16),
                                               onPressed: () =>
-                                                  _showEditDisposalDialog(
-                                                      context, item),
+                                                  _showEditDisposalDialog(context, item),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                               color: const Color(0xFF64748B),
                                             ),
                                             IconButton(
-                                              icon: const Icon(
-                                                  Icons.delete_outline,
-                                                  size: 16),
+                                              icon: const Icon(Icons.visibility_outlined, size: 16),
                                               onPressed: () =>
-                                                  _showDeleteDisposalDialog(
-                                                      context, item),
+                                                  _showDisposalItemDetailDialog(context, item),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                              color: const Color(0xFF0EA5E9),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 16),
+                                              onPressed: () =>
+                                                  _showDeleteDisposalDialog(context, item),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                               color: const Color(0xFFEF4444),
                                             ),
                                           ],
@@ -2926,6 +3132,146 @@ Execution snapshot:
         ],
       ),
     );
+  }
+
+  Color _priorityColorFor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'critical':
+        return const Color(0xFF991B1B);
+      case 'high':
+        return const Color(0xFFEF4444);
+      case 'medium':
+        return const Color(0xFFF59E0B);
+      case 'low':
+        return const Color(0xFF22C55E);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Widget _buildConditionChip(String condition) {
+    Color bg; Color fg;
+    switch (condition.toLowerCase()) {
+      case 'excellent':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'good':
+        bg = const Color(0xFFDBEAFE); fg = const Color(0xFF2563EB); break;
+      case 'fair':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'poor':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'non-functional':
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF64748B); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(condition.isNotEmpty ? condition : '-',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildDisposalMethodChip(String method) {
+    Color bg; Color fg; IconData icon;
+    switch (method.toLowerCase()) {
+      case 'auction':
+        bg = const Color(0xFFFDF4FF); fg = const Color(0xFF9333EA); icon = Icons.gavel; break;
+      case 'recycle':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); icon = Icons.recycling; break;
+      case 'donate':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); icon = Icons.volunteer_activism; break;
+      case 'scrap':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); icon = Icons.delete_forever; break;
+      case 'resell':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); icon = Icons.sell; break;
+      case 'trade-in':
+        bg = const Color(0xFFE0F2FE); fg = const Color(0xFF0284C7); icon = Icons.swap_horiz; break;
+      case 'transfer':
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569); icon = Icons.forward; break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF64748B); icon = Icons.help_outline;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: fg),
+        const SizedBox(width: 3),
+        Text(method.isNotEmpty ? method : '-',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+      ]),
+    );
+  }
+
+  void _showDisposalItemDetailDialog(BuildContext context, SalvageDisposalItemModel item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.inventory_2_outlined, size: 20, color: Color(0xFF0EA5E9)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(item.name, style: const TextStyle(fontSize: 16))),
+        ]),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _detailRow('Asset ID', item.assetId),
+              _detailRow('Category', item.category),
+              _detailRow('Condition', item.condition.isNotEmpty ? item.condition : 'Not specified'),
+              _detailRow('Location', item.location.isNotEmpty ? item.location : 'Not specified'),
+              _detailRow('Disposal Method', item.disposalMethod.isNotEmpty ? item.disposalMethod : 'Not specified'),
+              _detailRow('Status', item.status),
+              _detailRow('Priority', item.priority),
+              _detailRow('Estimated Value', item.estimatedValue),
+              _detailRow('Disposal Cost', item.disposalCost.isNotEmpty ? item.disposalCost : 'Not specified'),
+              _detailRow('Assigned To', item.assignedTo.isNotEmpty ? item.assignedTo : 'Unassigned'),
+              _detailRow('Target Date', item.targetDate.isNotEmpty ? item.targetDate : 'Not set'),
+              const Divider(height: 24),
+              _detailRow('Created By', item.createdByName),
+              _detailRow('Created At', _formatDate(item.createdAt)),
+              _detailRow('Updated At', _formatDate(item.updatedAt)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton.icon(
+            onPressed: () { Navigator.pop(ctx); _showEditDisposalDialog(context, item); },
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Edit'),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0EA5E9)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
   }
 
   Widget _buildCompliancePanel() {
@@ -3485,6 +3831,7 @@ Execution snapshot:
   }
 
   Widget _buildTimelinePanel() {
+    final projectId = _getProjectId();
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -3495,26 +3842,229 @@ Execution snapshot:
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Disposal Timeline',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1D1F))),
-          const SizedBox(height: 4),
-          Text('Upcoming milestones and deadlines',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Disposal Timeline',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1D1F))),
+                    SizedBox(height: 4),
+                    Text('Milestone tracking with phases, ownership, and progress per project management standards',
+                        style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  ],
+                ),
+              ),
+              _buildActionButton(Icons.add, 'Add Milestone', onTap: () {
+                _showAddTimelineDialog(context);
+              }),
+            ],
+          ),
           const SizedBox(height: 20),
-          _buildTimelineItem('Asset Audit Complete', 'Mar 15', true),
-          _buildTimelineItem('Vendor Bidding Opens', 'Mar 20', true),
-          _buildTimelineItem('Auction Date', 'Mar 28', false),
-          _buildTimelineItem('Final Disposal Report', 'Apr 5', false),
-          _buildTimelineItem('Project Closure', 'Apr 15', false),
+          if (projectId == null)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  'No project selected. Please open a project first.',
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
+              ),
+            )
+          else
+            StreamBuilder<List<SalvageTimelineItemModel>>(
+              stream: SalvageService.streamTimelineItems(projectId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'Error loading timeline: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  );
+                }
+
+                final items = snapshot.data ?? [];
+                // If no data in Firestore, show the default timeline as a visual fallback
+                if (items.isEmpty) {
+                  return _buildDefaultTimelineFallback();
+                }
+
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        child: DataTable(
+                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                          headingRowHeight: 32,
+                          dataRowMinHeight: 28,
+                          dataRowMaxHeight: 40,
+                          headingTextStyle: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3,
+                          ),
+                          dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                          columnSpacing: 10,
+                          horizontalMargin: 10,
+                          columns: const [
+                            DataColumn(label: Text('Milestone')),
+                            DataColumn(label: Text('Description')),
+                            DataColumn(label: Text('Phase')),
+                            DataColumn(label: Text('Status')),
+                            DataColumn(label: Text('Owner')),
+                            DataColumn(label: Text('Start Date')),
+                            DataColumn(label: Text('Due Date')),
+                            DataColumn(label: Text('Progress'), numeric: true),
+                            DataColumn(label: Text('Priority')),
+                            DataColumn(label: Text('Dependencies')),
+                            DataColumn(label: Text('Notes')),
+                            DataColumn(label: Text('Actions')),
+                          ],
+                          rows: items.map((item) {
+                            return DataRow(cells: [
+                              DataCell(Text(item.milestone,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                              DataCell(ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 140),
+                                child: Text(item.description.isNotEmpty ? item.description : '-',
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    overflow: TextOverflow.ellipsis),
+                              )),
+                              DataCell(_buildPhaseChip(item.phase)),
+                              DataCell(_buildTimelineStatusChip(item.status)),
+                              DataCell(Text(item.owner.isNotEmpty ? item.owner : '-',
+                                  style: TextStyle(fontSize: 11,
+                                      color: item.owner.isNotEmpty ? const Color(0xFF1E293B) : const Color(0xFF94A3B8)))),
+                              DataCell(Text(item.startDate.isNotEmpty ? item.startDate : '-',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+                              DataCell(Text(item.dueDate.isNotEmpty ? item.dueDate : '-',
+                                  style: TextStyle(fontSize: 11,
+                                      color: _isOverdue(item.dueDate, item.status) ? const Color(0xFFEF4444) : const Color(0xFF64748B)))),
+                              DataCell(Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 40,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        value: item.progress / 100,
+                                        backgroundColor: const Color(0xFFE2E8F0),
+                                        valueColor: AlwaysStoppedAnimation(
+                                          item.progress >= 100 ? const Color(0xFF22C55E) :
+                                          item.progress >= 50 ? const Color(0xFF2563EB) :
+                                          const Color(0xFFF59E0B),
+                                        ),
+                                        minHeight: 4,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('${item.progress}%',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700, fontSize: 10,
+                                        color: item.progress >= 100 ? const Color(0xFF22C55E) :
+                                               item.progress >= 50 ? const Color(0xFF2563EB) :
+                                               const Color(0xFFF59E0B),
+                                      )),
+                                ],
+                              )),
+                              DataCell(_buildPriorityBadge(item.priority, _priorityColorFor(item.priority))),
+                              DataCell(ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 100),
+                                child: Text(item.dependencies.isNotEmpty ? item.dependencies : '-',
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                    overflow: TextOverflow.ellipsis),
+                              )),
+                              DataCell(ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 100),
+                                child: Text(item.notes.isNotEmpty ? item.notes : '-',
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                    overflow: TextOverflow.ellipsis),
+                              )),
+                              DataCell(Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 14),
+                                    onPressed: () => _showEditTimelineDialog(context, item),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 14),
+                                    onPressed: () => _showDeleteTimelineDialog(context, item),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                    color: const Color(0xFFEF4444),
+                                  ),
+                                ],
+                              )),
+                            ]);
+                          }).toList(),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineItem(String label, String date, bool completed) {
+  /// Fallback timeline when no Firestore data exists yet
+  Widget _buildDefaultTimelineFallback() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: Color(0xFFD97706)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('No timeline milestones have been created yet. Click "Add Milestone" to create your first disposal milestone, or the default milestones will be shown below.',
+                    style: TextStyle(fontSize: 12, color: Colors.amber[800])),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildDefaultTimelineItem('Asset Audit Complete', 'Mar 15', true),
+        _buildDefaultTimelineItem('Vendor Bidding Opens', 'Mar 20', true),
+        _buildDefaultTimelineItem('Auction Date', 'Mar 28', false),
+        _buildDefaultTimelineItem('Final Disposal Report', 'Apr 5', false),
+        _buildDefaultTimelineItem('Project Closure', 'Apr 15', false),
+      ],
+    );
+  }
+
+  Widget _buildDefaultTimelineItem(String label, String date, bool completed) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -3559,6 +4109,399 @@ Execution snapshot:
               child: const Text('Upcoming',
                   style: TextStyle(fontSize: 10, color: Color(0xFF0284C7))),
             ),
+        ],
+      ),
+    );
+  }
+
+  bool _isOverdue(String dueDate, String status) {
+    if (dueDate.isEmpty || status == 'Completed') return false;
+    try {
+      final parsed = DateTime.tryParse(dueDate);
+      if (parsed == null) return false;
+      return parsed.isBefore(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Widget _buildPhaseChip(String phase) {
+    Color bg; Color fg;
+    switch (phase.toLowerCase()) {
+      case 'planning':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); break;
+      case 'execution':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'review':
+        bg = const Color(0xFFF5F3FF); fg = const Color(0xFF7C3AED); break;
+      case 'closure':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(phase, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildTimelineStatusChip(String status) {
+    Color bg; Color fg;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'in progress':
+        bg = const Color(0xFFDBEAFE); fg = const Color(0xFF2563EB); break;
+      case 'overdue':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'on hold':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'not started':
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF64748B); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  // ── Timeline CRUD Dialogs ──────────────────────────────────
+
+  void _showAddTimelineDialog(BuildContext context) {
+    _showTimelineDialog(context, null);
+  }
+
+  void _showEditTimelineDialog(BuildContext context, SalvageTimelineItemModel item) {
+    _showTimelineDialog(context, item);
+  }
+
+  void _showTimelineDialog(BuildContext context, SalvageTimelineItemModel? item) {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+
+    final isEdit = item != null;
+    final milestoneController = TextEditingController(text: item?.milestone ?? '');
+    final descriptionController = TextEditingController(text: item?.description ?? '');
+    final ownerController = TextEditingController(text: item?.owner ?? '');
+    final startDateController = TextEditingController(text: item?.startDate ?? '');
+    final dueDateController = TextEditingController(text: item?.dueDate ?? '');
+    final dependenciesController = TextEditingController(text: item?.dependencies ?? '');
+    final notesController = TextEditingController(text: item?.notes ?? '');
+    var selectedPhase = item?.phase ?? 'Planning';
+    var selectedStatus = item?.status ?? 'Not Started';
+    var selectedPriority = item?.priority ?? 'Medium';
+    var progressValue = item?.progress ?? 0;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Milestone' : 'Add Milestone'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Row 1: Milestone & Description
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: milestoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Milestone *',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 2: Phase & Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPhase,
+                          decoration: const InputDecoration(
+                            labelText: 'Phase',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const ['Planning', 'Execution', 'Review', 'Closure']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedPhase = v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const ['Not Started', 'In Progress', 'Completed', 'Overdue', 'On Hold']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedStatus = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 3: Owner & Priority
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ownerController,
+                          decoration: const InputDecoration(
+                            labelText: 'Owner / Responsible',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPriority,
+                          decoration: const InputDecoration(
+                            labelText: 'Priority',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const ['Critical', 'High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => selectedPriority = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 4: Start Date & Due Date
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: startDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Start Date',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            hintText: 'e.g. 2026-05-01',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: dueDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Due Date',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            hintText: 'e.g. 2026-06-15',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 5: Progress slider
+                  Row(
+                    children: [
+                      Text('Progress: ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      Expanded(
+                        child: Slider(
+                          value: progressValue.toDouble(),
+                          min: 0,
+                          max: 100,
+                          divisions: 20,
+                          label: '$progressValue%',
+                          onChanged: (v) => setDialogState(() => progressValue = v.round()),
+                        ),
+                      ),
+                      Text('$progressValue%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Row 6: Dependencies & Notes
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: dependenciesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Dependencies',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            hintText: 'e.g. Milestone A, B',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: notesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Notes',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0EA5E9)),
+              onPressed: () async {
+                if (milestoneController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Milestone name is required.')),
+                  );
+                  return;
+                }
+
+                try {
+                  if (isEdit) {
+                    await SalvageService.updateTimelineItem(
+                      projectId: projectId,
+                      itemId: item.id,
+                      milestone: milestoneController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      phase: selectedPhase,
+                      status: selectedStatus,
+                      owner: ownerController.text.trim(),
+                      startDate: startDateController.text.trim(),
+                      dueDate: dueDateController.text.trim(),
+                      progress: progressValue,
+                      priority: selectedPriority,
+                      dependencies: dependenciesController.text.trim(),
+                      notes: notesController.text.trim(),
+                    );
+                  } else {
+                    await SalvageService.createTimelineItem(
+                      projectId: projectId,
+                      milestone: milestoneController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      phase: selectedPhase,
+                      status: selectedStatus,
+                      owner: ownerController.text.trim(),
+                      startDate: startDateController.text.trim(),
+                      dueDate: dueDateController.text.trim(),
+                      progress: progressValue,
+                      priority: selectedPriority,
+                      dependencies: dependenciesController.text.trim(),
+                      notes: notesController.text.trim(),
+                    );
+                  }
+                  if (!context.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isEdit ? 'Milestone updated successfully.' : 'Milestone added successfully.'),
+                      backgroundColor: const Color(0xFF0EA5E9),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteTimelineDialog(BuildContext context, SalvageTimelineItemModel item) {
+    final projectId = _getProjectId();
+    if (projectId == null) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Milestone'),
+        content: Text('Are you sure you want to delete "${item.milestone}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () async {
+              try {
+                await SalvageService.deleteTimelineItem(
+                  projectId: projectId,
+                  itemId: item.id,
+                );
+                if (!context.mounted) return;
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Milestone deleted.'),
+                    backgroundColor: Color(0xFFEF4444),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error deleting milestone: $e')),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
@@ -3621,7 +4564,7 @@ Execution snapshot:
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: insight.color.withValues(alpha: 0.1),
+                  color: insight.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(insight.icon, size: 18, color: insight.color),
@@ -3651,7 +4594,7 @@ Execution snapshot:
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -3695,12 +4638,21 @@ Execution snapshot:
         textColor = const Color(0xFF2563EB);
         break;
       case 'Pending Auction':
+      case 'Pending Disposal':
         bgColor = const Color(0xFFFEF3C7);
         textColor = const Color(0xFFD97706);
         break;
       case 'Approved':
         bgColor = const Color(0xFFE0E7FF);
         textColor = const Color(0xFF4F46E5);
+        break;
+      case 'On Hold':
+        bgColor = const Color(0xFFF5F3FF);
+        textColor = const Color(0xFF7C3AED);
+        break;
+      case 'Cancelled':
+        bgColor = const Color(0xFFF1F5F9);
+        textColor = const Color(0xFF94A3B8);
         break;
       default:
         bgColor = const Color(0xFFF1F5F9);
@@ -3721,9 +4673,9 @@ Execution snapshot:
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(priority,
           style: TextStyle(

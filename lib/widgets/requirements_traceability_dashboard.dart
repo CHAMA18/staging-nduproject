@@ -255,7 +255,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(Icons.rule_folder_outlined, color: Colors.white),
@@ -273,7 +273,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
               Text(
                 'Traceability and validation bridge for ${projectData.projectName.trim().isNotEmpty ? projectData.projectName.trim() : 'the current design package'}, covering technical items like API endpoints and physical controls like venue capacity.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.84),
+                      color: Colors.white.withOpacity(0.84),
                       height: 1.45,
                     ),
               ),
@@ -301,7 +301,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
             label: const Text('Refresh Context'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
+              side: BorderSide(color: Colors.white.withOpacity(0.28)),
             ),
           ),
         ]),
@@ -428,7 +428,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
                                   minHeight: 8,
                                   value: item.$2 / 100,
                                   backgroundColor:
-                                      item.$4.withValues(alpha: 0.12),
+                                      item.$4.withOpacity(0.12),
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(item.$4),
                                 ),
@@ -1151,15 +1151,15 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
   Widget _metricPill(String label, String value) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12))),
+            border: Border.all(color: Colors.white.withOpacity(0.12))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label,
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.72))),
+                  color: Colors.white.withOpacity(0.72))),
           const SizedBox(height: 4),
           Text(value,
               style: const TextStyle(
@@ -1172,9 +1172,9 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
   Widget _pill(String label) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
+            color: Colors.white.withOpacity(0.12),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18))),
+            border: Border.all(color: Colors.white.withOpacity(0.18))),
         child: Text(label,
             style: const TextStyle(
                 color: Colors.white,

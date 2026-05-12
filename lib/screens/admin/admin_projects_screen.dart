@@ -99,7 +99,7 @@ class _ProjectCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -111,7 +111,7 @@ class _ProjectCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                    color: const Color(0xFF9C27B0).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.folder, color: Color(0xFF9C27B0), size: 24),
@@ -130,7 +130,7 @@ class _ProjectCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(color: Colors.grey.withOpacity(0.2)),
             const SizedBox(height: 16),
             Row(
               children: [

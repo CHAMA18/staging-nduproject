@@ -825,7 +825,7 @@ class _ContractStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withValues(alpha: 0.2))),
+          border: Border.all(color: color.withOpacity(0.2))),
       child: Text(label,
           style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.bold, color: color)),
@@ -851,9 +851,9 @@ class _StatusCell extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Text(
         status.toUpperCase(),

@@ -2074,7 +2074,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     final result = await showDialog<ContractModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (ctx) => AddContractDialog(
         contextChips: _buildDialogContextChips(),
         categoryOptions: categoryOptions,
@@ -2100,7 +2100,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     final result = await showDialog<ContractModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (ctx) => AddContractDialog(
         contextChips: _buildDialogContextChips(),
         categoryOptions: categoryOptions,
@@ -2184,7 +2184,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     final result = await showDialog<VendorModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) => AddVendorDialog(
         contextChips: _buildDialogContextChips(),
         categoryOptions: categoryOptions,
@@ -2272,7 +2272,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     final result = await showDialog<VendorModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) => AddVendorDialog(
         contextChips: _buildDialogContextChips(),
         categoryOptions: categoryOptions,
@@ -2390,7 +2390,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     final result = await showDialog<ProcurementItemModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: Text(existing == null
@@ -6034,7 +6034,7 @@ class _BottomOverlay extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(
-            top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+            top: BorderSide(color: Colors.grey.withOpacity(0.2)),
           ),
         ),
         child: Row(

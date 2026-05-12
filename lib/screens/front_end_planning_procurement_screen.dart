@@ -2222,7 +2222,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<VendorModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return AddVendorDialog(
           contextChips: _buildDialogContextChips(),
@@ -4267,7 +4267,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<ProcurementItemModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return AddItemDialog(
           contextChips: _buildDialogContextChips(),
@@ -4326,7 +4326,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<ProcurementItemModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return AddItemDialog(
           contextChips: _buildDialogContextChips(),
@@ -4456,7 +4456,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<VendorModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return AddVendorDialog(
           contextChips: _buildDialogContextChips(),
@@ -4553,7 +4553,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<RfqModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return CreateRfqDialog(
           contextChips: _buildDialogContextChips(),
@@ -4619,7 +4619,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<RfqModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return CreateRfqDialog(
           contextChips: _buildDialogContextChips(),
@@ -4833,7 +4833,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<PurchaseOrderModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return CreatePoDialog(
           contextChips: _buildDialogContextChips(),
@@ -4904,7 +4904,7 @@ class _FrontEndPlanningProcurementScreenState
     final result = await showDialog<PurchaseOrderModel>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return CreatePoDialog(
           contextChips: _buildDialogContextChips(),

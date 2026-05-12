@@ -761,7 +761,7 @@ class _PreferredSolutionAnalysisScreenState
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -805,7 +805,7 @@ class _PreferredSolutionAnalysisScreenState
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -844,7 +844,7 @@ class _PreferredSolutionAnalysisScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -880,7 +880,7 @@ class _PreferredSolutionAnalysisScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -918,7 +918,7 @@ class _PreferredSolutionAnalysisScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -1098,10 +1098,10 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1741,7 +1741,7 @@ class _PreferredSolutionAnalysisScreenState
         color: const Color(0xFFFFF8E1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.5), width: 1.5),
+            color: const Color(0xFFFFD700).withOpacity(0.5), width: 1.5),
       ),
       child: Row(
         children: [
@@ -1791,7 +1791,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+          border: Border.all(color: Colors.grey.withOpacity(0.25))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Working notes',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -1848,7 +1848,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2))),
+          border: Border.all(color: Colors.grey.withOpacity(0.2))),
       child: Row(children: const [
         SizedBox(
             width: 32,
@@ -1868,9 +1868,9 @@ class _PreferredSolutionAnalysisScreenState
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.08),
+          color: Colors.red.withOpacity(0.08),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.red.withValues(alpha: 0.2))),
+          border: Border.all(color: Colors.red.withOpacity(0.2))),
       child: Row(children: [
         const Icon(Icons.error_outline, color: Colors.red, size: 18),
         const SizedBox(width: 8),
@@ -1897,7 +1897,7 @@ class _PreferredSolutionAnalysisScreenState
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+            border: Border.all(color: Colors.grey.withOpacity(0.25))),
         child: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -1941,7 +1941,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2))),
+          border: Border.all(color: Colors.grey.withOpacity(0.2))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
@@ -2346,7 +2346,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
         color: const Color(0xFFF9FBFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2465,7 +2465,7 @@ class _PreferredSolutionAnalysisScreenState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            border: Border.all(color: Colors.grey.withOpacity(0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2514,7 +2514,7 @@ class _PreferredSolutionAnalysisScreenState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            border: Border.all(color: Colors.grey.withOpacity(0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2575,7 +2575,7 @@ class _PreferredSolutionAnalysisScreenState
             decoration: BoxDecoration(
                 color: const Color(0xFFF9FBFC),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.15))),
+                border: Border.all(color: Colors.grey.withOpacity(0.15))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2681,7 +2681,7 @@ class _PreferredSolutionAnalysisScreenState
             decoration: BoxDecoration(
                 color: const Color(0xFFF9FBFC),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.15))),
+                border: Border.all(color: Colors.grey.withOpacity(0.15))),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(item.item.isNotEmpty ? item.item : 'Cost item',
@@ -2709,7 +2709,7 @@ class _PreferredSolutionAnalysisScreenState
           color: const Color(0xFFFFF7CC),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.6))),
+              color: const Color(0xFFFFD700).withOpacity(0.6))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(label,
             style: const TextStyle(
@@ -2769,7 +2769,7 @@ class _PreferredSolutionAnalysisScreenState
                 border: Border.all(color: const Color(0xFFE5E7EB)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withOpacity(0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -3745,7 +3745,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
@@ -3871,7 +3871,7 @@ class _PreferredSolutionAnalysisScreenState
 
     return Table(
       border: TableBorder.all(
-          color: Colors.grey.withValues(alpha: 0.3), width: 0.7),
+          color: Colors.grey.withOpacity(0.3), width: 0.7),
       columnWidths: columnWidths,
       defaultVerticalAlignment: TableCellVerticalAlignment.top,
       children: summaryRows,
@@ -3908,7 +3908,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3937,7 +3937,7 @@ class _PreferredSolutionAnalysisScreenState
                   side: BorderSide(
                       color: _selectedSolutionIndex == i
                           ? const Color(0xFFFFD700)
-                          : Colors.grey.withValues(alpha: 0.3)),
+                          : Colors.grey.withOpacity(0.3)),
                 ),
             ],
           ),
@@ -4441,7 +4441,7 @@ class _PreferredSolutionAnalysisScreenState
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2))),
+          border: Border.all(color: Colors.grey.withOpacity(0.2))),
       child:
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
         Text('No solutions available yet',
@@ -4828,7 +4828,7 @@ class _ProjectOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = isSelected
         ? const Color(0xFFFFD700)
-        : Colors.grey.withValues(alpha: 0.2);
+        : Colors.grey.withOpacity(0.2);
     final background = isSelected ? const Color(0xFFFFF8DC) : Colors.white;
 
     return Container(
@@ -4839,7 +4839,7 @@ class _ProjectOptionCard extends StatelessWidget {
         border: Border.all(color: borderColor, width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             offset: const Offset(0, 8),
             blurRadius: 16,
           ),
@@ -4938,7 +4938,7 @@ class _PreferredSolutionComparisonScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                border: Border.all(color: Colors.grey.withOpacity(0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -5087,7 +5087,7 @@ class _ComparisonContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5110,7 +5110,7 @@ class _ComparisonContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -5131,7 +5131,7 @@ class _ComparisonContent extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
+                side: BorderSide(color: Colors.grey.withOpacity(0.4)),
                 foregroundColor: Colors.black,
               ),
               icon: const Icon(Icons.print_outlined, size: 18),
@@ -5194,7 +5194,7 @@ class _ComparisonContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -5260,7 +5260,7 @@ class _ComparisonContent extends StatelessWidget {
                                 color: const Color(0xFFF9FBFC),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: Colors.grey.withValues(alpha: 0.15)),
+                                    color: Colors.grey.withOpacity(0.15)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -5379,7 +5379,7 @@ class _ComparisonContent extends StatelessWidget {
         color: const Color(0xFFFFF7CC),
         borderRadius: BorderRadius.circular(20),
         border:
-            Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
+            Border.all(color: const Color(0xFFFFD700).withOpacity(0.6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -5409,7 +5409,7 @@ class _ComparisonContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -5560,7 +5560,7 @@ class _ComparisonContent extends StatelessWidget {
 
     return Table(
       border: TableBorder.all(
-          color: Colors.grey.withValues(alpha: 0.3), width: 0.7),
+          color: Colors.grey.withOpacity(0.3), width: 0.7),
       columnWidths: columnWidths,
       defaultVerticalAlignment: TableCellVerticalAlignment.top,
       children: rows,
@@ -5715,7 +5715,7 @@ class _PreferredSolutionDetailsScreenState
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(6),
                     border:
-                        Border.all(color: Colors.grey.withValues(alpha: 0.35)),
+                        Border.all(color: Colors.grey.withOpacity(0.35)),
                   ),
                   child: Row(
                     children: [
@@ -5765,7 +5765,7 @@ class _PreferredSolutionDetailsScreenState
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
                     border:
-                        Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                        Border.all(color: Colors.grey.withOpacity(0.25)),
                   ),
                   child: Column(
                     children: [
@@ -5777,7 +5777,7 @@ class _PreferredSolutionDetailsScreenState
                             border: Border(
                               top: i > 0
                                   ? BorderSide(
-                                      color: Colors.grey.withValues(alpha: 0.2))
+                                      color: Colors.grey.withOpacity(0.2))
                                   : BorderSide.none,
                             ),
                           ),
@@ -5866,13 +5866,13 @@ class _PreferredSolutionDetailsScreenState
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFFF59E0B).withValues(alpha: 0.1),
-            const Color(0xFFF59E0B).withValues(alpha: 0.05),
+            const Color(0xFFF59E0B).withOpacity(0.1),
+            const Color(0xFFF59E0B).withOpacity(0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border:
-            Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+            Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5990,9 +5990,9 @@ class _PreferredSolutionDetailsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -6233,9 +6233,9 @@ class _PreferredSolutionDetailsScreenState
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
+                      color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: color.withValues(alpha: 0.3)),
+                      border: Border.all(color: color.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -6246,7 +6246,7 @@ class _PreferredSolutionDetailsScreenState
                           s,
                           style: TextStyle(
                               fontSize: 13,
-                              color: color.withValues(alpha: 0.8)),
+                              color: color.withOpacity(0.8)),
                         ),
                       ],
                     ),
@@ -6261,19 +6261,19 @@ class _PreferredSolutionDetailsScreenState
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
+        color: color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: color.withValues(alpha: 0.5)),
+          Icon(icon, size: 24, color: color.withOpacity(0.5)),
           const SizedBox(width: 12),
           Text(
             message,
             style: TextStyle(
               fontSize: 14,
-              color: color.withValues(alpha: 0.7),
+              color: color.withOpacity(0.7),
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -6439,7 +6439,7 @@ class _PreferredSolutionDetailsScreenState
               border: Border(top: BorderSide(color: Colors.grey.shade200)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -6537,7 +6537,7 @@ class _ExpandableSectionCardState extends State<_ExpandableSectionCard> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -6555,7 +6555,7 @@ class _ExpandableSectionCardState extends State<_ExpandableSectionCard> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: widget.iconColor.withValues(alpha: 0.1),
+                      color: widget.iconColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(widget.icon, size: 22, color: widget.iconColor),

@@ -14,6 +14,8 @@ import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/app_strings.dart';
 
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
   const GapAnalysisScopeReconcillationScreen({
@@ -39,11 +41,6 @@ class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
 
 class _GapAnalysisScopeReconcillationScreenState
     extends State<GapAnalysisScopeReconcillationScreen> {
-  final Set<String> _selectedFocusFilters = {'Gap register'};
-  final Set<String> _selectedVisibilityFilters = {
-    'Scope baseline',
-    'Mitigation backlog'
-  };
   final List<_GapEntry> _gapEntries = [];
   final List<_RootCauseItem> _rootCauseThemes = [];
   final List<_RootCauseItem> _mitigationConfidence = [];
@@ -99,29 +96,6 @@ class _GapAnalysisScopeReconcillationScreenState
                         const SizedBox(height: 20),
                         _InfoStrip(isMobile: isMobile),
                         const SizedBox(height: 24),
-                        _FilterToolbar(
-                          selectedFocusFilters: _selectedFocusFilters,
-                          selectedVisibilityFilters: _selectedVisibilityFilters,
-                          onFocusFilterChanged: (label) {
-                            setState(() {
-                              if (_selectedFocusFilters.contains(label)) {
-                                _selectedFocusFilters.remove(label);
-                              } else {
-                                _selectedFocusFilters.add(label);
-                              }
-                            });
-                          },
-                          onVisibilityFilterChanged: (label) {
-                            setState(() {
-                              if (_selectedVisibilityFilters.contains(label)) {
-                                _selectedVisibilityFilters.remove(label);
-                              } else {
-                                _selectedVisibilityFilters.add(label);
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 28),
                         _PrimarySections(
                           gapEntries: _gapEntries,
                           rootCauseThemes: _rootCauseThemes,
@@ -559,15 +533,78 @@ class _InfoStrip extends StatelessWidget {
 
   final bool isMobile;
 
+  /// Maps a [currentCheckpoint] string to a human-readable delivery stage.
+  static String _resolveDeliveryStage(String checkpoint) {
+    final token = checkpoint.toLowerCase();
+    if (token.isEmpty) return 'Initiation';
+    if (token.startsWith('fep_')) return 'Front End Planning';
+    if (token.contains('launch') || token.contains('go_live')) return 'Launch';
+    if (token.contains('execution') ||
+        token.contains('progress_tracking') ||
+        token.contains('vendor_tracking') ||
+        token.contains('contracts_tracking')) {
+      return 'Execution';
+    }
+    if (token.startsWith('design_') || token == 'design') return 'Design';
+    if (token.contains('close_out') ||
+        token.contains('closure') ||
+        token.contains('finalize')) {
+      return 'Close-out';
+    }
+    if (token.contains('project_') ||
+        token.contains('schedule') ||
+        token.contains('wbs') ||
+        token.contains('scope_tracking') ||
+        token.contains('cost_estimate')) {
+      return 'Planning';
+    }
+    if (token.contains('business_case') ||
+        token.contains('potential_solutions') ||
+        token.contains('preferred_solution') ||
+        token.contains('charter')) {
+      return 'Initiation';
+    }
+    if (token.contains('planning') || token.contains('procurement')) {
+      return 'Planning';
+    }
+    return 'Initiation';
+  }
+
+  /// Resolves the project track from [overallFramework].
+  static String _resolveTrack(String? overallFramework) {
+    if (overallFramework == null || overallFramework.isEmpty) {
+      return 'Project delivery & execution';
+    }
+    final fw = overallFramework.toLowerCase();
+    if (fw.contains('agile')) return 'Agile delivery';
+    if (fw.contains('waterfall')) return 'Waterfall delivery';
+    if (fw.contains('hybrid')) return 'Hybrid delivery';
+    return overallFramework;
+  }
+
   @override
   Widget build(BuildContext context) {
-    const chips = [
-      _InfoChipData(
-          label: 'Project', value: 'AI path capacity uplift – Inception'),
-      _InfoChipData(label: 'Track', value: 'Product launch alignment'),
-      _InfoChipData(label: 'Delivery stage', value: 'Ready-to-build review'),
-      _InfoChipData(
-          label: 'Refresh cadence', value: 'Weekly · Next sync Thu, 10:00 AM'),
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectData = provider?.projectData;
+
+    final projectName =
+        projectData?.projectName.isNotEmpty == true
+            ? projectData!.projectName
+            : AppStrings.appName;
+    final track = _resolveTrack(projectData?.overallFramework);
+    final deliveryStage = _resolveDeliveryStage(
+        projectData?.currentCheckpoint ?? 'initiation');
+
+    final lastUpdated = projectData?.updatedAt;
+    final cadenceValue = lastUpdated != null
+        ? 'Last updated ${_formatRelative(lastUpdated)}'
+        : 'Real-time sync';
+
+    final chips = [
+      _InfoChipData(label: 'Project', value: projectName),
+      _InfoChipData(label: 'Track', value: track),
+      _InfoChipData(label: 'Delivery stage', value: deliveryStage),
+      _InfoChipData(label: 'Sync status', value: cadenceValue),
     ];
 
     return Wrap(
@@ -582,143 +619,24 @@ class _InfoStrip extends StatelessWidget {
           .toList(),
     );
   }
-}
 
-class _FilterToolbar extends StatelessWidget {
-  const _FilterToolbar({
-    required this.selectedFocusFilters,
-    required this.selectedVisibilityFilters,
-    required this.onFocusFilterChanged,
-    required this.onVisibilityFilterChanged,
-  });
-
-  final Set<String> selectedFocusFilters;
-  final Set<String> selectedVisibilityFilters;
-  final ValueChanged<String> onFocusFilterChanged;
-  final ValueChanged<String> onVisibilityFilterChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    const focusOptions = [
-      'Gap register',
-      'Scope baseline',
-      'Impacts',
-      'Stakeholders',
-      'Mitigation backlog',
-    ];
-    const visibilityOptions = [
-      'Show riskiest gaps',
-      'Show closed gaps',
-      'Surface dependencies',
-    ];
-
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, 10)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Focus',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937)),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.video_call_outlined, size: 20),
-                label: const Text('Schedule reconciliation meeting'),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  backgroundColor: const Color(0xFF4154F1),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: focusOptions
-                .map(
-                  (option) => ChoiceChip(
-                    label: Text(option),
-                    selected: selectedFocusFilters.contains(option),
-                    onSelected: (_) => onFocusFilterChanged(option),
-                    showCheckmark: false,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    selectedColor: primary.withValues(alpha: 0.12),
-                    labelStyle: TextStyle(
-                      color: selectedFocusFilters.contains(option)
-                          ? primary
-                          : const Color(0xFF374151),
-                      fontWeight: selectedFocusFilters.contains(option)
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                    ),
-                    backgroundColor: const Color(0xFFF3F4F6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: visibilityOptions
-                .map(
-                  (option) => FilterChip(
-                    label: Text(option),
-                    selected: selectedVisibilityFilters.contains(option),
-                    onSelected: (_) => onVisibilityFilterChanged(option),
-                    showCheckmark: false,
-                    selectedColor: const Color(0xFFEEF2FF),
-                    labelStyle: TextStyle(
-                      color: selectedVisibilityFilters.contains(option)
-                          ? const Color(0xFF3730A3)
-                          : const Color(0xFF4B5563),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    backgroundColor: const Color(0xFFF9FAFB),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
-    );
+  /// Formats a [DateTime] as a relative time string.
+  static String _formatRelative(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day} ${_monthAbbr(dt.month)} ${dt.year}';
   }
+
+  static String _monthAbbr(int m) => const [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][m - 1];
 }
+
 
 // ignore: unused_element
 class _SummaryGrid extends StatelessWidget {
@@ -845,7 +763,7 @@ class _SummaryCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                  color: data.accentColor.withValues(alpha: 0.12),
+                  color: data.accentColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12)),
               child: Icon(data.icon, color: data.accentColor, size: 22),
             ),
@@ -940,7 +858,7 @@ class _SummaryCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 18,
               offset: const Offset(0, 14)),
         ],
@@ -2151,9 +2069,9 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: catColor.withValues(alpha: 0.08),
+                        color: catColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: catColor.withValues(alpha: 0.18)),
+                        border: Border.all(color: catColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         e.category,
@@ -2174,7 +2092,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: sevColor.withValues(alpha: 0.08),
+                        color: sevColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -2202,7 +2120,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: prioColor.withValues(alpha: 0.08),
+                        color: prioColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -2436,9 +2354,9 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: catColor.withValues(alpha: 0.08),
+                        color: catColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: catColor.withValues(alpha: 0.18)),
+                        border: Border.all(color: catColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         item.category,
@@ -2474,7 +2392,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: impactColor.withValues(alpha: 0.08),
+                        color: impactColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -2505,7 +2423,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -3003,7 +2921,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
             onPressed: () {
               showDialog<void>(
                 context: context,
-                barrierColor: Colors.black.withValues(alpha: 0.35),
+                barrierColor: Colors.black.withOpacity(0.35),
                 builder: (_) => _ScenarioMatrixDialog(
                   impacts: impacts,
                   gaps: gaps,
@@ -3502,9 +3420,9 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: phaseColor.withValues(alpha: 0.08),
+                        color: phaseColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: phaseColor.withValues(alpha: 0.18)),
+                        border: Border.all(color: phaseColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         p.phase,
@@ -3600,7 +3518,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -3834,9 +3752,9 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: domainColor.withValues(alpha: 0.08),
+                        color: domainColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: domainColor.withValues(alpha: 0.18)),
+                        border: Border.all(color: domainColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         i.domain,
@@ -3857,7 +3775,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: ratingColor.withValues(alpha: 0.08),
+                        color: ratingColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -3884,7 +3802,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: trendColor.withValues(alpha: 0.08),
+                        color: trendColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -4741,7 +4659,7 @@ class _MatrixCell extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: Colors.white.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -4816,7 +4734,7 @@ class _ScorePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text('Score $score',
@@ -5149,7 +5067,7 @@ class _WorkflowBoardColumn extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isActive
-                ? accent.withValues(alpha: 0.08)
+                ? accent.withOpacity(0.08)
                 : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(16),
             border:
@@ -5179,7 +5097,7 @@ class _WorkflowBoardColumn extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
+                      color: accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -5307,7 +5225,7 @@ class _WorkflowBoardCard extends StatelessWidget {
                 width: 6,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.5),
+                  color: accent.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -5514,7 +5432,7 @@ class _SectionShell extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 20,
               offset: const Offset(0, 12)),
         ],
@@ -5540,7 +5458,7 @@ class _InfoChip extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 14,
               offset: const Offset(0, 12)),
         ],
@@ -5680,7 +5598,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(30)),
       child: Text(
         label,
@@ -5716,7 +5634,7 @@ class _TrendPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(30)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -5751,7 +5669,7 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(16)),
       child: Text(
         label,

@@ -77,7 +77,7 @@ class _ElevatedAuthContainerState extends State<ElevatedAuthContainer>
               end: Alignment.bottomRight,
               colors: [
                 surface,
-                surface.withValues(alpha: 0.92),
+                surface.withOpacity(0.92),
               ],
             ),
             border: Border.all(color: border),
@@ -85,12 +85,12 @@ class _ElevatedAuthContainerState extends State<ElevatedAuthContainer>
             boxShadow: [
               // very subtle ambient and key shadows
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: Colors.black.withOpacity(0.04),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
               BoxShadow(
-                color: accent.withValues(alpha: 0.06),
+                color: accent.withOpacity(0.06),
                 blurRadius: 12,
                 offset: const Offset(0, 1),
               ),

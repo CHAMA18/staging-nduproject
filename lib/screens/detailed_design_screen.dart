@@ -11,7 +11,15 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/detailed_design_table_widget.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
 
+/// ────────────────────────────────────────────────────────────────
+/// Design Specifications Screen
+///
+/// A world-class, methodology-aware design specification workspace
+/// conforming to IEEE 1016-2009, ISO/IEC/IEEE 12207, and industry
+/// best practices for Waterfall, Hybrid, and Agile project delivery.
+/// ────────────────────────────────────────────────────────────────
 class DetailedDesignScreen extends StatefulWidget {
   const DetailedDesignScreen({super.key});
 
@@ -26,11 +34,180 @@ class DetailedDesignScreen extends StatefulWidget {
 }
 
 class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
-  final Set<String> _selectedFilters = {'All packages'};
+  final Set<String> _selectedFilters = {'All'};
   List<DesignComponent> _components = [];
   bool _isLoading = false;
   bool _autoGenerationTriggered = false;
   bool _isAutoGenerating = false;
+  String _methodology = 'Hybrid'; // Waterfall | Hybrid | Agile
+
+  // ── Security & compliance controls (local) ──
+  final List<_SecurityControl> _securityControls = const [
+    _SecurityControl(
+      id: 'SEC-001',
+      requirement: 'Authentication & authorization controls',
+      standard: 'ISO 27001 A.9',
+      status: 'Defined',
+    ),
+    _SecurityControl(
+      id: 'SEC-002',
+      requirement: 'Data encryption at rest and in transit',
+      standard: 'NIST SP 800-111',
+      status: 'In Progress',
+    ),
+    _SecurityControl(
+      id: 'SEC-003',
+      requirement: 'Input validation and injection prevention',
+      standard: 'OWASP Top 10',
+      status: 'Pending',
+    ),
+    _SecurityControl(
+      id: 'SEC-004',
+      requirement: 'Audit logging and monitoring',
+      standard: 'SOC 2 CC7',
+      status: 'Defined',
+    ),
+  ];
+
+  // ── Non-functional requirements (local) ──
+  final List<_NFRItem> _nfrItems = const [
+    _NFRItem(
+      id: 'NFR-001',
+      category: 'Performance',
+      requirement: 'API response time < 200ms at P95',
+      target: '< 200ms',
+      status: 'Specified',
+    ),
+    _NFRItem(
+      id: 'NFR-002',
+      category: 'Scalability',
+      requirement: 'System supports 10x baseline concurrent users',
+      target: '10x baseline',
+      status: 'Specified',
+    ),
+    _NFRItem(
+      id: 'NFR-003',
+      category: 'Availability',
+      requirement: '99.9% uptime SLA for production services',
+      target: '99.9%',
+      status: 'Draft',
+    ),
+    _NFRItem(
+      id: 'NFR-004',
+      category: 'Recoverability',
+      requirement: 'RTO < 4 hours, RPO < 1 hour',
+      target: 'RTO 4h / RPO 1h',
+      status: 'Draft',
+    ),
+    _NFRItem(
+      id: 'NFR-005',
+      category: 'Maintainability',
+      requirement: 'Zero-downtime deployments for stateless services',
+      target: 'Zero-downtime',
+      status: 'Specified',
+    ),
+  ];
+
+  // ── Design decisions / ADRs (local) ──
+  final List<_ADRecord> _adrRecords = const [
+    _ADRecord(
+      id: 'ADR-001',
+      title: 'Adopt event-driven architecture',
+      context:
+          'Services must communicate asynchronously to support peak event loads and decouple downstream processing.',
+      decision:
+          'Use message broker (Kafka/RabbitMQ) for inter-service communication with event sourcing for critical flows.',
+      status: 'Accepted',
+    ),
+    _ADRecord(
+      id: 'ADR-002',
+      title: 'API-first design with OpenAPI contracts',
+      context:
+          'Multiple consumer types (web, mobile, partner integrations) need consistent, versioned API access.',
+      decision:
+          'Define all service interfaces using OpenAPI 3.1 specs before implementation. Version APIs with URL path prefix.',
+      status: 'Accepted',
+    ),
+    _ADRecord(
+      id: 'ADR-003',
+      title: 'Database-per-service pattern',
+      context:
+          'Monolithic data stores create tight coupling and deployment bottlenecks across teams.',
+      decision:
+          'Each bounded context owns its data store. Cross-service queries go through API composition or CQRS read models.',
+      status: 'Proposed',
+    ),
+  ];
+
+  // ── Architecture patterns (local) ──
+  final List<_ArchitecturePattern> _archPatterns = const [
+    _ArchitecturePattern(
+      name: 'Event-Driven Microservices',
+      description:
+          'Asynchronous inter-service communication via message broker with event sourcing for audit-critical flows.',
+      status: 'Baseline',
+      icon: Icons.hub_outlined,
+      color: Color(0xFF7C3AED),
+    ),
+    _ArchitecturePattern(
+      name: 'API Gateway',
+      description:
+          'Centralized entry point for routing, rate-limiting, and authentication. Terminates TLS and enforces policies.',
+      status: 'Defined',
+      icon: Icons.router_outlined,
+      color: Color(0xFF2563EB),
+    ),
+    _ArchitecturePattern(
+      name: 'CQRS + Read Replicas',
+      description:
+          'Separate command and query models for high-throughput reads. Read replicas scale independently from writes.',
+      status: 'Proposed',
+      icon: Icons.call_split_outlined,
+      color: Color(0xFF0891B2),
+    ),
+    _ArchitecturePattern(
+      name: 'Observability Stack',
+      description:
+          'Distributed tracing (OpenTelemetry), structured logging, and metrics dashboards for end-to-end visibility.',
+      status: 'Defined',
+      icon: Icons.monitor_heart_outlined,
+      color: Color(0xFF059669),
+    ),
+  ];
+
+  // ── Artifact readiness (local) ──
+  final List<_ArtifactReadinessItem> _artifacts = const [
+    _ArtifactReadinessItem(
+      name: 'API schema v4 (OpenAPI 3.1)',
+      status: 'Ready for build',
+      ready: true,
+    ),
+    _ArtifactReadinessItem(
+      name: 'Sequence diagrams (core flows)',
+      status: 'Review pending',
+      ready: false,
+    ),
+    _ArtifactReadinessItem(
+      name: 'Observability & alerting plan',
+      status: 'Ready for build',
+      ready: true,
+    ),
+    _ArtifactReadinessItem(
+      name: 'Data classification register',
+      status: 'Draft',
+      ready: false,
+    ),
+    _ArtifactReadinessItem(
+      name: 'Infrastructure-as-code templates',
+      status: 'Ready for build',
+      ready: true,
+    ),
+    _ArtifactReadinessItem(
+      name: 'Security threat model (STRIDE)',
+      status: 'In progress',
+      ready: false,
+    ),
+  ];
 
   String? get _projectId {
     try {
@@ -80,30 +257,39 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     try {
       final generated = await ExecutionPhaseAiSeed.generateEntries(
         context: context,
-        section: 'Detailed Design',
+        section: 'Design Specifications',
         sections: const {
-          'designComponents': 'Key design components and integration needs',
+          'designComponents': 'Key design specifications covering architecture, interface, data, component, security, and NFR elements',
         },
-        itemsPerSection: 4,
+        itemsPerSection: 6,
       );
 
       final entries = generated['designComponents'] ?? const [];
       if (entries.isEmpty) return;
 
-      final newComponents = entries
-          .map(
-            (entry) => DesignComponent(
-              componentName: entry.title,
-              category: _inferCategory('${entry.title} ${entry.details}'),
-              specificationDetails: entry.details.isNotEmpty
-                  ? '. ${entry.details}'
-                  : '',
-              integrationPoint: 'TBD',
-              status: 'Draft',
-              designNotes: entry.details,
-            ),
-          )
-          .toList();
+      final typeRotation = DesignComponent.specificationTypes;
+      final priorityRotation = DesignComponent.priorities;
+      final ownerRotation = DesignComponent.ownerRoles;
+
+      final newComponents = <DesignComponent>[];
+      for (var i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        final specType = _inferSpecType('${entry.title} ${entry.details}');
+        newComponents.add(DesignComponent(
+          specId: 'DS-${(i + 1).toString().padLeft(3, '0')}',
+          componentName: entry.title,
+          specificationType: specType,
+          category: specType,
+          specificationDetails: entry.details.isNotEmpty ? '. ${entry.details}' : '',
+          integrationPoint: _inferIntegration(specType),
+          priority: priorityRotation[i % priorityRotation.length],
+          methodologyPhase: _getDefaultPhase(),
+          owner: ownerRotation[i % ownerRotation.length],
+          traceability: 'REQ-${(i + 1).toString().padLeft(3, '0')}',
+          status: 'Draft',
+          designNotes: entry.details,
+        ));
+      }
 
       if (!mounted) return;
       setState(() => _components = newComponents);
@@ -121,16 +307,55 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     }
   }
 
-  String _inferCategory(String text) {
+  String _inferSpecType(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('ui') || lower.contains('ux')) return 'UI/UX';
-    if (lower.contains('security')) return 'Security';
-    if (lower.contains('network')) return 'Networking';
-    if (lower.contains('infrastructure') || lower.contains('facility')) {
-      return 'Physical Infrastructure';
-    }
-    return 'Backend';
+    if (lower.contains('architecture') || lower.contains('decompos')) return 'Architecture';
+    if (lower.contains('interface') || lower.contains('api') || lower.contains('contract')) return 'Interface';
+    if (lower.contains('data') || lower.contains('schema') || lower.contains('database')) return 'Data';
+    if (lower.contains('security') || lower.contains('auth') || lower.contains('compliance')) return 'Security';
+    if (lower.contains('performance') || lower.contains('scalab') || lower.contains('availab')) return 'NFR';
+    if (lower.contains('ui') || lower.contains('ux') || lower.contains('design system')) return 'UI/UX';
+    if (lower.contains('infra') || lower.contains('deploy') || lower.contains('cloud')) return 'Infrastructure';
+    return 'Component';
   }
+
+  String _inferIntegration(String specType) {
+    return switch (specType) {
+      'Architecture' => 'System boundary',
+      'Interface' => 'Service contract',
+      'Data' => 'Data store / schema',
+      'Security' => 'Auth provider / IAM',
+      'NFR' => 'Cross-cutting concern',
+      'UI/UX' => 'Design system / component library',
+      'Infrastructure' => 'Cloud platform / CI-CD',
+      _ => 'TBD',
+    };
+  }
+
+  String _getDefaultPhase() {
+    return switch (_methodology) {
+      'Waterfall' => 'Detailed Design',
+      'Agile' => 'Backlog',
+      _ => 'Architecture Baseline',
+    };
+  }
+
+  List<DesignComponent> _filterComponents(List<DesignComponent> components) {
+    if (_selectedFilters.contains('All')) return components;
+    return components.where((c) {
+      if (_selectedFilters.contains('Approved') && c.status == 'Approved') return true;
+      if (_selectedFilters.contains('In Review') && c.status == 'In Review') return true;
+      if (_selectedFilters.contains('Reviewed') && c.status == 'Reviewed') return true;
+      if (_selectedFilters.contains('Baseline') && c.status == 'Baseline') return true;
+      if (_selectedFilters.contains('Draft') && c.status == 'Draft') return true;
+      if (_selectedFilters.contains('Must Have') && c.priority == 'Must Have') return true;
+      return false;
+    }).toList();
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  BUILD
+  // ════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -138,153 +363,357 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     final padding = AppBreakpoints.pagePadding(context);
 
     return ResponsiveScaffold(
-      activeItemLabel: 'Detailed Design',
+      activeItemLabel: 'Design Specifications',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
-                const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildPackageRegister(),
-                      const SizedBox(height: 20),
-                      _buildReviewPanel(),
-                      const SizedBox(height: 20),
-                      _buildDecisionPanel(),
-                      const SizedBox(height: 20),
-                      _buildArtifactsPanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildPackageRegister()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildReviewPanel(),
-                            const SizedBox(height: 20),
-                            _buildDecisionPanel(),
-                            const SizedBox(height: 20),
-                            _buildArtifactsPanel(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Vendor Tracking',
-                  nextLabel: 'Next: Agile Development Iterations',
-                  onBack: () => VendorTrackingScreen.open(context),
-                  onNext: () => AgileDevelopmentIterationsScreen.open(context),
-                ),
-              ],
-            ),
-          ),
-          const KazAiChatBubble(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(bool isNarrow) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFC812),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            'EXECUTION DESIGN',
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Detailed Design',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827)),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Finalize the technical and operational blueprints. Define specific architectural components, security protocols, and integration workflows to ensure a robust deployment.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                  ),
-                ],
-              ),
+            _buildHeader(isNarrow),
+            const SizedBox(height: 20),
+            _buildMethodologySelector(),
+            const SizedBox(height: 20),
+            _buildMetricsGrid(),
+            const SizedBox(height: 20),
+            _buildFilterChips(),
+            const SizedBox(height: 24),
+            // ── Collapsible Sections ──
+            _buildArchitectureSection(),
+            const SizedBox(height: 20),
+            _buildSpecificationRegister(),
+            const SizedBox(height: 20),
+            _buildSecuritySection(),
+            const SizedBox(height: 20),
+            _buildNFRSection(),
+            const SizedBox(height: 20),
+            _buildADRSection(),
+            const SizedBox(height: 20),
+            _buildArtifactReadiness(),
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Vendor Tracking',
+              nextLabel: 'Next: Agile Development Iterations',
+              onBack: () => VendorTrackingScreen.open(context),
+              onNext: () => AgileDevelopmentIterationsScreen.open(context),
             ),
-            if (!isNarrow) _buildHeaderActions(),
           ],
         ),
-        if (isNarrow) ...[
-          const SizedBox(height: 12),
-          _buildHeaderActions(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildHeaderActions() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _actionButton(Icons.add, 'Add package',
-            onPressed: () => _showAddComponentDialog(context)),
-        _actionButton(Icons.description_outlined, 'Export bundle',
-            onPressed: () {}),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label,
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
+  // ── HEADER ────────────────────────────────────────────────────
+
+  Widget _buildHeader(bool isNarrow) {
+    return ExecutionPageHeader(
+      badge: 'DESIGN PHASE',
+      title: 'Design Specifications',
+      description: _getMethodologyDescription(),
+      trailing: ExecutionActionBar(
+        actions: [
+          ExecutionActionItem(
+            label: 'Add Specification',
+            icon: Icons.add_rounded,
+            tone: ExecutionActionTone.primary,
+            onPressed: () => _showAddComponentDialog(context),
+          ),
+          ExecutionActionItem(
+            label: 'Export Bundle',
+            icon: Icons.file_download_outlined,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () {},
+          ),
+        ],
+      ),
+      metadata: [
+        _buildHeaderMetaChip(
+          Icons.layers_outlined,
+          '${_components.length} specifications',
+          const Color(0xFF2563EB),
+        ),
+        _buildHeaderMetaChip(
+          Icons.shield_outlined,
+          '${_securityControls.where((s) => s.status == 'Defined').length}/${_securityControls.length} controls',
+          const Color(0xFFDC2626),
+        ),
+        _buildHeaderMetaChip(
+          Icons.speed_outlined,
+          '${_nfrItems.where((n) => n.status == 'Specified').length}/${_nfrItems.length} NFRs',
+          const Color(0xFFD97706),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderMetaChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getMethodologyDescription() {
+    return switch (_methodology) {
+      'Waterfall' =>
+          'Comprehensive upfront design specification aligned with sequential delivery. All design elements are fully specified before construction begins, following IEEE 1016 decomposition views and ISO 12207 design processes.',
+      'Agile' =>
+          'Iterative and evolutionary design specification. Architecture decisions and interface contracts are established as enablers; detailed specifications emerge sprint-by-sprint, guided by YAGNI and just-in-time design principles.',
+      _ =>
+          'Balanced design specification combining architecture baseline (waterfall rigor) with iterative detail (agile flexibility). Core interfaces and security controls are specified upfront; component details evolve through iterations.',
+    };
+  }
+
+  // ── METHODOLOGY SELECTOR ──────────────────────────────────────
+
+  Widget _buildMethodologySelector() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F3FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.tune_rounded,
+                  size: 18,
+                  color: Color(0xFF7C3AED),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Delivery Methodology',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Shapes phase labels, specification depth, and review cadence',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 600;
+              if (isCompact) {
+                return Column(
+                  children: _methodologyOptions()
+                      .map((opt) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: opt,
+                          ))
+                      .toList(),
+                );
+              }
+              return Row(
+                children: _methodologyOptions().map((opt) {
+                  return Expanded(child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: opt,
+                  ));
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _methodologyOptions() {
+    final methods = [
+      ('Waterfall', Icons.water_drop_outlined, 'Full upfront spec',
+          const Color(0xFF2563EB)),
+      ('Hybrid', Icons.merge_outlined, 'Baseline + iterative detail',
+          const Color(0xFF7C3AED)),
+      ('Agile', Icons.flash_on_outlined, 'Evolving, just-in-time spec',
+          const Color(0xFF059669)),
+    ];
+
+    return methods.map((m) {
+      final selected = _methodology == m.$1;
+      return GestureDetector(
+        onTap: () {
+          setState(() => _methodology = m.$1);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? m.$4.withOpacity(0.06) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? m.$4.withOpacity(0.3) : const Color(0xFFE5E7EB),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(m.$2,
+                  size: 18,
+                  color: selected ? m.$4 : const Color(0xFF9CA3AF)),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      m.$1,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: selected ? m.$4 : const Color(0xFF374151),
+                      ),
+                    ),
+                    Text(
+                      m.$3,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: selected ? m.$4.withOpacity(0.7) : const Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.check_circle, size: 16, color: m.$4),
+              ],
+            ],
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  // ── METRICS GRID ──────────────────────────────────────────────
+
+  Widget _buildMetricsGrid() {
+    final totalSpecs = _components.length;
+    final mustHave =
+        _components.where((c) => c.priority == 'Must Have').length;
+    final approved =
+        _components.where((c) => c.status == 'Approved' || c.status == 'Baseline').length;
+    final secDefined =
+        _securityControls.where((s) => s.status == 'Defined').length;
+    final nfrSpecified =
+        _nfrItems.where((n) => n.status == 'Specified').length;
+    final artifactsReady =
+        _artifacts.where((a) => a.ready).length;
+    final readiness = totalSpecs > 0
+        ? ((approved / totalSpecs) * 100).round()
+        : 0;
+
+    final metrics = [
+      ExecutionMetricData(
+        label: 'Total Specifications',
+        value: '$totalSpecs',
+        icon: Icons.description_outlined,
+        helper: 'Across ${DesignComponent.specificationTypes.length} spec types',
+        emphasisColor: const Color(0xFF2563EB),
+      ),
+      ExecutionMetricData(
+        label: 'Must-Have Items',
+        value: '$mustHave',
+        icon: Icons.flag_rounded,
+        helper: 'MoSCoW critical path',
+        emphasisColor: const Color(0xFFDC2626),
+      ),
+      ExecutionMetricData(
+        label: 'Design Readiness',
+        value: '$readiness%',
+        icon: Icons.verified_outlined,
+        helper: '$approved of $totalSpecs approved/baselined',
+        emphasisColor: const Color(0xFF059669),
+      ),
+      ExecutionMetricData(
+        label: 'Security Controls',
+        value: '$secDefined/${_securityControls.length}',
+        icon: Icons.shield_outlined,
+        helper: 'ISO 27001 / NIST / SOC 2',
+        emphasisColor: const Color(0xFF7C3AED),
+      ),
+      ExecutionMetricData(
+        label: 'NFRs Specified',
+        value: '$nfrSpecified/${_nfrItems.length}',
+        icon: Icons.speed_outlined,
+        helper: 'Performance, scalability, availability',
+        emphasisColor: const Color(0xFFD97706),
+      ),
+      ExecutionMetricData(
+        label: 'Artifacts Ready',
+        value: '$artifactsReady/${_artifacts.length}',
+        icon: Icons.inventory_2_outlined,
+        helper: 'Staged for build handoff',
+        emphasisColor: const Color(0xFF0891B2),
+      ),
+    ];
+
+    return ExecutionMetricsGrid(metrics: metrics, minTileWidth: 200);
+  }
+
+  // ── FILTER CHIPS ──────────────────────────────────────────────
+
   Widget _buildFilterChips() {
-    const filters = ['All packages', 'Ready', 'In review', 'Draft', 'Pending'];
+    const filters = [
+      'All',
+      'Draft',
+      'In Review',
+      'Reviewed',
+      'Approved',
+      'Baseline',
+      'Must Have',
+    ];
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: filters.map((filter) {
         final selected = _selectedFilters.contains(filter);
         return GestureDetector(
@@ -294,12 +723,17 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
               _selectedFilters.add(filter);
             });
           },
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: selected ? const Color(0xFF111827) : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF111827)
+                    : const Color(0xFFE5E7EB),
+              ),
             ),
             child: Text(
               filter,
@@ -315,85 +749,50 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     );
   }
 
-  Widget _buildStatsRow(bool isNarrow) {
-    // Calculate metrics from components
-    final coreComponents = _components.length;
-    final securityStandards =
-        _components.where((c) => c.category == 'Security').length;
-    final integrationCount =
-        _components.where((c) => c.integrationPoint.isNotEmpty).length;
-    final totalComponents = _components.length;
-    final integrationReadiness = totalComponents > 0
-        ? ((integrationCount / totalComponents) * 100).round()
-        : 0;
+  // ── ARCHITECTURE & SYSTEM DESIGN SECTION ──────────────────────
 
-    final stats = [
-      _StatCardData('Core Components', '$coreComponents',
-          'Technical modules defined', const Color(0xFF0EA5E9)),
-      _StatCardData('Security Standards', '$securityStandards',
-          'Compliance protocols', const Color(0xFFEF4444)),
-      _StatCardData(
-          'Integration Readiness',
-          '$integrationReadiness%',
-          '$integrationCount/$totalComponents mapped',
-          const Color(0xFF6366F1)),
-    ];
-
-    if (isNarrow) {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: stats.map((stat) => _buildStatCard(stat)).toList(),
-      );
-    }
-
-    return Row(
-      children: stats
-          .map((stat) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: _buildStatCard(stat),
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data.value,
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: data.color)),
-          const SizedBox(height: 6),
-          Text(data.label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-          const SizedBox(height: 6),
-          Text(data.supporting,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: data.color)),
-        ],
+  Widget _buildArchitectureSection() {
+    return ExecutionPanelShell(
+      title: 'Architecture & System Design',
+      subtitle:
+          'Decomposition view per IEEE 1016 — architectural patterns, service boundaries, and integration topology',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.account_tree_outlined,
+      headerIconColor: const Color(0xFF7C3AED),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final crossCount = constraints.maxWidth >= 900
+              ? 2
+              : 1;
+          return Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            children: _archPatterns.map((pattern) {
+              return SizedBox(
+                width: (constraints.maxWidth - (14 * (crossCount - 1))) /
+                    crossCount,
+                child: _ArchitecturePatternCard(pattern: pattern),
+              );
+            }).toList(),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPackageRegister() {
+  // ── DESIGN SPECIFICATION REGISTER (MAIN TABLE) ────────────────
+
+  Widget _buildSpecificationRegister() {
     if (_isLoading) {
-      return _PanelShell(
-        title: 'Design package register',
-        subtitle: 'Traceable artifacts and approvals',
+      return ExecutionPanelShell(
+        title: 'Design Specification Register',
+        subtitle:
+            'Traceable specifications with MoSCoW prioritization, methodology phasing, and requirements traceability',
+        collapsible: true,
+        initiallyExpanded: true,
+        headerIcon: Icons.folder_special_outlined,
+        headerIconColor: const Color(0xFF2563EB),
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(24.0),
@@ -405,15 +804,22 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
 
     final filteredComponents = _filterComponents(_components);
 
-    return _PanelShell(
-      title: 'Design package register',
-      subtitle: 'Traceable artifacts and approvals',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
+    return ExecutionPanelShell(
+      title: 'Design Specification Register',
+      subtitle:
+          'Traceable specifications with MoSCoW prioritization, methodology phasing, and requirements traceability',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.folder_special_outlined,
+      headerIconColor: const Color(0xFF2563EB),
+      trailing: _buildSpecTypeLegend(),
       child: DetailedDesignTableWidget(
         components: filteredComponents,
+        methodology: _methodology,
         onUpdated: (component) {
           setState(() {
-            final index = _components.indexWhere((c) => c.id == component.id);
+            final index =
+                _components.indexWhere((c) => c.id == component.id);
             if (index != -1) {
               _components[index] = component;
             } else {
@@ -430,168 +836,374 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     );
   }
 
-  List<DesignComponent> _filterComponents(List<DesignComponent> components) {
-    if (_selectedFilters.contains('All packages')) return components;
-    return components.where((c) {
-      if (_selectedFilters.contains('Ready') && c.status == 'Approved') {
-        return true;
-      }
-      if (_selectedFilters.contains('In review') && c.status == 'Reviewed') {
-        return true;
-      }
-      if (_selectedFilters.contains('Draft') && c.status == 'Draft') {
-        return true;
-      }
-      if (_selectedFilters.contains('Pending') && c.status == 'Draft') {
-        return true;
-      }
-      return false;
-    }).toList();
-  }
-
-  Widget _buildReviewPanel() {
-    return _PanelShell(
-      title: 'Design review pulse',
-      subtitle: 'Readiness by workstream',
-      child: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Text('No review data available',
-              style: TextStyle(color: Color(0xFF64748B))),
-        ),
-      ),
+  Widget _buildSpecTypeLegend() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: DesignComponent.specificationTypes.take(5).map((type) {
+        final color = _getTypeColor(type);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Text(
+            type,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildDecisionPanel() {
-    return _PanelShell(
-      title: 'Decision log',
-      subtitle: 'Open decisions needing closure',
-      child: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Text('No decisions logged',
-              style: TextStyle(color: Color(0xFF64748B))),
-        ),
-      ),
-    );
+  Color _getTypeColor(String type) {
+    return switch (type) {
+      'Architecture' => const Color(0xFF7C3AED),
+      'Interface' => const Color(0xFF2563EB),
+      'Data' => const Color(0xFF0891B2),
+      'Component' => const Color(0xFF059669),
+      'Security' => const Color(0xFFDC2626),
+      'NFR' => const Color(0xFFD97706),
+      'Infrastructure' => const Color(0xFF475569),
+      'UI/UX' => const Color(0xFFEC4899),
+      _ => const Color(0xFF6B7280),
+    };
   }
 
-  Widget _buildArtifactsPanel() {
-    return _PanelShell(
-      title: 'Artifact readiness',
-      subtitle: 'Design assets staged for handoff',
+  // ── SECURITY & COMPLIANCE SECTION ─────────────────────────────
+
+  Widget _buildSecuritySection() {
+    return ExecutionPanelShell(
+      title: 'Security & Compliance Controls',
+      subtitle:
+          'Controls mapped to ISO 27001, NIST Cybersecurity Framework, OWASP, and SOC 2 trust criteria',
+      collapsible: true,
+      initiallyExpanded: false,
+      headerIcon: Icons.shield_outlined,
+      headerIconColor: const Color(0xFFDC2626),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _ArtifactItem('API schema v4', 'Ready for build', true),
-          _ArtifactItem('Sequence diagrams', 'Review pending', false),
-          _ArtifactItem('Observability plan', 'Ready for build', true),
-        ],
+        children: _securityControls.map((control) {
+          return _SecurityControlCard(control: control);
+        }).toList(),
       ),
     );
   }
+
+  // ── NON-FUNCTIONAL REQUIREMENTS SECTION ───────────────────────
+
+  Widget _buildNFRSection() {
+    return ExecutionPanelShell(
+      title: 'Non-Functional Requirements (NFRs)',
+      subtitle:
+          'Quantifiable quality attributes — performance, scalability, availability, recoverability, and maintainability targets',
+      collapsible: true,
+      initiallyExpanded: false,
+      headerIcon: Icons.speed_outlined,
+      headerIconColor: const Color(0xFFD97706),
+      child: Column(
+        children: _nfrItems.map((item) {
+          return _NFRCard(item: item);
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── DESIGN DECISION LOG / ADR SECTION ─────────────────────────
+
+  Widget _buildADRSection() {
+    return ExecutionPanelShell(
+      title: 'Design Decision Log (ADRs)',
+      subtitle:
+          'Architecture Decision Records documenting context, rationale, and consequences of key design choices',
+      collapsible: true,
+      initiallyExpanded: false,
+      headerIcon: Icons.gavel_outlined,
+      headerIconColor: const Color(0xFF6366F1),
+      child: Column(
+        children: _adrRecords.map((record) {
+          return _ADRecordCard(record: record);
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── ARTIFACT READINESS SECTION ────────────────────────────────
+
+  Widget _buildArtifactReadiness() {
+    final readyCount = _artifacts.where((a) => a.ready).length;
+    return ExecutionPanelShell(
+      title: 'Artifact Readiness',
+      subtitle:
+          '$readyCount/${_artifacts.length} design assets staged for build handoff and construction readiness gate',
+      collapsible: true,
+      initiallyExpanded: false,
+      headerIcon: Icons.inventory_2_outlined,
+      headerIconColor: const Color(0xFF0891B2),
+      child: Column(
+        children: _artifacts.map((artifact) {
+          final color =
+              artifact.ready ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    artifact.ready
+                        ? Icons.check_circle_rounded
+                        : Icons.schedule_rounded,
+                    size: 16,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(artifact.name,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(artifact.status,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── ADD SPECIFICATION DIALOG ──────────────────────────────────
 
   void _showAddComponentDialog(BuildContext context) {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
+            content:
+                Text('No project selected. Please open a project first.')),
       );
       return;
     }
 
+    final specIdController = TextEditingController(
+      text: 'DS-${(_components.length + 1).toString().padLeft(3, '0')}',
+    );
     final componentNameController = TextEditingController();
-    var selectedCategory = 'Backend';
+    var selectedType = 'Component';
     final specificationController = AutoBulletTextController(text: '');
-    final integrationController = TextEditingController();
+    var selectedPriority = 'Should Have';
+    var selectedPhase = _getDefaultPhase();
+    var selectedOwner = 'Engineering';
+    final traceabilityController = TextEditingController();
     var selectedStatus = 'Draft';
-    final notesController = TextEditingController(); // Prose, no bullets
+    final notesController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Design Component',
-              style: TextStyle(fontSize: 18)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    size: 20, color: Color(0xFF2563EB)),
+              ),
+              const SizedBox(width: 12),
+              const Text('Add Design Specification',
+                  style: TextStyle(fontSize: 18)),
+            ],
+          ),
           content: SizedBox(
-            width: 600,
+            width: 640,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: componentNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Component Name *',
-                      hintText: 'e.g., API Gateway, User Authentication',
-                      isDense: true,
-                    ),
+                  // Row 1: Spec ID + Priority
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: specIdController,
+                          decoration: const InputDecoration(
+                            labelText: 'Spec ID *',
+                            hintText: 'e.g., DS-007',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedPriority,
+                          decoration: const InputDecoration(
+                              labelText: 'Priority *', isDense: true),
+                          items: DesignComponent.priorities
+                              .map((p) => DropdownMenuItem(
+                                  value: p, child: Text(p)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedPriority = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedCategory,
-                    decoration: const InputDecoration(
-                        labelText: 'Category *', isDense: true),
-                    items: const [
-                      'UI/UX',
-                      'Backend',
-                      'Security',
-                      'Networking',
-                      'Physical Infrastructure',
-                    ]
-                        .map((cat) =>
-                            DropdownMenuItem(value: cat, child: Text(cat)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => selectedCategory = v);
-                      }
-                    },
+                  // Row 2: Name + Type
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: componentNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Design Element Name *',
+                            hintText: 'e.g., API Gateway, Auth Service',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedType,
+                          decoration: const InputDecoration(
+                              labelText: 'Type *', isDense: true),
+                          items: DesignComponent.specificationTypes
+                              .map((t) => DropdownMenuItem(
+                                  value: t, child: Text(t)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedType = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Row 3: Phase + Owner + Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedPhase,
+                          decoration: const InputDecoration(
+                              labelText: 'Phase', isDense: true),
+                          items: _getPhaseOptionsForDialog()
+                              .map((p) => DropdownMenuItem(
+                                  value: p, child: Text(p)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedPhase = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedOwner,
+                          decoration: const InputDecoration(
+                              labelText: 'Owner', isDense: true),
+                          items: DesignComponent.ownerRoles
+                              .map((r) => DropdownMenuItem(
+                                  value: r, child: Text(r)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedOwner = v);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedStatus,
+                          decoration: const InputDecoration(
+                              labelText: 'Status *', isDense: true),
+                          items: DesignComponent.statuses
+                              .map((s) => DropdownMenuItem(
+                                  value: s, child: Text(s)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              setDialogState(() => selectedStatus = v);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: specificationController,
                     decoration: const InputDecoration(
                       labelText: 'Specification Details',
-                      hintText: 'Use "." bullet format',
+                      hintText: 'Use "." bullet format for list items',
                       isDense: true,
                     ),
-                    maxLines: 6,
+                    maxLines: 5,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: integrationController,
-                    decoration: const InputDecoration(
-                      labelText: 'Integration Point',
-                      hintText: 'What other systems does this touch?',
-                      isDense: true,
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedStatus,
-                    decoration: const InputDecoration(
-                        labelText: 'Status *', isDense: true),
-                    items: const ['Draft', 'Reviewed', 'Approved']
-                        .map((status) => DropdownMenuItem(
-                            value: status, child: Text(status)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => selectedStatus = v);
-                      }
-                    },
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: traceabilityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Traceability (Req ID)',
+                            hintText: 'e.g., REQ-001',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: notesController,
                     decoration: const InputDecoration(
-                      labelText: 'Design Notes',
-                      hintText: 'Prose description, no bullets',
+                      labelText: 'Design Notes / Rationale',
+                      hintText: 'Prose description of design decisions',
                       isDense: true,
                     ),
                     maxLines: 3,
@@ -610,17 +1222,25 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                 if (componentNameController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Please enter a component name')),
+                        content:
+                            Text('Please enter a design element name')),
                   );
                   return;
                 }
 
                 try {
                   final newComponent = DesignComponent(
+                    specId: specIdController.text.trim(),
                     componentName: componentNameController.text.trim(),
-                    category: selectedCategory,
-                    specificationDetails: specificationController.text.trim(),
-                    integrationPoint: integrationController.text.trim(),
+                    specificationType: selectedType,
+                    category: selectedType,
+                    specificationDetails:
+                        specificationController.text.trim(),
+                    integrationPoint: _inferIntegration(selectedType),
+                    priority: selectedPriority,
+                    methodologyPhase: selectedPhase,
+                    owner: selectedOwner,
+                    traceability: traceabilityController.text.trim(),
                     status: selectedStatus,
                     designNotes: notesController.text.trim(),
                   );
@@ -629,7 +1249,6 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     _components.add(newComponent);
                   });
 
-                  // Save to service
                   await ExecutionPhaseService.saveDesignComponents(
                     projectId: projectId,
                     components: _components,
@@ -639,45 +1258,51 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     Navigator.of(dialogContext).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Component added successfully')),
+                          content:
+                              Text('Design specification added successfully')),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error adding component: $e')),
+                      SnackBar(
+                          content:
+                              Text('Error adding specification: $e')),
                     );
                   }
                 }
               },
-              child: const Text('Add'),
+              child: const Text('Add Specification'),
             ),
           ],
         ),
       ),
     );
   }
+
+  List<String> _getPhaseOptionsForDialog() {
+    return switch (_methodology) {
+      'Waterfall' => DesignComponent.waterfallPhases,
+      'Agile' => DesignComponent.agilePhases,
+      _ => DesignComponent.hybridPhases,
+    };
+  }
 }
 
-class _PanelShell extends StatelessWidget {
-  const _PanelShell({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    this.trailing,
-  });
+// ══════════════════════════════════════════════════════════════════
+//  HELPER WIDGETS & DATA CLASSES
+// ══════════════════════════════════════════════════════════════════
 
-  final String title;
-  final String subtitle;
-  final Widget child;
-  final Widget? trailing;
+class _ArchitecturePatternCard extends StatelessWidget {
+  const _ArchitecturePatternCard({required this.pattern});
+  final _ArchitecturePattern pattern;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -685,67 +1310,36 @@ class _PanelShell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: pattern.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(pattern.icon, size: 18, color: pattern.color),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF64748B))),
-                  ],
+                child: Text(
+                  pattern.name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              ExecutionStatusBadge(label: pattern.status),
             ],
           ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ArtifactItem extends StatelessWidget {
-  const _ArtifactItem(this.title, this.status, this.ready);
-
-  final String title;
-  final String status;
-  final bool ready;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = ready ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Icon(ready ? Icons.check_circle : Icons.schedule,
-              size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(status,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF64748B))),
-              ],
+          const SizedBox(height: 10),
+          Text(
+            pattern.description,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+              height: 1.5,
             ),
           ),
         ],
@@ -754,11 +1348,324 @@ class _ArtifactItem extends StatelessWidget {
   }
 }
 
-class _StatCardData {
-  const _StatCardData(this.label, this.value, this.supporting, this.color);
+class _SecurityControlCard extends StatelessWidget {
+  const _SecurityControlCard({required this.control});
+  final _SecurityControl control;
 
-  final String label;
-  final String value;
-  final String supporting;
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (control.status) {
+      'Defined' => const Color(0xFF10B981),
+      'In Progress' => const Color(0xFF2563EB),
+      'Pending' => const Color(0xFFF59E0B),
+      _ => const Color(0xFF9CA3AF),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.security_rounded, size: 16, color: statusColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(control.id,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: statusColor,
+                        )),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(control.requirement,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(control.standard,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(control.status,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NFRCard extends StatelessWidget {
+  const _NFRCard({required this.item});
+  final _NFRItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryColor = switch (item.category) {
+      'Performance' => const Color(0xFFDC2626),
+      'Scalability' => const Color(0xFF7C3AED),
+      'Availability' => const Color(0xFF059669),
+      'Recoverability' => const Color(0xFF2563EB),
+      'Maintainability' => const Color(0xFFD97706),
+      _ => const Color(0xFF6B7280),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: categoryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.speed_rounded, size: 16, color: categoryColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(item.id,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: categoryColor,
+                        )),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(item.category,
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: categoryColor)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(item.requirement,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Target: ${item.target}',
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+          ExecutionStatusBadge(label: item.status),
+        ],
+      ),
+    );
+  }
+}
+
+class _ADRecordCard extends StatelessWidget {
+  const _ADRecordCard({required this.record});
+  final _ADRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (record.status) {
+      'Accepted' => const Color(0xFF10B981),
+      'Proposed' => const Color(0xFFD97706),
+      'Deprecated' => const Color(0xFFEF4444),
+      'Superseded' => const Color(0xFF6B7280),
+      _ => const Color(0xFF9CA3AF),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(record.id,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: statusColor,
+                  )),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(record.title,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w800)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(record.status,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildADRow('Context', record.context, const Color(0xFF2563EB)),
+          const SizedBox(height: 8),
+          _buildADRow('Decision', record.decision, const Color(0xFF059669)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildADRow(String label, String text, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: color)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF4B5563),
+                  height: 1.5)),
+        ),
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DATA CLASSES
+// ══════════════════════════════════════════════════════════════════
+
+class _ArchitecturePattern {
+  final String name;
+  final String description;
+  final String status;
+  final IconData icon;
   final Color color;
+  const _ArchitecturePattern({
+    required this.name,
+    required this.description,
+    required this.status,
+    required this.icon,
+    required this.color,
+  });
+}
+
+class _SecurityControl {
+  final String id;
+  final String requirement;
+  final String standard;
+  final String status;
+  const _SecurityControl({
+    required this.id,
+    required this.requirement,
+    required this.standard,
+    required this.status,
+  });
+}
+
+class _NFRItem {
+  final String id;
+  final String category;
+  final String requirement;
+  final String target;
+  final String status;
+  const _NFRItem({
+    required this.id,
+    required this.category,
+    required this.requirement,
+    required this.target,
+    required this.status,
+  });
+}
+
+class _ADRecord {
+  final String id;
+  final String title;
+  final String context;
+  final String decision;
+  final String status;
+  const _ADRecord({
+    required this.id,
+    required this.title,
+    required this.context,
+    required this.decision,
+    required this.status,
+  });
+}
+
+class _ArtifactReadinessItem {
+  final String name;
+  final String status;
+  final bool ready;
+  const _ArtifactReadinessItem({
+    required this.name,
+    required this.status,
+    required this.ready,
+  });
 }

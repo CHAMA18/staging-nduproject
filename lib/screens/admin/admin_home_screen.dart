@@ -91,7 +91,7 @@ class AdminHomeScreen extends StatelessWidget {
         border: Border.all(color: _adminBorderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -120,7 +120,7 @@ class AdminHomeScreen extends StatelessWidget {
                             border: Border.all(color: _adminBorderColor),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
+                                color: Colors.black.withOpacity(0.04),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -132,7 +132,7 @@ class AdminHomeScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                           decoration: BoxDecoration(
-                            color: _adminAccentColor.withValues(alpha: 0.16),
+                            color: _adminAccentColor.withOpacity(0.16),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: const Text(
@@ -373,7 +373,7 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: _adminBorderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -385,7 +385,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: _adminAccentStrongColor, size: 20),
@@ -414,7 +414,7 @@ class _StatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _adminAccentColor.withValues(alpha: 0.16),
+                  color: _adminAccentColor.withOpacity(0.16),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -470,7 +470,7 @@ class _ActionCard extends StatelessWidget {
           border: Border.all(color: _adminBorderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -484,7 +484,7 @@ class _ActionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _adminAccentColor.withValues(alpha: 0.16),
+                    color: _adminAccentColor.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: _adminAccentStrongColor, size: 24),

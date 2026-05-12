@@ -1116,7 +1116,7 @@ class _RiskTrackingWorkspaceScreenState
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: severityColor.withValues(alpha: 0.15),
+                  color: severityColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -1583,7 +1583,7 @@ class _RiskTrackingWorkspaceScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
@@ -1619,7 +1619,7 @@ class _RiskTrackingWorkspaceScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(5),
         border: Border.all(color: color, width: 1),
       ),
@@ -1841,6 +1841,133 @@ class _RiskTrackingWorkspaceScreenState
                         IconButton(
                           onPressed: () => Navigator.pop(context, false),
                           icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Likelihood',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: List.generate(5, (index) {
+                                  final value = index + 1;
+                                  final isSelected = likelihoodScore == value;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: InkWell(
+                                      onTap: () => setDialogState(() => likelihoodScore = value),
+                                      child: Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _getScoreColor(value)
+                                              : Colors.white,
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _getScoreColor(value)
+                                                : const Color(0xFFD1D5DB),
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$value',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: isSelected ? Colors.white : const Color(0xFF374151),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Impact',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: List.generate(5, (index) {
+                                  final value = index + 1;
+                                  final isSelected = impactScore == value;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: InkWell(
+                                      onTap: () => setDialogState(() => impactScore = value),
+                                      child: Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _getScoreColor(value)
+                                              : Colors.white,
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _getScoreColor(value)
+                                                : const Color(0xFFD1D5DB),
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$value',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: isSelected ? Colors.white : const Color(0xFF374151),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Risk Score',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _getRiskScoreColor(likelihoodScore * impactScore).withOpacity(0.15),
+                                  border: Border.all(
+                                    color: _getRiskScoreColor(likelihoodScore * impactScore),
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${likelihoodScore * impactScore}',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: _getRiskScoreColor(likelihoodScore * impactScore),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),

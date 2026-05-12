@@ -494,7 +494,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: role.color.withValues(alpha: 0.12),
+            color: role.color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: role.color),
           ),
@@ -1074,7 +1074,7 @@ class _UserPermissionsDialogState extends State<_UserPermissionsDialog> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Material(
                     color: isSelected
-                        ? role.color.withValues(alpha: 0.15)
+                        ? role.color.withOpacity(0.15)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(

@@ -152,6 +152,12 @@ service cloud.firestore {
       match /salvage_disposal/{itemId} {
         allow read, write: if isProjectMember();
       }
+      match /salvage_timeline/{itemId} {
+        allow read, write: if isProjectMember();
+      }
+      match /salvage_compliance/{docId} {
+        allow read, write: if isProjectMember();
+      }
       
       // Tools integration subcollection
       match /tool_integrations/{integrationId} {

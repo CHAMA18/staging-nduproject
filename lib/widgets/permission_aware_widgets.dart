@@ -331,7 +331,7 @@ class RoleBadge extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: role.color.withValues(alpha: 0.15),
+            color: role.color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: role.color,
@@ -423,7 +423,7 @@ class RoleDropdown extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: role.color.withValues(alpha: 0.15),
+                  color: role.color.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -477,7 +477,7 @@ class RestrictedContent extends StatelessWidget {
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withOpacity(0.8),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(

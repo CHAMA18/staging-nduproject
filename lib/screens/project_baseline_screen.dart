@@ -724,7 +724,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -852,7 +852,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -868,7 +868,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                 label,
                 style: TextStyle(
                   fontSize: 10,
-                  color: color.withValues(alpha: 0.8),
+                  color: color.withOpacity(0.8),
                 ),
               ),
               Text(
@@ -975,7 +975,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+            color: const Color(0xFF2563EB).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 12),
           ),
@@ -1010,7 +1010,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             const SizedBox(height: 16),
             Container(
               height: 1,
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withOpacity(0.2),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -1083,7 +1083,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1187,7 +1187,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1303,7 +1303,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1512,7 +1512,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1717,7 +1717,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -2147,7 +2147,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -2230,9 +2230,9 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: varianceColor.withValues(alpha: 0.08),
+        color: varianceColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: varianceColor.withValues(alpha: 0.2)),
+        border: Border.all(color: varianceColor.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2265,7 +2265,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             'Comparing baseline dates vs current dates',
             style: TextStyle(
               fontSize: 12,
-              color: varianceColor.withValues(alpha: 0.8),
+              color: varianceColor.withOpacity(0.8),
             ),
           ),
         ],
@@ -2295,9 +2295,9 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: varianceColor.withValues(alpha: 0.08),
+        color: varianceColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: varianceColor.withValues(alpha: 0.2)),
+        border: Border.all(color: varianceColor.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2330,7 +2330,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             'Comparing baseline budget vs current spend',
             style: TextStyle(
               fontSize: 12,
-              color: varianceColor.withValues(alpha: 0.8),
+              color: varianceColor.withOpacity(0.8),
             ),
           ),
         ],

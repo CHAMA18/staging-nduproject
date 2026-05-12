@@ -375,6 +375,10 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     return ExecutionPanelShell(
       title: 'Commercial Decision',
       subtitle: 'Record the go / grow / pause recommendation with rationale.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.trending_up_rounded,
+      headerIconColor: const Color(0xFF10B981),
       child: TextFormField(
         initialValue: _decision.notes,
         maxLines: 4,

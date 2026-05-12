@@ -442,11 +442,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Design Deliverables',
       backgroundColor: _kPageBackground,
-      floatingActionButton: const Positioned(
-        right: 24,
-        bottom: 24,
-        child: KazAiChatBubble(positioned: false),
-      ),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding:
             EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
@@ -745,7 +741,7 @@ class _IntegrityPanel extends StatelessWidget {
             width: 88,
             height: 88,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Icon(
@@ -899,7 +895,7 @@ class _MetricCard extends StatelessWidget {
             child: LinearProgressIndicator(
               minHeight: 6,
               value: data.progress,
-              backgroundColor: data.accent.withValues(alpha: 0.14),
+              backgroundColor: data.accent.withOpacity(0.14),
               valueColor: AlwaysStoppedAnimation<Color>(data.accent),
             ),
           ),
@@ -1325,7 +1321,7 @@ class _PipelineRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(value,
@@ -1750,9 +1746,9 @@ class _StatusBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -1784,9 +1780,9 @@ class _SaveStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
+        border: Border.all(color: color.withOpacity(0.16)),
       ),
       child: Text(label,
           style: TextStyle(
@@ -1810,7 +1806,7 @@ class _OutlineActionButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+        side: BorderSide(color: Colors.white.withOpacity(0.22)),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),

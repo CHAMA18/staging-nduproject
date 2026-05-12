@@ -38,14 +38,14 @@ class SsherScreen1 extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                            border: Border.all(color: Colors.grey.withOpacity(0.2)),
                           ),
                           child: Column(
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.08),
+                                  color: Colors.blue.withOpacity(0.08),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                                 ),
                                 child: Row(
@@ -53,7 +53,7 @@ class SsherScreen1 extends StatelessWidget {
                                     Container(
                                       width: 30,
                                       height: 30,
-                                      decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), shape: BoxShape.circle),
+                                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.15), shape: BoxShape.circle),
                                       child: const Icon(Icons.receipt_long, size: 18, color: Colors.blue),
                                     ),
                                     const SizedBox(width: 12),
@@ -69,7 +69,7 @@ class SsherScreen1 extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                                  border: Border.all(color: Colors.grey.withOpacity(0.25)),
                                 ),
                                 child: Text(
                                   'This SSHER plan encompasses comprehensive risk management across all operational domains. Safety protocols focus on workplace injury prevention and emergency response procedures. Security measures address both physical and cyber threats with multi- layered protection strategies. Health initiatives promote employee wellbeing and occupational health standards. Environmental considerations ensure sustainable practices and regulatory compliance. Regulatory frameworks maintain adherence to industry standards and legal requirements .',
@@ -236,7 +236,7 @@ class _Sidebar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isActive ? Colors.grey.withValues(alpha: 0.06) : Colors.transparent,
+              color: isActive ? Colors.grey.withOpacity(0.06) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [

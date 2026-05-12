@@ -415,7 +415,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                       border: Border.all(color: _kSpecBorder),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withOpacity(0.05),
                           blurRadius: 22,
                           offset: const Offset(0, 12),
                         ),
@@ -550,7 +550,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: _kSpecBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -942,7 +942,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: _kSpecBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -1033,7 +1033,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -1096,7 +1096,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -1153,7 +1153,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -1239,9 +1239,9 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.18)),
+            border: Border.all(color: color.withOpacity(0.18)),
           ),
           child: Icon(icon, color: color, size: 22),
         ),
@@ -2282,7 +2282,7 @@ class _DashboardPanel extends StatelessWidget {
         border: Border.all(color: _kSpecBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -2297,7 +2297,7 @@ class _DashboardPanel extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
+                  color: accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: accent, size: 20),
@@ -2491,7 +2491,7 @@ class _PersonRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.1),
+              color: badgeColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(

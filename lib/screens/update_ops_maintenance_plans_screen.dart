@@ -584,7 +584,7 @@ class _UpdateOpsMaintenancePlansScreenState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: data.color.withValues(alpha: 0.1),
+              color: data.color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_outlined, size: 22, color: data.color),
@@ -900,9 +900,9 @@ class _UpdateOpsMaintenancePlansScreenState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: item.color.withValues(alpha: 0.12),
+                  color: item.color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: item.color.withValues(alpha: 0.25)),
+                  border: Border.all(color: item.color.withOpacity(0.25)),
                 ),
                 child: Text(
                   '${(item.progress * 100).round()}%',
@@ -1105,9 +1105,9 @@ class _UpdateOpsMaintenancePlansScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
+              color: statusColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
             ),
             child: Text(
               item.status.isEmpty ? 'Scheduled' : item.status,
@@ -2072,7 +2072,7 @@ class _PlanRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: bg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: color.withValues(alpha: 0.2)),
+                  border: Border.all(color: color.withOpacity(0.2)),
                 ),
                 child: Text(
                   plan.status,

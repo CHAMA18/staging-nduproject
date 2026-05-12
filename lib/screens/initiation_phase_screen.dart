@@ -533,7 +533,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (_) => const _RiskIdentificationTransitionDialog(),
     );
 
@@ -1043,8 +1043,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     }
 
     final borderColor = hasError
-        ? Colors.red.withValues(alpha: 0.2)
-        : Colors.grey.withValues(alpha: 0.2);
+        ? Colors.red.withOpacity(0.2)
+        : Colors.grey.withOpacity(0.2);
     final canRefresh = !loading && OpenAiConfig.isConfigured;
 
     return Container(
@@ -1056,7 +1056,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1157,7 +1157,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFF8F9FB),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
+          border: Border.all(color: Colors.grey.withOpacity(0.22)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1224,7 +1224,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
           ),
           child: Icon(icon, size: 16, color: const Color(0xFF64748B)),
         ),
@@ -1268,7 +1268,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           // Loading overlay for AI generation
           if (_isGeneratingAI)
             Container(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: Colors.black.withOpacity(0.5),
               child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1307,7 +1307,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         color: Colors.white,
         border: Border(
           right: BorderSide(
-              color: Colors.grey.withValues(alpha: 0.25), width: 0.8),
+              color: Colors.grey.withOpacity(0.25), width: 0.8),
         ),
       ),
       child: Column(
@@ -1502,8 +1502,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+          top: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          bottom: BorderSide(color: Colors.grey.withOpacity(0.2)),
         ),
       ),
       child: Row(
@@ -1844,7 +1844,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           ),
           if (_isGeneratingAI)
             Container(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: Colors.black.withOpacity(0.5),
               child: const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
@@ -1867,7 +1867,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1912,7 +1912,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1959,7 +1959,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -2028,7 +2028,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 border: Border.all(
                     color: _notesInvalid
                         ? Colors.red
-                        : Colors.grey.withValues(alpha: 0.3)),
+                        : Colors.grey.withOpacity(0.3)),
               ),
               child: TextField(
                 controller: _notesController,
@@ -2100,7 +2100,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 border: Border.all(
                     color: _businessInvalid
                         ? Colors.red
-                        : Colors.grey.withValues(alpha: 0.3)),
+                        : Colors.grey.withOpacity(0.3)),
               ),
               child: TextField(
                 controller: _businessCaseController,
@@ -2462,7 +2462,7 @@ class _RiskIdentificationTransitionDialogState
                     center: const Alignment(-0.4, -0.6),
                     radius: 1.2,
                     colors: [
-                      const Color(0xFFFFF5B0).withValues(alpha: 0.40),
+                      const Color(0xFFFFF5B0).withOpacity(0.40),
                       Colors.white,
                     ],
                     stops: const [0.0, 1.0],
@@ -2608,9 +2608,9 @@ class _ShimmerTextState extends State<_ShimmerText>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                widget.baseColor.withValues(alpha: 0.6),
+                widget.baseColor.withOpacity(0.6),
                 widget.highlightColor,
-                widget.baseColor.withValues(alpha: 0.6),
+                widget.baseColor.withOpacity(0.6),
               ],
               stops: [
                 (_controller.value - 0.3).clamp(0.0, 1.0),

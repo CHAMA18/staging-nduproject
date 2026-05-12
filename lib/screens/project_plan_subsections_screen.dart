@@ -633,7 +633,7 @@ class _Level1ScheduleScreenState
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.12),
+                            color: statusColor.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1161,7 +1161,7 @@ class _L1GanttChart extends StatelessWidget {
                                           pxPerDay,
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFE5E7EB)
-                                            .withValues(alpha: 0.6),
+                                            .withOpacity(0.6),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
                                           color: const Color(0xFFD1D5DB),
@@ -1199,8 +1199,7 @@ class _L1GanttChart extends StatelessWidget {
                                                 child: Container(
                                                   decoration: BoxDecoration(
                                                     color: _phaseColor(index)
-                                                        .withValues(
-                                                            alpha: 0.85),
+                                                        .withOpacity(0.85),
                                                   ),
                                                 ),
                                               ),
@@ -1241,7 +1240,7 @@ class _L1GanttChart extends StatelessWidget {
                       width: 20,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5E7EB).withValues(alpha: 0.6),
+                        color: const Color(0xFFE5E7EB).withOpacity(0.6),
                         borderRadius: BorderRadius.circular(3),
                         border: Border.all(color: const Color(0xFFD1D5DB)),
                       ),
@@ -1908,7 +1907,7 @@ class _DetailedScheduleState extends State<ProjectPlanDetailedScheduleScreen> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withOpacity(0.08),
                             blurRadius: 4)
                       ]
                     : null,
@@ -2090,7 +2089,7 @@ class _DetailedScheduleState extends State<ProjectPlanDetailedScheduleScreen> {
             width: 20,
             height: 10,
             decoration: BoxDecoration(
-              color: const Color(0xFFE5E7EB).withValues(alpha: 0.6),
+              color: const Color(0xFFE5E7EB).withOpacity(0.6),
               borderRadius: BorderRadius.circular(3),
               border: Border.all(color: const Color(0xFFD1D5DB)),
             ),
@@ -2574,7 +2573,7 @@ class _DetailedGanttChart extends StatelessWidget {
                             : const Color(0xFFFAFAFA)),
                     border: Border(
                       bottom: BorderSide(
-                        color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
+                        color: const Color(0xFFE5E7EB).withOpacity(0.5),
                       ),
                     ),
                   ),
@@ -2661,7 +2660,7 @@ class _DetailedGanttChart extends StatelessWidget {
                           .clamp(20.0, 2000.0),
                       height: _rowHeight - 16,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5E7EB).withValues(alpha: 0.6),
+                        color: const Color(0xFFE5E7EB).withOpacity(0.6),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: const Color(0xFFD1D5DB)),
                       ),
@@ -2686,7 +2685,7 @@ class _DetailedGanttChart extends StatelessWidget {
                               widthFactor: task.progress.clamp(0, 1),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: barColor.withValues(alpha: 0.7),
+                                  color: barColor.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -3183,7 +3182,7 @@ class _StatusCell extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -3221,7 +3220,7 @@ class _PriorityCell extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -4113,7 +4112,7 @@ class _CondensedSummaryState extends State<ProjectPlanCondensedSummaryScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
+                        color: statusColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -4328,7 +4327,7 @@ class _CondensedSummaryState extends State<ProjectPlanCondensedSummaryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -4391,7 +4390,7 @@ class _KpiCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
+                  color: iconColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 18, color: iconColor),
@@ -4427,7 +4426,7 @@ class _KpiCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
+              color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -5004,7 +5003,7 @@ class _StatusRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: data.color.withValues(alpha: 0.12),
+              color: data.color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(

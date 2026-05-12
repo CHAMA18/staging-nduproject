@@ -197,10 +197,10 @@ class _TeamTrainingAndBuildingScreenState
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                border: Border.all(color: Colors.grey.withOpacity(0.25)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   )
@@ -424,7 +424,7 @@ class _TeamTrainingAndBuildingScreenState
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             )
@@ -2106,7 +2106,7 @@ $notesText
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 6,
               offset: const Offset(0, 2),
             )
@@ -2143,7 +2143,7 @@ $notesText
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity(0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -2221,7 +2221,7 @@ class _UpcomingTrainingList extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2229,7 +2229,7 @@ class _UpcomingTrainingList extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.06),
+              color: accent.withOpacity(0.06),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -2429,10 +2429,10 @@ class _BenefitCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           )
@@ -2443,7 +2443,7 @@ class _BenefitCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: Colors.grey.withValues(alpha: 0.15),
+            backgroundColor: Colors.grey.withOpacity(0.15),
             child: Icon(icon, color: Colors.blueGrey[700]),
           ),
           const SizedBox(height: 12),

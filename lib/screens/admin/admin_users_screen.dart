@@ -105,8 +105,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(32, 16, 32, 16),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        color: Colors.grey.withOpacity(0.05),
+        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
       child: Row(
         children: [
@@ -126,7 +126,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 if (selected) setState(() => _filterBy = filter['value']!);
               },
               selectedColor: const Color(0xFFFFC107),
-              backgroundColor: Colors.grey.withValues(alpha: 0.1),
+              backgroundColor: Colors.grey.withOpacity(0.1),
               labelStyle: TextStyle(
                 color: _filterBy == filter['value'] ? Colors.black : Colors.black87,
                 fontWeight: _filterBy == filter['value'] ? FontWeight.w700 : FontWeight.w600,
@@ -250,7 +250,7 @@ class _UserCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -261,7 +261,7 @@ class _UserCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.2),
+                  backgroundColor: const Color(0xFFFFC107).withOpacity(0.2),
                   backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
                   child: user.photoUrl == null
                       ? Text(
@@ -283,7 +283,7 @@ class _UserCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFC107).withValues(alpha: 0.2),
+                                color: const Color(0xFFFFC107).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text('ADMIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
@@ -294,7 +294,7 @@ class _UserCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.1),
+                                color: Colors.red.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text('INACTIVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.red)),
@@ -310,7 +310,7 @@ class _UserCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(color: Colors.grey.withOpacity(0.2)),
             const SizedBox(height: 16),
             Row(
               children: [

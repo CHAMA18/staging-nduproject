@@ -533,7 +533,7 @@ class _SecurityNotesCardState extends State<_SecurityNotesCard> {
               hintText: 'Capture security notes here...',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
               ),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
@@ -559,7 +559,7 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: background ?? color.withValues(alpha: 0.1),
+        color: background ?? color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -607,7 +607,7 @@ class _TabStrip extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 18, offset: const Offset(0, 12)),
         ],
       ),
       child: SingleChildScrollView(
@@ -906,7 +906,7 @@ class _SettingsViewState extends State<_SettingsView> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 14)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 14)),
         ],
       ),
       child: Column(
@@ -1205,7 +1205,7 @@ class _AccessLogsViewState extends State<_AccessLogsView> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 14)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 14)),
         ],
       ),
       child: Column(
@@ -1658,7 +1658,7 @@ class _RolesView extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 14)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 14)),
         ],
       ),
       child: Column(
@@ -1838,7 +1838,7 @@ class _PermissionsViewState extends State<_PermissionsView> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 14)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 14)),
         ],
       ),
       child: Column(
@@ -2490,7 +2490,7 @@ class _SecurityStatusCard extends StatelessWidget {
             value: settingsCount.toString(),
           ),
           const SizedBox(height: 16),
-          Divider(color: Colors.grey.withValues(alpha: 0.2), height: 1),
+          Divider(color: Colors.grey.withOpacity(0.2), height: 1),
           const SizedBox(height: 16),
           Text(
             latestLog == null ? 'No security activity yet' : 'Latest activity ${_formatTime(latestLog!.time)}',
@@ -2643,7 +2643,7 @@ class _ActivityRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.12),
+            color: statusColor.withOpacity(0.12),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(Icons.event_note_outlined, color: statusColor, size: 18),
@@ -2776,7 +2776,7 @@ class _MetricCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 18, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 18, offset: const Offset(0, 10)),
         ],
       ),
       padding: padding,

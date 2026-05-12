@@ -803,7 +803,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             'UI/UX Design for ${projectData.projectName.trim().isNotEmpty ? projectData.projectName.trim() : 'the current design package'}. This hub balances digital interfaces, event graphics, floor plans, motion, accessibility, and handoff-ready specifications.',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.84),
+              color: Colors.white.withOpacity(0.84),
               height: 1.5,
             ),
           ),
@@ -815,7 +815,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12.5,
-                color: Colors.white.withValues(alpha: 0.78),
+                color: Colors.white.withOpacity(0.78),
                 height: 1.45,
               ),
             ),
@@ -1552,9 +1552,9 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1564,7 +1564,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.72),
+              color: Colors.white.withOpacity(0.72),
             ),
           ),
           const SizedBox(height: 4),
@@ -1585,9 +1585,9 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
+        border: Border.all(color: color.withOpacity(0.22)),
       ),
       child: Text(
         label,

@@ -43,16 +43,20 @@
     }
   </style>
   <script>
-    // Flutter web uses hash routes in local/dev builds. Normalize accidental
-    // mixed URLs such as /contracts-tracking#/dashboard to /#/contracts-tracking
-    // so deep links open the intended workspace instead of reflecting dashboard.
+    // When served from a sub-path (e.g. /flutter-app/), ensure hash route
+    // starts correctly without redirecting away from the sub-path.
+    // Redirecting to /#path breaks asset loading since <base href> resolves
+    // relative URLs against the actual document location.
     (function normalizeFlutterHashRoute() {
       var path = window.location.pathname.replace(/\/+$/, '');
       var hash = window.location.hash || '';
-      if (!path || path === '/') return;
-      if (path.indexOf('.') !== -1) return;
-      if (hash && hash !== '#/' && hash !== '#/dashboard') return;
-      window.history.replaceState(null, '', '/#' + path);
+      // Detect the base path from <base href> to preserve it
+      var baseEl = document.querySelector('base');
+      var basePath = baseEl ? baseEl.getAttribute('href').replace(/\/+$/, '') : '';
+      // If we're at the base path root with no meaningful hash, set hash to /
+      if (basePath && path === basePath && (!hash || hash === '#' || hash === '#/')) {
+        window.history.replaceState(null, '', basePath + '/#/');
+      }
     })();
   </script>
 </head>

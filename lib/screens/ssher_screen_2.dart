@@ -196,7 +196,7 @@ class _Sidebar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isActive ? Colors.grey.withValues(alpha: 0.06) : Colors.transparent,
+              color: isActive ? Colors.grey.withOpacity(0.06) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [

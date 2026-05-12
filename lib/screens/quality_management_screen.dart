@@ -494,7 +494,7 @@ class _TabStrip extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 12),
           ),
@@ -2125,7 +2125,7 @@ class _PrimaryCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 20,
             offset: const Offset(0, 14),
           ),
@@ -4950,7 +4950,7 @@ class _MetricSummaryCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 14,
             offset: const Offset(0, 10),
           ),
@@ -5040,7 +5040,7 @@ class _TrendCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 12),
           ),
@@ -5156,7 +5156,7 @@ class _TrendLinePainter extends CustomPainter {
     areaPath.close();
 
     final areaPaint = Paint()
-      ..color = areaColor.withValues(alpha: 0.5)
+      ..color = areaColor.withOpacity(0.5)
       ..style = PaintingStyle.fill;
     canvas.drawPath(areaPath, areaPaint);
 

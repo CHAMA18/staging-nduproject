@@ -371,46 +371,42 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Contracts Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_isLoading) const SizedBox(height: 16),
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 20),
+            _buildContractManagementGuide(),
+            const SizedBox(height: 24),
+            Column(
               children: [
-                if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                if (_isLoading) const SizedBox(height: 16),
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
+                _buildContractRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
+                _buildRenewalPanel(),
                 const SizedBox(height: 20),
-                _buildContractManagementGuide(),
-                const SizedBox(height: 24),
-                Column(
-                  children: [
-                    _buildContractRegister(),
-                    const SizedBox(height: 20),
-                    _buildRenewalPanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildApprovalsPanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Status Reports',
-                  nextLabel: 'Next: Vendor Tracking',
-                  onBack: () => StatusReportsScreen.open(context),
-                  onNext: () => VendorTrackingScreen.open(context),
-                ),
+                _buildSignalsPanel(),
+                const SizedBox(height: 20),
+                _buildApprovalsPanel(),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Status Reports',
+              nextLabel: 'Next: Vendor Tracking',
+              onBack: () => StatusReportsScreen.open(context),
+              onNext: () => VendorTrackingScreen.open(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -698,7 +694,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -769,9 +765,9 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.04),
+        color: color.withOpacity(0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.12)),
+        border: Border.all(color: color.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -781,7 +777,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 16, color: color),
@@ -938,7 +934,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -1115,7 +1111,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -2778,9 +2774,9 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: deptColor.withValues(alpha: 0.08),
+                        color: deptColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: deptColor.withValues(alpha: 0.18)),
+                        border: Border.all(color: deptColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         c.department,
@@ -2801,7 +2797,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: priorityColor.withValues(alpha: 0.08),
+                        color: priorityColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -2836,7 +2832,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -3067,10 +3063,10 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.08),
+                        color: typeColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                         border:
-                            Border.all(color: typeColor.withValues(alpha: 0.18)),
+                            Border.all(color: typeColor.withOpacity(0.18)),
                       ),
                       child: Text(
                         e.contractType,
@@ -3106,7 +3102,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: urgencyColor.withValues(alpha: 0.08),
+                        color: urgencyColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -3145,7 +3141,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: actionColor.withValues(alpha: 0.08),
+                        color: actionColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -3168,7 +3164,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -3265,9 +3261,9 @@ class _RiskSignalPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

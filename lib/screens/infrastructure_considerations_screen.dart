@@ -830,7 +830,7 @@ class _InfrastructureConsiderationsScreenState
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: active
               ? BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                  color: theme.colorScheme.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
                 )
               : null,
@@ -870,7 +870,7 @@ class _InfrastructureConsiderationsScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -906,7 +906,7 @@ class _InfrastructureConsiderationsScreenState
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -946,7 +946,7 @@ class _InfrastructureConsiderationsScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -984,7 +984,7 @@ class _InfrastructureConsiderationsScreenState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -1140,7 +1140,7 @@ class _InfrastructureConsiderationsScreenState
           decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.3))),
+              border: Border.all(color: Colors.grey.withOpacity(0.3))),
           child: TextField(
             controller: _notesController,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
@@ -1181,7 +1181,7 @@ class _InfrastructureConsiderationsScreenState
             decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: const Row(children: [
               Expanded(
                   flex: 2,
@@ -1202,7 +1202,7 @@ class _InfrastructureConsiderationsScreenState
             decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: Column(
                 children: List.generate(_solutions.length, (i) => _row(i))),
           ),
@@ -1656,7 +1656,7 @@ class _InfrastructureConsiderationsScreenState
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
           border: Border(
-              top: BorderSide(color: Colors.grey.withValues(alpha: 0.25)))),
+              top: BorderSide(color: Colors.grey.withOpacity(0.25)))),
       child: isMobile
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
@@ -1784,7 +1784,7 @@ class _InfrastructureConsiderationsScreenState
             decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+                border: Border.all(color: Colors.grey.withOpacity(0.25))),
             child: TextField(
               controller: controller,
               minLines: 2,

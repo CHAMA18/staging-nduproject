@@ -454,6 +454,10 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Team Debrief Notes',
       subtitle:
           'Recognition, feedback, reassignment notes, and closing thoughts.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.groups_outlined,
+      headerIconColor: const Color(0xFF7C3AED),
       child: TextFormField(
         initialValue: _debriefNotes.notes,
         maxLines: 6,

@@ -472,7 +472,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 20, color: color),
@@ -635,7 +635,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            color: const Color(0xFF0F172A).withOpacity(0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -647,7 +647,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
             width: 4,
             height: 40,
             decoration: BoxDecoration(
-              color: safeAccent.withValues(alpha: 0.8),
+              color: safeAccent.withOpacity(0.8),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -708,10 +708,10 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF16A34A).withValues(alpha: 0.08),
+              color: const Color(0xFF16A34A).withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFF16A34A).withValues(alpha: 0.2),
+                color: const Color(0xFF16A34A).withOpacity(0.2),
               ),
             ),
             child: Row(
@@ -744,10 +744,10 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withValues(alpha: 0.3),
+          color: color.withOpacity(0.3),
           width: 1,
         ),
       ),

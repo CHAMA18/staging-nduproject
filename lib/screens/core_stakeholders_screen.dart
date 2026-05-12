@@ -429,7 +429,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -466,7 +466,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -501,7 +501,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                isActive ? primary.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -541,7 +541,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -579,7 +579,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                isActive ? primary.withOpacity(0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
@@ -737,9 +737,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.08),
+                color: Colors.red.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3))),
+                border: Border.all(color: Colors.red.withOpacity(0.3))),
             child: Row(children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 18),
               const SizedBox(width: 8),
@@ -770,7 +770,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.3))),
+              border: Border.all(color: Colors.grey.withOpacity(0.3))),
           child: TextField(
             controller: _notesController,
             keyboardType: TextInputType.multiline,
@@ -820,7 +820,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: const Row(children: [
               Expanded(
                   flex: 2,
@@ -849,7 +849,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: Column(
                 children: List.generate(
                     _solutions.length, (i) => _buildExternalRow(i))),
@@ -876,7 +876,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: const Row(children: [
               Expanded(
                   flex: 2,
@@ -905,7 +905,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                border: Border.all(color: Colors.grey.withOpacity(0.35))),
             child: Column(
                 children: List.generate(
                     _solutions.length, (i) => _buildInternalRow(i))),
@@ -1449,7 +1449,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
           border: Border(
-              top: BorderSide(color: Colors.grey.withValues(alpha: 0.25)))),
+              top: BorderSide(color: Colors.grey.withOpacity(0.25)))),
       child: isMobile
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1579,7 +1579,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+            border: Border.all(color: Colors.grey.withOpacity(0.25))),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -11177,4 +11177,96 @@ Return only the title, no additional text.''';
     if (words.isEmpty) return 'Goal $goalNumber';
     return 'G$goalNumber ${words.join(' ')}';
   }
+
+  Future<List<String>> generateScopeTrackingItems({
+    required String context,
+    required List<String> existingScopeItems,
+    int maxTokens = 1000,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return [];
+
+    if (!OpenAiConfig.isConfigured) return _fallbackScopeItems();
+
+    final existing = existingScopeItems.isEmpty
+        ? 'None yet.'
+        : existingScopeItems.map((s) => '  - $s').join('\n');
+
+    final prompt = '''Based on the project context below, generate a comprehensive list of scope items.
+
+Project Context:
+$trimmedContext
+
+Already tracked scope items:
+$existing
+
+IMPORTANT RULES:
+- Identify scope items that are NOT already tracked in the "Already tracked" list
+- Each scope item should be a specific deliverable, feature, or work product
+- Cover all phases: initiation, planning, design, execution, and close-out
+- Return the items as a JSON object with a single key "scopeItems" containing an array of strings
+- Only include the JSON in your response, nothing else''';
+
+    try {
+      final uri = OpenAiConfig.chatUri();
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+      };
+
+      final body = jsonEncode({
+        'model': OpenAiConfig.model,
+        'temperature': 0.5,
+        'max_tokens': maxTokens,
+        'response_format': {'type': 'json_object'},
+        'messages': [
+          {
+            'role': 'system',
+            'content':
+                'You are a senior project controls engineer. Generate specific, actionable scope tracking items based on project context. Return ONLY valid JSON.'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+      });
+
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content =
+            parsed['choices']?[0]?['message']?['content']?.toString();
+        if (content != null) {
+          final result = jsonDecode(content) as Map<String, dynamic>;
+          final items = result['scopeItems'];
+          if (items is List) {
+            return items
+                .map((e) => e.toString().trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateScopeTrackingItems failed: $e');
+    }
+
+    return _fallbackScopeItems();
+  }
+
+  List<String> _fallbackScopeItems() {
+    return [
+      'Project charter and governance framework',
+      'Stakeholder engagement plan',
+      'Risk register and mitigation strategies',
+      'Work breakdown structure (WBS)',
+      'Schedule baseline with critical path',
+      'Cost estimate and budget baseline',
+      'Scope baseline and change control plan',
+      'Quality management plan',
+      'Communication and reporting plan',
+      'Procurement and contracts management',
+    ];
+  }
 }

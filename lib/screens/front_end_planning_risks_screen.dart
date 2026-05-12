@@ -598,7 +598,7 @@ class _FrontEndPlanningRisksScreenState
     final result = await showDialog<_RiskItem>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (ctx) {
         final viewInsets = MediaQuery.of(ctx).viewInsets;
         return Center(
@@ -1959,7 +1959,7 @@ class _FrontEndPlanningRisksScreenState
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: foreground.withValues(alpha: 0.25)),
+        border: Border.all(color: foreground.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

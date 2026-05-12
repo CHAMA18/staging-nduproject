@@ -103,7 +103,7 @@ class _PortfolioRollUpContentState extends State<_PortfolioRollUpContent> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: Colors.black.withOpacity(0.08),
                       blurRadius: 30,
                       offset: const Offset(0, 18),
                     ),
@@ -515,12 +515,12 @@ class _HeaderSection extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(52),
                       color: Colors.white,
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
                       boxShadow: [
                         BoxShadow(
                           offset: const Offset(0, 20),
                           blurRadius: 36,
-                          color: Colors.black.withValues(alpha: 0.08),
+                          color: Colors.black.withOpacity(0.08),
                         ),
                       ],
                     ),
@@ -858,7 +858,7 @@ class _ProgramRow extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                        color: priorityColor.withValues(alpha: 0.1),
+                        color: priorityColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4)),
                     child: Text(priority,
                         style: TextStyle(
@@ -899,7 +899,7 @@ class _SingleProjectsCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -1192,7 +1192,7 @@ class _GroupProjectsIntoPortfolioCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -2096,9 +2096,9 @@ class _RiskTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withValues(alpha: 0.3))),
+          border: Border.all(color: color.withOpacity(0.3))),
       child: Text(label,
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w500, color: color)),
@@ -2116,7 +2116,7 @@ class _RiskLevel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(4)),
       child: Text(level,
           style: TextStyle(

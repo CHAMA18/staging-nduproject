@@ -149,16 +149,23 @@ class SalvageInventoryItemModel {
   }
 }
 
-/// Model for disposal queue items
+/// Model for disposal queue items — industry-standard fields per ITAD / ISO 14001 /
+/// NIST SP 800-88 / government asset disposal best practices.
 class SalvageDisposalItemModel {
   final String id;
   final String projectId;
   final String assetId;
   final String name;
   final String category;
-  final String status; // 'Pending Review', 'Approved', 'In Progress', etc.
+  final String condition; // 'Excellent', 'Good', 'Fair', 'Poor', 'Non-Functional'
+  final String location;
+  final String disposalMethod; // 'Auction', 'Recycle', 'Donate', 'Scrap', 'Resell', 'Trade-In', 'Transfer'
+  final String status; // 'Pending Review', 'Approved', 'In Progress', 'Pending Disposal', 'Completed', 'On Hold', 'Cancelled'
   final String estimatedValue;
-  final String priority; // 'High', 'Medium', 'Low'
+  final String disposalCost;
+  final String priority; // 'Critical', 'High', 'Medium', 'Low'
+  final String assignedTo;
+  final String targetDate;
   final String createdById;
   final String createdByEmail;
   final String createdByName;
@@ -171,9 +178,15 @@ class SalvageDisposalItemModel {
     required this.assetId,
     required this.name,
     required this.category,
+    this.condition = '',
+    this.location = '',
+    this.disposalMethod = '',
     required this.status,
     required this.estimatedValue,
+    this.disposalCost = '',
     required this.priority,
+    this.assignedTo = '',
+    this.targetDate = '',
     required this.createdById,
     required this.createdByEmail,
     required this.createdByName,
@@ -186,9 +199,15 @@ class SalvageDisposalItemModel {
         'assetId': assetId,
         'name': name,
         'category': category,
+        'condition': condition,
+        'location': location,
+        'disposalMethod': disposalMethod,
         'status': status,
         'estimatedValue': estimatedValue,
+        'disposalCost': disposalCost,
         'priority': priority,
+        'assignedTo': assignedTo,
+        'targetDate': targetDate,
         'createdById': createdById,
         'createdByEmail': createdByEmail,
         'createdByName': createdByName,
@@ -211,9 +230,114 @@ class SalvageDisposalItemModel {
       assetId: (data['assetId'] ?? '').toString(),
       name: (data['name'] ?? '').toString(),
       category: (data['category'] ?? '').toString(),
+      condition: (data['condition'] ?? '').toString(),
+      location: (data['location'] ?? '').toString(),
+      disposalMethod: (data['disposalMethod'] ?? '').toString(),
       status: (data['status'] ?? '').toString(),
       estimatedValue: (data['estimatedValue'] ?? '').toString(),
+      disposalCost: (data['disposalCost'] ?? '').toString(),
       priority: (data['priority'] ?? 'Medium').toString(),
+      assignedTo: (data['assignedTo'] ?? '').toString(),
+      targetDate: (data['targetDate'] ?? '').toString(),
+      createdById: (data['createdById'] ?? '').toString(),
+      createdByEmail: (data['createdByEmail'] ?? '').toString(),
+      createdByName: (data['createdByName'] ?? '').toString(),
+      createdAt: parseTs(data['createdAt']),
+      updatedAt: parseTs(data['updatedAt']),
+    );
+  }
+}
+
+/// Model for disposal timeline milestones — tracks key disposal project phases,
+/// approvals, audits, and deliverables per project management best practices.
+class SalvageTimelineItemModel {
+  final String id;
+  final String projectId;
+  final String milestone;
+  final String description;
+  final String phase; // 'Planning', 'Execution', 'Review', 'Closure'
+  final String status; // 'Not Started', 'In Progress', 'Completed', 'Overdue', 'On Hold'
+  final String owner;
+  final String startDate;
+  final String dueDate;
+  final String completedDate;
+  final int progress; // 0-100
+  final String priority; // 'Critical', 'High', 'Medium', 'Low'
+  final String dependencies;
+  final String notes;
+  final String createdById;
+  final String createdByEmail;
+  final String createdByName;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const SalvageTimelineItemModel({
+    required this.id,
+    required this.projectId,
+    required this.milestone,
+    this.description = '',
+    this.phase = 'Planning',
+    this.status = 'Not Started',
+    this.owner = '',
+    this.startDate = '',
+    this.dueDate = '',
+    this.completedDate = '',
+    this.progress = 0,
+    this.priority = 'Medium',
+    this.dependencies = '',
+    this.notes = '',
+    required this.createdById,
+    required this.createdByEmail,
+    required this.createdByName,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'projectId': projectId,
+        'milestone': milestone,
+        'description': description,
+        'phase': phase,
+        'status': status,
+        'owner': owner,
+        'startDate': startDate,
+        'dueDate': dueDate,
+        'completedDate': completedDate,
+        'progress': progress,
+        'priority': priority,
+        'dependencies': dependencies,
+        'notes': notes,
+        'createdById': createdById,
+        'createdByEmail': createdByEmail,
+        'createdByName': createdByName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+  static SalvageTimelineItemModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+
+    DateTime parseTs(dynamic v) {
+      if (v is Timestamp) return v.toDate();
+      if (v is DateTime) return v;
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    return SalvageTimelineItemModel(
+      id: doc.id,
+      projectId: (data['projectId'] ?? '').toString(),
+      milestone: (data['milestone'] ?? '').toString(),
+      description: (data['description'] ?? '').toString(),
+      phase: (data['phase'] ?? 'Planning').toString(),
+      status: (data['status'] ?? 'Not Started').toString(),
+      owner: (data['owner'] ?? '').toString(),
+      startDate: (data['startDate'] ?? '').toString(),
+      dueDate: (data['dueDate'] ?? '').toString(),
+      completedDate: (data['completedDate'] ?? '').toString(),
+      progress: (data['progress'] is int) ? data['progress'] as int : int.tryParse(data['progress'].toString()) ?? 0,
+      priority: (data['priority'] ?? 'Medium').toString(),
+      dependencies: (data['dependencies'] ?? '').toString(),
+      notes: (data['notes'] ?? '').toString(),
       createdById: (data['createdById'] ?? '').toString(),
       createdByEmail: (data['createdByEmail'] ?? '').toString(),
       createdByName: (data['createdByName'] ?? '').toString(),
@@ -393,9 +517,15 @@ class SalvageService {
     required String assetId,
     required String name,
     required String category,
+    String condition = '',
+    String location = '',
+    String disposalMethod = '',
     required String status,
     required String estimatedValue,
+    String disposalCost = '',
     required String priority,
+    String assignedTo = '',
+    String targetDate = '',
     String? createdById,
     String? createdByEmail,
     String? createdByName,
@@ -411,9 +541,15 @@ class SalvageService {
       assetId: assetId,
       name: name,
       category: category,
+      condition: condition,
+      location: location,
+      disposalMethod: disposalMethod,
       status: status,
       estimatedValue: estimatedValue,
+      disposalCost: disposalCost,
       priority: priority,
+      assignedTo: assignedTo,
+      targetDate: targetDate,
       createdById: userId,
       createdByEmail: userEmail,
       createdByName: userName,
@@ -431,9 +567,15 @@ class SalvageService {
     String? assetId,
     String? name,
     String? category,
+    String? condition,
+    String? location,
+    String? disposalMethod,
     String? status,
     String? estimatedValue,
+    String? disposalCost,
     String? priority,
+    String? assignedTo,
+    String? targetDate,
   }) async {
     final updateData = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -442,9 +584,15 @@ class SalvageService {
     if (assetId != null) updateData['assetId'] = assetId;
     if (name != null) updateData['name'] = name;
     if (category != null) updateData['category'] = category;
+    if (condition != null) updateData['condition'] = condition;
+    if (location != null) updateData['location'] = location;
+    if (disposalMethod != null) updateData['disposalMethod'] = disposalMethod;
     if (status != null) updateData['status'] = status;
     if (estimatedValue != null) updateData['estimatedValue'] = estimatedValue;
+    if (disposalCost != null) updateData['disposalCost'] = disposalCost;
     if (priority != null) updateData['priority'] = priority;
+    if (assignedTo != null) updateData['assignedTo'] = assignedTo;
+    if (targetDate != null) updateData['targetDate'] = targetDate;
 
     await _disposalCol(projectId).doc(itemId).update(updateData);
   }
@@ -466,5 +614,109 @@ class SalvageService {
     }
     
     return query.snapshots().map((snap) => snap.docs.map(SalvageDisposalItemModel.fromDoc).toList());
+  }
+
+  // Timeline Items CRUD
+  static CollectionReference<Map<String, dynamic>> _timelineCol(String projectId) =>
+      FirebaseFirestore.instance.collection('projects').doc(projectId).collection('salvage_timeline');
+
+  static Future<String> createTimelineItem({
+    required String projectId,
+    required String milestone,
+    String description = '',
+    String phase = 'Planning',
+    String status = 'Not Started',
+    String owner = '',
+    String startDate = '',
+    String dueDate = '',
+    String completedDate = '',
+    int progress = 0,
+    String priority = 'Medium',
+    String dependencies = '',
+    String notes = '',
+    String? createdById,
+    String? createdByEmail,
+    String? createdByName,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final userId = createdById ?? user?.uid ?? '';
+    final userEmail = createdByEmail ?? user?.email ?? '';
+    final userName = createdByName ?? user?.displayName ?? userEmail.split('@').first;
+
+    final payload = SalvageTimelineItemModel(
+      id: '',
+      projectId: projectId,
+      milestone: milestone,
+      description: description,
+      phase: phase,
+      status: status,
+      owner: owner,
+      startDate: startDate,
+      dueDate: dueDate,
+      completedDate: completedDate,
+      progress: progress,
+      priority: priority,
+      dependencies: dependencies,
+      notes: notes,
+      createdById: userId,
+      createdByEmail: userEmail,
+      createdByName: userName,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ).toMap();
+
+    final ref = await _timelineCol(projectId).add(payload);
+    return ref.id;
+  }
+
+  static Future<void> updateTimelineItem({
+    required String projectId,
+    required String itemId,
+    String? milestone,
+    String? description,
+    String? phase,
+    String? status,
+    String? owner,
+    String? startDate,
+    String? dueDate,
+    String? completedDate,
+    int? progress,
+    String? priority,
+    String? dependencies,
+    String? notes,
+  }) async {
+    final updateData = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (milestone != null) updateData['milestone'] = milestone;
+    if (description != null) updateData['description'] = description;
+    if (phase != null) updateData['phase'] = phase;
+    if (status != null) updateData['status'] = status;
+    if (owner != null) updateData['owner'] = owner;
+    if (startDate != null) updateData['startDate'] = startDate;
+    if (dueDate != null) updateData['dueDate'] = dueDate;
+    if (completedDate != null) updateData['completedDate'] = completedDate;
+    if (progress != null) updateData['progress'] = progress;
+    if (priority != null) updateData['priority'] = priority;
+    if (dependencies != null) updateData['dependencies'] = dependencies;
+    if (notes != null) updateData['notes'] = notes;
+
+    await _timelineCol(projectId).doc(itemId).update(updateData);
+  }
+
+  static Future<void> deleteTimelineItem({
+    required String projectId,
+    required String itemId,
+  }) async {
+    await _timelineCol(projectId).doc(itemId).delete();
+  }
+
+  static Stream<List<SalvageTimelineItemModel>> streamTimelineItems(String projectId, {int limit = 50}) {
+    return _timelineCol(projectId)
+        .orderBy('createdAt', descending: false)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs.map(SalvageTimelineItemModel.fromDoc).toList());
   }
 }

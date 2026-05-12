@@ -1728,7 +1728,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Design Planning',
       backgroundColor: _kPageBg,
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           PlanningPhaseHeader(
@@ -1928,7 +1928,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                 final state = _sectionProgress[section.id] ??
                     _SectionProgressState.pending;
                 final sectionColor =
-                    isLocked ? _kMuted.withValues(alpha: 0.45) : section.accent;
+                    isLocked ? _kMuted.withOpacity(0.45) : section.accent;
                 final textColor = isLocked ? _kMuted : _kText;
                 return InkWell(
                   onTap: () => _activateSection(section.id),
@@ -1973,7 +1973,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                           Icon(
                             Icons.lock_outline,
                             size: 14,
-                            color: _kMuted.withValues(alpha: 0.8),
+                            color: _kMuted.withOpacity(0.8),
                           ),
                       ],
                     ),
@@ -5391,7 +5391,7 @@ class _AutoSaveIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

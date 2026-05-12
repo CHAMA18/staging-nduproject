@@ -1552,7 +1552,7 @@ class _StatusBadge extends StatelessWidget {
                 ? const Color(0xFF991B1B)
                 : const Color(0xFF92400E);
 
-    final bg = Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
+    final bg = Color.alphaBlend(color.withOpacity(0.12), Colors.white);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

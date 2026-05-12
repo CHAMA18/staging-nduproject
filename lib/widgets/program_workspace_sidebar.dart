@@ -121,8 +121,8 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = isActive ? kProgramSidebarAccentColor.withValues(alpha: 0.18) : Colors.transparent;
-    final borderColor = isActive ? kProgramSidebarAccentColor.withValues(alpha: 0.35) : Colors.transparent;
+    final background = isActive ? kProgramSidebarAccentColor.withOpacity(0.18) : Colors.transparent;
+    final borderColor = isActive ? kProgramSidebarAccentColor.withOpacity(0.35) : Colors.transparent;
     final iconColor = isActive ? kProgramSidebarAccentColor : const Color(0xFF6B7280);
     final labelColor = kProgramSidebarTextPrimary;
 

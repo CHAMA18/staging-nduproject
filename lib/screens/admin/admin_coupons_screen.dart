@@ -122,8 +122,8 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        color: Colors.grey.withOpacity(0.05),
+        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
       child: Row(
         children: [
@@ -143,7 +143,7 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                 if (selected) setState(() => _filterBy = filter['value']!);
               },
               selectedColor: const Color(0xFF4CAF50),
-              backgroundColor: Colors.grey.withValues(alpha: 0.1),
+              backgroundColor: Colors.grey.withOpacity(0.1),
               labelStyle: TextStyle(
                 color: _filterBy == filter['value'] ? Colors.white : Colors.black87,
                 fontWeight: _filterBy == filter['value'] ? FontWeight.w700 : FontWeight.w600,
@@ -271,7 +271,7 @@ class _CouponCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: statusColor.withValues(alpha: 0.3)),
+        side: BorderSide(color: statusColor.withOpacity(0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -283,7 +283,7 @@ class _CouponCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                    color: const Color(0xFF4CAF50).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -303,7 +303,7 @@ class _CouponCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(coupon.description, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
             const SizedBox(height: 16),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(color: Colors.grey.withOpacity(0.2)),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -372,7 +372,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),

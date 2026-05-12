@@ -105,7 +105,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
       _status = wp.status;
       _packageClassification = wp.packageClassification;
       _releaseStatus = wp.releaseStatus;
-      _wbsLevel2Id = wp.wbsLevel2Id.isNotEmpty ? wp.wbsLevel2Id : '';
+      _wbsLevel2Id = wp.wbsLevel2Id.isNotEmpty ? wp.wbsLevel2Id : null;
       _plannedStart = wp.plannedStart;
       _plannedEnd = wp.plannedEnd;
     }
@@ -324,6 +324,8 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   decoration: const InputDecoration(labelText: 'Description'),
                   maxLines: 3,
                 ),
+                // Deduplicate WBS Level 2 options and filter out empty IDs
+                // to prevent DropdownButton assertion failures.
                 ...() {
                   final seenIds = <String>{};
                   final uniqueOpts = <Map<String, String>>[];
@@ -395,6 +397,124 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 ),
                 Row(
                   children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _packageCodeController,
+                        decoration:
+                            const InputDecoration(labelText: 'Package Code'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _packageClassification.isEmpty
+                            ? null
+                            : _packageClassification,
+                        decoration: const InputDecoration(
+                            labelText: 'Package Classification'),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'engineeringEwp',
+                              child: Text('Engineering Work Package')),
+                          DropdownMenuItem(
+                              value: 'procurementPackage',
+                              child: Text('Procurement Package')),
+                          DropdownMenuItem(
+                              value: 'constructionCwp',
+                              child: Text('Construction Work Package')),
+                          DropdownMenuItem(
+                              value: 'implementationWorkPackage',
+                              child: Text('Implementation Work Package')),
+                          DropdownMenuItem(
+                              value: 'agileIterationPackage',
+                              child: Text('Agile Iteration Package')),
+                          DropdownMenuItem(
+                              value: 'preCommissioningPackage',
+                              child: Text('Pre-Commissioning Package')),
+                          DropdownMenuItem(
+                              value: 'commissioningPackage',
+                              child: Text('Commissioning Package')),
+                        ],
+                        onChanged: (v) {
+                          setState(() => _packageClassification = v ?? '');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _releaseStatus,
+                  decoration:
+                      const InputDecoration(labelText: 'Release Status'),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'draft', child: Text('Draft')),
+                    DropdownMenuItem(
+                        value: 'ready_for_review',
+                        child: Text('Ready for Review')),
+                    DropdownMenuItem(
+                        value: 'released', child: Text('Released')),
+                    DropdownMenuItem(
+                        value: 'blocked', child: Text('Blocked')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _releaseStatus = v);
+                  },
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _sourceWbsLevel3IdController,
+                        decoration: const InputDecoration(
+                          labelText: 'WBS Level 3 Candidate ID',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _sourceWbsLevel3TitleController,
+                        decoration: const InputDecoration(
+                          labelText: 'WBS Level 3 Candidate',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _contractIdsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Contract IDs',
+                          helperText: 'Comma-separated contract references',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _vendorIdsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Vendor IDs',
+                          helperText: 'Comma-separated vendor references',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _packageCodeController,
+                        decoration:
+                            const InputDecoration(labelText: 'Package Code'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _type,
@@ -468,6 +588,25 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                       ),
                     ),
                     const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _contractorOrCrewController,
+                        decoration: const InputDecoration(
+                            labelText: 'Contractor / Crew / Owner'),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _areaOrSystemController,
+                        decoration:
+                            const InputDecoration(labelText: 'Area / System'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _contractorOrCrewController,

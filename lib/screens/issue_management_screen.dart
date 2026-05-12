@@ -418,7 +418,7 @@ class _MetricCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: metric.color.withValues(alpha: 0.12),
+              color: metric.color.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(metric.icon, size: 22, color: metric.color),
@@ -439,7 +439,7 @@ class _MetricCard extends StatelessWidget {
                 metric.label,
                 style: TextStyle(
                     fontSize: 13,
-                    color: metric.color.withValues(alpha: 0.8),
+                    color: metric.color.withOpacity(0.8),
                     fontWeight: FontWeight.w500),
               ),
             ],
@@ -1094,10 +1094,10 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.35))),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.35))),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFFFD54F), width: 1.6)),

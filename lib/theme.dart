@@ -350,12 +350,12 @@ ThemeData get darkTheme => ThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          side: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
         margin: EdgeInsets.zero,
       ),
       dividerTheme: DividerThemeData(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withOpacity(0.08),
         thickness: 1,
         space: 0,
       ),
@@ -371,21 +371,21 @@ ThemeData get darkTheme => ThemeData(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
-        iconTheme: IconThemeData(color: Colors.white.withValues(alpha: 0.6)),
+            side: BorderSide(color: Colors.white.withOpacity(0.08))),
+        iconTheme: IconThemeData(color: Colors.white.withOpacity(0.6)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFF0B0D11),
         hintStyle: TextStyle(
             fontFamily: _appFontFamily,
-            color: Colors.white.withValues(alpha: 0.6),
+            color: Colors.white.withOpacity(0.6),
             fontSize: 14),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -415,7 +415,7 @@ ThemeData get darkTheme => ThemeData(
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           side: WidgetStatePropertyAll(
-              BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+              BorderSide(color: Colors.white.withOpacity(0.12))),
           shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           padding: const WidgetStatePropertyAll(
@@ -434,11 +434,11 @@ ThemeData get darkTheme => ThemeData(
       listTileTheme: ListTileThemeData(
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12))),
-        iconColor: Colors.white.withValues(alpha: 0.7),
+        iconColor: Colors.white.withOpacity(0.7),
       ),
       dataTableTheme: DataTableThemeData(
         headingRowColor:
-            WidgetStatePropertyAll(Colors.white.withValues(alpha: 0.06)),
+            WidgetStatePropertyAll(Colors.white.withOpacity(0.06)),
         dataRowColor: const WidgetStatePropertyAll(Color(0xFF111318)),
         headingTextStyle: const TextStyle(
           fontFamily: _appFontFamily,

@@ -425,7 +425,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           border: Border.all(color: _kCardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -688,7 +688,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: _kAccent.withValues(alpha: 0.4),
+                    color: _kAccent.withOpacity(0.4),
                     style: BorderStyle.solid),
               ),
               child: const Row(
@@ -722,7 +722,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
-              color: _kAccent.withValues(alpha: 0.3), style: BorderStyle.solid),
+              color: _kAccent.withOpacity(0.3), style: BorderStyle.solid),
         ),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -797,7 +797,7 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? _kAccent.withValues(alpha: 0.15) : Colors.white,
+          color: selected ? _kAccent.withOpacity(0.15) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: selected ? _kAccent : _kCardBorder),
         ),
@@ -877,7 +877,7 @@ class _DeliverableCard extends StatelessWidget {
         border: Border.all(color: Colors.white),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1069,7 +1069,7 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -1468,7 +1468,7 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? _kAccent.withValues(alpha: 0.1)
+                                ? _kAccent.withOpacity(0.1)
                                 : const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(

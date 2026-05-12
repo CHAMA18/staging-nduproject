@@ -681,7 +681,7 @@ class _WaveRow extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                  color: const Color(0xFF8B5CF6).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
@@ -927,7 +927,7 @@ class _DependencyRow extends StatelessWidget {
               color: (link.isBlocked
                       ? const Color(0xFFEF4444)
                       : const Color(0xFF10B981))
-                  .withValues(alpha: 0.12),
+                  .withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -978,7 +978,7 @@ class _MilestoneRow extends StatelessWidget {
               color: (isComplete
                       ? const Color(0xFF10B981)
                       : const Color(0xFF2563EB))
-                  .withValues(alpha: 0.12),
+                  .withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -1011,7 +1011,7 @@ class _MilestoneRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                color: const Color(0xFF10B981).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text('Complete',

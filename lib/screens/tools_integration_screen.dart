@@ -745,7 +745,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withOpacity(0.05),
                 blurRadius: 18,
                 offset: const Offset(0, 10),
               ),
@@ -819,7 +819,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1302,7 +1302,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: item.iconColor.withValues(alpha: 0.1),
+            color: item.iconColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(item.icon, color: item.iconColor, size: 20),
@@ -1414,7 +1414,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: item.iconColor.withValues(alpha: 0.1),
+                color: item.iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(item.icon, color: item.iconColor, size: 18),
@@ -1547,7 +1547,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.1),
+                                color: statusColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text('Status: $statusLabel',
@@ -1858,7 +1858,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

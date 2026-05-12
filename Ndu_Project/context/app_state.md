@@ -1,0 +1,12 @@
+## App State (10)
+- currentProject (DataStruct<ProjectData>)
+- distributionData (List<DataStruct<?>>)
+- velocityData (List<DataStruct<?>>)
+- capacityData (List<DataStruct<?>>)
+- shiftData (List<DataStruct<?>>)
+- complianceData (List<DataStruct<?>>)
+- insightsData (List<DataStruct<?>>)
+- risksData (List<DataStruct<?>>)
+- milestonesData (List<DataStruct<?>>)
+- isLoggedIn (Boolean)
+

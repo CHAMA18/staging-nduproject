@@ -98,7 +98,7 @@ class ExecutionActionBar extends StatelessWidget {
           label: Text(action.label),
           style: OutlinedButton.styleFrom(
             foregroundColor: aiColor,
-            side: BorderSide(color: aiColor.withValues(alpha: 0.28)),
+            side: BorderSide(color: aiColor.withOpacity(0.28)),
             backgroundColor: const Color(0xFFF8F7FF),
             padding: EdgeInsets.symmetric(
               horizontal: compact ? 14 : 16,
@@ -189,7 +189,7 @@ class ExecutionPageHeader extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 22,
             offset: const Offset(0, 14),
           ),
@@ -374,7 +374,7 @@ class ExecutionMetricCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 16,
             offset: const Offset(0, 10),
           ),
@@ -386,7 +386,7 @@ class ExecutionMetricCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: metric.emphasisColor.withValues(alpha: 0.12),
+              color: metric.emphasisColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(metric.icon, size: 20, color: metric.emphasisColor),
@@ -437,7 +437,7 @@ class ExecutionMetricCard extends StatelessWidget {
   }
 }
 
-class ExecutionPanelShell extends StatelessWidget {
+class ExecutionPanelShell extends StatefulWidget {
   const ExecutionPanelShell({
     super.key,
     required this.title,
@@ -445,6 +445,10 @@ class ExecutionPanelShell extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.padding,
+    this.collapsible = false,
+    this.initiallyExpanded = true,
+    this.headerIcon,
+    this.headerIconColor,
   });
 
   final String title;
@@ -452,19 +456,76 @@ class ExecutionPanelShell extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
   final EdgeInsetsGeometry? padding;
+  final bool collapsible;
+  final bool initiallyExpanded;
+  final IconData? headerIcon;
+  final Color? headerIconColor;
+
+  @override
+  State<ExecutionPanelShell> createState() => _ExecutionPanelShellState();
+}
+
+class _ExecutionPanelShellState extends State<ExecutionPanelShell>
+    with SingleTickerProviderStateMixin {
+  late bool _isExpanded;
+  late AnimationController _controller;
+  late Animation<double> _chevronRotation;
+  late Animation<double> _bodyOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initiallyExpanded;
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 280),
+      vsync: this,
+    );
+    _chevronRotation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _bodyOpacity = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    if (_isExpanded) {
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: widget.padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: _isExpanded
+              ? const Color(0xFFE5E7EB)
+              : const Color(0xFFF3F4F6),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 18,
             offset: const Offset(0, 12),
           ),
@@ -473,25 +534,78 @@ class ExecutionPanelShell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final bool stack = trailing != null && constraints.maxWidth < 820;
-              final Widget copy = Column(
+          // ── Header row (always visible) ──
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.collapsible ? _toggle : null,
+            child: _buildHeaderRow(),
+          ),
+          // ── Collapsible body ──
+          if (_isExpanded) ...[
+            const SizedBox(height: 18),
+            FadeTransition(
+              opacity: _bodyOpacity,
+              child: widget.child,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderRow() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool stack =
+            widget.trailing != null && constraints.maxWidth < 820;
+
+        final Widget titleBlock = Row(
+          children: [
+            if (widget.headerIcon != null) ...[
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: (widget.headerIconColor ?? const Color(0xFF6366F1))
+                      .withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  widget.headerIcon,
+                  size: 18,
+                  color:
+                      widget.headerIconColor ?? const Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                      ),
+                      if (widget.collapsible) ...[
+                        const SizedBox(width: 8),
+                        _buildChevron(),
+                      ],
+                    ],
                   ),
-                  if (subtitle != null && subtitle!.trim().isNotEmpty)
+                  if (widget.subtitle != null &&
+                      widget.subtitle!.trim().isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        subtitle!,
+                        widget.subtitle!,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -501,34 +615,53 @@ class ExecutionPanelShell extends StatelessWidget {
                       ),
                     ),
                 ],
-              );
+              ),
+            ),
+          ],
+        );
 
-              if (stack) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    copy,
-                    const SizedBox(height: 16),
-                    trailing!,
-                  ],
-                );
-              }
+        if (stack) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleBlock,
+              if (widget.trailing != null) ...[
+                const SizedBox(height: 16),
+                widget.trailing!,
+              ],
+            ],
+          );
+        }
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: copy),
-                  if (trailing != null) ...[
-                    const SizedBox(width: 12),
-                    trailing!,
-                  ],
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 18),
-          child,
-        ],
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: titleBlock),
+            if (widget.trailing != null) ...[
+              const SizedBox(width: 12),
+              widget.trailing!,
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildChevron() {
+    return AnimatedBuilder(
+      animation: _chevronRotation,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _chevronRotation.value * 3.14159265, // 0 → π
+          child: child,
+        );
+      },
+      child: Icon(
+        Icons.expand_more_rounded,
+        size: 20,
+        color: _isExpanded
+            ? const Color(0xFF6366F1)
+            : const Color(0xFF9CA3AF),
       ),
     );
   }

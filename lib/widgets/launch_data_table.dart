@@ -85,7 +85,7 @@ class LaunchDataTable extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -650,7 +650,7 @@ class LaunchStatusDropdown extends StatelessWidget {
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: statusColor.withValues(alpha: 0.1),
+          color: statusColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Padding(

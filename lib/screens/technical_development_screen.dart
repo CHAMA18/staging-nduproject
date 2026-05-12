@@ -339,53 +339,49 @@ class _TechnicalDevelopmentScreenState
 
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Development',
-      body: Stack(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: Column(
         children: [
-          Column(
-            children: [
-              const PlanningPhaseHeader(
-                title: 'Technical Development',
-                showImportButton: false,
-                showContentButton: false,
-                showNavigationButtons: false,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
+          const PlanningPhaseHeader(
+            title: 'Technical Development',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading)
+                    const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildProductionHubHeader(
+                    isMobile: isMobile,
+                    snapshot: snapshot,
+                  ),
+                  SizedBox(height: sectionGap),
+                  _buildWorkflowCard(snapshot),
+                  SizedBox(height: sectionGap),
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_isLoading)
-                        const LinearProgressIndicator(minHeight: 2),
-                      if (_isLoading) const SizedBox(height: 16),
-                      _buildProductionHubHeader(
-                        isMobile: isMobile,
-                        snapshot: snapshot,
-                      ),
+                      _buildComponentBuildRegister(snapshot),
                       SizedBox(height: sectionGap),
-                      _buildWorkflowCard(snapshot),
-                      SizedBox(height: sectionGap),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildComponentBuildRegister(snapshot),
-                          SizedBox(height: sectionGap),
-                          _buildValidationPanel(snapshot),
-                        ],
-                      ),
-                      SizedBox(height: sectionGap),
-                      _buildGovernanceGrid(snapshot),
-                      SizedBox(height: sectionGap),
-                      _buildDetailedRegistersSection(),
-                      SizedBox(height: sectionGap),
-                      _buildBottomNavigation(isMobile),
+                      _buildValidationPanel(snapshot),
                     ],
                   ),
-                ),
+                  SizedBox(height: sectionGap),
+                  _buildGovernanceGrid(snapshot),
+                  SizedBox(height: sectionGap),
+                  _buildDetailedRegistersSection(),
+                  SizedBox(height: sectionGap),
+                  _buildBottomNavigation(isMobile),
+                ],
               ),
-            ],
+            ),
           ),
-          const KazAiChatBubble(),
         ],
       ),
     );
@@ -460,10 +456,10 @@ class _TechnicalDevelopmentScreenState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(999),
                   border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
                 child: const Text(
                   'DESIGN PHASE | TECHNICAL DEVELOPMENT',
@@ -515,7 +511,7 @@ class _TechnicalDevelopmentScreenState
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side:
-                        BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+                        BorderSide(color: Colors.white.withOpacity(0.18)),
                   ),
                 ),
               ],
@@ -559,7 +555,7 @@ class _TechnicalDevelopmentScreenState
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side:
-                        BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+                        BorderSide(color: Colors.white.withOpacity(0.18)),
                   ),
                 ),
               ],
@@ -584,9 +580,9 @@ class _TechnicalDevelopmentScreenState
         vertical: compact ? 10 : 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -595,7 +591,7 @@ class _TechnicalDevelopmentScreenState
             width: compact ? 28 : 36,
             height: compact ? 28 : 36,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
+              color: color.withOpacity(0.18),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: compact ? 16 : 18, color: color),
@@ -992,7 +988,7 @@ class _TechnicalDevelopmentScreenState
                     height: 36,
                     decoration: BoxDecoration(
                       color:
-                          _toneForStatus(item.status).withValues(alpha: 0.12),
+                          _toneForStatus(item.status).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -1318,10 +1314,10 @@ class _TechnicalDevelopmentScreenState
                       width: 28,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.14)),
+                            color: Colors.white.withOpacity(0.14)),
                       ),
                     ),
                   ),
@@ -1378,7 +1374,7 @@ class _TechnicalDevelopmentScreenState
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: Colors.white.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
@@ -1649,7 +1645,7 @@ class _TechnicalDevelopmentScreenState
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: Colors.white.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
@@ -2038,7 +2034,7 @@ class _TechnicalDevelopmentScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

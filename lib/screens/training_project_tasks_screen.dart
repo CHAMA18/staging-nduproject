@@ -87,7 +87,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                  border: Border.all(color: Colors.grey.withOpacity(0.25)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(children: [
@@ -109,7 +109,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 foregroundColor: Colors.black,
-                side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                side: BorderSide(color: Colors.grey.withOpacity(0.3)),
                 backgroundColor: Colors.white,
               ),
             ),
@@ -133,7 +133,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+              border: Border.all(color: Colors.grey.withOpacity(0.25)),
             ),
             child: DataTable(
               columnSpacing: 20,
@@ -193,7 +193,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Icon(icon, size: 16, color: Colors.grey[700]),
     );
@@ -216,7 +216,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(26),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -263,7 +263,7 @@ class _SidebarItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Colors.grey.withValues(alpha: 0.06) : Colors.transparent,
+          color: isActive ? Colors.grey.withOpacity(0.06) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [

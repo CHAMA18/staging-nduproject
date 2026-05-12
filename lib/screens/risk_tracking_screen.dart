@@ -22,26 +22,177 @@ class RiskTrackingScreen extends StatefulWidget {
 }
 
 class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
-  final Set<String> _selectedFilters = {'All risks'};
-
   final List<_RiskItem> _risks = [];
 
-  final List<_RiskSignal> _signals = const [
+  List<_RiskSignal> _signals = [
     _RiskSignal(
-        'Critical path dependencies', '2 risks require executive unblock.'),
+      id: 'SIG-001',
+      title: 'Critical path dependencies',
+      category: 'Leading',
+      severity: 'Critical',
+      confidence: 'High',
+      description: '2 risks require executive unblock on the critical path. '
+          'Delay in resolution could cascade across dependent workstreams.',
+      linkedRisk: 'R-001',
+      trend: 'Increasing',
+      detectedDate: '2026-05-06',
+    ),
     _RiskSignal(
-        'Security posture drift', '1 high risk pending penetration retest.'),
-    _RiskSignal('Budget volatility', 'Forecast variance at 6%.'),
+      id: 'SIG-002',
+      title: 'Security posture drift',
+      category: 'Lagging',
+      severity: 'High',
+      confidence: 'Medium',
+      description: '1 high risk pending penetration retest. '
+          'Security baseline has deviated from approved architecture.',
+      linkedRisk: 'R-003',
+      trend: 'Stable',
+      detectedDate: '2026-05-04',
+    ),
+    _RiskSignal(
+      id: 'SIG-003',
+      title: 'Budget volatility',
+      category: 'Leading',
+      severity: 'Medium',
+      confidence: 'High',
+      description: 'Forecast variance at 6%. Cost trajectory trending above '
+          'approved baseline with potential for further deviation.',
+      linkedRisk: 'R-005',
+      trend: 'Increasing',
+      detectedDate: '2026-05-07',
+    ),
+    _RiskSignal(
+      id: 'SIG-004',
+      title: 'Resource utilization imbalance',
+      category: 'Leading',
+      severity: 'Medium',
+      confidence: 'Medium',
+      description: 'Team capacity at 94% with 2 key roles unfilled. '
+          'Sprint velocity has declined 12% over last 3 sprints.',
+      linkedRisk: 'R-007',
+      trend: 'Increasing',
+      detectedDate: '2026-05-05',
+    ),
   ];
 
-  final List<_MitigationPlan> _plans = const [
-    _MitigationPlan('Vendor API stability', 'Integrations', 'On track', 0.78,
-        Color(0xFF10B981)),
-    _MitigationPlan('Regulatory review delay', 'Compliance', 'At risk', 0.42,
-        Color(0xFFF97316)),
-    _MitigationPlan('Data quality regression', 'Data team', 'On track', 0.64,
-        Color(0xFF6366F1)),
+  List<_EscalationReadiness> _escalations = [
+    _EscalationReadiness(
+      id: 'ESC-001',
+      event: 'Executive sync — critical path unblock',
+      level: 'L3-Executive',
+      triggerCondition: '2+ critical risks unresolved > 48 hrs',
+      responsibleParty: 'A. Mwanza',
+      escalationTarget: 'CTO / Steering Committee',
+      status: 'Ready',
+      readiness: 0.85,
+      responseWindow: '4 hrs',
+      decisionRequired: 'Approve expedited vendor failover deployment',
+      lastReview: '2026-05-07',
+    ),
+    _EscalationReadiness(
+      id: 'ESC-002',
+      event: 'Risk board update — regulatory submission',
+      level: 'L2-Management',
+      triggerCondition: 'Compliance SLA breach or regulatory deadline < 5 days',
+      responsibleParty: 'B. Tembo',
+      escalationTarget: 'VP Legal / Risk Board',
+      status: 'Pending',
+      readiness: 0.60,
+      responseWindow: '8 hrs',
+      decisionRequired: 'Authorize parallel regulatory submission track',
+      lastReview: '2026-05-06',
+    ),
+    _EscalationReadiness(
+      id: 'ESC-003',
+      event: 'Ops stakeholder review — security posture',
+      level: 'L2-Management',
+      triggerCondition: 'Penetration retest overdue or critical vulnerability detected',
+      responsibleParty: 'D. Phiri',
+      escalationTarget: 'CISO / Ops Review Board',
+      status: 'In progress',
+      readiness: 0.45,
+      responseWindow: '24 hrs',
+      decisionRequired: 'Approve emergency patch cycle & retest schedule',
+      lastReview: '2026-05-05',
+    ),
+    _EscalationReadiness(
+      id: 'ESC-004',
+      event: 'Budget variance escalation — forecast drift',
+      level: 'L3-Executive',
+      triggerCondition: 'Forecast variance > 8% or contingency depleted',
+      responsibleParty: 'E. Zulu',
+      escalationTarget: 'CFO / Executive Sponsor',
+      status: 'Deferred',
+      readiness: 0.30,
+      responseWindow: '12 hrs',
+      decisionRequired: 'Release contingency reserve & revise budget baseline',
+      lastReview: '2026-05-04',
+    ),
   ];
+
+  List<_MitigationPlan> _plans = [
+    _MitigationPlan(
+      id: 'MIT-001',
+      riskId: 'R-001',
+      strategy: 'Vendor API stability — failover circuit breaker implementation',
+      owner: 'A. Mwanza',
+      category: 'Integrations',
+      status: 'On track',
+      coverage: 0.78,
+      targetDate: '2026-05-30',
+      effectiveness: 'High',
+      residualRisk: 'Low',
+    ),
+    _MitigationPlan(
+      id: 'MIT-002',
+      riskId: 'R-002',
+      strategy: 'Regulatory review delay — parallel submission track with legal',
+      owner: 'B. Tembo',
+      category: 'Compliance',
+      status: 'At risk',
+      coverage: 0.42,
+      targetDate: '2026-06-15',
+      effectiveness: 'Medium',
+      residualRisk: 'High',
+    ),
+    _MitigationPlan(
+      id: 'MIT-003',
+      riskId: 'R-003',
+      strategy: 'Data quality regression — automated validation pipeline deployment',
+      owner: 'C. Banda',
+      category: 'Data team',
+      status: 'On track',
+      coverage: 0.64,
+      targetDate: '2026-05-25',
+      effectiveness: 'High',
+      residualRisk: 'Medium',
+    ),
+    _MitigationPlan(
+      id: 'MIT-004',
+      riskId: 'R-004',
+      strategy: 'Security posture drift — scheduled penetration retest & patch cycle',
+      owner: 'D. Phiri',
+      category: 'Cybersecurity',
+      status: 'In progress',
+      coverage: 0.55,
+      targetDate: '2026-06-01',
+      effectiveness: 'Medium',
+      residualRisk: 'Medium',
+    ),
+    _MitigationPlan(
+      id: 'MIT-005',
+      riskId: 'R-005',
+      strategy: 'Budget volatility — revised forecast with contingency allocation',
+      owner: 'E. Zulu',
+      category: 'Finance',
+      status: 'Not started',
+      coverage: 0.0,
+      targetDate: '2026-06-10',
+      effectiveness: 'Low',
+      residualRisk: 'High',
+    ),
+  ];
+
   bool _autoGenerationTriggered = false;
   bool _isAutoGenerating = false;
 
@@ -93,31 +244,37 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
             ));
         }
         if (signals.isNotEmpty) {
-          _signals
-            ..clear()
-            ..addAll(signals.map(
-              (entry) => _RiskSignal(entry.title, entry.details),
-            ));
+          _signals = signals.map(
+            (entry) => _RiskSignal(
+              id: 'SIG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+              title: entry.title,
+              category: 'Leading',
+              severity: 'Medium',
+              confidence: 'Medium',
+              description: entry.details,
+              linkedRisk: '—',
+              trend: 'Stable',
+              detectedDate: DateTime.now().toIso8601String().substring(0, 10),
+            ),
+          ).toList();
         }
         if (plans.isNotEmpty) {
-          final colors = [
-            const Color(0xFF10B981),
-            const Color(0xFFF97316),
-            const Color(0xFF6366F1),
-          ];
-          _plans
-            ..clear()
-            ..addAll(plans.asMap().entries.map(
-              (entry) => _MitigationPlan(
-                entry.value.title,
-                'Risk Lead',
-                entry.value.status?.isNotEmpty == true
-                    ? entry.value.status!
-                    : 'On track',
-                0.6,
-                colors[entry.key % colors.length],
-              ),
-            ));
+          _plans = plans.asMap().entries.map(
+            (entry) => _MitigationPlan(
+              id: 'MIT-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+              riskId: '—',
+              strategy: entry.value.title,
+              owner: 'Risk Lead',
+              category: 'General',
+              status: entry.value.status?.isNotEmpty == true
+                  ? entry.value.status!
+                  : 'On track',
+              coverage: 0.6,
+              targetDate: '2026-06-01',
+              effectiveness: 'Medium',
+              residualRisk: 'Medium',
+            ),
+          ).toList();
         }
       });
     } catch (e) {
@@ -135,46 +292,42 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Risk Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
+                _buildRiskRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildRiskRegister(),
-                    const SizedBox(height: 20),
-                    _buildMitigationPanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildEscalationPanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Start-up / Launch Checklist',
-                  nextLabel: 'Next: Scope Completion',
-                  onBack: () => LaunchChecklistScreen.open(context),
-                  onNext: () => ScopeCompletionScreen.open(context),
-                ),
+                _buildMitigationPanel(),
+                const SizedBox(height: 20),
+                _buildSignalsPanel(),
+                const SizedBox(height: 20),
+                _buildEscalationPanel(),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Start-up / Launch Checklist',
+              nextLabel: 'Next: Scope Completion',
+              onBack: () => LaunchChecklistScreen.open(context),
+              onNext: () => ScopeCompletionScreen.open(context),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // ─── Header ───────────────────────────────────────────────────────────────
 
   Widget _buildHeader(bool isNarrow) {
     return Column(
@@ -272,15 +425,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
       onPressed: () {
-        setState(() {
-          _selectedFilters
-            ..clear()
-            ..add('Escalated');
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text(
-                  'Weekly review started. Filter set to escalated risks.')),
+                  'Weekly review started.')),
         );
       },
       icon: const Icon(Icons.play_arrow, size: 18),
@@ -295,50 +443,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     );
   }
 
-  Widget _buildFilterChips() {
-    const filters = [
-      'All risks',
-      'Critical',
-      'High',
-      'Mitigating',
-      'Escalated',
-      'Watchlist'
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              if (selected) {
-                _selectedFilters.remove(filter);
-              } else {
-                _selectedFilters.add(filter);
-              }
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFF111827) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Text(
-              filter,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF475569),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
+  // ─── Stats Row ────────────────────────────────────────────────────────────
 
   Widget _buildStatsRow(bool isNarrow) {
     final stats = [
@@ -420,6 +525,8 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     );
   }
 
+  // ─── Computed Properties ──────────────────────────────────────────────────
+
   int get _activeRiskCount => _risks.length;
 
   int get _criticalRiskCount =>
@@ -461,6 +568,8 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
         status == 'Accepted';
   }
 
+  // ─── Risk Register ────────────────────────────────────────────────────────
+
   Widget _buildRiskRegister() {
     return _PanelShell(
       title: 'Risk register',
@@ -477,28 +586,43 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: DataTable(
                       headingRowColor:
                           WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      headingRowHeight: 32,
+                      dataRowHeight: 36,
+                      columnSpacing: 16,
+                      horizontalMargin: 12,
                       columns: const [
                         DataColumn(
                             label: Text('ID',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Risk',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Owner',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Probability',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Impact',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Status',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                         DataColumn(
                             label: Text('Next review',
-                                style: TextStyle(fontWeight: FontWeight.w600))),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Actions',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
                       ],
                       rows: _risks.map((risk) {
                         return DataRow(cells: [
@@ -515,6 +639,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           DataCell(_statusChip(risk.status)),
                           DataCell(Text(risk.nextReview,
                               style: const TextStyle(fontSize: 12))),
+                          DataCell(_buildRowActions(
+                            onEdit: () => _openEditRiskDialog(risk),
+                            onDelete: () => _deleteRisk(risk),
+                          )),
                         ]);
                       }).toList(),
                     ),
@@ -552,6 +680,1192 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       ),
     );
   }
+
+  Widget _buildRowActions({required VoidCallback onEdit, required VoidCallback onDelete}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _iconButton(Icons.edit_outlined, 'Edit', onEdit),
+        const SizedBox(width: 4),
+        _iconButton(Icons.delete_outline, 'Delete', onDelete, isDestructive: true),
+      ],
+    );
+  }
+
+  Widget _iconButton(IconData icon, String tooltip, VoidCallback onTap, {bool isDestructive = false}) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(icon,
+              size: 16,
+              color: isDestructive ? const Color(0xFFEF4444) : const Color(0xFF64748B)),
+        ),
+      ),
+    );
+  }
+
+  // ─── Mitigation Coverage Table ────────────────────────────────────────────
+
+  Widget _buildMitigationPanel() {
+    return _PanelShell(
+      title: 'Mitigation coverage',
+      subtitle: 'Execution readiness by risk program — aligned to ISO 31000 & PMI Risk Practice',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _actionButton(Icons.add, 'Add plan', onPressed: _openAddMitigationDialog),
+        ],
+      ),
+      child: _plans.isEmpty
+          ? _buildEmptyMitigationState()
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor:
+                          WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      headingRowHeight: 32,
+                      dataRowHeight: 36,
+                      columnSpacing: 14,
+                      horizontalMargin: 12,
+                      columns: const [
+                        DataColumn(
+                            label: Text('ID',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Risk Ref',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Mitigation Strategy',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Owner',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Category',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Status',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Coverage',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Target',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Effectiveness',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Residual',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Actions',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                      ],
+                      rows: _plans.map((plan) {
+                        return DataRow(cells: [
+                          DataCell(Text(plan.id,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600))),
+                          DataCell(Text(plan.riskId,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF6366F1)))),
+                          DataCell(SizedBox(
+                            width: 220,
+                            child: Text(plan.strategy,
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(Text(plan.owner,
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+                          DataCell(_categoryChip(plan.category)),
+                          DataCell(_mitigationStatusChip(plan.status)),
+                          DataCell(_buildCoverageCell(plan)),
+                          DataCell(Text(plan.targetDate,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+                          DataCell(_effectivenessChip(plan.effectiveness)),
+                          DataCell(_residualRiskChip(plan.residualRisk)),
+                          DataCell(_buildRowActions(
+                            onEdit: () => _openEditMitigationDialog(plan),
+                            onDelete: () => _deleteMitigationPlan(plan),
+                          )),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyMitigationState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shield_outlined, size: 40, color: const Color(0xFFCBD5E1)),
+          const SizedBox(height: 12),
+          const Text(
+            'No mitigation plans defined.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Add a mitigation plan to track execution readiness and residual risk.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          _actionButton(Icons.add, 'Add plan', onPressed: _openAddMitigationDialog),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverageCell(_MitigationPlan plan) {
+    final pct = (plan.coverage * 100).round();
+    final color = _coverageColor(pct);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 48,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: plan.coverage,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text('$pct%',
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      ],
+    );
+  }
+
+  Color _coverageColor(int pct) {
+    if (pct >= 75) return const Color(0xFF10B981);
+    if (pct >= 50) return const Color(0xFF0EA5E9);
+    if (pct >= 25) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  Widget _categoryChip(String category) {
+    final icon = category == 'Integrations'
+        ? Icons.cable
+        : category == 'Compliance'
+            ? Icons.gavel
+            : category == 'Data team'
+                ? Icons.storage
+                : category == 'Cybersecurity'
+                    ? Icons.security
+                    : category == 'Finance'
+                        ? Icons.attach_money
+                        : Icons.category;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: const Color(0xFF475569)),
+          const SizedBox(width: 3),
+          Text(category,
+              style: const TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+        ],
+      ),
+    );
+  }
+
+  Widget _mitigationStatusChip(String status) {
+    final (color, icon) = switch (status) {
+      'On track' => (const Color(0xFF10B981), Icons.check_circle_outline),
+      'At risk' => (const Color(0xFFEF4444), Icons.warning_amber),
+      'In progress' => (const Color(0xFF0EA5E9), Icons.sync),
+      'Completed' => (const Color(0xFF6366F1), Icons.task_alt),
+      'Not started' => (const Color(0xFF94A3B8), Icons.radio_button_unchecked),
+      _ => (const Color(0xFF64748B), Icons.help_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(status,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _effectivenessChip(String effectiveness) {
+    final color = effectiveness == 'High'
+        ? const Color(0xFF10B981)
+        : effectiveness == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(effectiveness,
+          style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _residualRiskChip(String residual) {
+    final color = residual == 'Low'
+        ? const Color(0xFF10B981)
+        : residual == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(residual,
+          style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  // ─── Risk Signals Table ──────────────────────────────────────────────────
+
+  Widget _buildSignalsPanel() {
+    return _PanelShell(
+      title: 'Risk signals',
+      subtitle: 'Early warnings, leading/lagging indicators, and momentum shifts — COSO ERM aligned',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _actionButton(Icons.add, 'Add signal', onPressed: _openAddSignalDialog),
+        ],
+      ),
+      child: _signals.isEmpty
+          ? _buildEmptySignalsState()
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor:
+                          WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      headingRowHeight: 32,
+                      dataRowHeight: 36,
+                      columnSpacing: 14,
+                      horizontalMargin: 12,
+                      columns: const [
+                        DataColumn(
+                            label: Text('Signal ID',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Signal',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Category',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Severity',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Confidence',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Description',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Linked Risk',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Trend',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Detected',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Actions',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                      ],
+                      rows: _signals.map((signal) {
+                        return DataRow(cells: [
+                          DataCell(Text(signal.id,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600))),
+                          DataCell(SizedBox(
+                            width: 160,
+                            child: Text(signal.title,
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(_signalCategoryChip(signal.category)),
+                          DataCell(_severityChip(signal.severity)),
+                          DataCell(_confidenceChip(signal.confidence)),
+                          DataCell(SizedBox(
+                            width: 240,
+                            child: Text(signal.description,
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(Text(signal.linkedRisk,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600))),
+                          DataCell(_trendChip(signal.trend)),
+                          DataCell(Text(signal.detectedDate,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+                          DataCell(_buildRowActions(
+                            onEdit: () => _openEditSignalDialog(signal),
+                            onDelete: () => _deleteSignal(signal),
+                          )),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptySignalsState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.radar, size: 40, color: const Color(0xFFCBD5E1)),
+          const SizedBox(height: 12),
+          const Text(
+            'No risk signals detected.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Add a risk signal to track leading and lagging indicators.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          _actionButton(Icons.add, 'Add signal', onPressed: _openAddSignalDialog),
+        ],
+      ),
+    );
+  }
+
+  Widget _signalCategoryChip(String category) {
+    final isLeading = category == 'Leading';
+    final color = isLeading ? const Color(0xFF0EA5E9) : const Color(0xFF8B5CF6);
+    final icon = isLeading ? Icons.trending_up : Icons.history;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(category,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _severityChip(String severity) {
+    final (color, icon) = switch (severity) {
+      'Critical' => (const Color(0xFFDC2626), Icons.error),
+      'High' => (const Color(0xFFEF4444), Icons.warning),
+      'Medium' => (const Color(0xFFF59E0B), Icons.info),
+      'Low' => (const Color(0xFF10B981), Icons.check_circle),
+      _ => (const Color(0xFF64748B), Icons.help_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(severity,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _confidenceChip(String confidence) {
+    final color = confidence == 'High'
+        ? const Color(0xFF10B981)
+        : confidence == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(confidence,
+          style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _trendChip(String trend) {
+    final (color, icon) = switch (trend) {
+      'Increasing' => (const Color(0xFFEF4444), Icons.arrow_upward),
+      'Decreasing' => (const Color(0xFF10B981), Icons.arrow_downward),
+      'Stable' => (const Color(0xFF0EA5E9), Icons.horizontal_rule),
+      _ => (const Color(0xFF64748B), Icons.remove),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(trend,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Escalation Readiness Table ──────────────────────────────────────────
+
+  Widget _buildEscalationPanel() {
+    return _PanelShell(
+      title: 'Escalation readiness',
+      subtitle: 'Escalation paths, decision authority, and sponsor alignment — ISO 31000 & ITIL aligned',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _actionButton(Icons.add, 'Add escalation', onPressed: _openAddEscalationDialog),
+        ],
+      ),
+      child: _escalations.isEmpty
+          ? _buildEmptyEscalationState()
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor:
+                          WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      headingRowHeight: 32,
+                      dataRowHeight: 36,
+                      columnSpacing: 14,
+                      horizontalMargin: 12,
+                      columns: const [
+                        DataColumn(
+                            label: Text('ID',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Escalation Event',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Level',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Trigger Condition',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Responsible',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Escalation Target',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Status',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Readiness',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Response',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Decision Required',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Last Review',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                        DataColumn(
+                            label: Text('Actions',
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w700))),
+                      ],
+                      rows: _escalations.map((esc) {
+                        return DataRow(cells: [
+                          DataCell(Text(esc.id,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600))),
+                          DataCell(SizedBox(
+                            width: 200,
+                            child: Text(esc.event,
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(_escalationLevelChip(esc.level)),
+                          DataCell(SizedBox(
+                            width: 180,
+                            child: Text(esc.triggerCondition,
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(Text(esc.responsibleParty,
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+                          DataCell(Text(esc.escalationTarget,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600))),
+                          DataCell(_escalationStatusChip(esc.status)),
+                          DataCell(_buildEscalationReadinessCell(esc)),
+                          DataCell(_responseWindowChip(esc.responseWindow)),
+                          DataCell(SizedBox(
+                            width: 200,
+                            child: Text(esc.decisionRequired,
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                          DataCell(Text(esc.lastReview,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+                          DataCell(_buildRowActions(
+                            onEdit: () => _openEditEscalationDialog(esc),
+                            onDelete: () => _deleteEscalation(esc),
+                          )),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyEscalationState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.vertical_align_top, size: 40, color: const Color(0xFFCBD5E1)),
+          const SizedBox(height: 12),
+          const Text(
+            'No escalation paths defined.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Add an escalation path to track decision authority and sponsor readiness.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          _actionButton(Icons.add, 'Add escalation', onPressed: _openAddEscalationDialog),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEscalationReadinessCell(_EscalationReadiness esc) {
+    final pct = (esc.readiness * 100).round();
+    final color = _readinessColor(pct);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 48,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: esc.readiness,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text('$pct%',
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      ],
+    );
+  }
+
+  Color _readinessColor(int pct) {
+    if (pct >= 80) return const Color(0xFF10B981);
+    if (pct >= 60) return const Color(0xFF0EA5E9);
+    if (pct >= 40) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  Widget _escalationLevelChip(String level) {
+    final (color, icon) = switch (level) {
+      'L1-Operational' => (const Color(0xFF10B981), Icons.support_agent),
+      'L2-Management' => (const Color(0xFF0EA5E9), Icons.manage_accounts),
+      'L3-Executive' => (const Color(0xFFF59E0B), Icons.business_center),
+      'L4-Board/C-Suite' => (const Color(0xFFEF4444), Icons.account_balance),
+      _ => (const Color(0xFF64748B), Icons.help_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(level,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _escalationStatusChip(String status) {
+    final (color, icon) = switch (status) {
+      'Ready' => (const Color(0xFF10B981), Icons.check_circle_outline),
+      'Pending' => (const Color(0xFFF59E0B), Icons.schedule),
+      'In progress' => (const Color(0xFF0EA5E9), Icons.sync),
+      'Escalated' => (const Color(0xFFEF4444), Icons.notifications_active),
+      'Deferred' => (const Color(0xFF94A3B8), Icons.pause_circle_outline),
+      _ => (const Color(0xFF64748B), Icons.help_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(status,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _responseWindowChip(String window) {
+    final hrs = int.tryParse(window.replaceAll(RegExp(r'[^0-9]'), '')) ?? 24;
+    final color = hrs <= 4
+        ? const Color(0xFFEF4444)
+        : hrs <= 12
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF0EA5E9);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_outlined, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(window,
+              style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  // ─── CRUD: Escalation Readiness ────────────────────────────────────────────
+
+  void _openAddEscalationDialog() {
+    final idController = TextEditingController();
+    final eventController = TextEditingController();
+    final triggerController = TextEditingController();
+    final responsibleController = TextEditingController();
+    final targetController = TextEditingController();
+    final windowController = TextEditingController();
+    final decisionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var selectedLevel = 'L2-Management';
+    var selectedStatus = 'Pending';
+    var readinessValue = 0.0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add escalation path'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: idController,
+                          decoration: const InputDecoration(
+                              labelText: 'Escalation ID', hintText: 'e.g., ESC-005'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: eventController,
+                          decoration: const InputDecoration(
+                              labelText: 'Escalation event', hintText: 'e.g., Executive sync — critical unblock'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedLevel,
+                          items: ['L1-Operational', 'L2-Management', 'L3-Executive', 'L4-Board/C-Suite']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedLevel = v); },
+                          decoration: const InputDecoration(labelText: 'Escalation level'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: triggerController,
+                          decoration: const InputDecoration(
+                              labelText: 'Trigger condition', hintText: 'e.g., SLA breach or threshold exceeded'),
+                          maxLines: 2,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: responsibleController,
+                          decoration: const InputDecoration(labelText: 'Responsible party'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: targetController,
+                          decoration: const InputDecoration(
+                              labelText: 'Escalation target', hintText: 'e.g., CTO / Steering Committee'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          items: ['Ready', 'Pending', 'In progress', 'Escalated', 'Deferred']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedStatus = v); },
+                          decoration: const InputDecoration(labelText: 'Status'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text('Readiness: ', style: TextStyle(fontSize: 13)),
+                            Expanded(
+                              child: Slider(
+                                value: readinessValue,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 20,
+                                label: '${(readinessValue * 100).round()}%',
+                                onChanged: (v) => setDialogState(() => readinessValue = v),
+                              ),
+                            ),
+                            Text('${(readinessValue * 100).round()}%',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: windowController,
+                          decoration: const InputDecoration(
+                              labelText: 'Response window', hintText: 'e.g., 4 hrs, 24 hrs'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: decisionController,
+                          decoration: const InputDecoration(
+                              labelText: 'Decision required', hintText: 'What decision is needed?'),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        _escalations.add(_EscalationReadiness(
+                          id: idController.text.trim(),
+                          event: eventController.text.trim(),
+                          level: selectedLevel,
+                          triggerCondition: triggerController.text.trim(),
+                          responsibleParty: responsibleController.text.trim().isEmpty ? 'TBD' : responsibleController.text.trim(),
+                          escalationTarget: targetController.text.trim().isEmpty ? 'TBD' : targetController.text.trim(),
+                          status: selectedStatus,
+                          readiness: readinessValue,
+                          responseWindow: windowController.text.trim().isEmpty ? '24 hrs' : windowController.text.trim(),
+                          decisionRequired: decisionController.text.trim().isEmpty ? 'TBD' : decisionController.text.trim(),
+                          lastReview: DateTime.now().toIso8601String().substring(0, 10),
+                        ));
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Add escalation'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      idController.dispose();
+      eventController.dispose();
+      triggerController.dispose();
+      responsibleController.dispose();
+      targetController.dispose();
+      windowController.dispose();
+      decisionController.dispose();
+    });
+  }
+
+  void _openEditEscalationDialog(_EscalationReadiness esc) {
+    final eventController = TextEditingController(text: esc.event);
+    final triggerController = TextEditingController(text: esc.triggerCondition);
+    final responsibleController = TextEditingController(text: esc.responsibleParty);
+    final targetController = TextEditingController(text: esc.escalationTarget);
+    final windowController = TextEditingController(text: esc.responseWindow);
+    final decisionController = TextEditingController(text: esc.decisionRequired);
+    final formKey = GlobalKey<FormState>();
+    var selectedLevel = esc.level;
+    var selectedStatus = esc.status;
+    var readinessValue = esc.readiness;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Edit ${esc.id}'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: eventController,
+                          decoration: const InputDecoration(labelText: 'Escalation event'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedLevel,
+                          items: ['L1-Operational', 'L2-Management', 'L3-Executive', 'L4-Board/C-Suite']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedLevel = v); },
+                          decoration: const InputDecoration(labelText: 'Escalation level'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: triggerController,
+                          decoration: const InputDecoration(labelText: 'Trigger condition'),
+                          maxLines: 2,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: responsibleController,
+                          decoration: const InputDecoration(labelText: 'Responsible party'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: targetController,
+                          decoration: const InputDecoration(labelText: 'Escalation target'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          items: ['Ready', 'Pending', 'In progress', 'Escalated', 'Deferred']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedStatus = v); },
+                          decoration: const InputDecoration(labelText: 'Status'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text('Readiness: ', style: TextStyle(fontSize: 13)),
+                            Expanded(
+                              child: Slider(
+                                value: readinessValue,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 20,
+                                label: '${(readinessValue * 100).round()}%',
+                                onChanged: (v) => setDialogState(() => readinessValue = v),
+                              ),
+                            ),
+                            Text('${(readinessValue * 100).round()}%',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: windowController,
+                          decoration: const InputDecoration(labelText: 'Response window'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: decisionController,
+                          decoration: const InputDecoration(labelText: 'Decision required'),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        final idx = _escalations.indexWhere((e) => e.id == esc.id);
+                        if (idx != -1) {
+                          _escalations[idx] = _EscalationReadiness(
+                            id: esc.id,
+                            event: eventController.text.trim(),
+                            level: selectedLevel,
+                            triggerCondition: triggerController.text.trim(),
+                            responsibleParty: responsibleController.text.trim(),
+                            escalationTarget: targetController.text.trim(),
+                            status: selectedStatus,
+                            readiness: readinessValue,
+                            responseWindow: windowController.text.trim(),
+                            decisionRequired: decisionController.text.trim(),
+                            lastReview: DateTime.now().toIso8601String().substring(0, 10),
+                          );
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      eventController.dispose();
+      triggerController.dispose();
+      responsibleController.dispose();
+      targetController.dispose();
+      windowController.dispose();
+      decisionController.dispose();
+    });
+  }
+
+  void _deleteEscalation(_EscalationReadiness esc) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete escalation path?'),
+        content: Text('Are you sure you want to delete ${esc.id}: "${esc.event}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() => _escalations.removeWhere((e) => e.id == esc.id));
+              Navigator.of(context).pop();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Generic Chip Helpers ─────────────────────────────────────────────────
+
+  Widget _chip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569))),
+    );
+  }
+
+  Widget _statusChip(String label) {
+    final color = label == 'Escalated'
+        ? const Color(0xFFEF4444)
+        : label == 'Mitigating'
+            ? const Color(0xFF0EA5E9)
+            : label == 'Monitoring'
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFF10B981);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _impactChip(String label) {
+    final color = label == 'High'
+        ? const Color(0xFFEF4444)
+        : label == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  // ─── CRUD: Risk Register ─────────────────────────────────────────────────
 
   void _openAddRiskDialog() {
     final idController = TextEditingController();
@@ -610,7 +1924,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        initialValue: selectedImpact,
+                        value: selectedImpact,
                         items: const ['Low', 'Medium', 'High']
                             .map((impact) => DropdownMenuItem(
                                 value: impact, child: Text(impact)))
@@ -624,7 +1938,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        initialValue: selectedStatus,
+                        value: selectedStatus,
                         items: const [
                           'Mitigating',
                           'Monitoring',
@@ -664,11 +1978,17 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           _RiskItem(
                             idController.text.trim(),
                             titleController.text.trim(),
-                            ownerController.text.trim(),
-                            probabilityController.text.trim(),
+                            ownerController.text.trim().isEmpty
+                                ? 'TBD'
+                                : ownerController.text.trim(),
+                            probabilityController.text.trim().isEmpty
+                                ? '0.5'
+                                : probabilityController.text.trim(),
                             selectedImpact,
                             selectedStatus,
-                            nextReviewController.text.trim(),
+                            nextReviewController.text.trim().isEmpty
+                                ? 'TBD'
+                                : nextReviewController.text.trim(),
                           ),
                         );
                       });
@@ -691,160 +2011,722 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     });
   }
 
-  Widget _buildMitigationPanel() {
-    return _PanelShell(
-      title: 'Mitigation coverage',
-      subtitle: 'Execution readiness by risk program',
-      child: Column(
-        children: _plans.map((plan) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                        child: Text(plan.title,
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600))),
-                    Text(plan.status,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: plan.color)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(plan.owner,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF64748B))),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: plan.progress,
-                    minHeight: 8,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(plan.color),
+  void _openEditRiskDialog(_RiskItem risk) {
+    final titleController = TextEditingController(text: risk.title);
+    final ownerController = TextEditingController(text: risk.owner);
+    final probabilityController = TextEditingController(text: risk.probability);
+    final nextReviewController = TextEditingController(text: risk.nextReview);
+    final formKey = GlobalKey<FormState>();
+    var selectedImpact = risk.impact;
+    var selectedStatus = risk.status;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Edit risk ${risk.id}'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(labelText: 'Risk title'),
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: ownerController,
+                        decoration: const InputDecoration(labelText: 'Owner'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: probabilityController,
+                        decoration: const InputDecoration(labelText: 'Probability'),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedImpact,
+                        items: ['Low', 'Medium', 'High']
+                            .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                            .toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => selectedImpact = v); },
+                        decoration: const InputDecoration(labelText: 'Impact'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedStatus,
+                        items: ['Mitigating', 'Monitoring', 'Escalated', 'Accepted']
+                            .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                            .toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => selectedStatus = v); },
+                        decoration: const InputDecoration(labelText: 'Status'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: nextReviewController,
+                        decoration: const InputDecoration(labelText: 'Next review'),
+                      ),
+                    ],
                   ),
                 ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        final idx = _risks.indexWhere((r) => r.id == risk.id);
+                        if (idx != -1) {
+                          _risks[idx] = _RiskItem(
+                            risk.id,
+                            titleController.text.trim(),
+                            ownerController.text.trim(),
+                            probabilityController.text.trim(),
+                            selectedImpact,
+                            selectedStatus,
+                            nextReviewController.text.trim(),
+                          );
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
               ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
+            );
+          },
+        );
+      },
+    ).then((_) {
+      titleController.dispose();
+      ownerController.dispose();
+      probabilityController.dispose();
+      nextReviewController.dispose();
+    });
   }
 
-  Widget _buildSignalsPanel() {
-    return _PanelShell(
-      title: 'Risk signals',
-      subtitle: 'Early warnings and momentum shifts',
-      child: Column(
-        children: _signals.map((signal) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(signal.title,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(signal.subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF64748B))),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildEscalationPanel() {
-    return _PanelShell(
-      title: 'Escalation readiness',
-      subtitle: 'Decision log & sponsor alignment',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _EscalationItem('Executive sync', 'Fri 9:30 AM', 'Agenda locked'),
-          _EscalationItem(
-              'Risk board update', 'Mon 3:00 PM', 'Pending approvals'),
-          _EscalationItem(
-              'Ops stakeholder review', 'Wed 11:00 AM', 'Materials sent'),
+  void _deleteRisk(_RiskItem risk) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete risk?'),
+        content: Text('Are you sure you want to delete risk ${risk.id}: "${risk.title}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() => _risks.removeWhere((r) => r.id == risk.id));
+              Navigator.of(context).pop();
+            },
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _chip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
+  // ─── CRUD: Mitigation Plans ───────────────────────────────────────────────
+
+  void _openAddMitigationDialog() {
+    final idController = TextEditingController();
+    final riskIdController = TextEditingController();
+    final strategyController = TextEditingController();
+    final ownerController = TextEditingController();
+    final targetDateController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var selectedCategory = 'General';
+    var selectedStatus = 'Not started';
+    var selectedEffectiveness = 'Medium';
+    var selectedResidual = 'Medium';
+    var coverageValue = 0.0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add mitigation plan'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: idController,
+                          decoration: const InputDecoration(
+                              labelText: 'Plan ID', hintText: 'e.g., MIT-006'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: riskIdController,
+                          decoration: const InputDecoration(
+                              labelText: 'Linked Risk ID', hintText: 'e.g., R-001'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: strategyController,
+                          decoration: const InputDecoration(
+                              labelText: 'Mitigation strategy', hintText: 'Describe the mitigation approach'),
+                          maxLines: 2,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: ownerController,
+                          decoration: const InputDecoration(labelText: 'Responsible owner'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          items: ['Integrations', 'Compliance', 'Data team', 'Cybersecurity', 'Finance', 'General']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedCategory = v); },
+                          decoration: const InputDecoration(labelText: 'Category'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          items: ['Not started', 'In progress', 'On track', 'At risk', 'Completed']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedStatus = v); },
+                          decoration: const InputDecoration(labelText: 'Status'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text('Coverage: ', style: TextStyle(fontSize: 13)),
+                            Expanded(
+                              child: Slider(
+                                value: coverageValue,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 20,
+                                label: '${(coverageValue * 100).round()}%',
+                                onChanged: (v) => setDialogState(() => coverageValue = v),
+                              ),
+                            ),
+                            Text('${(coverageValue * 100).round()}%',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: targetDateController,
+                          decoration: const InputDecoration(
+                              labelText: 'Target date', hintText: 'e.g., 2026-06-15'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedEffectiveness,
+                          items: ['High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedEffectiveness = v); },
+                          decoration: const InputDecoration(labelText: 'Effectiveness'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedResidual,
+                          items: ['Low', 'Medium', 'High']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedResidual = v); },
+                          decoration: const InputDecoration(labelText: 'Residual risk'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        _plans.add(_MitigationPlan(
+                          id: idController.text.trim(),
+                          riskId: riskIdController.text.trim().isEmpty ? '—' : riskIdController.text.trim(),
+                          strategy: strategyController.text.trim(),
+                          owner: ownerController.text.trim().isEmpty ? 'TBD' : ownerController.text.trim(),
+                          category: selectedCategory,
+                          status: selectedStatus,
+                          coverage: coverageValue,
+                          targetDate: targetDateController.text.trim().isEmpty ? 'TBD' : targetDateController.text.trim(),
+                          effectiveness: selectedEffectiveness,
+                          residualRisk: selectedResidual,
+                        ));
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Add plan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      idController.dispose();
+      riskIdController.dispose();
+      strategyController.dispose();
+      ownerController.dispose();
+      targetDateController.dispose();
+    });
+  }
+
+  void _openEditMitigationDialog(_MitigationPlan plan) {
+    final strategyController = TextEditingController(text: plan.strategy);
+    final ownerController = TextEditingController(text: plan.owner);
+    final targetDateController = TextEditingController(text: plan.targetDate);
+    final formKey = GlobalKey<FormState>();
+    var selectedCategory = plan.category;
+    var selectedStatus = plan.status;
+    var selectedEffectiveness = plan.effectiveness;
+    var selectedResidual = plan.residualRisk;
+    var coverageValue = plan.coverage;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Edit ${plan.id}'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: strategyController,
+                          decoration: const InputDecoration(labelText: 'Mitigation strategy'),
+                          maxLines: 2,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: ownerController,
+                          decoration: const InputDecoration(labelText: 'Responsible owner'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          items: ['Integrations', 'Compliance', 'Data team', 'Cybersecurity', 'Finance', 'General']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedCategory = v); },
+                          decoration: const InputDecoration(labelText: 'Category'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          items: ['Not started', 'In progress', 'On track', 'At risk', 'Completed']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedStatus = v); },
+                          decoration: const InputDecoration(labelText: 'Status'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text('Coverage: ', style: TextStyle(fontSize: 13)),
+                            Expanded(
+                              child: Slider(
+                                value: coverageValue,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 20,
+                                label: '${(coverageValue * 100).round()}%',
+                                onChanged: (v) => setDialogState(() => coverageValue = v),
+                              ),
+                            ),
+                            Text('${(coverageValue * 100).round()}%',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: targetDateController,
+                          decoration: const InputDecoration(labelText: 'Target date'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedEffectiveness,
+                          items: ['High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedEffectiveness = v); },
+                          decoration: const InputDecoration(labelText: 'Effectiveness'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedResidual,
+                          items: ['Low', 'Medium', 'High']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedResidual = v); },
+                          decoration: const InputDecoration(labelText: 'Residual risk'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        final idx = _plans.indexWhere((p) => p.id == plan.id);
+                        if (idx != -1) {
+                          _plans[idx] = _MitigationPlan(
+                            id: plan.id,
+                            riskId: plan.riskId,
+                            strategy: strategyController.text.trim(),
+                            owner: ownerController.text.trim(),
+                            category: selectedCategory,
+                            status: selectedStatus,
+                            coverage: coverageValue,
+                            targetDate: targetDateController.text.trim(),
+                            effectiveness: selectedEffectiveness,
+                            residualRisk: selectedResidual,
+                          );
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      strategyController.dispose();
+      ownerController.dispose();
+      targetDateController.dispose();
+    });
+  }
+
+  void _deleteMitigationPlan(_MitigationPlan plan) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete mitigation plan?'),
+        content: Text('Are you sure you want to delete ${plan.id}: "${plan.strategy.substring(0, plan.strategy.length > 50 ? 50 : plan.strategy.length)}..."?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() => _plans.removeWhere((p) => p.id == plan.id));
+              Navigator.of(context).pop();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
-      child: Text(label,
-          style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475569))),
     );
   }
 
-  Widget _statusChip(String label) {
-    final color = label == 'Escalated'
-        ? const Color(0xFFEF4444)
-        : label == 'Mitigating'
-            ? const Color(0xFF0EA5E9)
-            : label == 'Monitoring'
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFF10B981);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-    );
+  // ─── CRUD: Risk Signals ──────────────────────────────────────────────────
+
+  void _openAddSignalDialog() {
+    final idController = TextEditingController();
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final linkedRiskController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var selectedCategory = 'Leading';
+    var selectedSeverity = 'Medium';
+    var selectedConfidence = 'Medium';
+    var selectedTrend = 'Stable';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add risk signal'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: idController,
+                          decoration: const InputDecoration(
+                              labelText: 'Signal ID', hintText: 'e.g., SIG-005'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Signal name'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          items: ['Leading', 'Lagging']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedCategory = v); },
+                          decoration: const InputDecoration(labelText: 'Indicator type'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedSeverity,
+                          items: ['Critical', 'High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedSeverity = v); },
+                          decoration: const InputDecoration(labelText: 'Severity'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedConfidence,
+                          items: ['High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedConfidence = v); },
+                          decoration: const InputDecoration(labelText: 'Confidence level'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: descriptionController,
+                          decoration: const InputDecoration(labelText: 'Description'),
+                          maxLines: 3,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: linkedRiskController,
+                          decoration: const InputDecoration(
+                              labelText: 'Linked Risk ID', hintText: 'e.g., R-001'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedTrend,
+                          items: ['Increasing', 'Stable', 'Decreasing']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedTrend = v); },
+                          decoration: const InputDecoration(labelText: 'Trend direction'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        _signals.add(_RiskSignal(
+                          id: idController.text.trim(),
+                          title: titleController.text.trim(),
+                          category: selectedCategory,
+                          severity: selectedSeverity,
+                          confidence: selectedConfidence,
+                          description: descriptionController.text.trim(),
+                          linkedRisk: linkedRiskController.text.trim().isEmpty ? '—' : linkedRiskController.text.trim(),
+                          trend: selectedTrend,
+                          detectedDate: DateTime.now().toIso8601String().substring(0, 10),
+                        ));
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Add signal'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      idController.dispose();
+      titleController.dispose();
+      descriptionController.dispose();
+      linkedRiskController.dispose();
+    });
   }
 
-  Widget _impactChip(String label) {
-    final color = label == 'High'
-        ? const Color(0xFFEF4444)
-        : label == 'Medium'
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFF10B981);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+  void _openEditSignalDialog(_RiskSignal signal) {
+    final titleController = TextEditingController(text: signal.title);
+    final descriptionController = TextEditingController(text: signal.description);
+    final linkedRiskController = TextEditingController(text: signal.linkedRisk);
+    final formKey = GlobalKey<FormState>();
+    var selectedCategory = signal.category;
+    var selectedSeverity = signal.severity;
+    var selectedConfidence = signal.confidence;
+    var selectedTrend = signal.trend;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Edit ${signal.id}'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Signal name'),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          items: ['Leading', 'Lagging']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedCategory = v); },
+                          decoration: const InputDecoration(labelText: 'Indicator type'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedSeverity,
+                          items: ['Critical', 'High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedSeverity = v); },
+                          decoration: const InputDecoration(labelText: 'Severity'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedConfidence,
+                          items: ['High', 'Medium', 'Low']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedConfidence = v); },
+                          decoration: const InputDecoration(labelText: 'Confidence level'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: descriptionController,
+                          decoration: const InputDecoration(labelText: 'Description'),
+                          maxLines: 3,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: linkedRiskController,
+                          decoration: const InputDecoration(labelText: 'Linked Risk ID'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedTrend,
+                          items: ['Increasing', 'Stable', 'Decreasing']
+                              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                              .toList(),
+                          onChanged: (v) { if (v != null) setDialogState(() => selectedTrend = v); },
+                          decoration: const InputDecoration(labelText: 'Trend direction'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setState(() {
+                        final idx = _signals.indexWhere((s) => s.id == signal.id);
+                        if (idx != -1) {
+                          _signals[idx] = _RiskSignal(
+                            id: signal.id,
+                            title: titleController.text.trim(),
+                            category: selectedCategory,
+                            severity: selectedSeverity,
+                            confidence: selectedConfidence,
+                            description: descriptionController.text.trim(),
+                            linkedRisk: linkedRiskController.text.trim().isEmpty ? '—' : linkedRiskController.text.trim(),
+                            trend: selectedTrend,
+                            detectedDate: signal.detectedDate,
+                          );
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      titleController.dispose();
+      descriptionController.dispose();
+      linkedRiskController.dispose();
+    });
+  }
+
+  void _deleteSignal(_RiskSignal signal) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete risk signal?'),
+        content: Text('Are you sure you want to delete ${signal.id}: "${signal.title}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() => _signals.removeWhere((s) => s.id == signal.id));
+              Navigator.of(context).pop();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
+
+// ─── Private Helper Widgets ─────────────────────────────────────────────────
 
 class _PanelShell extends StatelessWidget {
   const _PanelShell({
@@ -899,55 +2781,35 @@ class _PanelShell extends StatelessWidget {
   }
 }
 
-class _EscalationItem extends StatelessWidget {
-  const _EscalationItem(this.title, this.time, this.status);
+class _EscalationReadiness {
+  const _EscalationReadiness({
+    required this.id,
+    required this.event,
+    required this.level,
+    required this.triggerCondition,
+    required this.responsibleParty,
+    required this.escalationTarget,
+    required this.status,
+    required this.readiness,
+    required this.responseWindow,
+    required this.decisionRequired,
+    required this.lastReview,
+  });
 
-  final String title;
-  final String time;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-                color: const Color(0xFF0EA5E9), shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(time,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF64748B))),
-              ],
-            ),
-          ),
-          Text(status,
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B))),
-        ],
-      ),
-    );
-  }
+  final String id;
+  final String event;
+  final String level; // L1-Operational | L2-Management | L3-Executive | L4-Board/C-Suite
+  final String triggerCondition;
+  final String responsibleParty;
+  final String escalationTarget;
+  final String status; // Ready | Pending | In progress | Escalated | Deferred
+  final double readiness;
+  final String responseWindow;
+  final String decisionRequired;
+  final String lastReview;
 }
+
+// ─── Data Models ────────────────────────────────────────────────────────────
 
 class _RiskItem {
   const _RiskItem(this.id, this.title, this.owner, this.probability,
@@ -963,21 +2825,53 @@ class _RiskItem {
 }
 
 class _RiskSignal {
-  const _RiskSignal(this.title, this.subtitle);
+  const _RiskSignal({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.severity,
+    required this.confidence,
+    required this.description,
+    required this.linkedRisk,
+    required this.trend,
+    required this.detectedDate,
+  });
 
+  final String id;
   final String title;
-  final String subtitle;
+  final String category; // Leading | Lagging
+  final String severity; // Critical | High | Medium | Low
+  final String confidence; // High | Medium | Low
+  final String description;
+  final String linkedRisk;
+  final String trend; // Increasing | Stable | Decreasing
+  final String detectedDate;
 }
 
 class _MitigationPlan {
-  const _MitigationPlan(
-      this.title, this.owner, this.status, this.progress, this.color);
+  const _MitigationPlan({
+    required this.id,
+    required this.riskId,
+    required this.strategy,
+    required this.owner,
+    required this.category,
+    required this.status,
+    required this.coverage,
+    required this.targetDate,
+    required this.effectiveness,
+    required this.residualRisk,
+  });
 
-  final String title;
+  final String id;
+  final String riskId;
+  final String strategy;
   final String owner;
-  final String status;
-  final double progress;
-  final Color color;
+  final String category;
+  final String status; // Not started | In progress | On track | At risk | Completed
+  final double coverage;
+  final String targetDate;
+  final String effectiveness; // High | Medium | Low
+  final String residualRisk; // Low | Medium | High
 }
 
 class _StatCardData {

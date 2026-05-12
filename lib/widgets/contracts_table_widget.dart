@@ -771,7 +771,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: _getStatusColor(_contract.status)
-                              .withValues(alpha: 0.1),
+                              .withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

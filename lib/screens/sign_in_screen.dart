@@ -218,7 +218,7 @@ class _SignInScreenState extends State<SignInScreen> {
       return InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-            color: secondaryText.withValues(alpha: 0.6), fontSize: 15),
+            color: secondaryText.withOpacity(0.6), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFFF9FAFB),
         border: OutlineInputBorder(
@@ -282,7 +282,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: secondaryText.withValues(alpha: 0.9),
+                          color: secondaryText.withOpacity(0.9),
                         ),
                       ),
                       const SizedBox(height: 18),

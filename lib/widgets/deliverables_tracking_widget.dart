@@ -240,7 +240,7 @@ class _DeliverablesTrackingWidgetState
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -639,7 +639,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _getStatusColor(_deliverable.status)
-                              .withValues(alpha: 0.1),
+                              .withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

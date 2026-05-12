@@ -171,6 +171,10 @@ class _SummarizeAccountRisksScreenState
     return ExecutionPanelShell(
       title: 'Executive Summary',
       subtitle: 'Narrative overview of the project status at launch.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.summarize_outlined,
+      headerIconColor: const Color(0xFFEF4444),
       child: TextFormField(
         initialValue: _summary.notes,
         maxLines: 6,

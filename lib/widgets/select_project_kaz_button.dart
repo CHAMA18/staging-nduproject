@@ -51,7 +51,7 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withOpacity(0.45),
       builder: (context) => _SelectProjectDialog(
         solutions: widget.solutions,
         title: widget.title,
@@ -91,12 +91,12 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFC812).withValues(alpha: 0.4),
+                  color: const Color(0xFFFFC812).withOpacity(0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
                 BoxShadow(
-                  color: const Color(0xFFFFB200).withValues(alpha: 0.2),
+                  color: const Color(0xFFFFB200).withOpacity(0.2),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -113,8 +113,8 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withValues(alpha: 0.15),
-                          Colors.white.withValues(alpha: 0.05),
+                          Colors.white.withOpacity(0.15),
+                          Colors.white.withOpacity(0.05),
                         ],
                       ),
                     ),
@@ -130,7 +130,7 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.3),
+                          color: Colors.white.withOpacity(0.3),
                         ),
                         child: const Icon(
                           Icons.psychology_rounded,
@@ -157,7 +157,7 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
                             Text(
                               'Choose from ${widget.solutions.length} solutions',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: Colors.white.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 11,
                               ),
@@ -168,7 +168,7 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
                       const SizedBox(width: 12),
                       Icon(
                         Icons.arrow_forward_rounded,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.white.withOpacity(0.9),
                         size: 18,
                       ),
                     ],
@@ -272,7 +272,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
+              color: Colors.black.withOpacity(0.15),
               blurRadius: 40,
               offset: const Offset(0, 16),
             ),
@@ -308,7 +308,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                         height: 40,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.3),
+                          color: Colors.white.withOpacity(0.3),
                         ),
                         child: const Icon(
                           Icons.psychology_rounded,
@@ -332,7 +332,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                             Text(
                               'Pick your preferred approach',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: Colors.white.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 12,
                               ),
@@ -360,7 +360,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                   Text(
                     widget.subtitle,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.82),
+                      color: Colors.white.withOpacity(0.82),
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                       height: 1.5,
@@ -424,7 +424,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3), width: 1),
+                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3), width: 1),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -443,7 +443,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+                  top: BorderSide(color: Colors.grey.withOpacity(0.15)),
                 ),
               ),
               child: Row(
@@ -481,7 +481,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFFC812).withValues(alpha: 0.3),
+                            color: const Color(0xFFFFC812).withOpacity(0.3),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -542,14 +542,14 @@ class _SolutionCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isSelected ? const Color(0xFFFFC812) : Colors.grey.withValues(alpha: 0.2),
+          color: isSelected ? const Color(0xFFFFC812) : Colors.grey.withOpacity(0.2),
           width: isSelected ? 2 : 1,
         ),
         color: isSelected ? const Color(0xFFFFF8DC) : Colors.white,
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: const Color(0xFFFFC812).withValues(alpha: 0.15),
+                  color: const Color(0xFFFFC812).withOpacity(0.15),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -572,7 +572,7 @@ class _SolutionCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? const Color(0xFFFFC812) : Colors.grey.withValues(alpha: 0.4),
+                      color: isSelected ? const Color(0xFFFFC812) : Colors.grey.withOpacity(0.4),
                       width: 2,
                     ),
                     color: isSelected ? const Color(0xFFFFC812) : Colors.transparent,
@@ -616,7 +616,7 @@ class _SolutionCard extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFFFC812).withValues(alpha: 0.1),
+                      color: const Color(0xFFFFC812).withOpacity(0.1),
                     ),
                     child: const Icon(
                       Icons.arrow_forward_rounded,

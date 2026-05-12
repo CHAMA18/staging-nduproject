@@ -388,6 +388,10 @@ class _DeliverProjectClosureScreenState
     return ExecutionPanelShell(
       title: 'Closure Notes',
       subtitle: 'Any additional notes or context for the delivery record.',
+      collapsible: true,
+      initiallyExpanded: true,
+      headerIcon: Icons.note_alt_outlined,
+      headerIconColor: const Color(0xFF6366F1),
       child: TextFormField(
         initialValue: _closureNotes.notes,
         maxLines: 5,

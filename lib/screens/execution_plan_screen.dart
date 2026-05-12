@@ -610,9 +610,7 @@ class ExecutionPlanSolutionsScreen extends StatelessWidget {
                   children: [
                     _ExecutionPlanHeader(
                         onBack: () => Navigator.maybePop(context)),
-                    const SizedBox(height: 24),
-                    const _TeamSummaryCard(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 32),
                     const _SectionIntro(title: 'Executive Plan Strategy'),
                     const SizedBox(height: 28),
                     _ExecutionPlanForm(
@@ -665,62 +663,8 @@ class ExecutionPlanSolutionsScreen extends StatelessWidget {
   }
 }
 
-class _TeamSummaryCard extends StatelessWidget {
-  const _TeamSummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0F000000), blurRadius: 10, offset: Offset(0, 6)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5E7EB),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.groups_rounded, color: Color(0xFF4B5563)),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'StackOne',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '12 Members',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+// _TeamSummaryCard removed — hardcoded data (StackOne / 12 Members) was misleading.
+// To restore: connect to real Organization Plan → Staffing Plan data.
 
 class _ExecutionPlanTable extends StatelessWidget {
   const _ExecutionPlanTable();
@@ -1323,12 +1267,12 @@ class _EarlyWorksTable extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               try {
-                await ExecutionService.deleteTool(
-                    projectId: projectId, toolId: tool.id);
+                await ExecutionService.deleteEarlyWork(
+                    projectId: projectId, workId: tool.id);
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tool deleted successfully')),
+                    const SnackBar(content: Text('Early work item deleted successfully')),
                   );
                 }
               } catch (e) {
@@ -1421,7 +1365,7 @@ class _EarlyWorksTable extends StatelessWidget {
 
               try {
                 if (isEdit) {
-                  await ExecutionService.updateTool(
+                  await ExecutionService.updateEarlyWork(
                     projectId: projectId,
                     toolId: tool.id,
                     tool: toolController.text,
@@ -1433,7 +1377,7 @@ class _EarlyWorksTable extends StatelessWidget {
                     comments: commentsController.text,
                   );
                 } else {
-                  await ExecutionService.createTool(
+                  await ExecutionService.createEarlyWork(
                     projectId: projectId,
                     tool: toolController.text,
                     description: descriptionController.text,
@@ -1483,7 +1427,7 @@ class _EarlyWorksTable extends StatelessWidget {
     }
 
     return StreamBuilder<List<ExecutionToolModel>>(
-      stream: ExecutionService.streamTools(projectId),
+      stream: ExecutionService.streamEarlyWorks(projectId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -2736,7 +2680,7 @@ class _DesktopIssueManagementActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Define how issues will be identified, escalated, and resolved during execution.',
               ),
             ),
           ),
@@ -2762,7 +2706,7 @@ class _MobileIssueManagementActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Define how issues will be identified, escalated, and resolved during execution.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -3332,7 +3276,7 @@ class _DesktopLessonsLearnedActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Capture insights from past projects to avoid repeating mistakes and improve future performance.',
               ),
             ),
           ),
@@ -3358,7 +3302,7 @@ class _MobileLessonsLearnedActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Capture insights from past projects to avoid repeating mistakes and improve future performance.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -3765,7 +3709,7 @@ class _DesktopBestPracticesActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Document proven approaches and methodologies for the team to follow consistently.',
               ),
             ),
           ),
@@ -3791,7 +3735,7 @@ class _MobileBestPracticesActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Document proven approaches and methodologies for the team to follow consistently.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -3967,7 +3911,7 @@ class _DesktopConstructionPlanActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Outline the construction sequencing, resource allocation, and safety protocols.',
               ),
             ),
           ),
@@ -3993,7 +3937,7 @@ class _MobileConstructionPlanActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Outline the construction sequencing, resource allocation, and safety protocols.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -4471,7 +4415,7 @@ class _DesktopInfrastructurePlanActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Plan infrastructure requirements including temporary facilities, utilities, and logistics.',
               ),
             ),
           ),
@@ -4497,7 +4441,7 @@ class _MobileInfrastructurePlanActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Plan infrastructure requirements including temporary facilities, utilities, and logistics.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -5651,7 +5595,7 @@ class _DesktopStakeholderIdentificationActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Identify all parties affected by or influencing execution, and map their interests and influence levels.',
               ),
             ),
           ),
@@ -5677,7 +5621,7 @@ class _MobileStakeholderIdentificationActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Identify all parties affected by or influencing execution, and map their interests and influence levels.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -5759,19 +5703,493 @@ class _InterfaceManagementSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Interface management',
+          'Interface Register',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 200),
+        const SizedBox(height: 28),
+        const _InterfaceRegisterTable(),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.centerRight,
+          child: _AddRowButton(
+              onPressed: () => _InterfaceRegisterTable.showAddDialog(context)),
+        ),
+        const SizedBox(height: 44),
         if (isMobile)
           _MobileInterfaceManagementActions()
         else
           const _DesktopInterfaceManagementActions(),
       ],
+    );
+  }
+}
+
+class _InterfaceRegisterTable extends StatelessWidget {
+  const _InterfaceRegisterTable();
+
+  String? _getProjectId(BuildContext context) {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static String? _getProjectIdStatic(BuildContext context) {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static void showAddDialog(BuildContext context) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showInterfaceDialog(context, null, projectId);
+  }
+
+  static void showEditDialog(
+      BuildContext context, InterfaceRegisterModel entry) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showInterfaceDialog(context, entry, projectId);
+  }
+
+  static void showDeleteDialog(
+      BuildContext context, InterfaceRegisterModel entry) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Interface Entry'),
+        content: Text(
+            'Are you sure you want to delete "${entry.interfaceName}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ExecutionService.deleteInterfaceRegister(
+                    projectId: projectId, registerId: entry.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Interface entry deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content:
+                            Text('Error deleting interface entry: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showInterfaceDialog(BuildContext context,
+      InterfaceRegisterModel? entry, String projectId) {
+    final isEdit = entry != null;
+    final interfaceIdController =
+        TextEditingController(text: entry?.interfaceId ?? '');
+    final interfaceNameController =
+        TextEditingController(text: entry?.interfaceName ?? '');
+    String interfaceType = entry?.interfaceType ?? 'Physical';
+    final partyAController =
+        TextEditingController(text: entry?.partyA ?? '');
+    final partyBController =
+        TextEditingController(text: entry?.partyB ?? '');
+    String status = entry?.status ?? 'Active';
+    String frequency = entry?.frequency ?? 'Daily';
+    final commentsController =
+        TextEditingController(text: entry?.comments ?? '');
+
+    const interfaceTypes = [
+      'Physical',
+      'Contractual',
+      'Organizational',
+      'Technical',
+      'Procedural'
+    ];
+    const statuses = ['Active', 'Pending', 'Closed', 'Resolved'];
+    const frequencies = [
+      'Daily',
+      'Weekly',
+      'Bi-weekly',
+      'Monthly',
+      'Quarterly',
+      'As Needed'
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isEdit
+              ? 'Edit Interface Entry'
+              : 'Add New Interface Entry'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                    controller: interfaceIdController,
+                    decoration:
+                        const InputDecoration(labelText: 'Interface ID *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: interfaceNameController,
+                    decoration: const InputDecoration(
+                        labelText: 'Interface Name *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: interfaceType,
+                  decoration:
+                      const InputDecoration(labelText: 'Type *'),
+                  items: interfaceTypes
+                      .map((t) =>
+                          DropdownMenuItem(value: t, child: Text(t)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => interfaceType = v ?? 'Physical'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: partyAController,
+                    decoration:
+                        const InputDecoration(labelText: 'Party A *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: partyBController,
+                    decoration:
+                        const InputDecoration(labelText: 'Party B *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration:
+                      const InputDecoration(labelText: 'Status *'),
+                  items: statuses
+                      .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => status = v ?? 'Active'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: frequency,
+                  decoration:
+                      const InputDecoration(labelText: 'Frequency *'),
+                  items: frequencies
+                      .map((f) =>
+                          DropdownMenuItem(value: f, child: Text(f)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => frequency = v ?? 'Daily'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: commentsController,
+                    decoration:
+                        const InputDecoration(labelText: 'Comments'),
+                    maxLines: 3),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (interfaceIdController.text.isEmpty ||
+                    interfaceNameController.text.isEmpty ||
+                    partyAController.text.isEmpty ||
+                    partyBController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Please fill in all required fields')),
+                  );
+                  return;
+                }
+
+                try {
+                  if (isEdit) {
+                    await ExecutionService.updateInterfaceRegister(
+                      projectId: projectId,
+                      registerId: entry.id,
+                      interfaceId: interfaceIdController.text,
+                      interfaceName: interfaceNameController.text,
+                      interfaceType: interfaceType,
+                      partyA: partyAController.text,
+                      partyB: partyBController.text,
+                      status: status,
+                      frequency: frequency,
+                      comments: commentsController.text,
+                    );
+                  } else {
+                    await ExecutionService.createInterfaceRegister(
+                      projectId: projectId,
+                      interfaceId: interfaceIdController.text,
+                      interfaceName: interfaceNameController.text,
+                      interfaceType: interfaceType,
+                      partyA: partyAController.text,
+                      partyB: partyBController.text,
+                      status: status,
+                      frequency: frequency,
+                      comments: commentsController.text,
+                    );
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(isEdit
+                              ? 'Interface entry updated successfully'
+                              : 'Interface entry added successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = _getProjectId(context);
+    if (projectId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text('No project selected. Please open a project first.',
+              style: TextStyle(color: Color(0xFF64748B))),
+        ),
+      );
+    }
+
+    return StreamBuilder<List<InterfaceRegisterModel>>(
+      stream: ExecutionService.streamInterfaceRegister(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator()));
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                  'Error loading interface entries: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red)),
+            ),
+          );
+        }
+
+        final entries = snapshot.data ?? [];
+
+        const headerStyle = TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
+        );
+        const cellStyle = TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF4B5563),
+          height: 1.5,
+        );
+
+        Widget buildCell(String text,
+            {bool isHeader = false,
+            TextAlign align = TextAlign.left,
+            TextStyle? style}) {
+          return Container(
+            color: isHeader ? const Color(0xFFF3F4F6) : Colors.white,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Text(
+              text,
+              textAlign: align,
+              style: style ?? (isHeader ? headerStyle : cellStyle),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              columnWidths: const {
+                0: FixedColumnWidth(70),
+                1: FixedColumnWidth(120),
+                2: FixedColumnWidth(140),
+                3: FixedColumnWidth(110),
+                4: FixedColumnWidth(110),
+                5: FixedColumnWidth(110),
+                6: FixedColumnWidth(100),
+                7: FixedColumnWidth(100),
+                8: FixedColumnWidth(150),
+                9: FixedColumnWidth(100),
+              },
+              border: const TableBorder(
+                horizontalInside:
+                    BorderSide(color: Color(0xFFE5E7EB)),
+                verticalInside:
+                    BorderSide(color: Color(0xFFE5E7EB)),
+                top: BorderSide(color: Color(0xFFE5E7EB)),
+                bottom: BorderSide(color: Color(0xFFE5E7EB)),
+                left: BorderSide(color: Color(0xFFE5E7EB)),
+                right: BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              children: [
+                TableRow(
+                  children: [
+                    buildCell('No',
+                        isHeader: true, align: TextAlign.center),
+                    buildCell('Interface ID', isHeader: true),
+                    buildCell('Name', isHeader: true),
+                    buildCell('Type', isHeader: true),
+                    buildCell('Party A', isHeader: true),
+                    buildCell('Party B', isHeader: true),
+                    buildCell('Status', isHeader: true),
+                    buildCell('Frequency', isHeader: true),
+                    buildCell('Comments', isHeader: true),
+                    buildCell('Actions',
+                        isHeader: true, align: TextAlign.center),
+                  ],
+                ),
+                if (entries.isEmpty)
+                  TableRow(
+                    children: [
+                      buildCell('', align: TextAlign.center),
+                      buildCell('No interface entries added yet',
+                          style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontStyle: FontStyle.italic)),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                    ],
+                  )
+                else
+                  ...entries.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    return TableRow(
+                      children: [
+                        buildCell('${index + 1}',
+                            align: TextAlign.center),
+                        buildCell(item.interfaceId),
+                        buildCell(item.interfaceName),
+                        buildCell(item.interfaceType),
+                        buildCell(item.partyA),
+                        buildCell(item.partyB),
+                        buildCell(item.status),
+                        buildCell(item.frequency),
+                        buildCell(item.comments),
+                        Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 18),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    size: 18,
+                                    color: Color(0xFF64748B)),
+                                onPressed: () =>
+                                    showEditDialog(context, item),
+                                tooltip: 'Edit',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete,
+                                    size: 18,
+                                    color: Color(0xFFEF4444)),
+                                onPressed: () =>
+                                    showDeleteDialog(context, item),
+                                tooltip: 'Delete',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -5793,7 +6211,7 @@ class _DesktopInterfaceManagementActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Define clear ownership for each interface to prevent coordination gaps between parties.',
               ),
             ),
           ),
@@ -5819,7 +6237,7 @@ class _MobileInterfaceManagementActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Define clear ownership for each interface to prevent coordination gaps between parties.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -5901,19 +6319,479 @@ class _CommunicationPlanSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Communication Plan',
+          'Communication Matrix',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 200),
+        const SizedBox(height: 28),
+        const _CommunicationPlanTable(),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.centerRight,
+          child: _AddRowButton(
+              onPressed: () => _CommunicationPlanTable.showAddDialog(context)),
+        ),
+        const SizedBox(height: 44),
         if (isMobile)
           _MobileCommunicationPlanActions()
         else
           const _DesktopCommunicationPlanActions(),
       ],
+    );
+  }
+}
+
+class _CommunicationPlanTable extends StatelessWidget {
+  const _CommunicationPlanTable();
+
+  String? _getProjectId(BuildContext context) {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static String? _getProjectIdStatic(BuildContext context) {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static void showAddDialog(BuildContext context) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showCommunicationDialog(context, null, projectId);
+  }
+
+  static void showEditDialog(
+      BuildContext context, CommunicationPlanModel entry) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showCommunicationDialog(context, entry, projectId);
+  }
+
+  static void showDeleteDialog(
+      BuildContext context, CommunicationPlanModel entry) {
+    final projectId = _getProjectIdStatic(context);
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Communication Entry'),
+        content: Text(
+            'Are you sure you want to delete the entry for "${entry.stakeholder}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ExecutionService.deleteCommunicationPlan(
+                    projectId: projectId, planId: entry.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'Communication entry deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            'Error deleting communication entry: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showCommunicationDialog(BuildContext context,
+      CommunicationPlanModel? entry, String projectId) {
+    final isEdit = entry != null;
+    final stakeholderController =
+        TextEditingController(text: entry?.stakeholder ?? '');
+    final infoTypeController =
+        TextEditingController(text: entry?.infoType ?? '');
+    String frequency = entry?.frequency ?? 'Weekly';
+    String channel = entry?.channel ?? 'Email';
+    final ownerController =
+        TextEditingController(text: entry?.owner ?? '');
+    String status = entry?.status ?? 'Planned';
+    final commentsController =
+        TextEditingController(text: entry?.comments ?? '');
+
+    const frequencies = [
+      'Daily',
+      'Weekly',
+      'Bi-weekly',
+      'Monthly',
+      'Quarterly'
+    ];
+    const channels = [
+      'Email',
+      'Meeting',
+      'Report',
+      'Dashboard',
+      'Portal',
+      'Phone'
+    ];
+    const statuses = ['Planned', 'Active', 'On Hold', 'Completed'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isEdit
+              ? 'Edit Communication Entry'
+              : 'Add New Communication Entry'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                    controller: stakeholderController,
+                    decoration:
+                        const InputDecoration(labelText: 'Stakeholder *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: infoTypeController,
+                    decoration:
+                        const InputDecoration(labelText: 'Info Type *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: frequency,
+                  decoration:
+                      const InputDecoration(labelText: 'Frequency *'),
+                  items: frequencies
+                      .map((f) =>
+                          DropdownMenuItem(value: f, child: Text(f)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => frequency = v ?? 'Weekly'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: channel,
+                  decoration:
+                      const InputDecoration(labelText: 'Channel *'),
+                  items: channels
+                      .map((c) =>
+                          DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => channel = v ?? 'Email'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: ownerController,
+                    decoration:
+                        const InputDecoration(labelText: 'Owner *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration:
+                      const InputDecoration(labelText: 'Status *'),
+                  items: statuses
+                      .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => status = v ?? 'Planned'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: commentsController,
+                    decoration:
+                        const InputDecoration(labelText: 'Comments'),
+                    maxLines: 3),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (stakeholderController.text.isEmpty ||
+                    infoTypeController.text.isEmpty ||
+                    ownerController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Please fill in all required fields')),
+                  );
+                  return;
+                }
+
+                try {
+                  if (isEdit) {
+                    await ExecutionService.updateCommunicationPlan(
+                      projectId: projectId,
+                      planId: entry.id,
+                      stakeholder: stakeholderController.text,
+                      infoType: infoTypeController.text,
+                      frequency: frequency,
+                      channel: channel,
+                      owner: ownerController.text,
+                      status: status,
+                      comments: commentsController.text,
+                    );
+                  } else {
+                    await ExecutionService.createCommunicationPlan(
+                      projectId: projectId,
+                      stakeholder: stakeholderController.text,
+                      infoType: infoTypeController.text,
+                      frequency: frequency,
+                      channel: channel,
+                      owner: ownerController.text,
+                      status: status,
+                      comments: commentsController.text,
+                    );
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(isEdit
+                              ? 'Communication entry updated successfully'
+                              : 'Communication entry added successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = _getProjectId(context);
+    if (projectId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text('No project selected. Please open a project first.',
+              style: TextStyle(color: Color(0xFF64748B))),
+        ),
+      );
+    }
+
+    return StreamBuilder<List<CommunicationPlanModel>>(
+      stream: ExecutionService.streamCommunicationPlan(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator()));
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                  'Error loading communication entries: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red)),
+            ),
+          );
+        }
+
+        final entries = snapshot.data ?? [];
+
+        const headerStyle = TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
+        );
+        const cellStyle = TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF4B5563),
+          height: 1.5,
+        );
+
+        Widget buildCell(String text,
+            {bool isHeader = false,
+            TextAlign align = TextAlign.left,
+            TextStyle? style}) {
+          return Container(
+            color: isHeader ? const Color(0xFFF3F4F6) : Colors.white,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Text(
+              text,
+              textAlign: align,
+              style: style ?? (isHeader ? headerStyle : cellStyle),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              columnWidths: const {
+                0: FixedColumnWidth(70),
+                1: FixedColumnWidth(140),
+                2: FixedColumnWidth(120),
+                3: FixedColumnWidth(110),
+                4: FixedColumnWidth(110),
+                5: FixedColumnWidth(120),
+                6: FixedColumnWidth(100),
+                7: FixedColumnWidth(150),
+                8: FixedColumnWidth(100),
+              },
+              border: const TableBorder(
+                horizontalInside:
+                    BorderSide(color: Color(0xFFE5E7EB)),
+                verticalInside:
+                    BorderSide(color: Color(0xFFE5E7EB)),
+                top: BorderSide(color: Color(0xFFE5E7EB)),
+                bottom: BorderSide(color: Color(0xFFE5E7EB)),
+                left: BorderSide(color: Color(0xFFE5E7EB)),
+                right: BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              children: [
+                TableRow(
+                  children: [
+                    buildCell('No',
+                        isHeader: true, align: TextAlign.center),
+                    buildCell('Stakeholder', isHeader: true),
+                    buildCell('Info Type', isHeader: true),
+                    buildCell('Frequency', isHeader: true),
+                    buildCell('Channel', isHeader: true),
+                    buildCell('Owner', isHeader: true),
+                    buildCell('Status', isHeader: true),
+                    buildCell('Comments', isHeader: true),
+                    buildCell('Actions',
+                        isHeader: true, align: TextAlign.center),
+                  ],
+                ),
+                if (entries.isEmpty)
+                  TableRow(
+                    children: [
+                      buildCell('', align: TextAlign.center),
+                      buildCell('No communication entries added yet',
+                          style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontStyle: FontStyle.italic)),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                      buildCell(''),
+                    ],
+                  )
+                else
+                  ...entries.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    return TableRow(
+                      children: [
+                        buildCell('${index + 1}',
+                            align: TextAlign.center),
+                        buildCell(item.stakeholder),
+                        buildCell(item.infoType),
+                        buildCell(item.frequency),
+                        buildCell(item.channel),
+                        buildCell(item.owner),
+                        buildCell(item.status),
+                        buildCell(item.comments),
+                        Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 18),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    size: 18,
+                                    color: Color(0xFF64748B)),
+                                onPressed: () =>
+                                    showEditDialog(context, item),
+                                tooltip: 'Edit',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete,
+                                    size: 18,
+                                    color: Color(0xFFEF4444)),
+                                onPressed: () =>
+                                    showDeleteDialog(context, item),
+                                tooltip: 'Delete',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -5935,7 +6813,7 @@ class _DesktopCommunicationPlanActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'Match communication frequency to stakeholder influence — high-influence stakeholders need more frequent updates.',
               ),
             ),
           ),
@@ -5962,7 +6840,7 @@ class _MobileCommunicationPlanActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'Match communication frequency to stakeholder influence — high-influence stakeholders need more frequent updates.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(
@@ -6037,11 +6915,76 @@ class ExecutionPlanInterfaceManagementPlanScreen extends StatelessWidget {
   }
 }
 
-class _InterfaceManagementPlanForm extends StatelessWidget {
+class _InterfaceManagementPlanForm extends StatefulWidget {
   const _InterfaceManagementPlanForm();
 
   @override
+  State<_InterfaceManagementPlanForm> createState() =>
+      _InterfaceManagementPlanFormState();
+}
+
+class _InterfaceManagementPlanFormState
+    extends State<_InterfaceManagementPlanForm> {
+  final _responsibilityMatrixController = TextEditingController();
+  final _escalationProceduresController = TextEditingController();
+  final _coordinationMeetingsController = TextEditingController();
+  Timer? _saveDebounce;
+  bool _didInit = false;
+  DateTime? _lastSavedAt;
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    _responsibilityMatrixController.dispose();
+    _escalationProceduresController.dispose();
+    _coordinationMeetingsController.dispose();
+    super.dispose();
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 700), _saveNow);
+  }
+
+  Future<void> _saveNow() async {
+    final updates = <String, String>{
+      'execution_imp_responsibility_matrix':
+          _responsibilityMatrixController.text.trim(),
+      'execution_imp_escalation_procedures':
+          _escalationProceduresController.text.trim(),
+      'execution_imp_coordination_meetings':
+          _coordinationMeetingsController.text.trim(),
+    };
+    final success = await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: _resolveExecutionCheckpoint(
+          'execution_interface_management_plan'),
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          ...updates,
+        },
+      ),
+      showSnackbar: false,
+    );
+    if (mounted && success) {
+      setState(() => _lastSavedAt = DateTime.now());
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_didInit) {
+      final notes = ProjectDataHelper.getData(context).planningNotes;
+      _responsibilityMatrixController.text =
+          notes['execution_imp_responsibility_matrix'] ?? '';
+      _escalationProceduresController.text =
+          notes['execution_imp_escalation_procedures'] ?? '';
+      _coordinationMeetingsController.text =
+          notes['execution_imp_coordination_meetings'] ?? '';
+      _didInit = true;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -6062,7 +7005,7 @@ class _InterfaceManagementPlanForm extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: const Text(
-            'Stakeholder identification process systematically identifies all parties who may be affected by or can influence the project, analyzing their interests, influence levels, and developing appropriate engagement strategies.',
+            'The Interface Management Plan defines the coordination framework, responsibilities, escalation procedures, and communication protocols for managing interfaces between project packages, disciplines, and external stakeholders.',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
@@ -6071,6 +7014,48 @@ class _InterfaceManagementPlanForm extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _responsibilityMatrixController,
+          decoration: const InputDecoration(
+            labelText: 'Responsibility Matrix',
+            hintText:
+                'Define roles and responsibilities for each interface...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+          onChanged: (_) => _scheduleSave(),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _escalationProceduresController,
+          decoration: const InputDecoration(
+            labelText: 'Escalation Procedures',
+            hintText: 'Describe escalation paths and triggers...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+          onChanged: (_) => _scheduleSave(),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _coordinationMeetingsController,
+          decoration: const InputDecoration(
+            labelText: 'Coordination Meeting Schedule',
+            hintText: 'Define meeting cadence, attendees, and objectives...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+          onChanged: (_) => _scheduleSave(),
+        ),
+        if (_lastSavedAt != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Saved ${TimeOfDay.fromDateTime(_lastSavedAt!).format(context)}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ),
       ],
     );
   }
@@ -6079,9 +7064,86 @@ class _InterfaceManagementPlanForm extends StatelessWidget {
 class _InterfaceManagementPlanSection extends StatelessWidget {
   const _InterfaceManagementPlanSection();
 
+  String? _getProjectId(BuildContext context) {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
+    final projectId = _getProjectId(context);
+
+    Widget summaryCard = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0F000000), blurRadius: 10, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE5E7EB),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.link, color: Color(0xFF4B5563)),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Interface Register Entries',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (projectId != null)
+                StreamBuilder<List<InterfaceRegisterModel>>(
+                  stream:
+                      ExecutionService.streamInterfaceRegister(projectId),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data?.length ?? 0;
+                    return Text(
+                      '$count ${count == 1 ? 'entry' : 'entries'} registered',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    );
+                  },
+                )
+              else
+                const Text(
+                  'No project selected',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -6094,7 +7156,9 @@ class _InterfaceManagementPlanSection extends StatelessWidget {
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 200),
+        const SizedBox(height: 28),
+        summaryCard,
+        const SizedBox(height: 44),
         if (isMobile)
           _MobileInterfaceManagementPlanActions()
         else
@@ -6121,7 +7185,7 @@ class _DesktopInterfaceManagementPlanActions extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 420),
               child: const _AiTipCard(
                 text:
-                    'Focus on major risks associated with each potential solution.',
+                    'A well-defined escalation procedure prevents interface conflicts from stalling project progress.',
               ),
             ),
           ),
@@ -6148,7 +7212,7 @@ class _MobileInterfaceManagementPlanActions extends StatelessWidget {
         const _InfoBadge(),
         const SizedBox(height: 20),
         const _AiTipCard(
-          text: 'Focus on major risks associated with each potential solution.',
+          text: 'A well-defined escalation procedure prevents interface conflicts from stalling project progress.',
         ),
         const SizedBox(height: 20),
         _YellowActionButton(

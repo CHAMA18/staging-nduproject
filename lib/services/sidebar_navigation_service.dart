@@ -148,17 +148,51 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
     SidebarItem(
         checkpoint: 'interface_management', label: 'Interface Management'),
-    // Execution Plan sub-items
+    // Execution Plan sub-items (full flow matching sidebar order)
+    SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan Overview'),
+    SidebarItem(
+        checkpoint: 'execution_plan_strategy',
+        label: 'Executive Plan Strategy'),
+    SidebarItem(
+        checkpoint: 'execution_plan_details', label: 'Execution Plan Details'),
+    SidebarItem(
+        checkpoint: 'execution_early_works', label: 'Execution Early Works'),
+    SidebarItem(
+        checkpoint: 'execution_enabling_work_plan',
+        label: 'Execution Enabling Work Plan'),
+    SidebarItem(
+        checkpoint: 'execution_issue_management',
+        label: 'Execution Issue Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_stakeholder_identification',
+        label: 'Stakeholder Identification'),
     SidebarItem(
         checkpoint: 'execution_plan_construction_plan',
         label: 'Construction Plan'),
     SidebarItem(
         checkpoint: 'execution_plan_infrastructure_plan',
         label: 'Infrastructure Plan'),
-    // Agile Section sub-items
     SidebarItem(
         checkpoint: 'execution_plan_agile_delivery_plan',
         label: 'Agile Delivery Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_lessons_learned',
+        label: 'Lessons Learned'),
+    SidebarItem(
+        checkpoint: 'execution_plan_best_practices',
+        label: 'Best Practices'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management',
+        label: 'Interface Management'),
+    SidebarItem(
+        checkpoint: 'execution_plan_communication_plan',
+        label: 'Communication Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management_plan',
+        label: 'Interface Management Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_interface_management_overview',
+        label: 'Interface Management Overview'),
     SidebarItem(
         checkpoint: 'deliverables_roadmap_overview', label: 'Roadmap Overview'),
     SidebarItem(

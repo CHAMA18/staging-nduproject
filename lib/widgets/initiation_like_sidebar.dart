@@ -171,6 +171,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     'Execution Early Works',
     'Execution Enabling Work Plan',
     'Execution Issue Management',
+    'Stakeholder Identification',
     'Execution Plan - Construction Plan',
     'Execution Plan - Infrastructure Plan',
     'Execution Plan - Agile Delivery Plan',
@@ -2254,6 +2255,12 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             'Execution Issue Management',
             onTap: _openExecutionIssueManagement,
             isActive: widget.activeItemLabel == 'Execution Issue Management',
+          ),
+          _buildSubSubMenuItem(
+            'Stakeholder Identification',
+            onTap: _openExecutionPlanStakeholderIdentification,
+            isActive:
+                widget.activeItemLabel == 'Stakeholder Identification',
           ),
           _buildSubSubMenuItem('Construction Plan',
               onTap: _openExecutionPlanConstructionPlan,

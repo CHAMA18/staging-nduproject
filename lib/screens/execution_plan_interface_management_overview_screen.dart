@@ -160,10 +160,10 @@ class _InterfaceManagementSection extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const _ExternalSystemsRow(
-            title: 'External Systems',
+            title: 'API Layer',
             systems: [
               _SystemCard(
-                  title: 'Api Gateway',
+                  title: 'API Gateway',
                   subtitle: 'Routing, Security, Monitoring',
                   color: Color(0xFFD4E4FF),
                   fullWidth: true),
@@ -171,7 +171,7 @@ class _InterfaceManagementSection extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const _ExternalSystemsRow(
-            title: 'External Systems',
+            title: 'Internal Systems',
             systems: [
               _SystemCard(
                   title: 'Web Application',

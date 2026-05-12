@@ -10,6 +10,7 @@ import 'package:ndu_project/screens/team_management_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
+import 'package:ndu_project/screens/execution_plan_interface_management_overview_screen.dart';
 import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
@@ -110,6 +111,50 @@ class PlanningPhaseNavigation {
       title: 'Interface Management',
       builder: (_) => const InterfaceManagementScreen(),
     ),
+    // Execution Plan — full flow matching sidebar order
+    PlanningPage(
+      id: 'execution_plan',
+      title: 'Execution Plan Overview',
+      builder: (_) => const ExecutionPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_strategy',
+      title: 'Executive Plan Strategy',
+      builder: (_) => const ExecutionPlanSolutionsScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_details',
+      title: 'Execution Plan Details',
+      builder: (_) => const ExecutionPlanDetailsScreen(
+        activeItemLabel: 'Execution Plan Details',
+        showPlanDetails: true,
+        showEarlyWorks: false,
+      ),
+    ),
+    PlanningPage(
+      id: 'execution_early_works',
+      title: 'Execution Early Works',
+      builder: (_) => const ExecutionPlanDetailsScreen(
+        activeItemLabel: 'Execution Early Works',
+        showPlanDetails: false,
+        showEarlyWorks: true,
+      ),
+    ),
+    PlanningPage(
+      id: 'execution_enabling_work_plan',
+      title: 'Enabling Work Plan',
+      builder: (_) => const ExecutionEnablingWorkPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_issue_management',
+      title: 'Issue Management',
+      builder: (_) => const ExecutionIssueManagementScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_stakeholder_identification',
+      title: 'Stakeholder Identification',
+      builder: (_) => const ExecutionPlanStakeholderIdentificationScreen(),
+    ),
     PlanningPage(
       id: 'execution_plan_construction_plan',
       title: 'Construction Plan',
@@ -124,6 +169,36 @@ class PlanningPhaseNavigation {
       id: 'execution_plan_agile_delivery_plan',
       title: 'Agile Delivery Plan',
       builder: (_) => const ExecutionPlanAgileDeliveryPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_lessons_learned',
+      title: 'Lessons Learned',
+      builder: (_) => const ExecutionPlanLessonsLearnedScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_best_practices',
+      title: 'Best Practices',
+      builder: (_) => const ExecutionPlanBestPracticesScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_interface_management',
+      title: 'Interface Management',
+      builder: (_) => const ExecutionPlanInterfaceManagementScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_communication_plan',
+      title: 'Communication Plan',
+      builder: (_) => const ExecutionPlanCommunicationPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_interface_management_plan',
+      title: 'Interface Management Plan',
+      builder: (_) => const ExecutionPlanInterfaceManagementPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_interface_management_overview',
+      title: 'Interface Management Overview',
+      builder: (_) => const ExecutionPlanInterfaceManagementOverviewScreen(),
     ),
     PlanningPage(
       id: 'deliverables_roadmap_overview',

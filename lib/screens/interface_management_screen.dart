@@ -232,7 +232,7 @@ class _InterfaceManagementScreenState extends State<InterfaceManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: const Color(0xFF2563EB),
+        color: const Color(0xFFF4B422),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

@@ -92,7 +92,12 @@ class _AgileTeamStructureScreenState
                   ))
               .toList() ??
           [];
-      final notesCtrl = TextEditingController(text: data['notes'] as String? ?? '');
+      var notesText = data['notes'] as String? ?? '';
+      if (rows.isEmpty && notesText.isEmpty) {
+        final dm = await AgileWireframeService.loadDeliveryModel(pid);
+        notesText = dm['team'] as String? ?? '';
+      }
+      final notesCtrl = TextEditingController(text: notesText);
       _noteControllers['notes'] = notesCtrl;
       setState(() {
         _teams = rows;

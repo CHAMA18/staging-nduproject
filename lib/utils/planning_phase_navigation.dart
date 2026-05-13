@@ -137,6 +137,11 @@ class PlanningPhaseNavigation {
       builder: (_) => const AgileDeliveryModelScreen(),
     ),
     PlanningPage(
+      id: 'agile_backlog_governance',
+      title: 'Backlog Governance',
+      builder: (_) => const AgileBacklogGovernanceScreen(),
+    ),
+    PlanningPage(
       id: 'agile_team_structure',
       title: 'Agile Team Structure',
       builder: (_) => const AgileTeamStructureScreen(),
@@ -165,11 +170,6 @@ class PlanningPhaseNavigation {
       id: 'agile_project_baseline',
       title: 'Agile Project Baseline',
       builder: (_) => const AgileProjectBaselineScreen(),
-    ),
-    PlanningPage(
-      id: 'agile_backlog_governance',
-      title: 'Backlog Governance',
-      builder: (_) => const AgileBacklogGovernanceScreen(),
     ),
     // Execution Plan — full flow matching sidebar order
     PlanningPage(

@@ -153,6 +153,9 @@ class SidebarNavigationService {
         checkpoint: 'agile_delivery_model',
         label: 'Agile Delivery Model'),
     SidebarItem(
+        checkpoint: 'agile_backlog_governance',
+        label: 'Backlog Governance'),
+    SidebarItem(
         checkpoint: 'agile_team_structure',
         label: 'Agile Team Structure'),
     SidebarItem(
@@ -170,9 +173,6 @@ class SidebarNavigationService {
     SidebarItem(
         checkpoint: 'agile_project_baseline',
         label: 'Agile Project Baseline'),
-    SidebarItem(
-        checkpoint: 'agile_backlog_governance',
-        label: 'Backlog Governance'),
     // Execution Plan sub-items (full flow matching sidebar order)
     SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan Overview'),
     SidebarItem(

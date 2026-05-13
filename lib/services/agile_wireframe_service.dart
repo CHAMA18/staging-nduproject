@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/agile_release_plan.dart';
+import 'package:ndu_project/services/agile_cache_service.dart';
 
 class AgileWireframeService {
   static final _firestore = FirebaseFirestore.instance;
@@ -14,15 +15,30 @@ class AgileWireframeService {
         .doc('agile_wireframe');
   }
 
+  static String _cacheKey(String projectId) => 'agile_wireframe:$projectId';
+  static String _releasesCacheKey(String projectId) =>
+      'agile_wireframe:releases:$projectId';
+
+  static Future<Map<String, dynamic>?> _loadDoc(
+      String projectId) async {
+    return AgileCacheService.instance.fetch(_cacheKey(projectId), () async {
+      final snapshot = await _agileDoc(projectId).get();
+      return snapshot.exists ? snapshot.data() : null;
+    });
+  }
+
+  static void _invalidate(String projectId) {
+    AgileCacheService.instance.invalidate(_cacheKey(projectId));
+  }
+
   // ── Agile Team Structure ──
 
   static Future<Map<String, dynamic>> loadTeamStructure(
       String projectId) async {
     try {
-      final snapshot = await _agileDoc(projectId).get();
-      if (!snapshot.exists) return {};
-      return (snapshot.data()?['teamStructure'] as Map<String, dynamic>?) ??
-          {};
+      final doc = await _loadDoc(projectId);
+      if (doc == null) return {};
+      return (doc['teamStructure'] as Map<String, dynamic>?) ?? {};
     } catch (error) {
       debugPrint('AgileWireframeService.loadTeamStructure error: $error');
       return {};
@@ -38,6 +54,7 @@ class AgileWireframeService {
         'teamStructure': data,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      _invalidate(projectId);
     } catch (error) {
       debugPrint('AgileWireframeService.saveTeamStructure error: $error');
       rethrow;
@@ -49,10 +66,9 @@ class AgileWireframeService {
   static Future<Map<String, dynamic>> loadDeliveryModel(
       String projectId) async {
     try {
-      final snapshot = await _agileDoc(projectId).get();
-      if (!snapshot.exists) return {};
-      return (snapshot.data()?['deliveryModel'] as Map<String, dynamic>?) ??
-          {};
+      final doc = await _loadDoc(projectId);
+      if (doc == null) return {};
+      return (doc['deliveryModel'] as Map<String, dynamic>?) ?? {};
     } catch (error) {
       debugPrint('AgileWireframeService.loadDeliveryModel error: $error');
       return {};
@@ -68,6 +84,7 @@ class AgileWireframeService {
         'deliveryModel': data,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      _invalidate(projectId);
     } catch (error) {
       debugPrint('AgileWireframeService.saveDeliveryModel error: $error');
       rethrow;
@@ -79,10 +96,9 @@ class AgileWireframeService {
   static Future<Map<String, dynamic>> loadSprintCalendar(
       String projectId) async {
     try {
-      final snapshot = await _agileDoc(projectId).get();
-      if (!snapshot.exists) return {};
-      return (snapshot.data()?['sprintCalendar'] as Map<String, dynamic>?) ??
-          {};
+      final doc = await _loadDoc(projectId);
+      if (doc == null) return {};
+      return (doc['sprintCalendar'] as Map<String, dynamic>?) ?? {};
     } catch (error) {
       debugPrint('AgileWireframeService.loadSprintCalendar error: $error');
       return {};
@@ -98,6 +114,7 @@ class AgileWireframeService {
         'sprintCalendar': data,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      _invalidate(projectId);
     } catch (error) {
       debugPrint('AgileWireframeService.saveSprintCalendar error: $error');
       rethrow;
@@ -109,10 +126,9 @@ class AgileWireframeService {
   static Future<Map<String, dynamic>> loadBacklogGovernance(
       String projectId) async {
     try {
-      final snapshot = await _agileDoc(projectId).get();
-      if (!snapshot.exists) return {};
-      return (snapshot.data()?['backlogGovernance'] as Map<String, dynamic>?) ??
-          {};
+      final doc = await _loadDoc(projectId);
+      if (doc == null) return {};
+      return (doc['backlogGovernance'] as Map<String, dynamic>?) ?? {};
     } catch (error) {
       debugPrint('AgileWireframeService.loadBacklogGovernance error: $error');
       return {};
@@ -128,6 +144,7 @@ class AgileWireframeService {
         'backlogGovernance': data,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      _invalidate(projectId);
     } catch (error) {
       debugPrint('AgileWireframeService.saveBacklogGovernance error: $error');
       rethrow;
@@ -144,12 +161,15 @@ class AgileWireframeService {
   static Future<List<AgileReleasePlan>> loadReleasePlans(
       String projectId) async {
     try {
-      final snapshot =
-          await _releasesCol(projectId).orderBy('releaseLabel').get();
-      return snapshot.docs
-          .map((doc) =>
-              AgileReleasePlan.fromJson({...doc.data(), 'id': doc.id}))
-          .toList();
+      return await AgileCacheService.instance.fetch(
+          _releasesCacheKey(projectId), () async {
+        final snapshot =
+            await _releasesCol(projectId).orderBy('releaseLabel').get();
+        return snapshot.docs
+            .map((doc) =>
+                AgileReleasePlan.fromJson({...doc.data(), 'id': doc.id}))
+            .toList();
+      });
     } catch (error) {
       debugPrint('AgileWireframeService.loadReleasePlans error: $error');
       return [];
@@ -162,6 +182,7 @@ class AgileWireframeService {
   }) async {
     try {
       await _releasesCol(projectId).doc(plan.id).set(plan.toJson());
+      AgileCacheService.instance.invalidate(_releasesCacheKey(projectId));
     } catch (error) {
       debugPrint('AgileWireframeService.saveReleasePlan error: $error');
       rethrow;
@@ -174,6 +195,7 @@ class AgileWireframeService {
   }) async {
     try {
       await _releasesCol(projectId).doc(planId).delete();
+      AgileCacheService.instance.invalidate(_releasesCacheKey(projectId));
     } catch (error) {
       debugPrint('AgileWireframeService.deleteReleasePlan error: $error');
       rethrow;

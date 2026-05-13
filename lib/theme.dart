@@ -240,12 +240,12 @@ ThemeData get lightTheme => ThemeData(
         displayLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.displayLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         displayMedium: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.displayMedium,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         displaySmall: const TextStyle(
           fontFamily: _appFontFamily,
@@ -255,7 +255,7 @@ ThemeData get lightTheme => ThemeData(
         headlineLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.headlineLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         headlineMedium: const TextStyle(
           fontFamily: _appFontFamily,
@@ -300,17 +300,17 @@ ThemeData get lightTheme => ThemeData(
         bodyLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodyLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         bodyMedium: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodyMedium,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         bodySmall: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodySmall,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
       ),
     );
@@ -464,12 +464,12 @@ ThemeData get darkTheme => ThemeData(
         displayLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.displayLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         displayMedium: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.displayMedium,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         displaySmall: const TextStyle(
           fontFamily: _appFontFamily,
@@ -479,7 +479,7 @@ ThemeData get darkTheme => ThemeData(
         headlineLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.headlineLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         headlineMedium: const TextStyle(
           fontFamily: _appFontFamily,
@@ -524,17 +524,17 @@ ThemeData get darkTheme => ThemeData(
         bodyLarge: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodyLarge,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         bodyMedium: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodyMedium,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
         bodySmall: const TextStyle(
           fontFamily: _appFontFamily,
           fontSize: FontSizes.bodySmall,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w400,
         ),
       ),
     );

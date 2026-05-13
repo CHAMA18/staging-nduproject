@@ -338,7 +338,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   if (uniqueOpts.isEmpty) return <Widget>[];
                   return [
                     DropdownButtonFormField<String>(
-                      initialValue: (_wbsLevel2Id != null &&
+                      value: (_wbsLevel2Id != null &&
                               _wbsLevel2Id!.isNotEmpty &&
                               seenIds.contains(_wbsLevel2Id))
                           ? _wbsLevel2Id
@@ -407,7 +407,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _packageClassification.isEmpty
+                        value: _packageClassification.isEmpty
                             ? null
                             : _packageClassification,
                         decoration: const InputDecoration(
@@ -443,7 +443,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   ],
                 ),
                 DropdownButtonFormField<String>(
-                  initialValue: _releaseStatus,
+                  value: _releaseStatus,
                   decoration:
                       const InputDecoration(labelText: 'Release Status'),
                   items: const [
@@ -464,60 +464,8 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
-                        controller: _sourceWbsLevel3IdController,
-                        decoration: const InputDecoration(
-                          labelText: 'WBS Level 3 Candidate ID',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _sourceWbsLevel3TitleController,
-                        decoration: const InputDecoration(
-                          labelText: 'WBS Level 3 Candidate',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _contractIdsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contract IDs',
-                          helperText: 'Comma-separated contract references',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _vendorIdsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Vendor IDs',
-                          helperText: 'Comma-separated vendor references',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _packageCodeController,
-                        decoration:
-                            const InputDecoration(labelText: 'Package Code'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _type,
+                        value: _type,
                         decoration: const InputDecoration(labelText: 'Type'),
                         items: const [
                           DropdownMenuItem(
@@ -542,7 +490,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _phase,
+                        value: _phase,
                         decoration: const InputDecoration(labelText: 'Phase'),
                         items: const [
                           DropdownMenuItem(
@@ -560,7 +508,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   ],
                 ),
                 DropdownButtonFormField<String>(
-                  initialValue: _status,
+                  value: _status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
                     DropdownMenuItem(
@@ -577,44 +525,6 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   onChanged: (v) {
                     if (v != null) setState(() => _status = v);
                   },
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _areaOrSystemController,
-                        decoration:
-                            const InputDecoration(labelText: 'Area / System'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _contractorOrCrewController,
-                        decoration: const InputDecoration(
-                            labelText: 'Contractor / Crew / Owner'),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _areaOrSystemController,
-                        decoration:
-                            const InputDecoration(labelText: 'Area / System'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _contractorOrCrewController,
-                        decoration: const InputDecoration(
-                            labelText: 'Contractor / Crew / Owner'),
-                      ),
-                    ),
-                  ],
                 ),
                 Row(
                   children: [

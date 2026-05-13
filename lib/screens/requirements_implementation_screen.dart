@@ -23,7 +23,6 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/requirements_traceability_dashboard.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class RequirementsImplementationScreen extends StatefulWidget {
   const RequirementsImplementationScreen({super.key});
@@ -812,7 +811,7 @@ class _RequirementsImplementationScreenState
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _sectionApprovalStatus,
+                  value: _sectionApprovalStatus,
                   decoration: const InputDecoration(
                     labelText: 'Approval Status',
                     border: OutlineInputBorder(),
@@ -834,7 +833,7 @@ class _RequirementsImplementationScreenState
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue:
+                  value:
                       effectiveApprover.isEmpty ? null : effectiveApprover,
                   decoration: const InputDecoration(
                     labelText: 'Approved By',
@@ -989,7 +988,7 @@ class _RequirementsImplementationScreenState
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: options.contains(row.owner) ? row.owner : null,
+                  value: options.contains(row.owner) ? row.owner : null,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
                     border: OutlineInputBorder(),
@@ -2822,7 +2821,7 @@ class _RequirementsImplementationScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedReqType,
+                          value: selectedReqType,
                           decoration: const InputDecoration(
                             labelText: 'Requirement Type *',
                             isDense: true,
@@ -2881,7 +2880,7 @@ class _RequirementsImplementationScreenState
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedRuleType,
+                          value: selectedRuleType,
                           decoration: const InputDecoration(
                             labelText: 'Rule Type',
                             isDense: true,
@@ -2900,7 +2899,7 @@ class _RequirementsImplementationScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedSourceType,
+                          value: selectedSourceType,
                           decoration: const InputDecoration(
                             labelText: 'Source Type',
                             isDense: true,
@@ -2930,7 +2929,7 @@ class _RequirementsImplementationScreenState
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedArtifactType,
+                          value: selectedArtifactType,
                           decoration: const InputDecoration(
                             labelText: 'Artifact Type',
                             isDense: true,
@@ -2973,7 +2972,7 @@ class _RequirementsImplementationScreenState
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedValidationStatus,
+                          value: selectedValidationStatus,
                           decoration: const InputDecoration(
                             labelText: 'Validation Status',
                             isDense: true,
@@ -2993,7 +2992,7 @@ class _RequirementsImplementationScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedGapStatus,
+                          value: selectedGapStatus,
                           decoration: const InputDecoration(
                             labelText: 'Gap Status',
                             isDense: true,
@@ -3078,7 +3077,7 @@ class _RequirementsImplementationScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedConflictImpact,
+                          value: selectedConflictImpact,
                           decoration: const InputDecoration(
                             labelText: 'Impact',
                             isDense: true,
@@ -3190,7 +3189,7 @@ class _RequirementsImplementationScreenState
   }) {
     final safeOptions = options.contains(value) ? options : [value, ...options];
     return DropdownButtonFormField<String>(
-      initialValue: safeOptions.contains(value) ? value : safeOptions.first,
+      value: safeOptions.contains(value) ? value : safeOptions.first,
       decoration: InputDecoration(
         labelText: label,
         isDense: true,
@@ -3233,7 +3232,7 @@ class _RequirementsImplementationScreenState
     }.toList()
       ..sort();
     return DropdownButtonFormField<String>(
-      initialValue: safeOptions.contains(value.trim()) ? value.trim() : (safeOptions.isEmpty ? null : safeOptions.first),
+      value: safeOptions.contains(value.trim()) ? value.trim() : (safeOptions.isEmpty ? null : safeOptions.first),
       decoration: InputDecoration(
         labelText: label,
         isDense: true,

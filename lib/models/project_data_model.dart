@@ -101,6 +101,7 @@ class ProjectDataModel {
   List<ExecutionRiskSignal> executionRiskSignals;
   List<ExecutionRiskMitigation> executionRiskMitigations;
   List<InterfaceEntry> interfaceEntries;
+  List<InterfaceChangeLogEntry> interfaceChangeLog;
   List<ScheduleActivity> scheduleActivities;
   List<ScheduleActivity> scheduleBaselineActivities;
   String scheduleBaselineDate;
@@ -244,6 +245,7 @@ class ProjectDataModel {
     List<ExecutionRiskSignal>? executionRiskSignals,
     List<ExecutionRiskMitigation>? executionRiskMitigations,
     List<InterfaceEntry>? interfaceEntries,
+    List<InterfaceChangeLogEntry>? interfaceChangeLog,
     List<ScheduleActivity>? scheduleActivities,
     List<ScheduleActivity>? scheduleBaselineActivities,
     String? scheduleBaselineDate,
@@ -321,6 +323,7 @@ class ProjectDataModel {
         executionRiskSignals = executionRiskSignals ?? [],
         executionRiskMitigations = executionRiskMitigations ?? [],
         interfaceEntries = interfaceEntries ?? [],
+        interfaceChangeLog = interfaceChangeLog ?? [],
         scheduleActivities = scheduleActivities ?? [],
         scheduleBaselineActivities = scheduleBaselineActivities ?? [],
         scheduleBaselineDate = scheduleBaselineDate ?? '',
@@ -475,6 +478,7 @@ class ProjectDataModel {
     List<PlanningDashboardItem>? assumptionItems,
     List<PlanningDashboardItem>? constraintItems,
     List<InterfaceEntry>? interfaceEntries,
+    List<InterfaceChangeLogEntry>? interfaceChangeLog,
     List<ScheduleActivity>? scheduleActivities,
     List<ScheduleActivity>? scheduleBaselineActivities,
     String? scheduleBaselineDate,
@@ -542,6 +546,7 @@ class ProjectDataModel {
       executionRiskMitigations:
           executionRiskMitigations ?? this.executionRiskMitigations,
       interfaceEntries: interfaceEntries ?? this.interfaceEntries,
+      interfaceChangeLog: interfaceChangeLog ?? this.interfaceChangeLog,
       scheduleActivities: scheduleActivities ?? this.scheduleActivities,
       scheduleBaselineActivities:
           scheduleBaselineActivities ?? this.scheduleBaselineActivities,
@@ -688,6 +693,8 @@ class ProjectDataModel {
           executionRiskMitigations.map((item) => item.toJson()).toList(),
       'interfaceEntries':
           interfaceEntries.map((entry) => entry.toJson()).toList(),
+      'interfaceChangeLog':
+          interfaceChangeLog.map((entry) => entry.toJson()).toList(),
       'scheduleActivities':
           scheduleActivities.map((activity) => activity.toJson()).toList(),
       'scheduleBaselineActivities': scheduleBaselineActivities
@@ -937,6 +944,8 @@ class ProjectDataModel {
           'executionRiskMitigations', ExecutionRiskMitigation.fromJson),
       interfaceEntries:
           safeParseList('interfaceEntries', InterfaceEntry.fromJson),
+      interfaceChangeLog:
+          safeParseList('interfaceChangeLog', InterfaceChangeLogEntry.fromJson),
       scheduleActivities:
           safeParseList('scheduleActivities', ScheduleActivity.fromJson),
       scheduleBaselineActivities: safeParseList(
@@ -7560,6 +7569,15 @@ class InterfaceEntry {
   final String lastSync;
   final String notes;
 
+  // PM-standard fields (Tier 1)
+  final String interfaceType; // Technical, Contractual, Organizational, Physical, Procedural
+  final String partyA; // Providing party
+  final String partyB; // Receiving party
+  final String priority; // High, Medium, Low
+  final String criticality; // Critical, Major, Minor
+  final String dataFlow; // Bidirectional, A→B, B→A
+  final String protocol; // API, File Transfer, Manual, Email, Shared DB
+
   InterfaceEntry({
     String? id,
     this.boundary = '',
@@ -7569,6 +7587,13 @@ class InterfaceEntry {
     this.status = '',
     this.lastSync = '',
     this.notes = '',
+    this.interfaceType = '',
+    this.partyA = '',
+    this.partyB = '',
+    this.priority = '',
+    this.criticality = '',
+    this.dataFlow = '',
+    this.protocol = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   InterfaceEntry copyWith({
@@ -7579,6 +7604,13 @@ class InterfaceEntry {
     String? status,
     String? lastSync,
     String? notes,
+    String? interfaceType,
+    String? partyA,
+    String? partyB,
+    String? priority,
+    String? criticality,
+    String? dataFlow,
+    String? protocol,
   }) {
     return InterfaceEntry(
       id: id,
@@ -7589,6 +7621,13 @@ class InterfaceEntry {
       status: status ?? this.status,
       lastSync: lastSync ?? this.lastSync,
       notes: notes ?? this.notes,
+      interfaceType: interfaceType ?? this.interfaceType,
+      partyA: partyA ?? this.partyA,
+      partyB: partyB ?? this.partyB,
+      priority: priority ?? this.priority,
+      criticality: criticality ?? this.criticality,
+      dataFlow: dataFlow ?? this.dataFlow,
+      protocol: protocol ?? this.protocol,
     );
   }
 
@@ -7601,6 +7640,13 @@ class InterfaceEntry {
         'status': status,
         'lastSync': lastSync,
         'notes': notes,
+        'interfaceType': interfaceType,
+        'partyA': partyA,
+        'partyB': partyB,
+        'priority': priority,
+        'criticality': criticality,
+        'dataFlow': dataFlow,
+        'protocol': protocol,
       };
 
   factory InterfaceEntry.fromJson(Map<String, dynamic> json) {
@@ -7613,6 +7659,86 @@ class InterfaceEntry {
       status: json['status']?.toString() ?? '',
       lastSync: json['lastSync']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
+      interfaceType: json['interfaceType']?.toString() ?? '',
+      partyA: json['partyA']?.toString() ?? '',
+      partyB: json['partyB']?.toString() ?? '',
+      priority: json['priority']?.toString() ?? '',
+      criticality: json['criticality']?.toString() ?? '',
+      dataFlow: json['dataFlow']?.toString() ?? '',
+      protocol: json['protocol']?.toString() ?? '',
+    );
+  }
+}
+
+class InterfaceChangeLogEntry {
+  final String id;
+  final String interfaceId;
+  final String interfaceName;
+  final String action; // 'Created', 'Updated', 'Deleted', 'Status Changed', 'Imported'
+  final String fieldName; // Which field changed (empty for Created/Deleted)
+  final String oldValue; // Previous value (empty for Created)
+  final String newValue; // New value (empty for Deleted)
+  final String changedBy; // User who made the change
+  final String changedAt; // ISO timestamp
+
+  InterfaceChangeLogEntry({
+    String? id,
+    this.interfaceId = '',
+    this.interfaceName = '',
+    this.action = '',
+    this.fieldName = '',
+    this.oldValue = '',
+    this.newValue = '',
+    this.changedBy = '',
+    this.changedAt = '',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  InterfaceChangeLogEntry copyWith({
+    String? interfaceId,
+    String? interfaceName,
+    String? action,
+    String? fieldName,
+    String? oldValue,
+    String? newValue,
+    String? changedBy,
+    String? changedAt,
+  }) {
+    return InterfaceChangeLogEntry(
+      id: id,
+      interfaceId: interfaceId ?? this.interfaceId,
+      interfaceName: interfaceName ?? this.interfaceName,
+      action: action ?? this.action,
+      fieldName: fieldName ?? this.fieldName,
+      oldValue: oldValue ?? this.oldValue,
+      newValue: newValue ?? this.newValue,
+      changedBy: changedBy ?? this.changedBy,
+      changedAt: changedAt ?? this.changedAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'interfaceId': interfaceId,
+        'interfaceName': interfaceName,
+        'action': action,
+        'fieldName': fieldName,
+        'oldValue': oldValue,
+        'newValue': newValue,
+        'changedBy': changedBy,
+        'changedAt': changedAt,
+      };
+
+  factory InterfaceChangeLogEntry.fromJson(Map<String, dynamic> json) {
+    return InterfaceChangeLogEntry(
+      id: json['id']?.toString(),
+      interfaceId: json['interfaceId']?.toString() ?? '',
+      interfaceName: json['interfaceName']?.toString() ?? '',
+      action: json['action']?.toString() ?? '',
+      fieldName: json['fieldName']?.toString() ?? '',
+      oldValue: json['oldValue']?.toString() ?? '',
+      newValue: json['newValue']?.toString() ?? '',
+      changedBy: json['changedBy']?.toString() ?? '',
+      changedAt: json['changedAt']?.toString() ?? '',
     );
   }
 }

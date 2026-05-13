@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 import 'package:ndu_project/widgets/ai_diagram_panel.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 
 class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {
@@ -118,6 +119,31 @@ class _InterfaceManagementSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final data = ProjectDataHelper.getDataListening(context);
+    final entries = data.interfaceEntries;
+    final extIntegrations = data.externalIntegrations;
+
+    // Categorize entries by type
+    final technical = entries.where((e) => e.interfaceType.toLowerCase().contains('tech') || e.interfaceType.isEmpty).toList();
+    final contractual = entries.where((e) => e.interfaceType.toLowerCase().contains('contract')).toList();
+    final organizational = entries.where((e) => e.interfaceType.toLowerCase().contains('org')).toList();
+    final physical = entries.where((e) => e.interfaceType.toLowerCase().contains('physical')).toList();
+    final procedural = entries.where((e) => e.interfaceType.toLowerCase().contains('procedural')).toList();
+
+    // External integrations names
+    final extNames = extIntegrations.map((e) => e['name']?.toString().trim() ?? '').where((n) => n.isNotEmpty).toList();
+
+    // Type counts for summary
+    final typeCounts = <String, int>{
+      'Technical': technical.length,
+      'Contractual': contractual.length,
+      'Organizational': organizational.length,
+      'Physical': physical.length,
+      'Procedural': procedural.length,
+    };
+
+    final hasData = entries.isNotEmpty || extNames.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -135,7 +161,41 @@ class _InterfaceManagementSection extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Colors.black87),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          if (!hasData) ...[
+            const Text(
+              'No interface data yet. Define interfaces in the Interface Management section.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 24),
+          ],
+          if (hasData) ...[
+            // Summary row with type counts
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: typeCounts.entries
+                  .where((e) => e.value > 0)
+                  .map((e) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _typeColor(e.key).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: _typeColor(e.key).withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          '${e.key}: ${e.value}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _typeColor(e.key),
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 24),
+          ],
           const Text(
             'Interface Architecture Overview',
             style: TextStyle(
@@ -144,55 +204,145 @@ class _InterfaceManagementSection extends StatelessWidget {
                 color: Colors.black87),
           ),
           const SizedBox(height: 24),
-          const _ExternalSystemsRow(
-            title: 'External Systems',
-            systems: [
-              _SystemCard(
-                  title: 'Payment Gateway',
-                  subtitle: 'Third party',
-                  color: Color(0xFFFFE4CC)),
-              _SystemCard(
-                  title: 'Identity Provider',
-                  subtitle: 'SSO Service',
-                  color: Color(0xFFFFE4CC)),
-              _SystemCard(
-                  title: 'CRM System',
-                  subtitle: 'Legacy',
-                  color: Color(0xFFFFE4CC)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const _ExternalSystemsRow(
-            title: 'API Layer',
-            systems: [
-              _SystemCard(
-                  title: 'API Gateway',
-                  subtitle: 'Routing, Security, Monitoring',
-                  color: Color(0xFFD4E4FF),
-                  fullWidth: true),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const _ExternalSystemsRow(
-            title: 'Internal Systems',
-            systems: [
-              _SystemCard(
-                  title: 'Web Application',
-                  subtitle: 'Frontend',
-                  color: Color(0xFFD4FFD4)),
-              _SystemCard(
-                  title: 'Business Logic',
-                  subtitle: 'Core Services',
-                  color: Color(0xFFD4FFD4)),
-              _SystemCard(
-                  title: 'Data Storage',
-                  subtitle: 'Database',
-                  color: Color(0xFFD4FFD4)),
-            ],
-          ),
+
+          // External Systems layer
+          if (hasData && (extNames.isNotEmpty || contractual.isNotEmpty)) ...[
+            _ExternalSystemsRow(
+              title: 'External Systems',
+              systems: [
+                ...extNames.map((n) => _SystemCard(
+                    title: n,
+                    subtitle: 'External',
+                    color: const Color(0xFFFFE4CC))),
+                ...contractual.map((e) => _SystemCard(
+                  title: e.boundary.trim().isNotEmpty ? e.boundary.trim() : 'Contract',
+                  subtitle: e.partyA.trim().isNotEmpty ? e.partyA.trim() : 'Third party',
+                  color: const Color(0xFFFFE4CC),
+                )),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ] else if (!hasData) ...[
+            const _ExternalSystemsRow(
+              title: 'External Systems',
+              systems: [
+                _SystemCard(
+                    title: 'Payment Gateway',
+                    subtitle: 'Third party',
+                    color: Color(0xFFFFE4CC)),
+                _SystemCard(
+                    title: 'Identity Provider',
+                    subtitle: 'SSO Service',
+                    color: Color(0xFFFFE4CC)),
+                _SystemCard(
+                    title: 'CRM System',
+                    subtitle: 'Legacy',
+                    color: Color(0xFFFFE4CC)),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // API / Integration Layer
+          if (hasData && technical.isNotEmpty) ...[
+            _ExternalSystemsRow(
+              title: 'API Layer',
+              systems: technical.map((e) => _SystemCard(
+                title: e.boundary.trim().isNotEmpty ? e.boundary.trim() : 'Interface',
+                subtitle: e.protocol.trim().isNotEmpty ? e.protocol.trim() : 'API',
+                color: const Color(0xFFD4E4FF),
+              )).toList(),
+            ),
+            const SizedBox(height: 24),
+          ] else if (!hasData) ...[
+            const _ExternalSystemsRow(
+              title: 'API Layer',
+              systems: [
+                _SystemCard(
+                    title: 'API Gateway',
+                    subtitle: 'Routing, Security, Monitoring',
+                    color: Color(0xFFD4E4FF),
+                    fullWidth: true),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Internal Systems layer
+          if (hasData && organizational.isNotEmpty) ...[
+            _ExternalSystemsRow(
+              title: 'Internal Systems',
+              systems: organizational.map((e) => _SystemCard(
+                title: e.boundary.trim().isNotEmpty ? e.boundary.trim() : 'Interface',
+                subtitle: '${e.partyA.trim().isNotEmpty ? e.partyA.trim() : "Party A"} ↔ ${e.partyB.trim().isNotEmpty ? e.partyB.trim() : "Party B"}',
+                color: const Color(0xFFD4FFD4),
+              )).toList(),
+            ),
+          ] else if (!hasData) ...[
+            const _ExternalSystemsRow(
+              title: 'Internal Systems',
+              systems: [
+                _SystemCard(
+                    title: 'Web Application',
+                    subtitle: 'Frontend',
+                    color: Color(0xFFD4FFD4)),
+                _SystemCard(
+                    title: 'Business Logic',
+                    subtitle: 'Core Services',
+                    color: Color(0xFFD4FFD4)),
+                _SystemCard(
+                    title: 'Data Storage',
+                    subtitle: 'Database',
+                    color: Color(0xFFD4FFD4)),
+              ],
+            ),
+          ],
+
+          // Physical Systems layer
+          if (physical.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _ExternalSystemsRow(
+              title: 'Physical Systems',
+              systems: physical.map((e) => _SystemCard(
+                title: e.boundary.trim().isNotEmpty ? e.boundary.trim() : 'Interface',
+                subtitle: '${e.partyA.trim().isNotEmpty ? e.partyA.trim() : "Party A"} ↔ ${e.partyB.trim().isNotEmpty ? e.partyB.trim() : "Party B"}',
+                color: const Color(0xFFE8D5F5),
+              )).toList(),
+            ),
+          ],
+
+          // Procedural Interfaces layer
+          if (procedural.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _ExternalSystemsRow(
+              title: 'Procedural Interfaces',
+              systems: procedural.map((e) => _SystemCard(
+                title: e.boundary.trim().isNotEmpty ? e.boundary.trim() : 'Interface',
+                subtitle: '${e.partyA.trim().isNotEmpty ? e.partyA.trim() : "Party A"} ↔ ${e.partyB.trim().isNotEmpty ? e.partyB.trim() : "Party B"}',
+                color: const Color(0xFFFFE0E6),
+              )).toList(),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'Technical':
+        return const Color(0xFF2563EB);
+      case 'Contractual':
+        return const Color(0xFFD97706);
+      case 'Organizational':
+        return const Color(0xFF10B981);
+      case 'Physical':
+        return const Color(0xFF7C3AED);
+      case 'Procedural':
+        return const Color(0xFFEC4899);
+      default:
+        return const Color(0xFF6B7280);
+    }
   }
 }
 

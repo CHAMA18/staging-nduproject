@@ -112,8 +112,23 @@ class _AgileBacklogGovernanceScreenState
     try {
       final data = await AgileWireframeService.loadBacklogGovernance(pid);
       if (!mounted) return;
-      for (final f in _fields) {
-        _controllers[f.key]?.text = data[f.key] as String? ?? '';
+      final hasContent = data.values.any(
+          (v) => v is String && v.trim().isNotEmpty);
+      if (!hasContent) {
+        final dm = await AgileWireframeService.loadDeliveryModel(pid);
+        final backlogText = dm['backlog'] as String? ?? '';
+        if (backlogText.isNotEmpty) {
+          for (final f in _fields) {
+            final val = data[f.key];
+            if (val == null || (val is String && val.isEmpty)) {
+              _controllers[f.key]?.text = backlogText;
+            }
+          }
+        }
+      } else {
+        for (final f in _fields) {
+          _controllers[f.key]?.text = data[f.key] as String? ?? '';
+        }
       }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);

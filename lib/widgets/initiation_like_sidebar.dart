@@ -223,13 +223,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   static const Set<String> _agileWireframeLabels = {
     'Agile Wireframe - Delivery Model',
+    'Agile Wireframe - Backlog Governance',
     'Agile Wireframe - Team Structure',
     'Agile Wireframe - Epics & Features',
     'Agile Wireframe - Sprint Calendar',
     'Agile Wireframe - Agile Map Out',
     'Agile Wireframe - Release Plan',
     'Agile Wireframe - Project Baseline',
-    'Agile Wireframe - Backlog Governance',
   };
 
   static const Set<String> _projectPlanLabels = {
@@ -662,12 +662,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
     final agileWireframeCheckpoints = [
       'agile_delivery_model',
+      'agile_backlog_governance',
       'agile_team_structure',
       'agile_epics_features',
       'agile_sprint_calendar',
       'agile_map_out',
       'agile_release_plan',
-      'agile_backlog_governance',
+      'agile_project_baseline',
     ];
     if (planningPhaseCheckpoints.contains(checkpoint) ||
         agileWireframeCheckpoints.contains(checkpoint)) {
@@ -2242,6 +2243,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
               onTap: _openAgileDeliveryModel,
               isActive:
                   widget.activeItemLabel == 'Agile Wireframe - Delivery Model'),
+          _buildSubSubMenuItem('Backlog Governance',
+              onTap: _openAgileBacklogGovernance,
+              isActive: widget.activeItemLabel ==
+                  'Agile Wireframe - Backlog Governance'),
           _buildSubSubMenuItem('Agile Team Structure',
               onTap: _openAgileTeamStructure,
               isActive:
@@ -2266,10 +2271,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
               onTap: _openAgileProjectBaseline,
               isActive: widget.activeItemLabel ==
                   'Agile Wireframe - Project Baseline'),
-          _buildSubSubMenuItem('Backlog Governance',
-              onTap: _openAgileBacklogGovernance,
-              isActive: widget.activeItemLabel ==
-                  'Agile Wireframe - Backlog Governance'),
         ],
         _buildSubExpandableHeader(
           'Execution Plan',

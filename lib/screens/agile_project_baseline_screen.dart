@@ -5,11 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/agile_project_baseline.dart';
+import 'package:ndu_project/models/epic_model.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/models/roadmap_deliverable.dart';
 import 'package:ndu_project/models/roadmap_sprint.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/agile_project_baseline_service.dart';
+import 'package:ndu_project/services/agile_wireframe_service.dart';
+import 'package:ndu_project/services/epic_feature_service.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/roadmap_service.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -64,8 +67,8 @@ class _AgileProjectBaselineScreenState
   final FocusNode _approverFocusNode = FocusNode();
   final TextEditingController _approvalNotesController =
       RichTextEditingController();
-  final TextEditingController _definitionOfDoneController =
-      RichTextEditingController();
+  String _backlogDoD = '';
+  double _epicTotalPoints = 0;
   final TextEditingController _changeControlController =
       RichTextEditingController();
   final List<_AssumptionRowState> _assumptionRows = [];
@@ -109,7 +112,6 @@ class _AgileProjectBaselineScreenState
         _capacityController,
         _approverSearchController,
         _approvalNotesController,
-        _definitionOfDoneController,
         _changeControlController,
       ];
 
@@ -138,6 +140,8 @@ class _AgileProjectBaselineScreenState
       RoadmapService.loadAll(projectId: projectId),
       _loadApproverOptions(_projectData),
       _loadRiskSummary(projectId),
+      AgileWireframeService.loadBacklogGovernance(projectId),
+      EpicFeatureService.loadEpics(projectId),
     ]);
 
     if (!mounted) return;
@@ -149,6 +153,11 @@ class _AgileProjectBaselineScreenState
     });
     final approvers = results[2] as List<_ApproverOption>;
     final risk = results[3] as _RiskSummary;
+    final backlogGov = results[4] as Map<String, dynamic>;
+    final epics = results[5] as List<Epic>;
+    _backlogDoD = backlogGov['definition_of_done'] as String? ?? '';
+    _epicTotalPoints = epics.fold<double>(
+        0, (sum, e) => sum + e.totalStoryPoints);
 
     _sprints = roadmap.sprints;
     _deliverables = roadmap.deliverables;
@@ -184,7 +193,6 @@ class _AgileProjectBaselineScreenState
       _approverSearchController.text = baseline.approverFallbackName;
     }
     _approvalNotesController.text = baseline.approvalNotes;
-    _definitionOfDoneController.text = baseline.definitionOfDone;
     _changeControlController.text = baseline.changeControl;
 
     for (final row in _assumptionRows) {
@@ -327,7 +335,6 @@ class _AgileProjectBaselineScreenState
       approvalNotes: _approvalNotesController.text.trim(),
       capacityThresholdPointsPerSprint:
           int.tryParse(_capacityController.text.trim()),
-      definitionOfDone: _definitionOfDoneController.text.trim(),
       changeControl: _changeControlController.text.trim(),
       assumptions: _assumptionRows
           .map((row) => row.toAssumption())
@@ -447,13 +454,6 @@ class _AgileProjectBaselineScreenState
       add(
         'Approver missing',
         'Choose an approver from the user list or type a fallback name.',
-        const Color(0xFFB45309),
-      );
-    }
-    if (_definitionOfDoneController.text.trim().isEmpty) {
-      add(
-        'Definition of Done missing',
-        'Document the project-specific quality gate for the baseline.',
         const Color(0xFFB45309),
       );
     }
@@ -663,6 +663,7 @@ class _AgileProjectBaselineScreenState
                                 totalPoints: _totalPlannedPoints,
                                 sprintCount: _sprints.length,
                                 highestSprintLoad: _highestSprintLoad,
+                                epicTotalPoints: _epicTotalPoints,
                               ),
                               const SizedBox(height: 24),
                               Wrap(
@@ -686,11 +687,8 @@ class _AgileProjectBaselineScreenState
                                 children: [
                                   SizedBox(
                                     width: halfWidth,
-                                    child: _RichTextCard(
-                                      title: 'Definition of Done',
-                                      subtitle:
-                                          'Custom baseline quality gates for this project.',
-                                      controller: _definitionOfDoneController,
+                                    child: _ReadOnlyDoDCard(
+                                      definitionOfDone: _backlogDoD,
                                     ),
                                   ),
                                   SizedBox(
@@ -1276,6 +1274,7 @@ class _MetricsRow extends StatelessWidget {
     required this.totalPoints,
     required this.sprintCount,
     required this.highestSprintLoad,
+    required this.epicTotalPoints,
   });
 
   final double averageVelocity;
@@ -1283,6 +1282,7 @@ class _MetricsRow extends StatelessWidget {
   final int totalPoints;
   final int sprintCount;
   final int highestSprintLoad;
+  final double epicTotalPoints;
 
   @override
   Widget build(BuildContext context) {
@@ -1309,9 +1309,14 @@ class _MetricsRow extends StatelessWidget {
           accent: const Color(0xFFF59E0B),
         ),
         _MetricCard(
+          label: 'Epic Story Points',
+          value: '${epicTotalPoints.toStringAsFixed(0)}',
+          accent: const Color(0xFF8B5CF6),
+        ),
+        _MetricCard(
           label: 'Sprint Count',
           value: '$sprintCount',
-          accent: const Color(0xFF8B5CF6),
+          accent: const Color(0xFFEC4899),
         ),
         _MetricCard(
           label: 'Highest Sprint Load',
@@ -1454,6 +1459,42 @@ class _RichTextCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReadOnlyDoDCard extends StatelessWidget {
+  const _ReadOnlyDoDCard({required this.definitionOfDone});
+
+  final String definitionOfDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Definition of Done',
+      subtitle: 'Managed in Backlog Governance — shown here for reference.',
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 180),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Text(
+          definitionOfDone.isEmpty
+              ? 'No Definition of Done defined yet. Go to Backlog Governance to set one.'
+              : definitionOfDone,
+          style: TextStyle(
+            fontSize: 14,
+            color: definitionOfDone.isEmpty
+                ? const Color(0xFF9CA3AF)
+                : const Color(0xFF374151),
+            height: 1.5,
+          ),
+        ),
       ),
     );
   }

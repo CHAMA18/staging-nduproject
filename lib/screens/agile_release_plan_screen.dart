@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/agile_release_plan.dart';
+import 'package:ndu_project/models/epic_model.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/agile_wireframe_service.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/epic_feature_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -17,7 +17,6 @@ import 'package:ndu_project/widgets/responsive.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
-const Color _kHeadline = Color(0xFF111827);
 const Color _kAccent = Color(0xFFD97706);
 
 class AgileReleasePlanScreen extends StatefulWidget {
@@ -66,12 +65,13 @@ class _AgileReleasePlanScreenState extends State<AgileReleasePlanScreen> {
     final plan = AgileReleasePlan(
       releaseLabel: 'Release ${_plans.length + 1}',
     );
+    final pid = _projectId;
     showDialog(
       context: context,
       builder: (ctx) => _ReleasePlanEditDialog(
         plan: plan,
+        projectId: pid ?? '',
         onSave: (updated) {
-          final pid = _projectId;
           if (pid == null) return;
           AgileWireframeService.saveReleasePlan(
               projectId: pid, plan: updated);
@@ -83,12 +83,13 @@ class _AgileReleasePlanScreenState extends State<AgileReleasePlanScreen> {
 
   void _editPlan(int index) {
     final plan = _plans[index];
+    final pid = _projectId;
     showDialog(
       context: context,
       builder: (ctx) => _ReleasePlanEditDialog(
         plan: plan,
+        projectId: pid ?? '',
         onSave: (updated) {
-          final pid = _projectId;
           if (pid == null) return;
           AgileWireframeService.saveReleasePlan(
               projectId: pid, plan: updated);
@@ -337,9 +338,14 @@ Widget _buildPlanCard(int index, AgileReleasePlan plan) {
 
 class _ReleasePlanEditDialog extends StatefulWidget {
   final AgileReleasePlan plan;
+  final String projectId;
   final ValueChanged<AgileReleasePlan> onSave;
 
-  const _ReleasePlanEditDialog({required this.plan, required this.onSave});
+  const _ReleasePlanEditDialog({
+    required this.plan,
+    required this.projectId,
+    required this.onSave,
+  });
 
   @override
   State<_ReleasePlanEditDialog> createState() =>
@@ -355,6 +361,8 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
   late TextEditingController _trainCtrl;
   DateTime? _releaseDate;
   String _status = 'Draft';
+  List<Epic> _epics = [];
+  Set<String> _selectedEpicIds = {};
 
   @override
   void initState() {
@@ -368,6 +376,16 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
     _trainCtrl = TextEditingController(text: p.trainName);
     _releaseDate = p.releaseDate;
     _status = p.status;
+    _selectedEpicIds = Set.from(p.epicIds);
+    _loadEpics();
+  }
+
+  Future<void> _loadEpics() async {
+    if (widget.projectId.isEmpty) return;
+    try {
+      final epics = await EpicFeatureService.loadEpics(widget.projectId);
+      if (mounted) setState(() => _epics = epics);
+    } catch (_) {}
   }
 
   @override
@@ -463,12 +481,52 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
               maxLines: 2,
             ),
             const SizedBox(height: 10),
-            TextField(
-              controller: _scopeCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'Scope / Epics included',
-                  border: OutlineInputBorder()),
-              maxLines: 3,
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Linked Epics',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  if (_epics.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text('No epics defined yet.',
+                          style: TextStyle(
+                              fontSize: 13, color: Color(0xFF9CA3AF))),
+                    )
+                  else
+                    ..._epics.map((epic) => CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          title: Text(epic.title,
+                              style: const TextStyle(fontSize: 13)),
+                          subtitle: epic.theme.isNotEmpty
+                              ? Text(epic.theme,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF6B7280)))
+                              : null,
+                          value: _selectedEpicIds.contains(epic.id),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                _selectedEpicIds.add(epic.id);
+                              } else {
+                                _selectedEpicIds.remove(epic.id);
+                              }
+                            });
+                          },
+                        )),
+                ],
+              ),
             ),
           ],
         ),
@@ -490,6 +548,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
               version: _versionCtrl.text,
               piNumber: int.tryParse(_piCtrl.text),
               trainName: _trainCtrl.text,
+              epicIds: _selectedEpicIds.toList(),
             );
             widget.onSave(updated);
             Navigator.pop(context);

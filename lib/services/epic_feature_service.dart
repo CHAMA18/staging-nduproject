@@ -2,9 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/epic_model.dart';
 import 'package:ndu_project/models/feature_model.dart';
+import 'package:ndu_project/services/agile_cache_service.dart';
 
 class EpicFeatureService {
   static final _firestore = FirebaseFirestore.instance;
+
+  static String _epicsCacheKey(String projectId) =>
+      'epics:$projectId';
+  static String _featuresCacheKey(String projectId, String epicId) =>
+      'features:$projectId:$epicId';
 
   static CollectionReference<Map<String, dynamic>> _epicsCol(String projectId) {
     return _firestore
@@ -24,10 +30,13 @@ class EpicFeatureService {
 
   static Future<List<Epic>> loadEpics(String projectId) async {
     try {
-      final snapshot = await _epicsCol(projectId).orderBy('title').get();
-      return snapshot.docs
-          .map((doc) => Epic.fromJson({...doc.data(), 'id': doc.id}))
-          .toList();
+      return await AgileCacheService.instance.fetch(
+          _epicsCacheKey(projectId), () async {
+        final snapshot = await _epicsCol(projectId).orderBy('title').get();
+        return snapshot.docs
+            .map((doc) => Epic.fromJson({...doc.data(), 'id': doc.id}))
+            .toList();
+      });
     } catch (error) {
       debugPrint('EpicFeatureService.loadEpics error: $error');
       return [];
@@ -49,6 +58,7 @@ class EpicFeatureService {
   }) async {
     try {
       await _epicsCol(projectId).doc(epic.id).set(epic.toJson());
+      AgileCacheService.instance.invalidate(_epicsCacheKey(projectId));
     } catch (error) {
       debugPrint('EpicFeatureService.saveEpic error: $error');
       rethrow;
@@ -61,6 +71,7 @@ class EpicFeatureService {
   }) async {
     try {
       await _epicsCol(projectId).doc(epicId).delete();
+      AgileCacheService.instance.invalidate(_epicsCacheKey(projectId));
     } catch (error) {
       debugPrint('EpicFeatureService.deleteEpic error: $error');
       rethrow;
@@ -72,11 +83,14 @@ class EpicFeatureService {
   static Future<List<Feature>> loadFeatures(
       String projectId, String epicId) async {
     try {
-      final snapshot =
-          await _featuresCol(projectId, epicId).orderBy('title').get();
-      return snapshot.docs
-          .map((doc) => Feature.fromJson({...doc.data(), 'id': doc.id}))
-          .toList();
+      return await AgileCacheService.instance.fetch(
+          _featuresCacheKey(projectId, epicId), () async {
+        final snapshot =
+            await _featuresCol(projectId, epicId).orderBy('title').get();
+        return snapshot.docs
+            .map((doc) => Feature.fromJson({...doc.data(), 'id': doc.id}))
+            .toList();
+      });
     } catch (error) {
       debugPrint('EpicFeatureService.loadFeatures error: $error');
       return [];
@@ -90,6 +104,8 @@ class EpicFeatureService {
   }) async {
     try {
       await _featuresCol(projectId, epicId).doc(feature.id).set(feature.toJson());
+      AgileCacheService.instance
+          .invalidate(_featuresCacheKey(projectId, epicId));
     } catch (error) {
       debugPrint('EpicFeatureService.saveFeature error: $error');
       rethrow;
@@ -103,6 +119,8 @@ class EpicFeatureService {
   }) async {
     try {
       await _featuresCol(projectId, epicId).doc(featureId).delete();
+      AgileCacheService.instance
+          .invalidate(_featuresCacheKey(projectId, epicId));
     } catch (error) {
       debugPrint('EpicFeatureService.deleteFeature error: $error');
       rethrow;

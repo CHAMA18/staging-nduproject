@@ -271,6 +271,7 @@ class OpenAiDiagramService {
     required String section,
     required String contextText,
     int maxTokens = 1200,
+    String? refinementHint,
   }) async {
     if (!OpenAiConfig.isConfigured) {
       // Fallback: single-node diagram using section name
@@ -283,7 +284,7 @@ class OpenAiDiagramService {
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final prompt = _diagramPrompt(section: section, context: contextText);
+    final prompt = _diagramPrompt(section: section, context: contextText, refinementHint: refinementHint);
     final body = jsonEncode({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
@@ -326,9 +327,10 @@ Always return ONLY a valid JSON object with nodes and edges arrays.'''
     }
   }
 
-  String _diagramPrompt({required String section, required String context}) {
+  String _diagramPrompt({required String section, required String context, String? refinementHint}) {
     final s = _sanitize(section);
     final c = _sanitize(context);
+    final hintLine = refinementHint != null ? '\nUser Refinement: ${_refinementHintText(refinementHint)}\n' : '';
     return '''
 You are generating a REASONING DIAGRAM for the "$s" section. This must be an exceptional, thought-provoking visual that demonstrates strategic thinking—NOT a generic flowchart.
 
@@ -371,7 +373,7 @@ User Context for "$s":
 """
 $c
 """
-
+$hintLine
 Generate a diagram that demonstrates STRATEGIC REASONING for executing this plan, not just process steps.
 ''';
   }
@@ -405,6 +407,21 @@ Generate a diagram that demonstrates STRATEGIC REASONING for executing this plan
   }
 
   String _sanitize(String v) => v.replaceAll('"', '\\"');
+
+  String _refinementHintText(String hint) {
+    switch (hint) {
+      case 'more_decisions':
+        return 'Add more decision nodes with branching criteria, and show alternative paths.';
+      case 'simplify':
+        return 'Simplify the diagram. Reduce to 5-7 key nodes, merge related steps, focus on the main flow.';
+      case 'focus_risks':
+        return 'Emphasize risk nodes, risk mitigations, and decision points where risks are evaluated.';
+      case 'timelines':
+        return 'Add milestone nodes and sequence indicators to show temporal progression and phase durations.';
+      default:
+        return hint;
+    }
+  }
 
   /// Creates a contextual fallback diagram when API fails
   DiagramModel _createFallbackDiagram(String section) {

@@ -10,7 +10,6 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
-import 'package:ndu_project/widgets/ai_diagram_panel.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 import 'package:ndu_project/services/user_service.dart';

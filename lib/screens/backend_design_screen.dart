@@ -6,7 +6,6 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/architecture_service.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
-import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -46,10 +45,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   final List<_DbField> _fields = [];
 
   final _Debouncer _saveDebounce = _Debouncer();
+  final Set<String> _selectedFilters = {'All systems'};
   bool _isLoading = false;
   bool _suspendSave = false;
   bool _didSeedDefaults = false;
-  bool _registersExpanded = false;
   Map<String, dynamic>? _architectureWorkspace;
 
   final List<String> _componentTypes = const [
@@ -293,7 +292,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
+    final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
     final projectData = ProjectDataHelper.getData(context);
     final snapshot = _BackendInfrastructureSnapshot.from(
@@ -308,522 +307,491 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       fields: _fields,
     );
 
+    final showArchitecture = _selectedFilters.contains('All systems') ||
+        _selectedFilters.contains('Architecture');
+    final showDataLayer = _selectedFilters.contains('All systems') ||
+        _selectedFilters.contains('Data layer');
+    final showInterfaceContracts = _selectedFilters.contains('All systems');
+    final showDocumentsSecurity = _selectedFilters.contains('All systems') ||
+        _selectedFilters.contains('Security') ||
+        _selectedFilters.contains('Documents');
+
     return ResponsiveScaffold(
       activeItemLabel: 'Backend Design',
+      backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: Column(
-        children: [
-          const PlanningPhaseHeader(
-            title: 'Backend Design',
-            showImportButton: false,
-            showContentButton: false,
-            showNavigationButtons: false,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_isLoading) const SizedBox(height: 16),
+            const PlanningPhaseHeader(
+              title: 'Backend Design',
+              showImportButton: false,
+              showContentButton: false,
+              showNavigationButtons: false,
+            ),
+            const SizedBox(height: 16),
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow, snapshot),
+            const SizedBox(height: 20),
+            _buildBackendFrameworkGuide(),
+            const SizedBox(height: 24),
+            if (showArchitecture) ...[
+              _buildSystemArchitectureRegister(),
+              const SizedBox(height: 20),
+            ],
+            if (showDataLayer) ...[
+              _buildDataArchitectureRegister(),
+              const SizedBox(height: 20),
+            ],
+            if (showInterfaceContracts) ...[
+              _buildInterfaceContractsPanel(),
+              const SizedBox(height: 20),
+            ],
+            if (showDocumentsSecurity) ...[
+              _buildDocumentsSecurityPanel(),
+              const SizedBox(height: 20),
+            ],
+            LaunchPhaseNavigation(
+              backLabel: 'Back: UI/UX Design',
+              nextLabel: 'Next: Engineering',
+              onBack: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const UiUxDesignScreen())),
+              onNext: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const EngineeringDesignScreen())),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Header ────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader(bool isNarrow) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFC812),
+            borderRadius: BorderRadius.circular(6),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(padding),
-              child: Column(
+          child: const Text(
+            'BACKEND ARCHITECTURE',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+          ),
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = isNarrow || constraints.maxWidth < 1040;
+            final titleBlock = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Backend Design',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Design the invisible infrastructure and operational logic that powers every visible experience. '
+                  'This hub captures system topology, data movement, interface contracts, security architecture, '
+                  'business rules, operational load, vendor integrations, and deployment pipelines \u2014 the backbone your project stands on.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                ),
+              ],
+            );
+
+            if (compact) {
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                  const SizedBox(height: 24),
-                  _buildInfrastructureHero(
-                    isMobile: isMobile,
-                    snapshot: snapshot,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildInfrastructureTopSection(snapshot, isMobile),
-                  const SizedBox(height: 20),
-                  _buildContractsAndSecuritySection(snapshot, isMobile),
-                  const SizedBox(height: 20),
-                  _buildOperationsGrid(snapshot),
-                  const SizedBox(height: 20),
-                  _buildDetailedRegistersPanel(),
-                  const SizedBox(height: 28),
-                  LaunchPhaseNavigation(
-                    backLabel: 'Back: UI/UX Design',
-                    nextLabel: 'Next: Engineering',
-                    onBack: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const UiUxDesignScreen())),
-                    onNext: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const EngineeringDesignScreen())),
-                  ),
+                  titleBlock,
+                  const SizedBox(height: 12),
+                  _buildHeaderActions(),
                 ],
-              ),
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: titleBlock),
+                const SizedBox(width: 20),
+                Flexible(child: _buildHeaderActions()),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderActions() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _actionButton(Icons.add, 'Add component', onPressed: _addComponent),
+        _actionButton(Icons.swap_horiz, 'Add data flow',
+            onPressed: _addDataFlow),
+        _actionButton(Icons.description_outlined, 'Add document',
+            onPressed: _addDesignDocument),
+        _primaryButton('Review architecture'),
+      ],
+    );
+  }
+
+  Widget _actionButton(IconData icon, String label,
+      {VoidCallback? onPressed}) {
+    return OutlinedButton.icon(
+      onPressed: onPressed ?? () {},
+      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B))),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _primaryButton(String label) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        setState(() {
+          _selectedFilters
+            ..clear()
+            ..add('Architecture');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Architecture review started. Filter set to Architecture view.')),
+        );
+      },
+      icon: const Icon(Icons.architecture, size: 18),
+      label: Text(label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF0EA5E9),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // ─── Filter Chips ──────────────────────────────────────────────────────────
+
+  Widget _buildFilterChips() {
+    const filters = [
+      'All systems',
+      'Architecture',
+      'Data layer',
+      'Security',
+      'Documents',
+      'Deprecated'
+    ];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: filters.map((filter) {
+        final selected = _selectedFilters.contains(filter);
+        return ChoiceChip(
+          label: Text(
+            filter,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : const Color(0xFF475569),
             ),
           ),
+          selected: selected,
+          selectedColor: const Color(0xFF111827),
+          backgroundColor: Colors.white,
+          shape: StadiumBorder(
+            side: BorderSide(color: const Color(0xFFE5E7EB)),
+          ),
+          onSelected: (value) {
+            setState(() {
+              if (value) {
+                if (filter == 'All systems') {
+                  _selectedFilters
+                    ..clear()
+                    ..add(filter);
+                } else {
+                  _selectedFilters
+                    ..remove('All systems')
+                    ..add(filter);
+                }
+              } else {
+                _selectedFilters.remove(filter);
+                if (_selectedFilters.isEmpty) {
+                  _selectedFilters.add('All systems');
+                }
+              }
+            });
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  // ─── Stats Row ─────────────────────────────────────────────────────────────
+
+  Widget _buildStatsRow(bool isNarrow, _BackendInfrastructureSnapshot snapshot) {
+    final stats = [
+      _StatCardData(
+        'Architecture Nodes',
+        '${snapshot.systemNodes.length}',
+        '${_components.length} registered',
+        const Color(0xFF0EA5E9),
+      ),
+      _StatCardData(
+        'Data Entities',
+        '${snapshot.dataEntities.length}',
+        '${_entities.length} tables',
+        const Color(0xFF10B981),
+      ),
+      _StatCardData(
+        'Interface Contracts',
+        '${snapshot.interfaceContracts.length}',
+        '${_dataFlows.length} data flows',
+        const Color(0xFF6366F1),
+      ),
+      _StatCardData(
+        'Vendor Dependencies',
+        '${snapshot.vendorDependencies.length}',
+        'External services',
+        const Color(0xFFF97316),
+      ),
+    ];
+
+    if (isNarrow) {
+      return Column(
+        children: [
+          for (int i = 0; i < stats.length; i++) ...[
+            SizedBox(width: double.infinity, child: _buildStatCard(stats[i])),
+            if (i < stats.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      children: stats
+          .map((s) => Expanded(child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _buildStatCard(s),
+              )))
+          .toList(),
+    );
+  }
+
+  Widget _buildStatCard(_StatCardData data) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(data.value,
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: data.color)),
+          const SizedBox(height: 6),
+          Text(data.label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          const SizedBox(height: 6),
+          Text(data.supporting,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: data.color)),
         ],
       ),
     );
   }
 
-  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+  // ─── Framework Guide ───────────────────────────────────────────────────────
 
-  Future<void> _loadFromFirestore() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    if (mounted) setState(() => _isLoading = true);
-    bool shouldSeedDefaults = false;
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('design_phase_sections')
-          .doc('backend_design')
-          .get();
-      final architectureWorkspace = await ArchitectureService.load(projectId);
-      final data = doc.data() ?? {};
-      final architecture =
-          Map<String, dynamic>.from(data['architecture'] ?? {});
-      final database = Map<String, dynamic>.from(data['database'] ?? {});
-      shouldSeedDefaults = data.isEmpty && !_didSeedDefaults;
-
-      _suspendSave = true;
-      final components =
-          _ArchitectureComponent.fromList(architecture['components']);
-      final flows = _ArchitectureDataFlow.fromList(architecture['dataFlows']);
-      final documents = _DesignDocument.fromList(architecture['documents']);
-      final entities = _DbEntity.fromList(database['entities']);
-      final fields = _DbField.fromList(database['fields']);
-
-      if (!mounted) return;
-      setState(() {
-        _architectureWorkspace = architectureWorkspace;
-        if (shouldSeedDefaults) {
-          _didSeedDefaults = true;
-          _architectureSummaryController.text = _defaultArchitectureSummary();
-          _databaseSummaryController.text = _defaultDatabaseSummary();
-          _components
-            ..clear()
-            ..addAll(_defaultComponents());
-          _dataFlows
-            ..clear()
-            ..addAll(_defaultDataFlows());
-          _designDocuments
-            ..clear()
-            ..addAll(_defaultDocuments());
-          _entities
-            ..clear()
-            ..addAll(_defaultEntities());
-          _fields
-            ..clear()
-            ..addAll(_defaultFields());
-        } else {
-          _architectureSummaryController.text =
-              architecture['summary']?.toString() ?? '';
-          _databaseSummaryController.text =
-              database['summary']?.toString() ?? '';
-          _components
-            ..clear()
-            ..addAll(components);
-          _dataFlows
-            ..clear()
-            ..addAll(flows);
-          _designDocuments
-            ..clear()
-            ..addAll(documents);
-          _entities
-            ..clear()
-            ..addAll(entities);
-          _fields
-            ..clear()
-            ..addAll(fields);
-        }
-      });
-    } catch (error) {
-      debugPrint('Failed to load backend design data: $error');
-    } finally {
-      _suspendSave = false;
-      if (mounted) setState(() => _isLoading = false);
-      if (shouldSeedDefaults) _scheduleSave();
-    }
-  }
-
-  void _scheduleSave() {
-    if (_suspendSave) return;
-    _saveDebounce.run(_saveToFirestore);
-  }
-
-  Future<void> _saveToFirestore() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    final payload = {
-      'architecture': {
-        'summary': _architectureSummaryController.text.trim(),
-        'components': _components.map((entry) => entry.toJson()).toList(),
-        'dataFlows': _dataFlows.map((entry) => entry.toJson()).toList(),
-        'documents': _designDocuments.map((entry) => entry.toJson()).toList(),
-      },
-      'database': {
-        'summary': _databaseSummaryController.text.trim(),
-        'entities': _entities.map((entry) => entry.toJson()).toList(),
-        'fields': _fields.map((entry) => entry.toJson()).toList(),
-      },
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('design_phase_sections')
-          .doc('backend_design')
-          .set(payload, SetOptions(merge: true));
-      await ActivityLogService.instance.logActivity(
-        projectId: projectId,
-        phase: 'Design Phase',
-        page: 'Backend Design',
-        action: 'Updated Backend Design data',
-      );
-    } catch (error) {
-      debugPrint('Backend design save error: $error');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Unable to save Backend Design changes right now. Please try again.',
-          ),
-        ),
-      );
-    }
-  }
-
-  void _logActivity(String action, {Map<String, dynamic>? details}) {
-    final projectId = _projectId()?.trim() ?? '';
-    if (projectId.isEmpty) return;
-    unawaited(
-      ActivityLogService.instance.logActivity(
-        projectId: projectId,
-        phase: 'Design Phase',
-        page: 'Backend Design',
-        action: action,
-        details: details,
-      ),
-    );
-  }
-
-  Widget _buildInfrastructureHero({
-    required bool isMobile,
-    required _BackendInfrastructureSnapshot snapshot,
-  }) {
+  Widget _buildBackendFrameworkGuide() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0B1220),
-            Color(0xFF132238),
-            Color(0xFF1D4ED8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 28,
-            offset: Offset(0, 16),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Hidden Infrastructure & Operational Logic',
+          const Text(
+            'Backend design framework',
             style: TextStyle(
-              fontSize: isMobile ? 24 : 28,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1.1,
-            ),
+                fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Backend Design for ${snapshot.projectLabel}. This hub captures the invisible architecture behind the customer experience: system topology, data movement, interface contracts, security, business rules, operational load, vendor support, and deployment path.',
+          const SizedBox(height: 6),
+          const Text(
+            'Grounded in cloud-native architecture principles, microservice design patterns, '
+            'domain-driven design, and infrastructure-as-code conventions. Effective backend design '
+            'ensures that system topology, data flows, security boundaries, and deployment pipelines '
+            'are documented, reviewable, and operationally sound.',
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.84),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280),
+                height: 1.5),
+          ),
+          const SizedBox(height: 18),
+          _buildGuideCard(
+            Icons.account_tree_outlined,
+            'System Architecture',
+            'Component topology showing services, data stores, integrations, and structural dependencies. '
+            'Each node should have a clear owner, type classification, and lifecycle status. Map connections '
+            'to reveal data flow paths and integration touchpoints.',
+            const Color(0xFF2563EB),
+          ),
+          const SizedBox(height: 12),
+          _buildGuideCard(
+            Icons.dataset_outlined,
+            'Data & Information Flow',
+            'Entity-relationship view of the information backbone. Define primary keys, ownership, and '
+            'field-level constraints. Document data movement from capture through processing to storage '
+            'and reporting across the system.',
+            const Color(0xFF10B981),
+          ),
+          const SizedBox(height: 12),
+          _buildGuideCard(
+            Icons.shield_outlined,
+            'Security & Access Control',
+            'Authentication boundaries, authorization policies, and access control matrices. Define who '
+            'can access what, at which level, and through which interface. Document encryption standards, '
+            'audit logging, and compliance requirements.',
+            const Color(0xFF6366F1),
+          ),
+          const SizedBox(height: 12),
+          _buildGuideCard(
+            Icons.rocket_launch_outlined,
+            'Deployment & Operations',
+            'Infrastructure pipelines, deployment strategies, monitoring, and operational runbooks. Document '
+            'environment configurations, scaling policies, disaster recovery procedures, and the vendor '
+            'support matrix for production operations.',
+            const Color(0xFFF97316),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideCard(IconData icon, String title, String description, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4B5563),
               height: 1.5,
             ),
           ),
-          if (_architectureSummaryController.text.trim().isNotEmpty ||
-              _databaseSummaryController.text.trim().isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.10),
-                ),
-              ),
-              child: Text(
-                [
-                  _architectureSummaryController.text.trim(),
-                  _databaseSummaryController.text.trim(),
-                ].where((value) => value.isNotEmpty).join('\n\n'),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: Colors.white.withOpacity(0.82),
-                  height: 1.45,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildHeroMetricPill(
-                  'Architecture Nodes', '${snapshot.systemNodes.length}'),
-              _buildHeroMetricPill(
-                  'Data Entities', '${snapshot.dataEntities.length}'),
-              _buildHeroMetricPill('Interface Contracts',
-                  '${snapshot.interfaceContracts.length}'),
-              _buildHeroMetricPill(
-                  'Vendors', '${snapshot.vendorDependencies.length}'),
-              _buildHeroMetricPill('AI Signals', '${snapshot.aiSignalCount}'),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfrastructureTopSection(
-    _BackendInfrastructureSnapshot snapshot,
-    bool isMobile,
-  ) {
-    return Column(
-      children: [
-        _buildSystemArchitecturePanel(snapshot),
-        const SizedBox(height: 20),
-        _buildDataArchitecturePanel(snapshot),
-      ],
-    );
-  }
+  // ─── Panel 1: System Architecture Register ─────────────────────────────────
 
-  Widget _buildContractsAndSecuritySection(
-    _BackendInfrastructureSnapshot snapshot,
-    bool isMobile,
-  ) {
-    return Column(
-      children: [
-        _buildInterfaceContractsPanel(snapshot),
-        const SizedBox(height: 20),
-        _buildSecurityAccessPanel(snapshot),
-      ],
-    );
-  }
-
-  Widget _buildOperationsGrid(_BackendInfrastructureSnapshot snapshot) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final spacing = 20.0;
-        final columns = constraints.maxWidth >= 1080
-            ? 2
-            : constraints.maxWidth >= 760
-                ? 2
-                : 1;
-        final width = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        final cards = [
-          _buildBusinessLogicPanel(snapshot),
-          _buildPerformancePanel(snapshot),
-          _buildVendorDependenciesPanel(snapshot),
-          _buildPipelinePanel(snapshot),
-        ];
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children:
-              cards.map((card) => SizedBox(width: width, child: card)).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailedRegistersPanel() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: _registersExpanded,
-          onExpansionChanged: (value) {
-            setState(() => _registersExpanded = value);
-          },
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          title: const Text(
-            'Detailed Registers',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
-          ),
-          subtitle: const Text(
-            'Edit the architecture, data, and document registers feeding the dashboard above.',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-          ),
-          children: [
-            _buildArchitectureCard(),
-            const SizedBox(height: 16),
-            _buildDatabaseCard(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSystemArchitecturePanel(
-      _BackendInfrastructureSnapshot snapshot) {
+  Widget _buildSystemArchitectureRegister() {
     final ownerOptions = _ownerOptions(currentValue: _quickComponentOwner);
-    return _buildDashboardPanel(
-      title: 'System Architecture & Structural Framework',
-      subtitle:
-          'High-level component map showing where the hidden system lives and how services or structural systems connect.',
-      icon: Icons.account_tree_outlined,
-      accent: const Color(0xFF1D4ED8),
+    return _PanelShell(
+      title: 'System architecture register',
+      subtitle: 'Map services, data stores, integrations, and infrastructure blocks',
+      trailing: _actionButton(Icons.add, 'Add component', onPressed: _addComponent),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 760;
-              final visibleNodes = snapshot.systemNodes.take(4).toList();
-              if (stacked) {
-                return Column(
-                  children: List.generate(visibleNodes.length, (index) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index == visibleNodes.length - 1 ? 0 : 12,
-                      ),
-                      child: Column(
-                        children: [
-                          _buildSystemNodeCard(visibleNodes[index]),
-                          if (index != visibleNodes.length - 1)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Icon(Icons.arrow_downward_rounded,
-                                  color: Color(0xFF64748B)),
-                            ),
-                        ],
-                      ),
-                    );
-                  }),
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: List.generate(visibleNodes.length, (index) {
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: index == visibleNodes.length - 1 ? 0 : 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                              child: _buildSystemNodeCard(visibleNodes[index])),
-                          if (index != visibleNodes.length - 1) ...[
-                            const SizedBox(width: 8),
-                            const Icon(Icons.east_rounded,
-                                color: Color(0xFF64748B)),
-                            const SizedBox(width: 8),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              );
-            },
+          // Architecture summary text area
+          _LabeledTextArea(
+            label: 'Architecture summary',
+            controller: _architectureSummaryController,
+            hintText: 'Describe the overall backend topology, critical services, and integration patterns.',
           ),
-          const SizedBox(height: 18),
-          const Text(
-            'Connections',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...snapshot.systemLinks.map(
-            (link) => Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      link.from,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.east_rounded, color: Color(0xFF64748B)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      link.to,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatusBadge(link.location, const Color(0xFF1D4ED8)),
-                ],
-              ),
-            ),
-          ),
+          const SizedBox(height: 16),
+          _buildComponentsTable(),
           const SizedBox(height: 18),
           _buildInlineComposerCard(
             icon: Icons.add_business_rounded,
-            accent: const Color(0xFF1D4ED8),
+            accent: const Color(0xFF2563EB),
             title: 'Quick add architecture component',
-            subtitle:
-                'Capture a new service, integration, or infrastructure block directly in the architecture view.',
+            subtitle: 'Capture a new service, integration, or infrastructure block directly in the architecture view.',
             child: Column(
               children: [
                 _buildComposerTextField(
@@ -894,90 +862,116 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 
-  Widget _buildDataArchitecturePanel(_BackendInfrastructureSnapshot snapshot) {
+  // ─── Panel 2: Data Architecture Register ───────────────────────────────────
+
+  Widget _buildDataArchitectureRegister() {
     final ownerOptions = _ownerOptions(currentValue: _quickEntityOwner);
-    return _buildDashboardPanel(
-      title: 'Data Architecture & Information Flow',
-      subtitle:
-          'Entity and attribute view for the information backbone behind operations and delivery.',
-      icon: Icons.dataset_outlined,
-      accent: const Color(0xFF0F766E),
+    return _PanelShell(
+      title: 'Data architecture register',
+      subtitle: 'Entity definitions, primary keys, and field-level constraints',
+      trailing: _actionButton(Icons.add, 'Add entity', onPressed: _addEntity),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...snapshot.dataEntities.map(
-            (entity) => Container(
+          // Database summary text area
+          _LabeledTextArea(
+            label: 'Schema summary',
+            controller: _databaseSummaryController,
+            hintText: 'Capture key database decisions, scaling approach, and indexing strategy.',
+          ),
+          const SizedBox(height: 16),
+          // Entity cards
+          _SectionHeader(
+            title: 'Entities',
+            actionLabel: 'Add entity',
+            onAction: _addEntity,
+          ),
+          const SizedBox(height: 10),
+          for (final entity in _entities)
+            Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          entity.name,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ),
-                      _buildStatusBadge(
-                          entity.flowLabel, const Color(0xFF0F766E)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: entity.attributes
-                        .map((attribute) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              entity.name,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
                               ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: const Color(0xFF10B981).withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(999),
-                                border:
-                                    Border.all(color: const Color(0xFFE2E8F0)),
                               ),
                               child: Text(
-                                attribute,
+                                entity.primaryKey,
                                 style: const TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF334155),
+                                  color: Color(0xFF10B981),
                                 ),
                               ),
-                            ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    entity.flowDetail,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      height: 1.45,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Owner: ${entity.owner}',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          entity.description,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.45),
+                        ),
+                      ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () => _deleteEntity(entity.id),
+                    icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                    tooltip: 'Delete entity',
                   ),
                 ],
               ),
             ),
+          if (_entities.isEmpty)
+            const _InlineEmptyState(
+              title: 'No entities yet',
+              message: 'Add core tables or collections.',
+            ),
+          const SizedBox(height: 16),
+          // Fields table
+          _SectionHeader(
+            title: 'Field definitions',
+            actionLabel: 'Add field',
+            onAction: _addField,
           ),
+          const SizedBox(height: 10),
+          _buildFieldsTable(),
+          const SizedBox(height: 18),
           _buildInlineComposerCard(
             icon: Icons.dataset_linked_rounded,
-            accent: const Color(0xFF0F766E),
+            accent: const Color(0xFF10B981),
             title: 'Quick add data entity',
-            subtitle:
-                'Add the next entity and its core key from the information flow panel itself.',
+            subtitle: 'Add the next entity and its core key from the information flow panel itself.',
             child: Column(
               children: [
                 Row(
@@ -1034,68 +1028,47 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 
-  Widget _buildInterfaceContractsPanel(
-      _BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'API & Interface Contracts',
-      subtitle:
-          'Specification list for technical integrations and operational handoff agreements.',
-      icon: Icons.cable_outlined,
-      accent: const Color(0xFF1D4ED8),
+  // ─── Panel 3: Interface Contracts & Data Flows ─────────────────────────────
+
+  Widget _buildInterfaceContractsPanel() {
+    return _PanelShell(
+      title: 'Interface contracts & data flows',
+      subtitle: 'API specifications, integration protocols, and operational handoff agreements',
+      trailing: _actionButton(Icons.add, 'Add data flow', onPressed: _addDataFlow),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Table header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(14),
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Interface Name',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Method/Protocol',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    'Input / Output',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
+                Expanded(flex: 3, child: Text('SOURCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                Expanded(flex: 2, child: Text('PROTOCOL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                Expanded(flex: 3, child: Text('DESTINATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                Expanded(flex: 3, child: Text('NOTES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 60, child: Text('ACTIONS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          for (int i = 0; i < snapshot.interfaceContracts.length; i++) ...[
+          const SizedBox(height: 8),
+          if (_dataFlows.isEmpty)
+            const _InlineEmptyState(
+              title: 'No data flows yet',
+              message: 'Map service-to-service data exchange paths.',
+            ),
+          for (int i = 0; i < _dataFlows.length; i++)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1103,444 +1076,197 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                   Expanded(
                     flex: 3,
                     child: Text(
-                      snapshot.interfaceContracts[i].name,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                        height: 1.45,
-                      ),
+                      _dataFlows[i].source,
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: Text(
-                      snapshot.interfaceContracts[i].method,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF475569),
-                        fontFamily: 'monospace',
-                      ),
+                    child: Center(
+                      child: _buildStatusBadge(_dataFlows[i].protocol, const Color(0xFF6366F1)),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    flex: 4,
+                    flex: 3,
                     child: Text(
-                      snapshot.interfaceContracts[i].ioDescription,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        height: 1.45,
-                      ),
+                      _dataFlows[i].destination,
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      _dataFlows[i].notes,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.45),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () => _openDataFlowDialog(existing: _dataFlows[i]),
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
+                          tooltip: 'Edit',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        ),
+                        IconButton(
+                          onPressed: () => _deleteDataFlow(_dataFlows[i].id),
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          tooltip: 'Delete',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            if (i != snapshot.interfaceContracts.length - 1)
-              const SizedBox(height: 10),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildSecurityAccessPanel(_BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'Security & Access Control Logic',
-      subtitle:
-          'Matrix of roles, permissions, and protection protocols across digital and physical access.',
-      icon: Icons.shield_outlined,
-      accent: const Color(0xFF0F766E),
-      child: Column(
-        children: snapshot.accessRules
-            .map(
-              (rule) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        rule.role,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        rule.permission,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF334155),
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: _buildStatusBadge(
-                          rule.protocol,
-                          const Color(0xFF1D4ED8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
+  // ─── Panel 4: Design Documents & Security ──────────────────────────────────
 
-  Widget _buildBusinessLogicPanel(_BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'Business Logic & Rule Engine',
-      subtitle:
-          'Server-side, operational, and safety rules that decide what happens when conditions change.',
-      icon: Icons.rule_outlined,
-      accent: const Color(0xFF1D4ED8),
+  Widget _buildDocumentsSecurityPanel() {
+    return _PanelShell(
+      title: 'Design documents & security',
+      subtitle: 'Architecture documents, security policies, and operational runbooks',
+      trailing: _actionButton(Icons.add, 'Add document', onPressed: _addDesignDocument),
       child: Column(
-        children: snapshot.logicRules
-            .map(
-              (rule) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      rule.name,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'IF ${rule.condition}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF334155),
-                        height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'THEN ${rule.action}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildPerformancePanel(_BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'Performance & Scalability Strategy',
-      subtitle:
-          'Load handling, resilience, and capacity strategy for software and physical infrastructure.',
-      icon: Icons.speed_outlined,
-      accent: const Color(0xFF0F766E),
-      child: Column(
-        children: snapshot.performanceStrategies
-            .map(
-              (item) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.metric,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                        ),
-                        _buildStatusBadge(item.target, const Color(0xFF1D4ED8)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.strategy,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF334155),
-                        height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.context,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildVendorDependenciesPanel(
-      _BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'Third-Party Services & Vendor Dependencies',
-      subtitle:
-          'External services, contracts, and support providers needed to make the backend or operations layer work.',
-      icon: Icons.handshake_outlined,
-      accent: const Color(0xFF1D4ED8),
-      child: Column(
-        children: snapshot.vendorDependencies
-            .map(
-              (item) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        item.service,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        item.purpose,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildStatusBadge(
-                        item.status, _vendorStatusColor(item.status)),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildPipelinePanel(_BackendInfrastructureSnapshot snapshot) {
-    return _buildDashboardPanel(
-      title: 'DevOps & Deployment Pipeline',
-      subtitle:
-          'Implementation path from internal design validation through production or on-site activation.',
-      icon: Icons.alt_route_outlined,
-      accent: const Color(0xFF0F766E),
-      child: Column(
-        children: List.generate(snapshot.pipelineStages.length, (index) {
-          final stage = snapshot.pipelineStages[index];
-          return Container(
-            margin: EdgeInsets.only(
-              bottom: index == snapshot.pipelineStages.length - 1 ? 0 : 12,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Table header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: const Row(
               children: [
-                Column(
-                  children: [
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1D4ED8),
-                        shape: BoxShape.circle,
+                Expanded(flex: 3, child: Text('TITLE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                Expanded(flex: 2, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                Expanded(flex: 3, child: Text('LOCATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 60, child: Text('ACTIONS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_designDocuments.isEmpty)
+            const _InlineEmptyState(
+              title: 'No design documents yet',
+              message: 'Add architecture decisions, diagrams, and references.',
+            ),
+          for (int i = 0; i < _designDocuments.length; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: i.isEven ? Colors.white : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      _designDocuments[i].title,
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Text(
+                        _designDocuments[i].owner,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
                       ),
                     ),
-                    if (index != snapshot.pipelineStages.length - 1)
-                      Container(
-                        width: 2,
-                        height: 54,
-                        color: const Color(0xFFCBD5E1),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: _buildStatusBadge(
+                        _designDocuments[i].status,
+                        _documentStatusColor(_designDocuments[i].status),
                       ),
-                  ],
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      _designDocuments[i].location,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                stage.environment,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ),
-                            _buildStatusBadge(
-                              stage.label,
-                              const Color(0xFF0F766E),
-                            ),
-                          ],
+                        IconButton(
+                          onPressed: () => _openDesignDocumentDialog(existing: _designDocuments[i]),
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
+                          tooltip: 'Edit',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          stage.steps,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                            height: 1.45,
-                          ),
+                        IconButton(
+                          onPressed: () => _deleteDesignDocument(_designDocuments[i].id),
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          tooltip: 'Delete',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          );
-        }),
+        ],
       ),
     );
   }
 
-  Widget _buildDashboardPanel({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color accent,
-    required Widget child,
-  }) {
+  Color _documentStatusColor(String status) {
+    switch (status) {
+      case 'Approved':
+        return const Color(0xFF10B981);
+      case 'In review':
+        return const Color(0xFFF59E0B);
+      case 'Deprecated':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  // ─── Shared UI Helpers ─────────────────────────────────────────────────────
+
+  Widget _buildStatusBadge(String label, Color color) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.22)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: accent.withOpacity(0.18)),
-                ),
-                child: Icon(icon, color: accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF64748B),
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          child,
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }
@@ -1724,200 +1450,154 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 
-  Widget _buildHeroMetricPill(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withOpacity(0.72),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
+  // ─── Firestore & Data Methods ──────────────────────────────────────────────
+
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<void> _loadFromFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    if (mounted) setState(() => _isLoading = true);
+    bool shouldSeedDefaults = false;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('design_phase_sections')
+          .doc('backend_design')
+          .get();
+      final architectureWorkspace = await ArchitectureService.load(projectId);
+      final data = doc.data() ?? {};
+      final architecture =
+          Map<String, dynamic>.from(data['architecture'] ?? {});
+      final database = Map<String, dynamic>.from(data['database'] ?? {});
+      shouldSeedDefaults = data.isEmpty && !_didSeedDefaults;
+
+      _suspendSave = true;
+      final components =
+          _ArchitectureComponent.fromList(architecture['components']);
+      final flows = _ArchitectureDataFlow.fromList(architecture['dataFlows']);
+      final documents = _DesignDocument.fromList(architecture['documents']);
+      final entities = _DbEntity.fromList(database['entities']);
+      final fields = _DbField.fromList(database['fields']);
+
+      if (!mounted) return;
+      setState(() {
+        _architectureWorkspace = architectureWorkspace;
+        if (shouldSeedDefaults) {
+          _didSeedDefaults = true;
+          _architectureSummaryController.text = _defaultArchitectureSummary();
+          _databaseSummaryController.text = _defaultDatabaseSummary();
+          _components
+            ..clear()
+            ..addAll(_defaultComponents());
+          _dataFlows
+            ..clear()
+            ..addAll(_defaultDataFlows());
+          _designDocuments
+            ..clear()
+            ..addAll(_defaultDocuments());
+          _entities
+            ..clear()
+            ..addAll(_defaultEntities());
+          _fields
+            ..clear()
+            ..addAll(_defaultFields());
+        } else {
+          _architectureSummaryController.text =
+              architecture['summary']?.toString() ?? '';
+          _databaseSummaryController.text =
+              database['summary']?.toString() ?? '';
+          _components
+            ..clear()
+            ..addAll(components);
+          _dataFlows
+            ..clear()
+            ..addAll(flows);
+          _designDocuments
+            ..clear()
+            ..addAll(documents);
+          _entities
+            ..clear()
+            ..addAll(entities);
+          _fields
+            ..clear()
+            ..addAll(fields);
+        }
+      });
+    } catch (error) {
+      debugPrint('Failed to load backend design data: $error');
+    } finally {
+      _suspendSave = false;
+      if (mounted) setState(() => _isLoading = false);
+      if (shouldSeedDefaults) _scheduleSave();
+    }
   }
 
-  Widget _buildStatusBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.22)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-          color: color,
+  void _scheduleSave() {
+    if (_suspendSave) return;
+    _saveDebounce.run(_saveToFirestore);
+  }
+
+  Future<void> _saveToFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    final payload = {
+      'architecture': {
+        'summary': _architectureSummaryController.text.trim(),
+        'components': _components.map((entry) => entry.toJson()).toList(),
+        'dataFlows': _dataFlows.map((entry) => entry.toJson()).toList(),
+        'documents': _designDocuments.map((entry) => entry.toJson()).toList(),
+      },
+      'database': {
+        'summary': _databaseSummaryController.text.trim(),
+        'entities': _entities.map((entry) => entry.toJson()).toList(),
+        'fields': _fields.map((entry) => entry.toJson()).toList(),
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('design_phase_sections')
+          .doc('backend_design')
+          .set(payload, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Backend Design',
+        action: 'Updated Backend Design data',
+      );
+    } catch (error) {
+      debugPrint('Backend design save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save Backend Design changes right now. Please try again.',
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSystemNodeCard(_SystemNodeItem node) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            node.name,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            node.hostLocation,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF475569),
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildStatusBadge(node.type, const Color(0xFF1D4ED8)),
-              _buildStatusBadge(node.status, _statusColor(node.status)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Approved':
-      case 'Ready':
-      case 'Live':
-      case 'Contract Signed':
-      case 'API Key Ready':
-        return AppSemanticColors.success;
-      case 'In review':
-      case 'In progress':
-      case 'Draft':
-        return AppSemanticColors.warning;
-      default:
-        return const Color(0xFF1D4ED8);
+      );
     }
   }
 
-  Color _vendorStatusColor(String status) {
-    switch (status) {
-      case 'Contract Signed':
-      case 'API Key Ready':
-        return AppSemanticColors.success;
-      case 'Pending':
-      case 'Identified':
-        return AppSemanticColors.warning;
-      default:
-        return const Color(0xFF1D4ED8);
-    }
-  }
-
-  Widget _buildArchitectureCard() {
-    return _CardShell(
-      title: 'Architecture Overview',
-      subtitle: 'Define core services, components, and data flows.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _LabeledTextArea(
-            label: 'Architecture summary',
-            controller: _architectureSummaryController,
-            hintText:
-                'Describe the overall backend topology, critical services, and integration patterns.',
-          ),
-          const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'System components',
-            actionLabel: 'Add component',
-            onAction: _addComponent,
-          ),
-          _buildComponentsTable(),
-          const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Data flows',
-            actionLabel: 'Add flow',
-            onAction: _addDataFlow,
-          ),
-          _buildDataFlowsTable(),
-          const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Design documents',
-            actionLabel: 'Add document',
-            onAction: _addDesignDocument,
-          ),
-          _buildDocumentsTable(),
-        ],
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId = _projectId()?.trim() ?? '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Backend Design',
+        action: action,
+        details: details,
       ),
     );
   }
 
-  Widget _buildDatabaseCard() {
-    return _CardShell(
-      title: 'Database Schema',
-      subtitle: 'Define entities, fields, and constraints.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _LabeledTextArea(
-            label: 'Schema summary',
-            controller: _databaseSummaryController,
-            hintText:
-                'Capture key database decisions, scaling approach, and indexing strategy.',
-          ),
-          const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Entities',
-            actionLabel: 'Add entity',
-            onAction: _addEntity,
-          ),
-          _buildEntitiesTable(),
-          const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Fields',
-            actionLabel: 'Add field',
-            onAction: _addField,
-          ),
-          _buildFieldsTable(),
-        ],
-      ),
-    );
-  }
+  // ─── CRUD Methods ──────────────────────────────────────────────────────────
 
   Future<void> _addComponent() => _openComponentDialog();
 
@@ -2037,6 +1717,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   }
 
   Future<void> _addField() => _openFieldDialog();
+
+  // ─── Dialog Methods ────────────────────────────────────────────────────────
 
   Future<void> _openComponentDialog({_ArchitectureComponent? existing}) async {
     final nameController = TextEditingController(text: existing?.name ?? '');
@@ -2548,6 +2230,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     _logActivity('Deleted field row', details: {'itemId': id});
   }
 
+  // ─── Table Builders ────────────────────────────────────────────────────────
+
   Widget _buildComponentsTable() {
     final columns = [
       const _TableColumnDef('Component', 200),
@@ -2614,206 +2298,6 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onPressed: () => _openComponentDialog(existing: entry),
               ),
               _DeleteCell(onPressed: () => _deleteComponent(entry.id)),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDataFlowsTable() {
-    final columns = [
-      const _TableColumnDef('Source', 180),
-      const _TableColumnDef('Destination', 180),
-      const _TableColumnDef('Protocol', 140),
-      const _TableColumnDef('Notes', 240),
-      const _TableColumnDef('', 56),
-      const _TableColumnDef('', 56),
-    ];
-
-    if (_dataFlows.isEmpty) {
-      return const _InlineEmptyState(
-        title: 'No data flows yet',
-        message: 'Map service-to-service data exchange paths.',
-      );
-    }
-
-    return _EditableTable(
-      columns: columns,
-      rows: [
-        for (final entry in _dataFlows)
-          _EditableRow(
-            key: ValueKey(entry.id),
-            columns: columns,
-            cells: [
-              _TextCell(
-                value: entry.source,
-                fieldKey: '${entry.id}_source',
-                hintText: 'Source',
-                onChanged: (value) =>
-                    _updateDataFlow(entry.copyWith(source: value)),
-              ),
-              _TextCell(
-                value: entry.destination,
-                fieldKey: '${entry.id}_destination',
-                hintText: 'Destination',
-                onChanged: (value) =>
-                    _updateDataFlow(entry.copyWith(destination: value)),
-              ),
-              _DropdownCell(
-                value: entry.protocol,
-                fieldKey: '${entry.id}_protocol',
-                options: _protocolOptions,
-                onChanged: (value) =>
-                    _updateDataFlow(entry.copyWith(protocol: value)),
-              ),
-              _TextCell(
-                value: entry.notes,
-                fieldKey: '${entry.id}_notes',
-                hintText: 'Notes',
-                maxLines: 2,
-                onChanged: (value) =>
-                    _updateDataFlow(entry.copyWith(notes: value)),
-              ),
-              _EditCell(
-                onPressed: () => _openDataFlowDialog(existing: entry),
-              ),
-              _DeleteCell(onPressed: () => _deleteDataFlow(entry.id)),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDocumentsTable() {
-    final columns = [
-      const _TableColumnDef('Document', 200),
-      const _TableColumnDef('Description', 220),
-      const _TableColumnDef('Owner', 160),
-      const _TableColumnDef('Status', 140),
-      const _TableColumnDef('Location', 200),
-      const _TableColumnDef('', 56),
-      const _TableColumnDef('', 56),
-    ];
-
-    if (_designDocuments.isEmpty) {
-      return const _InlineEmptyState(
-        title: 'No design documents yet',
-        message: 'Add architecture decisions, diagrams, and references.',
-      );
-    }
-
-    return _EditableTable(
-      columns: columns,
-      rows: [
-        for (final entry in _designDocuments)
-          _EditableRow(
-            key: ValueKey(entry.id),
-            columns: columns,
-            cells: [
-              _TextCell(
-                value: entry.title,
-                fieldKey: '${entry.id}_title',
-                hintText: 'Document',
-                onChanged: (value) =>
-                    _updateDesignDocument(entry.copyWith(title: value)),
-              ),
-              _TextCell(
-                value: entry.description,
-                fieldKey: '${entry.id}_description',
-                hintText: 'Description',
-                maxLines: 2,
-                onChanged: (value) =>
-                    _updateDesignDocument(entry.copyWith(description: value)),
-              ),
-              _DropdownCell(
-                value: entry.owner,
-                fieldKey: '${entry.id}_owner',
-                options: _ownerOptions(currentValue: entry.owner),
-                onChanged: (value) =>
-                    _updateDesignDocument(entry.copyWith(owner: value)),
-              ),
-              _DropdownCell(
-                value: entry.status,
-                fieldKey: '${entry.id}_status',
-                options: _documentStatuses,
-                onChanged: (value) =>
-                    _updateDesignDocument(entry.copyWith(status: value)),
-              ),
-              _TextCell(
-                value: entry.location,
-                fieldKey: '${entry.id}_location',
-                hintText: 'Link or path',
-                onChanged: (value) =>
-                    _updateDesignDocument(entry.copyWith(location: value)),
-              ),
-              _EditCell(
-                onPressed: () => _openDesignDocumentDialog(existing: entry),
-              ),
-              _DeleteCell(onPressed: () => _deleteDesignDocument(entry.id)),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildEntitiesTable() {
-    final columns = [
-      const _TableColumnDef('Entity/Table', 200),
-      const _TableColumnDef('Primary key', 160),
-      const _TableColumnDef('Owner', 160),
-      const _TableColumnDef('Description', 240),
-      const _TableColumnDef('', 56),
-      const _TableColumnDef('', 56),
-    ];
-
-    if (_entities.isEmpty) {
-      return const _InlineEmptyState(
-        title: 'No entities yet',
-        message: 'Add core tables or collections.',
-      );
-    }
-
-    return _EditableTable(
-      columns: columns,
-      rows: [
-        for (final entry in _entities)
-          _EditableRow(
-            key: ValueKey(entry.id),
-            columns: columns,
-            cells: [
-              _TextCell(
-                value: entry.name,
-                fieldKey: '${entry.id}_name',
-                hintText: 'Entity',
-                onChanged: (value) =>
-                    _updateEntity(entry.copyWith(name: value)),
-              ),
-              _TextCell(
-                value: entry.primaryKey,
-                fieldKey: '${entry.id}_pk',
-                hintText: 'Primary key',
-                onChanged: (value) =>
-                    _updateEntity(entry.copyWith(primaryKey: value)),
-              ),
-              _DropdownCell(
-                value: entry.owner,
-                fieldKey: '${entry.id}_owner',
-                options: _ownerOptions(currentValue: entry.owner),
-                onChanged: (value) =>
-                    _updateEntity(entry.copyWith(owner: value)),
-              ),
-              _TextCell(
-                value: entry.description,
-                fieldKey: '${entry.id}_description',
-                hintText: 'Description',
-                maxLines: 2,
-                onChanged: (value) =>
-                    _updateEntity(entry.copyWith(description: value)),
-              ),
-              _EditCell(
-                onPressed: () => _openEntityDialog(existing: entry),
-              ),
-              _DeleteCell(onPressed: () => _deleteEntity(entry.id)),
             ],
           ),
       ],
@@ -2891,6 +2375,81 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 }
+
+// ─── Panel Shell Widget ──────────────────────────────────────────────────────
+
+class _PanelShell extends StatelessWidget {
+  const _PanelShell({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Stat Card Data ──────────────────────────────────────────────────────────
+
+class _StatCardData {
+  const _StatCardData(this.label, this.value, this.supporting, this.color);
+
+  final String label;
+  final String value;
+  final String supporting;
+  final Color color;
+}
+
+// ─── Snapshot & Data Model Classes ───────────────────────────────────────────
 
 class _BackendInfrastructureSnapshot {
   const _BackendInfrastructureSnapshot({
@@ -3507,99 +3066,6 @@ class _PipelineStageItem {
   final String steps;
 }
 
-class _CardShell extends StatelessWidget {
-  const _CardShell({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle,
-                        style:
-                            TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final String title;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(title,
-              style:
-                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        ),
-        TextButton.icon(
-          onPressed: onAction,
-          icon: const Icon(Icons.add, size: 16),
-          label: Text(actionLabel),
-          style: TextButton.styleFrom(
-            foregroundColor: LightModeColors.lightPrimary,
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            minimumSize: const Size(0, 32),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _LabeledTextArea extends StatelessWidget {
   const _LabeledTextArea({
     required this.label,
@@ -3638,6 +3104,42 @@ class _LabeledTextArea extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final String title;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(title,
+              style:
+                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        ),
+        TextButton.icon(
+          onPressed: onAction,
+          icon: const Icon(Icons.add, size: 16),
+          label: Text(actionLabel),
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF2563EB),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: const Size(0, 32),
+          ),
         ),
       ],
     );

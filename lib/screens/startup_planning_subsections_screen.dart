@@ -2,14 +2,11 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
-import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -19,6 +16,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/unified_phase_header.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -465,13 +463,9 @@ class _StartUpPlanningDetailScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _TopHeader(
+                        UnifiedPhaseHeader(
                           title: widget.config.title,
-                          onBack: () => PlanningPhaseNavigation.goToPrevious(
-                            context,
-                            widget.config.checkpoint,
-                          ),
-                          onForward: () => PlanningPhaseNavigation.goToNext(
+                          onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
                             context,
                             widget.config.checkpoint,
                           ),
@@ -1079,10 +1073,6 @@ String? _encodeDate(DateTime? value)=>value?.toIso8601String();
 int _percent(List<_ChecklistEntry> items){ final active=items.where((i)=>i.title.trim().isNotEmpty).toList(); if(active.isEmpty) return 0; return ((active.where((i)=>i.done).length/active.length)*100).round(); }
 Color _metricColor(int percent){ if(percent>=80) return const Color(0xFF10B981); if(percent>=50) return const Color(0xFFF59E0B); return const Color(0xFFEF4444); }
 String _formatDate(DateTime? value){ if(value==null) return 'Not set'; return DateFormat('yyyy-MM-dd').format(value); }
-
-class _TopHeader extends StatelessWidget { const _TopHeader({required this.title,required this.onBack,required this.onForward}); final String title; final VoidCallback onBack; final VoidCallback onForward; @override Widget build(BuildContext context)=>Row(children:[_CircleIconButton(icon:Icons.arrow_back_ios_new_rounded,onTap:onBack),const SizedBox(width:12),_CircleIconButton(icon:Icons.arrow_forward_ios_rounded,onTap:onForward),const SizedBox(width:16),Expanded(child:Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w700,color:Color(0xFF111827)))),const _UserChip()]); }
-class _CircleIconButton extends StatelessWidget { const _CircleIconButton({required this.icon,this.onTap}); final IconData icon; final VoidCallback? onTap; @override Widget build(BuildContext context)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(18),child:Container(width:36,height:36,decoration:BoxDecoration(color:Colors.white,shape:BoxShape.circle,border:Border.all(color:const Color(0xFFE5E7EB))),child:Icon(icon,size:16,color:const Color(0xFF6B7280)))); }
-class _UserChip extends StatelessWidget { const _UserChip(); @override Widget build(BuildContext context){ final user=FirebaseAuth.instance.currentUser; final displayName=FirebaseAuthService.displayNameOrEmail(fallback:'User'); final email=user?.email??''; return StreamBuilder<bool>(stream:UserService.watchAdminStatus(),builder:(context,snapshot){ final isAdmin=snapshot.data??UserService.isAdminEmail(email); final role=isAdmin?'Admin':'Member'; return Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:const Color(0xFFE5E7EB))),child:Row(mainAxisSize:MainAxisSize.min,children:[CircleAvatar(radius:16,backgroundColor:const Color(0xFFE5E7EB),backgroundImage:user?.photoURL!=null?NetworkImage(user!.photoURL!):null,child:user?.photoURL==null?Text(displayName.isNotEmpty?displayName[0].toUpperCase():'U',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:Color(0xFF374151))):null),const SizedBox(width:8),Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[Text(displayName,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600)),Text(role,style:const TextStyle(fontSize:10,color:Color(0xFF6B7280)))]) ]));}); } }
 
 class _ReadinessHero extends StatelessWidget { const _ReadinessHero({required this.readiness,required this.blockers,required this.owner,required this.lastSavedLabel,required this.isSaving,required this.isUploading}); final int readiness; final List<String> blockers; final String owner; final String lastSavedLabel; final bool isSaving; final bool isUploading; @override Widget build(BuildContext context){ final color=_metricColor(readiness); return Container(width:double.infinity,padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:const Color(0xFFE5E7EB))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Container(width:64,height:64,decoration:BoxDecoration(color:color.withOpacity(0.12),borderRadius:BorderRadius.circular(20)),child:Center(child:Text('$readiness%',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:color)))),const SizedBox(width:16),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Document readiness',style:TextStyle(fontSize:16,fontWeight:FontWeight.w700)),const SizedBox(height:6),Text(blockers.isEmpty?'No blocking gaps are currently detected.':blockers.first,style:const TextStyle(fontSize:13,color:Color(0xFF4B5563),height:1.4))])),_StatusChip(label:owner.trim().isEmpty?'Owner not set':owner,color:const Color(0xFF2563EB),background:const Color(0xFFDBEAFE))]),const SizedBox(height:14),Wrap(spacing:8,runSpacing:8,children:[_StatusChip(label:'Saved $lastSavedLabel',color:const Color(0xFF16A34A),background:const Color(0xFFECFDF3)),if(isSaving) const _StatusChip(label:'Saving...',color:Color(0xFF64748B),background:Color(0xFFE2E8F0)),if(isUploading) const _StatusChip(label:'Uploading attachment...',color:Color(0xFF0F172A),background:Color(0xFFE2E8F0)),_StatusChip(label:'${blockers.length} blockers',color:blockers.isEmpty?const Color(0xFF16A34A):const Color(0xFFB45309),background:blockers.isEmpty?const Color(0xFFECFDF3):const Color(0xFFFEF3C7))]),if(blockers.isNotEmpty)...[const SizedBox(height:12),for(final blocker in blockers.take(4)) Padding(padding:const EdgeInsets.only(bottom:4),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[const Padding(padding:EdgeInsets.only(top:5),child:Icon(Icons.report_problem_outlined,size:14,color:Color(0xFFF59E0B))),const SizedBox(width:8),Expanded(child:Text(blocker,style:const TextStyle(fontSize:12,color:Color(0xFF4B5563),height:1.4)))]))]])); } }
 

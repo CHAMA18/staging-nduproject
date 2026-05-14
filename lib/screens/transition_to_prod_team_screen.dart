@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/unified_phase_header.dart';
 
 class TransitionToProdTeamScreen extends StatefulWidget {
   const TransitionToProdTeamScreen({super.key});

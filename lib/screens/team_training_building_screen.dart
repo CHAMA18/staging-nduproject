@@ -1395,7 +1395,7 @@ class _TeamTrainingAndBuildingScreenState
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         withData: true,
         allowedExtensions: const [

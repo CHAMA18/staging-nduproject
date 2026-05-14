@@ -200,7 +200,7 @@ class _StartUpPlanningDetailScreenState
     }
 
     try {
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
         withData: true,
       );

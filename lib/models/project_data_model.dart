@@ -1185,6 +1185,50 @@ class ProjectDataModel {
     );
   }
 
+  /// ── P2.5: Compute project-level aggregate EVM from control accounts ──
+  /// Rolls up BAC, EV, AC, and PV from all [controlAccounts], then derives
+  /// CPI, SPI, EAC, ETC, VAC, CV, SV, and TCPI using standard EVM formulas.
+  ///
+  /// Call this after [ControlAccountService.recalculateAll] has updated
+  /// individual control account EVM metrics. This method mutates the aggregate
+  /// fields on this model in-place and updates [evmLastRecalculated].
+  ///
+  /// Returns `this` for chaining convenience.
+  ProjectDataModel computeAggregateEvm() {
+    double aggBac = 0, aggEv = 0, aggAc = 0, aggPv = 0;
+    for (final ca in controlAccounts) {
+      aggBac += ca.budgetAtCompletion;
+      aggEv += ca.earnedValue;
+      aggAc += ca.actualCost;
+      // Sum planned value from period data
+      final now = DateTime.now();
+      final currentKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      for (final entry in ca.plannedValueByPeriod.entries) {
+        if (entry.key.compareTo(currentKey) <= 0) {
+          aggPv += entry.value;
+        }
+      }
+    }
+
+    aggregateBac = aggBac;
+    aggregatePlannedValue = aggPv;
+    aggregateEarnedValue = aggEv;
+    aggregateActualCost = aggAc;
+    aggregateCpi = aggAc > 0 ? aggEv / aggAc : 1.0;
+    aggregateSpi = aggPv > 0 ? aggEv / aggPv : 1.0;
+    aggregateEac = aggregateCpi > 0 ? aggBac / aggregateCpi : aggBac;
+    aggregateEtc = aggregateEac - aggAc;
+    aggregateVac = aggBac - aggregateEac;
+    aggregateCv = aggEv - aggAc;
+    aggregateSv = aggEv - aggPv;
+    aggregateTcpi =
+        (aggBac - aggAc) > 0 ? (aggBac - aggEv) / (aggBac - aggAc) : 1.0;
+    evmLastRecalculated = DateTime.now();
+
+    return this;
+  }
+
   /// Add a field value to history for undo functionality
   void addFieldToHistory(String fieldName, String value,
       {bool isAiGenerated = false}) {

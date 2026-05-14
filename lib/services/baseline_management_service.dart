@@ -123,6 +123,7 @@ class BaselineManagementService {
     required String projectId,
     required String author,
     required ProjectDataModel projectData,
+    List<ScopeTrackingItem>? scopeItems,
     String label = '',
     String description = '',
     String triggerSource = 'manual',
@@ -172,16 +173,19 @@ class BaselineManagementService {
     final aggTcpii = (aggBac - aggAc) > 0 ? (aggBac - aggEv) / (aggBac - aggAc) : 1.0;
 
     // ── P2.1: Scope tracking metrics ──
-    final scopeItems = <ScopeTrackingItem>[]; // populated from execution service
-    final totalScopeItems = scopeItems.length;
-    final baselineScopeItems = scopeItems.where((s) => s.isBaseline).length;
-    final scopeCreepItems = scopeItems.where((s) => !s.isBaseline).length;
+    final effectiveScopeItems = scopeItems ?? <ScopeTrackingItem>[];
+    final totalScopeItems = effectiveScopeItems.length;
+    final baselineScopeItems =
+        effectiveScopeItems.where((s) => s.isBaseline).length;
+    final scopeCreepItems =
+        effectiveScopeItems.where((s) => !s.isBaseline).length;
     final scopeGrowthPercent = baselineScopeItems > 0
         ? (scopeCreepItems / baselineScopeItems) * 100
         : 0;
 
     // ── P2.1: Capture structural snapshots ──
-    final caSnapshots = controlAccounts.map((ca) => {
+    // Control Account snapshots include full EVM + period data for diff/restore
+    final caSnapshots = controlAccounts.map((ca) => <String, dynamic>{
       'id': ca.id,
       'wbsId': ca.wbsId,
       'obsId': ca.obsId,
@@ -193,11 +197,24 @@ class BaselineManagementService {
       'cpi': ca.cpi,
       'spi': ca.spi,
       'eac': ca.eac,
+      'etc': ca.etc,
+      'vac': ca.vac,
+      'cv': ca.cv,
+      'sv': ca.sv,
+      'tcpii': ca.tcpii,
+      'tcpis': ca.tcpis,
+      'riskAdjustment': ca.riskAdjustment,
       'plannedValueByPeriod': ca.plannedValueByPeriod,
+      'earnedValueByPeriod': ca.earnedValueByPeriod,
+      'actualCostByPeriod': ca.actualCostByPeriod,
+      'affectedChangeRequestIds': ca.affectedChangeRequestIds,
+      'baselineVersionId': ca.baselineVersionId,
     }).toList();
 
+    // WBS snapshots include WBS Dictionary fields for full traceability
     final wbsSnapshots = _flattenWbsTree(projectData.wbsTree);
-    final cbsSnapshots = projectData.cbsElements.map((cbs) => {
+    // CBS snapshots include full financial data for budget baseline comparison
+    final cbsSnapshots = projectData.cbsElements.map((cbs) => <String, dynamic>{
       'id': cbs.id,
       'code': cbs.code,
       'name': cbs.name,
@@ -205,13 +222,29 @@ class BaselineManagementService {
       'budgetAmount': cbs.budgetAmount,
       'committedAmount': cbs.committedAmount,
       'spentAmount': cbs.spentAmount,
+      'contingencyAmount': cbs.contingencyAmount,
+      'isManagementReserve': cbs.isManagementReserve,
+      'currency': cbs.currency,
+      'wbsId': cbs.wbsId,
+      'obsId': cbs.obsId,
+      'controlAccountId': cbs.controlAccountId,
     }).toList();
-    final obsSnapshots = projectData.obsElements.map((obs) => {
+    // OBS snapshots include org structure and capacity for resource baseline
+    final obsSnapshots = projectData.obsElements.map((obs) => <String, dynamic>{
       'id': obs.id,
       'name': obs.name,
       'parentObsId': obs.parentObsId,
       'manager': obs.manager,
       'role': obs.role,
+      'department': obs.department,
+      'responsibility': obs.responsibility,
+      'costCenter': obs.costCenter,
+      'budgetAuthority': obs.budgetAuthority,
+      'capacityFte': obs.capacityFte,
+      'allocatedFte': obs.allocatedFte,
+      'wbsId': obs.wbsId,
+      'cbsId': obs.cbsId,
+      'controlAccountId': obs.controlAccountId,
     }).toList();
     final scheduleSnapshots = projectData.scheduleActivities.map((a) => {
       'id': a.id,
@@ -292,6 +325,7 @@ class BaselineManagementService {
   }
 
   /// Flatten the WBS tree into a list of snapshots for storage.
+  /// Includes WBS Dictionary fields (P1.1) for full traceability on restore.
   static List<Map<String, dynamic>> _flattenWbsTree(List<WorkItem> tree) {
     final result = <Map<String, dynamic>>[];
     void walk(List<WorkItem> items) {
@@ -302,6 +336,12 @@ class BaselineManagementService {
           'title': item.title,
           'parentId': item.parentId,
           'status': item.status,
+          'weight': item.weight,
+          'cbsId': item.cbsId,
+          'obsId': item.obsId,
+          'deliverableDescription': item.deliverableDescription,
+          'acceptanceCriteria': item.acceptanceCriteria,
+          'workPackageDefinition': item.workPackageDefinition,
         });
         walk(item.children);
       }
@@ -348,7 +388,9 @@ class BaselineManagementService {
       }
     }
 
-    // Structural change detection: WBS items added/removed
+    // ── Structural change detection ──
+
+    // WBS items added/removed
     final prevWbsIds = previous.wbsSnapshots.map((e) => e['id']?.toString()).toSet();
     final currWbsIds = current.wbsSnapshots.map((e) => e['id']?.toString()).toSet();
     final addedWbs = currWbsIds.difference(prevWbsIds).length;
@@ -366,6 +408,198 @@ class BaselineManagementService {
       diffs['workPackageChanges'] = {'added': addedWps, 'removed': removedWps};
     }
 
+    // Control Account changes (budget/EVM changes)
+    final prevCaMap = {for (final ca in previous.controlAccountSnapshots)
+      ca['id']?.toString(): ca};
+    final currCaMap = {for (final ca in current.controlAccountSnapshots)
+      ca['id']?.toString(): ca};
+    final caChanges = <String, dynamic>{};
+    for (final id in currCaMap.keys) {
+      final prev = prevCaMap[id];
+      if (prev == null) continue;
+      final curr = currCaMap[id]!;
+      final prevBac = (prev['bac'] as num?)?.toDouble() ?? 0;
+      final currBac = (curr['bac'] as num?)?.toDouble() ?? 0;
+      if (prevBac != currBac) {
+        caChanges[id] = {
+          'bacChange': currBac - prevBac,
+          'previous': prevBac,
+          'current': currBac,
+        };
+      }
+    }
+    final addedCas = currCaMap.keys.toSet().difference(prevCaMap.keys.toSet()).length;
+    final removedCas = prevCaMap.keys.toSet().difference(currCaMap.keys.toSet()).length;
+    if (caChanges.isNotEmpty || addedCas > 0 || removedCas > 0) {
+      diffs['controlAccountChanges'] = {
+        'added': addedCas,
+        'removed': removedCas,
+        'modified': caChanges.length,
+        'details': caChanges,
+      };
+    }
+
+    // CBS budget changes
+    final prevCbsMap = {for (final cbs in previous.cbsSnapshots)
+      cbs['id']?.toString(): cbs};
+    final currCbsMap = {for (final cbs in current.cbsSnapshots)
+      cbs['id']?.toString(): cbs};
+    double cbsBudgetDelta = 0;
+    for (final id in currCbsMap.keys) {
+      final prev = prevCbsMap[id];
+      if (prev == null) continue;
+      final prevBudget = (prev['budgetAmount'] as num?)?.toDouble() ?? 0;
+      final currBudget = (currCbsMap[id]!['budgetAmount'] as num?)?.toDouble() ?? 0;
+      cbsBudgetDelta += currBudget - prevBudget;
+    }
+    final addedCbs = currCbsMap.keys.toSet().difference(prevCbsMap.keys.toSet()).length;
+    final removedCbs = prevCbsMap.keys.toSet().difference(currCbsMap.keys.toSet()).length;
+    if (cbsBudgetDelta != 0 || addedCbs > 0 || removedCbs > 0) {
+      diffs['cbsChanges'] = {
+        'added': addedCbs,
+        'removed': removedCbs,
+        'budgetDelta': cbsBudgetDelta,
+      };
+    }
+
+    // OBS changes
+    final prevObsIds = previous.obsSnapshots.map((e) => e['id']?.toString()).toSet();
+    final currObsIds = current.obsSnapshots.map((e) => e['id']?.toString()).toSet();
+    final addedObs = currObsIds.difference(prevObsIds).length;
+    final removedObs = prevObsIds.difference(currObsIds).length;
+    if (addedObs > 0 || removedObs > 0) {
+      diffs['obsChanges'] = {'added': addedObs, 'removed': removedObs};
+    }
+
     return diffs;
+  }
+
+  /// ── P2.1: Restore project data from a baseline snapshot ──
+  /// Reconstructs control accounts, CBS/OBS elements, and WBS data from
+  /// a stored [BaselineVersion] snapshot. Returns a map of lists that can
+  /// be applied to [ProjectDataModel] to roll back to a prior baseline.
+  ///
+  /// The caller is responsible for persisting the restored data to Firestore.
+  static Map<String, dynamic> restoreFromSnapshot(BaselineVersion baseline) {
+    // Reconstruct ControlAccount list from snapshots
+    final restoredControlAccounts = baseline.controlAccountSnapshots.map((ca) {
+      return ControlAccount(
+        id: ca['id']?.toString() ?? '',
+        wbsId: ca['wbsId']?.toString() ?? '',
+        obsId: ca['obsId']?.toString() ?? '',
+        cbsId: ca['cbsId']?.toString() ?? '',
+        title: ca['title']?.toString() ?? '',
+        budgetAtCompletion: (ca['bac'] as num?)?.toDouble() ?? 0,
+        earnedValue: (ca['earnedValue'] as num?)?.toDouble() ?? 0,
+        actualCost: (ca['actualCost'] as num?)?.toDouble() ?? 0,
+        cpi: (ca['cpi'] as num?)?.toDouble() ?? 1.0,
+        spi: (ca['spi'] as num?)?.toDouble() ?? 1.0,
+        eac: (ca['eac'] as num?)?.toDouble() ?? 0,
+        etc: (ca['etc'] as num?)?.toDouble() ?? 0,
+        vac: (ca['vac'] as num?)?.toDouble() ?? 0,
+        cv: (ca['cv'] as num?)?.toDouble() ?? 0,
+        sv: (ca['sv'] as num?)?.toDouble() ?? 0,
+        tcpii: (ca['tcpii'] as num?)?.toDouble() ?? 0,
+        tcpis: (ca['tcpis'] as num?)?.toDouble() ?? 0,
+        riskAdjustment: (ca['riskAdjustment'] as num?)?.toDouble() ?? 0,
+        plannedValueByPeriod: _parsePeriodMap(ca['plannedValueByPeriod']),
+        earnedValueByPeriod: _parsePeriodMap(ca['earnedValueByPeriod']),
+        actualCostByPeriod: _parsePeriodMap(ca['actualCostByPeriod']),
+        affectedChangeRequestIds:
+            (ca['affectedChangeRequestIds'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+                [],
+        baselineVersionId: ca['baselineVersionId']?.toString() ?? '',
+      );
+    }).toList();
+
+    // Reconstruct CbsElement list from snapshots
+    final restoredCbsElements = baseline.cbsSnapshots.map((cbs) {
+      return CbsElement(
+        id: cbs['id']?.toString() ?? '',
+        code: cbs['code']?.toString() ?? '',
+        name: cbs['name']?.toString() ?? '',
+        parentCbsId: cbs['parentCbsId']?.toString() ?? '',
+        budgetAmount: (cbs['budgetAmount'] as num?)?.toDouble() ?? 0,
+        committedAmount: (cbs['committedAmount'] as num?)?.toDouble() ?? 0,
+        spentAmount: (cbs['spentAmount'] as num?)?.toDouble() ?? 0,
+        contingencyAmount: (cbs['contingencyAmount'] as num?)?.toDouble() ?? 0,
+        isManagementReserve: cbs['isManagementReserve'] == true,
+        currency: cbs['currency']?.toString() ?? 'USD',
+        wbsId: cbs['wbsId']?.toString() ?? '',
+        obsId: cbs['obsId']?.toString() ?? '',
+        controlAccountId: cbs['controlAccountId']?.toString() ?? '',
+      );
+    }).toList();
+
+    // Reconstruct ObsElement list from snapshots
+    final restoredObsElements = baseline.obsSnapshots.map((obs) {
+      return ObsElement(
+        id: obs['id']?.toString() ?? '',
+        name: obs['name']?.toString() ?? '',
+        parentObsId: obs['parentObsId']?.toString() ?? '',
+        manager: obs['manager']?.toString() ?? '',
+        role: obs['role']?.toString() ?? '',
+        department: obs['department']?.toString() ?? '',
+        responsibility: obs['responsibility']?.toString() ?? '',
+        costCenter: obs['costCenter']?.toString() ?? '',
+        budgetAuthority: (obs['budgetAuthority'] as num?)?.toDouble() ?? 0,
+        capacityFte: (obs['capacityFte'] as num?)?.toDouble() ?? 0,
+        allocatedFte: (obs['allocatedFte'] as num?)?.toDouble() ?? 0,
+        wbsId: obs['wbsId']?.toString() ?? '',
+        cbsId: obs['cbsId']?.toString() ?? '',
+        controlAccountId: obs['controlAccountId']?.toString() ?? '',
+      );
+    }).toList();
+
+    // Reconstruct WorkPackage list from snapshots
+    final restoredWorkPackages = baseline.workPackageSnapshots.map((wp) {
+      return WorkPackage(
+        id: wp['id']?.toString() ?? '',
+        title: wp['title']?.toString() ?? '',
+        budgetedCost: (wp['budgetedCost'] as num?)?.toDouble() ?? 0,
+        actualCost: (wp['actualCost'] as num?)?.toDouble() ?? 0,
+        status: wp['status']?.toString() ?? 'planned',
+        percentComplete: (wp['percentComplete'] as num?)?.toDouble() ?? 0,
+      );
+    }).toList();
+
+    // Reconstruct ScheduleActivity list from snapshots
+    final restoredScheduleActivities = baseline.scheduleActivitySnapshots.map((a) {
+      return ScheduleActivity(
+        id: a['id']?.toString() ?? '',
+        title: a['title']?.toString() ?? '',
+        startDate: a['startDate']?.toString() ?? '',
+        dueDate: a['dueDate']?.toString() ?? '',
+        status: a['status']?.toString() ?? 'not_started',
+        isCriticalPath: a['isCriticalPath'] == true,
+      );
+    }).toList();
+
+    return {
+      'controlAccounts': restoredControlAccounts,
+      'cbsElements': restoredCbsElements,
+      'obsElements': restoredObsElements,
+      'workPackages': restoredWorkPackages,
+      'scheduleActivities': restoredScheduleActivities,
+      'wbsSnapshots': baseline.wbsSnapshots,
+      // Aggregate EVM from baseline
+      'aggregateBac': baseline.budgetAtCompletion,
+      'aggregateCpi': baseline.cpi,
+      'aggregateSpi': baseline.spi,
+      'aggregateEac': baseline.eac,
+    };
+  }
+
+  /// Parse a period map (e.g. {'2024-01': 5000.0}) from a JSON snapshot.
+  static Map<String, double> _parsePeriodMap(dynamic raw) {
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(
+            k.toString(),
+            v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0,
+          ));
+    }
+    return {};
   }
 }

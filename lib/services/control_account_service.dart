@@ -82,7 +82,7 @@ class ControlAccountService {
     final double ac =
         workPackages.fold<double>(0, (s, wp) => s + wp.actualCost);
 
-    final double pvAtNow = _computePlannedValueToDate(
+    final double pvAtNow = computePlannedValueToDate(
       account.plannedValueByPeriod,
     );
 
@@ -115,7 +115,10 @@ class ControlAccountService {
   }
 
   /// Sum planned values for periods up to the current month.
-  static double _computePlannedValueToDate(Map<String, double> pvByPeriod) {
+  ///
+  /// Public so it can be used by [BaselineManagementService] and other
+  /// services that need PV-to-date without a full [recalculateAll].
+  static double computePlannedValueToDate(Map<String, double> pvByPeriod) {
     final now = DateTime.now();
     final currentKey =
         '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -124,6 +127,18 @@ class ControlAccountService {
       if (entry.key.compareTo(currentKey) <= 0) {
         total += entry.value;
       }
+    }
+    return total;
+  }
+
+  /// Sum planned values across all control accounts up to the current month.
+  /// Convenience method that applies [computePlannedValueToDate] to each
+  /// control account's [plannedValueByPeriod] and returns the aggregate.
+  static double computeAggregatePlannedValueToDate(
+      List<ControlAccount> accounts) {
+    double total = 0;
+    for (final account in accounts) {
+      total += computePlannedValueToDate(account.plannedValueByPeriod);
     }
     return total;
   }

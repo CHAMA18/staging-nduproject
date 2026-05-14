@@ -87,6 +87,26 @@ class ChangeRequest {
   final String? contractImpact;
   final String? agileImpact;
 
+  // ── P2.3: Computed impact on project controls ──
+  /// Control Account IDs affected by this change request.
+  final List<String> affectedControlAccountIds;
+  /// WBS element IDs affected by this change request.
+  final List<String> affectedWbsIds;
+  /// CBS element IDs affected by this change request.
+  final List<String> affectedCbsIds;
+  /// OBS element IDs affected by this change request.
+  final List<String> affectedObsIds;
+  /// Baseline version that this change request modifies.
+  final String? baselineVersionId;
+  /// Computed EVM impact: projected CPI change after this CR.
+  final double? projectedCpiChange;
+  /// Computed EVM impact: projected SPI change after this CR.
+  final double? projectedSpiChange;
+  /// Computed EVM impact: projected EAC change after this CR.
+  final double? projectedEacChange;
+  /// Whether EVM recalculation has been applied after approval.
+  final bool evmRecalculated;
+
   // Multi-level approval
   final List<ApprovalStep> approvalSteps;
 
@@ -111,8 +131,21 @@ class ChangeRequest {
     this.riskExposure,
     this.contractImpact,
     this.agileImpact,
+    List<String>? affectedControlAccountIds,
+    List<String>? affectedWbsIds,
+    List<String>? affectedCbsIds,
+    List<String>? affectedObsIds,
+    this.baselineVersionId,
+    this.projectedCpiChange,
+    this.projectedSpiChange,
+    this.projectedEacChange,
+    this.evmRecalculated = false,
     List<ApprovalStep>? approvalSteps,
-  }) : approvalSteps = approvalSteps ?? [];
+  }) : approvalSteps = approvalSteps ?? [],
+       affectedControlAccountIds = affectedControlAccountIds ?? [],
+       affectedWbsIds = affectedWbsIds ?? [],
+       affectedCbsIds = affectedCbsIds ?? [],
+       affectedObsIds = affectedObsIds ?? [];
 
   ChangeRequest copyWith({
     String? title,
@@ -129,6 +162,15 @@ class ChangeRequest {
     String? riskExposure,
     String? contractImpact,
     String? agileImpact,
+    List<String>? affectedControlAccountIds,
+    List<String>? affectedWbsIds,
+    List<String>? affectedCbsIds,
+    List<String>? affectedObsIds,
+    String? baselineVersionId,
+    double? projectedCpiChange,
+    double? projectedSpiChange,
+    double? projectedEacChange,
+    bool? evmRecalculated,
     List<ApprovalStep>? approvalSteps,
   }) {
     return ChangeRequest(
@@ -152,6 +194,15 @@ class ChangeRequest {
       riskExposure: riskExposure ?? this.riskExposure,
       contractImpact: contractImpact ?? this.contractImpact,
       agileImpact: agileImpact ?? this.agileImpact,
+      affectedControlAccountIds: affectedControlAccountIds ?? List.from(this.affectedControlAccountIds),
+      affectedWbsIds: affectedWbsIds ?? List.from(this.affectedWbsIds),
+      affectedCbsIds: affectedCbsIds ?? List.from(this.affectedCbsIds),
+      affectedObsIds: affectedObsIds ?? List.from(this.affectedObsIds),
+      baselineVersionId: baselineVersionId ?? this.baselineVersionId,
+      projectedCpiChange: projectedCpiChange ?? this.projectedCpiChange,
+      projectedSpiChange: projectedSpiChange ?? this.projectedSpiChange,
+      projectedEacChange: projectedEacChange ?? this.projectedEacChange,
+      evmRecalculated: evmRecalculated ?? this.evmRecalculated,
       approvalSteps: approvalSteps ?? List.from(this.approvalSteps),
     );
   }
@@ -240,6 +291,33 @@ class ChangeRequest {
       riskExposure: data['riskExposure']?.toString(),
       contractImpact: data['contractImpact']?.toString(),
       agileImpact: data['agileImpact']?.toString(),
+      affectedControlAccountIds: (data['affectedControlAccountIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      affectedWbsIds: (data['affectedWbsIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      affectedCbsIds: (data['affectedCbsIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      affectedObsIds: (data['affectedObsIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      baselineVersionId: data['baselineVersionId']?.toString(),
+      projectedCpiChange: data['projectedCpiChange'] is num
+          ? (data['projectedCpiChange'] as num).toDouble()
+          : null,
+      projectedSpiChange: data['projectedSpiChange'] is num
+          ? (data['projectedSpiChange'] as num).toDouble()
+          : null,
+      projectedEacChange: data['projectedEacChange'] is num
+          ? (data['projectedEacChange'] as num).toDouble()
+          : null,
+      evmRecalculated: data['evmRecalculated'] == true,
       approvalSteps: parseApprovalSteps(data['approvalSteps']),
     );
   }
@@ -265,6 +343,15 @@ class ChangeRequest {
       'riskExposure': riskExposure,
       'contractImpact': contractImpact,
       'agileImpact': agileImpact,
+      'affectedControlAccountIds': affectedControlAccountIds,
+      'affectedWbsIds': affectedWbsIds,
+      'affectedCbsIds': affectedCbsIds,
+      'affectedObsIds': affectedObsIds,
+      'baselineVersionId': baselineVersionId,
+      'projectedCpiChange': projectedCpiChange,
+      'projectedSpiChange': projectedSpiChange,
+      'projectedEacChange': projectedEacChange,
+      'evmRecalculated': evmRecalculated,
       'approvalSteps':
           approvalSteps.map((s) => s.toJson()).toList(),
     };
@@ -391,6 +478,15 @@ class ChangeRequestService {
         'riskExposure': request.riskExposure,
         'contractImpact': request.contractImpact,
         'agileImpact': request.agileImpact,
+        'affectedControlAccountIds': request.affectedControlAccountIds,
+        'affectedWbsIds': request.affectedWbsIds,
+        'affectedCbsIds': request.affectedCbsIds,
+        'affectedObsIds': request.affectedObsIds,
+        'baselineVersionId': request.baselineVersionId,
+        'projectedCpiChange': request.projectedCpiChange,
+        'projectedSpiChange': request.projectedSpiChange,
+        'projectedEacChange': request.projectedEacChange,
+        'evmRecalculated': request.evmRecalculated,
         'approvalSteps':
             request.approvalSteps.map((s) => s.toJson()).toList(),
       });
@@ -466,5 +562,47 @@ class ChangeRequestService {
       approvalSteps: updatedSteps,
     );
     await updateChangeRequest(updated);
+  }
+
+  /// ── P2.3: Compute the projected EVM impact of a change request ──
+  /// Returns a map with projected CPI, SPI, and EAC changes based on
+  /// the CR's cost and schedule impact applied to the affected control accounts.
+  static Map<String, double> computeEvmImpact({
+    required ChangeRequest request,
+    required List<Map<String, dynamic>> controlAccountSnapshots,
+  }) {
+    double totalBac = 0, totalEv = 0, totalAc = 0, totalPv = 0;
+    for (final ca in controlAccountSnapshots) {
+      totalBac += (ca['bac'] as num?)?.toDouble() ?? 0;
+      totalEv += (ca['earnedValue'] as num?)?.toDouble() ?? 0;
+      totalAc += (ca['actualCost'] as num?)?.toDouble() ?? 0;
+      // PV approximation from BAC if not stored
+      totalPv += (ca['plannedValue'] as num?)?.toDouble() ??
+          ((ca['bac'] as num?)?.toDouble() ?? 0) * 0.5; // 50% default
+    }
+
+    // Apply CR cost impact
+    final costDelta = request.costChange ?? 0;
+    final newAc = totalAc + costDelta;
+
+    // Apply CR schedule impact (delays reduce SPI)
+    final scheduleDelayDays = (request.scheduleDelay ?? 0).toDouble();
+    final scheduleImpactFactor = scheduleDelayDays > 0
+        ? 1.0 - (scheduleDelayDays / 365).clamp(0, 0.3) // Max 30% SPI degradation
+        : 1.0;
+
+    final currentCpi = totalAc > 0 ? totalEv / totalAc : 1.0;
+    final currentSpi = totalPv > 0 ? totalEv / totalPv : 1.0;
+    final currentEac = currentCpi > 0 ? totalBac / currentCpi : totalBac;
+
+    final projectedCpi = newAc > 0 ? totalEv / newAc : 1.0;
+    final projectedSpi = currentSpi * scheduleImpactFactor;
+    final projectedEac = projectedCpi > 0 ? totalBac / projectedCpi : totalBac;
+
+    return {
+      'projectedCpiChange': projectedCpi - currentCpi,
+      'projectedSpiChange': projectedSpi - currentSpi,
+      'projectedEacChange': projectedEac - currentEac,
+    };
   }
 }

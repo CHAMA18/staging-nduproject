@@ -188,6 +188,34 @@ class ProjectDataModel {
   List<ObsElement> obsElements;
   List<CbsElement> cbsElements;
 
+  // ── P2.5: Project-level EVM aggregate fields ──
+  /// Aggregate Budget at Completion (sum of all control account BACs).
+  double aggregateBac;
+  /// Aggregate Planned Value to date.
+  double aggregatePlannedValue;
+  /// Aggregate Earned Value.
+  double aggregateEarnedValue;
+  /// Aggregate Actual Cost.
+  double aggregateActualCost;
+  /// Aggregate CPI (Cost Performance Index).
+  double aggregateCpi;
+  /// Aggregate SPI (Schedule Performance Index).
+  double aggregateSpi;
+  /// Aggregate EAC (Estimate at Completion).
+  double aggregateEac;
+  /// Aggregate ETC (Estimate to Complete).
+  double aggregateEtc;
+  /// Aggregate VAC (Variance at Completion).
+  double aggregateVac;
+  /// Aggregate CV (Cost Variance).
+  double aggregateCv;
+  /// Aggregate SV (Schedule Variance).
+  double aggregateSv;
+  /// Aggregate TCPI (To-Complete Performance Index).
+  double aggregateTcpi;
+  /// Last time project-level EVM was recalculated.
+  DateTime? evmLastRecalculated;
+
   // Metadata
   bool isBasicPlanProject;
   Map<String, int> aiUsageCounts;
@@ -308,6 +336,19 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    this.aggregateBac = 0,
+    this.aggregatePlannedValue = 0,
+    this.aggregateEarnedValue = 0,
+    this.aggregateActualCost = 0,
+    this.aggregateCpi = 1.0,
+    this.aggregateSpi = 1.0,
+    this.aggregateEac = 0,
+    this.aggregateEtc = 0,
+    this.aggregateVac = 0,
+    this.aggregateCv = 0,
+    this.aggregateSv = 0,
+    this.aggregateTcpi = 0,
+    this.evmLastRecalculated,
   })  : potentialSolutions = potentialSolutions ?? [],
         solutionRisks = solutionRisks ?? [],
         contractors = contractors ?? [],
@@ -471,6 +512,19 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    double? aggregateBac,
+    double? aggregatePlannedValue,
+    double? aggregateEarnedValue,
+    double? aggregateActualCost,
+    double? aggregateCpi,
+    double? aggregateSpi,
+    double? aggregateEac,
+    double? aggregateEtc,
+    double? aggregateVac,
+    double? aggregateCv,
+    double? aggregateSv,
+    double? aggregateTcpi,
+    DateTime? evmLastRecalculated,
 
     // New Fields
     List<PlanningDashboardItem>? withinScopeItems,
@@ -611,6 +665,19 @@ class ProjectDataModel {
       controlAccounts: controlAccounts ?? this.controlAccounts,
       obsElements: obsElements ?? this.obsElements,
       cbsElements: cbsElements ?? this.cbsElements,
+      aggregateBac: aggregateBac ?? this.aggregateBac,
+      aggregatePlannedValue: aggregatePlannedValue ?? this.aggregatePlannedValue,
+      aggregateEarnedValue: aggregateEarnedValue ?? this.aggregateEarnedValue,
+      aggregateActualCost: aggregateActualCost ?? this.aggregateActualCost,
+      aggregateCpi: aggregateCpi ?? this.aggregateCpi,
+      aggregateSpi: aggregateSpi ?? this.aggregateSpi,
+      aggregateEac: aggregateEac ?? this.aggregateEac,
+      aggregateEtc: aggregateEtc ?? this.aggregateEtc,
+      aggregateVac: aggregateVac ?? this.aggregateVac,
+      aggregateCv: aggregateCv ?? this.aggregateCv,
+      aggregateSv: aggregateSv ?? this.aggregateSv,
+      aggregateTcpi: aggregateTcpi ?? this.aggregateTcpi,
+      evmLastRecalculated: evmLastRecalculated ?? this.evmLastRecalculated,
 
       // New Fields copy
       withinScopeItems: resolveDashboardItems(
@@ -764,6 +831,19 @@ class ProjectDataModel {
       'controlAccounts': controlAccounts.map((ca) => ca.toJson()).toList(),
       'obsElements': obsElements.map((o) => o.toJson()).toList(),
       'cbsElements': cbsElements.map((c) => c.toJson()).toList(),
+      'aggregateBac': aggregateBac,
+      'aggregatePlannedValue': aggregatePlannedValue,
+      'aggregateEarnedValue': aggregateEarnedValue,
+      'aggregateActualCost': aggregateActualCost,
+      'aggregateCpi': aggregateCpi,
+      'aggregateSpi': aggregateSpi,
+      'aggregateEac': aggregateEac,
+      'aggregateEtc': aggregateEtc,
+      'aggregateVac': aggregateVac,
+      'aggregateCv': aggregateCv,
+      'aggregateSv': aggregateSv,
+      'aggregateTcpi': aggregateTcpi,
+      'evmLastRecalculated': evmLastRecalculated?.toIso8601String(),
 
       // New Structured Data persistence
       'withinScopeItems': withinScopeItems.map((x) => x.toJson()).toList(),
@@ -1083,6 +1163,19 @@ class ProjectDataModel {
           safeParseList('controlAccounts', ControlAccount.fromJson),
       obsElements: safeParseList('obsElements', ObsElement.fromJson),
       cbsElements: safeParseList('cbsElements', CbsElement.fromJson),
+      aggregateBac: (json['aggregateBac'] is num) ? (json['aggregateBac'] as num).toDouble() : 0.0,
+      aggregatePlannedValue: (json['aggregatePlannedValue'] is num) ? (json['aggregatePlannedValue'] as num).toDouble() : 0.0,
+      aggregateEarnedValue: (json['aggregateEarnedValue'] is num) ? (json['aggregateEarnedValue'] as num).toDouble() : 0.0,
+      aggregateActualCost: (json['aggregateActualCost'] is num) ? (json['aggregateActualCost'] as num).toDouble() : 0.0,
+      aggregateCpi: (json['aggregateCpi'] is num) ? (json['aggregateCpi'] as num).toDouble() : 1.0,
+      aggregateSpi: (json['aggregateSpi'] is num) ? (json['aggregateSpi'] as num).toDouble() : 1.0,
+      aggregateEac: (json['aggregateEac'] is num) ? (json['aggregateEac'] as num).toDouble() : 0.0,
+      aggregateEtc: (json['aggregateEtc'] is num) ? (json['aggregateEtc'] as num).toDouble() : 0.0,
+      aggregateVac: (json['aggregateVac'] is num) ? (json['aggregateVac'] as num).toDouble() : 0.0,
+      aggregateCv: (json['aggregateCv'] is num) ? (json['aggregateCv'] as num).toDouble() : 0.0,
+      aggregateSv: (json['aggregateSv'] is num) ? (json['aggregateSv'] as num).toDouble() : 0.0,
+      aggregateTcpi: (json['aggregateTcpi'] is num) ? (json['aggregateTcpi'] as num).toDouble() : 0.0,
+      evmLastRecalculated: safeParseDateTime('evmLastRecalculated'),
 
       // Load New Structured Data
       withinScopeItems: parseDashboardItems('withinScopeItems'),

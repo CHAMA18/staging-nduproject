@@ -1158,8 +1158,12 @@ class _PlanningProcurementV2ScreenState
       });
     } catch (e) {
       if (!mounted) return;
+      // Show user-friendly message instead of raw Firestore internals
+      final msg = e.toString().contains('INTERNAL ASSERTION')
+          ? 'Network glitch while loading workflow — please refresh the page.'
+          : 'Unable to load procurement workflow. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load procurement workflow: $e')),
+        SnackBar(content: Text(msg)),
       );
     } finally {
       if (mounted) {

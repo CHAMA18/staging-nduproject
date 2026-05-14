@@ -1194,7 +1194,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         withData: true,
         allowedExtensions: const [

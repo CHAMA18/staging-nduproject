@@ -18,49 +18,29 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Ndu Project">
+  <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Ndu Project">
+  <meta name="apple-mobile-web-app-title" content="ndu_project">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Ndu Project</title>
+  <title>ndu_project</title>
   <link rel="manifest" href="manifest.json">
-
-  <!-- Firebase SDK Configuration managed by FlutterFire -->
-  <script>
-    window.flutterfire_web_sdk_version = '12.7.0';
-  </script>
-  <style>
-    /* System font fallback to avoid Google Fonts CDN dependency */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    }
-  </style>
-  <script>
-    // When served from a sub-path (e.g. /flutter-app/), ensure hash route
-    // starts correctly without redirecting away from the sub-path.
-    // Redirecting to /#path breaks asset loading since <base href> resolves
-    // relative URLs against the actual document location.
-    (function normalizeFlutterHashRoute() {
-      var path = window.location.pathname.replace(/\/+$/, '');
-      var hash = window.location.hash || '';
-      // Detect the base path from <base href> to preserve it
-      var baseEl = document.querySelector('base');
-      var basePath = baseEl ? baseEl.getAttribute('href').replace(/\/+$/, '') : '';
-      // If we're at the base path root with no meaningful hash, set hash to /
-      if (basePath && path === basePath && (!hash || hash === '#' || hash === '#/')) {
-        window.history.replaceState(null, '', basePath + '/#/');
-      }
-    })();
-  </script>
 </head>
 <body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

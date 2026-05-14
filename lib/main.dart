@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/app_strings.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ndu_project/firebase_options.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
@@ -100,6 +102,18 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Configure Firestore to prevent INTERNAL ASSERTION FAILED errors on web.
+    // Disabling persistence avoids IndexedDB cache corruption which causes
+    // the "Unexpected state" assertion in Firestore SDK 12.x Watch system.
+    final firestore = FirebaseFirestore.instance;
+    if (kIsWeb) {
+      await firestore.clearPersistence();
+    }
+    firestore.settings = Settings(
+      persistenceEnabled: !kIsWeb,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
   } catch (error, stack) {
     debugPrint('Firebase init error: $error');

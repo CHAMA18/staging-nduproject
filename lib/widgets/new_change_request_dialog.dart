@@ -99,7 +99,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
 
   Future<void> _pickAndUploadFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'],
         withData: true,

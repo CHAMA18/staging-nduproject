@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/models/procurement/procurement_workflow_step.dart';
 
@@ -49,7 +50,41 @@ class ProcurementWorkflowService {
 
   static String scopeDocId(String scopeId) => 'scope_${scopeId.trim()}';
 
+  /// Retries a Firestore operation up to [maxAttempts] times with exponential
+  /// back-off.  This guards against the transient "INTERNAL ASSERTION FAILED"
+  /// errors that the Firestore JS SDK (12.x) occasionally throws when its
+  /// internal Watch state becomes temporarily inconsistent.
+  static Future<T> _withRetry<T>(
+    Future<T> Function() action, {
+    int maxAttempts = 3,
+    String label = 'operation',
+  }) async {
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await action();
+      } catch (e) {
+        final isAssertionError = e.toString().contains('INTERNAL ASSERTION') ||
+            e.toString().contains('Unexpected state');
+        if (!isAssertionError || attempt == maxAttempts) rethrow;
+        // Exponential back-off: 500 ms, 1 s, 2 s …
+        final delay = Duration(milliseconds: 500 * (1 << (attempt - 1)));
+        await Future<void>.delayed(delay);
+      }
+    }
+    // Unreachable, but required for type-safety.
+    throw StateError('$label failed after $maxAttempts attempts');
+  }
+
   static Future<ProcurementWorkflowSnapshot> load(String projectId) async {
+    return _withRetry(
+      () => _loadInternal(projectId),
+      label: 'ProcurementWorkflowService.load',
+    );
+  }
+
+  static Future<ProcurementWorkflowSnapshot> _loadInternal(
+    String projectId,
+  ) async {
     final snapshot = await _workflowCollection(projectId).get();
     final scopeOverrides = <String, List<ProcurementWorkflowStep>>{};
     var globalSteps = const <ProcurementWorkflowStep>[];
@@ -83,6 +118,21 @@ class ProcurementWorkflowService {
   }
 
   static Future<void> save({
+    required String projectId,
+    required List<ProcurementWorkflowStep> globalSteps,
+    required Map<String, List<ProcurementWorkflowStep>> scopeOverrides,
+  }) async {
+    return _withRetry(
+      () => _saveInternal(
+        projectId: projectId,
+        globalSteps: globalSteps,
+        scopeOverrides: scopeOverrides,
+      ),
+      label: 'ProcurementWorkflowService.save',
+    );
+  }
+
+  static Future<void> _saveInternal({
     required String projectId,
     required List<ProcurementWorkflowStep> globalSteps,
     required Map<String, List<ProcurementWorkflowStep>> scopeOverrides,

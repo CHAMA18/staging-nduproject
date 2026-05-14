@@ -355,11 +355,25 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     }
 
     try {
-      final snapshot = await _workflowCollection(projectId).get();
+      // Retry up to 3 times to guard against transient Firestore
+      // "INTERNAL ASSERTION FAILED" errors in SDK 12.x.
+      QuerySnapshot<Map<String, dynamic>>? snapshot;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          snapshot = await _workflowCollection(projectId).get();
+          break;
+        } catch (e) {
+          final isAssertionError = e.toString().contains('INTERNAL ASSERTION') ||
+              e.toString().contains('Unexpected state');
+          if (!isAssertionError || attempt == 3) rethrow;
+          await Future<void>.delayed(Duration(milliseconds: 500 * (1 << (attempt - 1))));
+        }
+      }
+
       var global = _cloneWorkflowSteps(_defaultWorkflowTemplate);
       final overrides = <String, List<_ContractingWorkflowStep>>{};
 
-      for (final doc in snapshot.docs) {
+      for (final doc in snapshot!.docs) {
         final data = doc.data();
         final scopeIdFromDoc = (data['scopeId'] ?? '').toString().trim();
         final normalizedScope = scopeIdFromDoc.isNotEmpty
@@ -399,8 +413,11 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       });
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().contains('INTERNAL ASSERTION')
+          ? 'Network glitch while loading workflow — please refresh the page.'
+          : 'Unable to load procurement workflow. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load procurement workflow: $e')),
+        SnackBar(content: Text(msg)),
       );
     } finally {
       if (mounted) {

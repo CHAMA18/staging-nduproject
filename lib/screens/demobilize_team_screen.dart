@@ -7,10 +7,12 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/launch_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/unified_phase_header.dart';
 
 class DemobilizeTeamScreen extends StatefulWidget {
   const DemobilizeTeamScreen({super.key});
@@ -62,6 +64,13 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            const PlanningPhaseHeader(
+              title: 'Demobilize Team',
+              showImportButton: false,
+              showContentButton: false,
+              showNavigationButtons: false,
+            ),
+            const SizedBox(height: 16),
             _buildHeader(),
             const SizedBox(height: 20),
             _buildMetricsRow(),

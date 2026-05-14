@@ -469,8 +469,6 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   _buildHeader(isNarrow),
                   const SizedBox(height: 16),
                   _buildFilterChips(),
-                  const SizedBox(height: 14),
-                  _buildGovernanceStrip(),
                   const SizedBox(height: 20),
                   _buildStatsRow(isNarrow),
                   const SizedBox(height: 20),

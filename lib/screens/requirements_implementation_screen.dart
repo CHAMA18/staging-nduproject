@@ -1094,14 +1094,6 @@ class _RequirementsImplementationScreenState
           _buildWebHeader(projectData),
           const SizedBox(height: 16),
 
-          // 2. Filter Chips Row
-          _buildWebFilterChips(),
-          const SizedBox(height: 20),
-
-          // 3. Stats Row
-          _buildWebStatsRow(),
-          const SizedBox(height: 20),
-
           // 4. Design Specifications Framework Guide
           _buildWebFrameworkGuide(),
           const SizedBox(height: 24),
@@ -1196,25 +1188,7 @@ class _RequirementsImplementationScreenState
               ],
             );
 
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleBlock,
-                  const SizedBox(height: 12),
-                  _buildWebHeaderActions(projectData),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: titleBlock),
-                const SizedBox(width: 20),
-                Flexible(child: _buildWebHeaderActions(projectData)),
-              ],
-            );
+            return titleBlock;
           },
         ),
       ],

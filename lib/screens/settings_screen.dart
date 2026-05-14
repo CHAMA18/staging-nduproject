@@ -3923,11 +3923,13 @@ class _CollaboratorTile extends StatelessWidget {
               children: [
                 Text(user.displayName.isEmpty ? user.email : user.displayName,
                     style: const TextStyle(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(user.email,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(color: Colors.black54, fontSize: 12)),
+                if (user.displayName.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(user.email,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(color: Colors.black54, fontSize: 12)),
+                ],
               ],
             ),
           ),

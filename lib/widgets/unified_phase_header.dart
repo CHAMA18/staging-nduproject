@@ -210,6 +210,10 @@ class UnifiedProfileMenu extends StatelessWidget {
                     final isAdmin =
                         snapshot.data ?? UserService.isAdminEmail(email);
                     final role = isAdmin ? 'Admin' : 'Member';
+                    // Avoid showing email twice when displayName is already
+                    // the email address (no proper display name set).
+                    final emailIsDuplicate =
+                        email.isNotEmpty && displayName == email;
                     return ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 220),
                       child: Column(
@@ -226,15 +230,16 @@ class UnifiedProfileMenu extends StatelessWidget {
                               color: Colors.black,
                             ),
                           ),
-                          Text(
-                            email.isEmpty ? 'No email' : email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
+                          if (!emailIsDuplicate)
+                            Text(
+                              email.isEmpty ? 'No email' : email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
                           Text(
                             role,
                             maxLines: 1,

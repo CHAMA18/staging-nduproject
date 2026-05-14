@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/roadmap_sprint.dart';
@@ -31,6 +33,7 @@ class _AgileSprintCalendarScreenState
   TextEditingController _ceremonyController = TextEditingController();
   String _searchQuery = '';
   TextEditingController _searchController = TextEditingController();
+  Timer? _saveDebounce;
 
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -59,6 +62,7 @@ class _AgileSprintCalendarScreenState
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
     _ceremonyController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -219,7 +223,12 @@ class _AgileSprintCalendarScreenState
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 4,
-                        onChanged: (_) => _saveCeremonies(),
+                        onChanged: (_) {
+                          _saveDebounce?.cancel();
+                          _saveDebounce = Timer(
+                              const Duration(milliseconds: 500),
+                              _saveCeremonies);
+                        },
                       ),
                     ],
                     const SizedBox(height: 48),

@@ -1341,7 +1341,7 @@ exports.getUserInvoices = functions
       const targetUserId = userId || decodedToken.uid;
       
       // Check if requesting user is admin or requesting own data
-      const adminEmails = ['chungu424@gmail.com'];
+      const adminEmails = ['chungu424@gmail.com', 'alick@thestackone.com'];
       const isAdmin = adminEmails.includes(decodedToken.email);
       if (!isAdmin && targetUserId !== decodedToken.uid) {
         res.status(403).json({ error: 'Not authorized to view this user\'s invoices' });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
@@ -468,6 +470,12 @@ class PlanningPhaseNavigation {
   }
 
   static void goToPrevious(BuildContext context, String currentId) {
+    // Flush any pending auto-save before navigating
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider != null) {
+      unawaited(provider.flushAutoSave());
+    }
+
     if (_usesSidebarOrder(currentId)) {
       final prev = _previousSidebarItem(currentId);
       if (prev != null) {
@@ -497,6 +505,12 @@ class PlanningPhaseNavigation {
   }
 
   static void goToNext(BuildContext context, String currentId) {
+    // Flush any pending auto-save before navigating
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider != null) {
+      unawaited(provider.flushAutoSave());
+    }
+
     if (_usesSidebarOrder(currentId)) {
       final next = _nextSidebarItem(context, currentId);
       if (next != null) {
@@ -530,6 +544,11 @@ class PlanningPhaseNavigation {
   }
 
   static void navigateToNext(BuildContext context, String currentId) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider != null) {
+      unawaited(provider.flushAutoSave());
+    }
+
     if (_usesSidebarOrder(currentId)) {
       goToNext(context, currentId);
       return;
@@ -550,6 +569,11 @@ class PlanningPhaseNavigation {
   }
 
   static void navigateToPrevious(BuildContext context, String currentId) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider != null) {
+      unawaited(provider.flushAutoSave());
+    }
+
     if (_usesSidebarOrder(currentId)) {
       goToPrevious(context, currentId);
       return;

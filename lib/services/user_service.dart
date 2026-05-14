@@ -10,7 +10,7 @@ class UserService {
 
   /// Admin email domains and specific emails
   static const List<String> _adminDomains = ['nduproject.com'];
-  static const List<String> _adminEmails = ['chungu424@gmail.com'];
+  static const List<String> _adminEmails = ['chungu424@gmail.com', 'alick@thestackone.com'];
 
   /// Check if an email should have admin privileges
   static bool isAdminEmail(String email) {

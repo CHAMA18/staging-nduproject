@@ -119,6 +119,7 @@ class OpenAiAutocompleteService {
 
     final payload = {
       'model': OpenAiConfig.model,
+      'reasoning': {'effort': 'high'},
       'temperature': _temperature,
       // Give the model more headroom for higher-quality continuations
       'max_output_tokens': 300,
@@ -287,6 +288,7 @@ class OpenAiDiagramService {
     final prompt = _diagramPrompt(section: section, context: contextText, refinementHint: refinementHint);
     final body = jsonEncode({
       'model': OpenAiConfig.model,
+      'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},

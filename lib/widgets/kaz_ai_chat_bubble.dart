@@ -525,6 +525,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
 
       final body = jsonEncode({
         'model': OpenAiConfig.model,
+        'reasoning': {'effort': 'high'},
         'temperature': 0.7,
         'max_tokens': 800,
         'messages': messages,

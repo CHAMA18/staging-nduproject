@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:ndu_project/openai/openai_config.dart';
 
 class TeamRolesResponsibilitiesScreen extends StatefulWidget {
   const TeamRolesResponsibilitiesScreen({super.key});
@@ -2336,7 +2337,8 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
         'Authorization': 'Bearer $apiKey',
       },
       body: jsonEncode({
-        'model': 'gpt-4',
+        'model': OpenAiConfig.model,
+        'reasoning': {'effort': 'high'},
         'messages': [
           {
             'role': 'system',

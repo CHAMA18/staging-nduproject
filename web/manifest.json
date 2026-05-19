@@ -1,11 +1,11 @@
 {
-    "name": "ndu_project",
-    "short_name": "ndu_project",
+    "name": "NDU Project",
+    "short_name": "NDU",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#FFCC00",
+    "description": "NDU Project - Navigate. Deliver. Upgrade.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

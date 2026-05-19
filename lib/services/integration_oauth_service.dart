@@ -137,10 +137,6 @@ class IntegrationOAuthService {
       ),
     );
 
-    if (result == null) {
-      throw StateError('Authorization cancelled or failed.');
-    }
-
     await _storage.write(key: _key(provider, 'access_token'), value: result.accessToken);
     await _storage.write(key: _key(provider, 'refresh_token'), value: result.refreshToken);
     if (result.accessTokenExpirationDateTime != null) {

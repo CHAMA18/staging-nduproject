@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:ndu_project/models/control_account_model.dart';
 import 'package:ndu_project/models/evm_snapshot_model.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/control_account_service.dart';

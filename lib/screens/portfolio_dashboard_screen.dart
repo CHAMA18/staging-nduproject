@@ -120,7 +120,7 @@ class _PortfolioRollUpContent extends StatefulWidget {
 class _PortfolioRollUpContentState extends State<_PortfolioRollUpContent> {
   final Set<String> _selectedProjectIds = {};
   _ProjectSort _singleProjectsSort = _ProjectSort.newest;
-  _ProjectSort _groupProjectsSort = _ProjectSort.newest;
+  final _ProjectSort _groupProjectsSort = _ProjectSort.newest;
   bool _gateApprovals = true;
   bool _sharedRiskRegister = true;
   bool _executiveSummary = true;

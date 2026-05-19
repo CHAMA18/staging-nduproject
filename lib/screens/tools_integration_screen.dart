@@ -2731,7 +2731,9 @@ class _IntegrationRow {
         scopes: e['scopes'] ?? '',
         mapsTo: e['mapsTo'] ?? '',
         lastSync: e['lastSync'] ?? 'Never',
-        icon: IconData(e['iconCodePoint'] ?? Icons.extension.codePoint, fontFamily: 'MaterialIcons'),
+        icon: e['iconCodePoint'] != null
+            ? IconData(e['iconCodePoint'] as int, fontFamily: 'MaterialIcons')
+            : const IconData(0xe86b, fontFamily: 'MaterialIcons'), // Icons.extension
         iconColor: Color(e['iconColor'] ?? const Color(0xFF64748B).toARGB32()),
         features: e['features'] ?? '',
         autoHandoff: e['autoHandoff'],

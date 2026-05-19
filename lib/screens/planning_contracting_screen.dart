@@ -18,7 +18,6 @@ import 'package:ndu_project/models/planning_contracting_models.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart'
     as procurement_models;
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
-import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 const Color _kBrandYellow = Color(0xFFFFC812);

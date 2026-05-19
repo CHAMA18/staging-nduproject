@@ -249,7 +249,7 @@ class BaselineManagementService {
     final scheduleSnapshots = projectData.scheduleActivities.map((a) => {
       'id': a.id,
       'title': a.title,
-      'startDate': a.startDate?.toString() ?? '',
+      'startDate': a.startDate.toString() ?? '',
       'dueDate': a.dueDate,
       'status': a.status,
       'isCriticalPath': a.isCriticalPath,
@@ -375,8 +375,8 @@ class BaselineManagementService {
     };
 
     for (final entry in numericFields.entries) {
-      final prev = entry.value[0] as double;
-      final curr = entry.value[1] as double;
+      final prev = entry.value[0];
+      final curr = entry.value[1];
       final delta = curr - prev;
       if (delta != 0) {
         diffs[entry.key] = {

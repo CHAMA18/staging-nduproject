@@ -2966,7 +2966,7 @@ class _ContractPreviewRow extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFFFFC812))),
+                      color: Color(0xFFFFC812))),
             ),
             Expanded(
               flex: 2,
@@ -4816,7 +4816,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: const BorderSide(
-                                      color: const Color(0xFFFFC812), width: 1.2),
+                                      color: Color(0xFFFFC812), width: 1.2),
                                 ),
                               ),
                               style: const TextStyle(
@@ -6119,7 +6119,7 @@ class _SummaryHighlightBullet extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(top: 6),
           child: Icon(Icons.fiber_manual_record,
-              size: 8, color: const Color(0xFFFFC812)),
+              size: 8, color: Color(0xFFFFC812)),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -6397,7 +6397,7 @@ class _TimelineLegend extends StatelessWidget {
 
   static const List<_TimelineLegendItem> _items = [
     _TimelineLegendItem(label: 'Complete', color: Color(0xFF22C55E)),
-    _TimelineLegendItem(label: 'In Progress', color: const Color(0xFFFFC812)),
+    _TimelineLegendItem(label: 'In Progress', color: Color(0xFFFFC812)),
     _TimelineLegendItem(label: 'Not Started', color: Color(0xFFE5E7EB)),
     _TimelineLegendItem(label: 'Behind Schedule', color: Color(0xFFF59E0B)),
   ];
@@ -6609,7 +6609,7 @@ class _ContractStatusRecentActivityCard extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.only(top: 5),
                       child: Icon(Icons.fiber_manual_record,
-                          size: 8, color: const Color(0xFFFFC812)),
+                          size: 8, color: Color(0xFFFFC812)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -7315,7 +7315,7 @@ class _ContractExecutionSection extends StatelessWidget {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                          color: const Color(0xFFFFC812), width: 1.2),
+                          color: Color(0xFFFFC812), width: 1.2),
                     ),
                   ),
                   style: const TextStyle(
@@ -7742,7 +7742,7 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
                       const _ContractMilestoneData(
                         title: 'Published Date',
                         value: 'TBD',
-                        accentColor: const Color(0xFFFFC812),
+                        accentColor: Color(0xFFFFC812),
                       ),
                     ];
               if (stack) {
@@ -8366,7 +8366,7 @@ class _ContactSidebarCard extends StatelessWidget {
                   Text(
                     info?.email ?? 'Email pending',
                     style:
-                        const TextStyle(fontSize: 13, color: const Color(0xFFFFC812)),
+                        const TextStyle(fontSize: 13, color: Color(0xFFFFC812)),
                   ),
                 ],
               ),
@@ -8492,7 +8492,7 @@ class _UploadBidDocumentsCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: const [
-          Icon(Icons.cloud_upload_outlined, size: 44, color: const Color(0xFFFFC812)),
+          Icon(Icons.cloud_upload_outlined, size: 44, color: Color(0xFFFFC812)),
           SizedBox(height: 16),
           Text(
             'Upload Your Bid Documents',
@@ -8512,7 +8512,7 @@ class _UploadBidDocumentsCard extends StatelessWidget {
                     text: 'click to browse',
                     style: TextStyle(
                         fontSize: 13,
-                        color: const Color(0xFFFFC812),
+                        color: Color(0xFFFFC812),
                         fontWeight: FontWeight.w600)),
               ],
             ),
@@ -8788,7 +8788,7 @@ class _BulletItem extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: const Color(0xFFFFC812)),
+            child: Icon(Icons.circle, size: 6, color: Color(0xFFFFC812)),
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:ndu_project/models/procurement/procurement_models.dart';
 import 'package:ndu_project/services/vendor_service.dart';
 import 'package:ndu_project/widgets/procurement/procurement_common_widgets.dart';
 import 'package:ndu_project/widgets/responsive.dart';

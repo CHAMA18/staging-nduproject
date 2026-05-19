@@ -6202,7 +6202,6 @@ class _PlanHeader extends StatelessWidget {
 
 class _ItemsListView extends StatelessWidget {
   const _ItemsListView({
-    super.key,
     required this.items,
     required this.trackableItems,
     required this.selectedIndex,
@@ -8325,7 +8324,6 @@ class _PriorityPill extends StatelessWidget {
 
 class _VendorManagementView extends StatelessWidget {
   const _VendorManagementView({
-    super.key,
     required this.vendors,
     required this.allVendors,
     required this.selectedVendorIds,

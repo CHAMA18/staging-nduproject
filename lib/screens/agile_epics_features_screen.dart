@@ -144,12 +144,16 @@ class _AgileEpicsFeaturesScreenState
     setState(() => _isGenerating = true);
     try {
       final projectData = ProjectDataHelper.getData(context);
-      final contextText = '${projectData.projectName} ${projectData.projectDescription}';
+      final contextText = ProjectDataHelper.buildProjectContextScan(
+        projectData,
+        sectionLabel: 'Epics & Features',
+      );
       final openai = OpenAiServiceSecure();
       final result = await openai.generateCompletion(
-        'Generate 3-5 agile epics for a project with this context: $contextText. '
+        'Based on this project context, suggest 3-5 agile epics.\n\n'
+        'Context:\n$contextText\n\n'
         'For each epic provide: title, description, theme, business value, and estimated story points. '
-        'Return as a JSON array with keys: title, description, theme, businessValue, totalStoryPoints.',
+        'Return ONLY a valid JSON array with keys: title, description, theme, businessValue, totalStoryPoints.',
         maxTokens: 1200,
         temperature: 0.5,
       );

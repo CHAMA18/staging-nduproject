@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -82,6 +84,15 @@ class _ProjectFrameworkNextScreenState
   String _projectObjective = '';
   String _currentFilter = 'View All';
 
+  Timer? _saveDebounce;
+
+  void _onFieldChanged() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _saveData();
+    });
+  }
+
   /// Saves goal data to provider when focus is lost
   void _saveData() {
     if (!mounted) return;
@@ -117,8 +128,11 @@ class _ProjectFrameworkNextScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getProvider(context).projectData;
 
-      // Populate from planning goals (preferred)
-      if (projectData.planningGoals.isNotEmpty) {
+      // Populate from planning goals (preferred) - only if they have actual content
+      final hasPlanningGoalContent = projectData.planningGoals.any(
+        (g) => g.title.isNotEmpty || g.description.isNotEmpty,
+      );
+      if (hasPlanningGoalContent) {
         for (int i = 0; i < projectData.planningGoals.length && i < 3; i++) {
           final goal = projectData.planningGoals[i];
           _goalTitleControllers[i].text = goal.title;
@@ -149,6 +163,17 @@ class _ProjectFrameworkNextScreenState
         controller.addListener(() {
           if (mounted) setState(() {});
         });
+      }
+
+      // Auto-save to provider on every change so data is never lost
+      for (final c in _goalTitleControllers) {
+        c.addListener(_onFieldChanged);
+      }
+      for (final c in _goalDescControllers) {
+        c.addListener(_onFieldChanged);
+      }
+      for (final c in _goalYearControllers) {
+        c.addListener(_onFieldChanged);
       }
 
       // Fetch context data
@@ -237,13 +262,17 @@ class _ProjectFrameworkNextScreenState
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
     for (var c in _goalTitleControllers) {
+      c.removeListener(_onFieldChanged);
       c.dispose();
     }
     for (var c in _goalDescControllers) {
+      c.removeListener(_onFieldChanged);
       c.dispose();
     }
     for (var c in _goalYearControllers) {
+      c.removeListener(_onFieldChanged);
       c.dispose();
     }
     for (var milestones in _goalMilestones) {

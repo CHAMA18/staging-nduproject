@@ -192,9 +192,9 @@ class _DeliverableRoadmapAgileMapOutScreenState
                             _TopHeader(
                               onBack: () =>
                                   PlanningPhaseNavigation.goToPrevious(context,
-                                      'deliverable_roadmap_agile_map_out'),
+                                      'agile_map_out'),
                               onForward: () => PlanningPhaseNavigation.goToNext(
-                                  context, 'deliverable_roadmap_agile_map_out'),
+                                  context, 'agile_map_out'),
                             ),
                             const SizedBox(height: 12),
                             const Text(
@@ -207,7 +207,7 @@ class _DeliverableRoadmapAgileMapOutScreenState
                               sectionLabel: 'Agile Map Out',
                               noteKey:
                                   'planning_deliverable_roadmap_agile_map_out',
-                              checkpoint: 'deliverable_roadmap_agile_map_out',
+                              checkpoint: 'agile_map_out',
                               description:
                                   'Capture sprint priorities, dependencies, and release sequencing.',
                             ),
@@ -254,14 +254,14 @@ class _DeliverableRoadmapAgileMapOutScreenState
                             const SizedBox(height: 24),
                             LaunchPhaseNavigation(
                               backLabel: PlanningPhaseNavigation.backLabel(
-                                  'deliverable_roadmap_agile_map_out'),
+                                  'agile_map_out'),
                               nextLabel: PlanningPhaseNavigation.nextLabel(
-                                  'deliverable_roadmap_agile_map_out'),
+                                  'agile_map_out'),
                               onBack: () =>
                                   PlanningPhaseNavigation.goToPrevious(context,
-                                      'deliverable_roadmap_agile_map_out'),
+                                      'agile_map_out'),
                               onNext: () => PlanningPhaseNavigation.goToNext(
-                                  context, 'deliverable_roadmap_agile_map_out'),
+                                  context, 'agile_map_out'),
                             ),
                             const SizedBox(height: 40),
                           ],

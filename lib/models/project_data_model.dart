@@ -188,6 +188,34 @@ class ProjectDataModel {
   List<ObsElement> obsElements;
   List<CbsElement> cbsElements;
 
+  // ── P2.5: Project-level EVM aggregate fields ──
+  /// Aggregate Budget at Completion (sum of all control account BACs).
+  double aggregateBac;
+  /// Aggregate Planned Value to date.
+  double aggregatePlannedValue;
+  /// Aggregate Earned Value.
+  double aggregateEarnedValue;
+  /// Aggregate Actual Cost.
+  double aggregateActualCost;
+  /// Aggregate CPI (Cost Performance Index).
+  double aggregateCpi;
+  /// Aggregate SPI (Schedule Performance Index).
+  double aggregateSpi;
+  /// Aggregate EAC (Estimate at Completion).
+  double aggregateEac;
+  /// Aggregate ETC (Estimate to Complete).
+  double aggregateEtc;
+  /// Aggregate VAC (Variance at Completion).
+  double aggregateVac;
+  /// Aggregate CV (Cost Variance).
+  double aggregateCv;
+  /// Aggregate SV (Schedule Variance).
+  double aggregateSv;
+  /// Aggregate TCPI (To-Complete Performance Index).
+  double aggregateTcpi;
+  /// Last time project-level EVM was recalculated.
+  DateTime? evmLastRecalculated;
+
   // Metadata
   bool isBasicPlanProject;
   Map<String, int> aiUsageCounts;
@@ -308,6 +336,19 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    this.aggregateBac = 0,
+    this.aggregatePlannedValue = 0,
+    this.aggregateEarnedValue = 0,
+    this.aggregateActualCost = 0,
+    this.aggregateCpi = 1.0,
+    this.aggregateSpi = 1.0,
+    this.aggregateEac = 0,
+    this.aggregateEtc = 0,
+    this.aggregateVac = 0,
+    this.aggregateCv = 0,
+    this.aggregateSv = 0,
+    this.aggregateTcpi = 0,
+    this.evmLastRecalculated,
   })  : potentialSolutions = potentialSolutions ?? [],
         solutionRisks = solutionRisks ?? [],
         contractors = contractors ?? [],
@@ -471,6 +512,19 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    double? aggregateBac,
+    double? aggregatePlannedValue,
+    double? aggregateEarnedValue,
+    double? aggregateActualCost,
+    double? aggregateCpi,
+    double? aggregateSpi,
+    double? aggregateEac,
+    double? aggregateEtc,
+    double? aggregateVac,
+    double? aggregateCv,
+    double? aggregateSv,
+    double? aggregateTcpi,
+    DateTime? evmLastRecalculated,
 
     // New Fields
     List<PlanningDashboardItem>? withinScopeItems,
@@ -611,6 +665,19 @@ class ProjectDataModel {
       controlAccounts: controlAccounts ?? this.controlAccounts,
       obsElements: obsElements ?? this.obsElements,
       cbsElements: cbsElements ?? this.cbsElements,
+      aggregateBac: aggregateBac ?? this.aggregateBac,
+      aggregatePlannedValue: aggregatePlannedValue ?? this.aggregatePlannedValue,
+      aggregateEarnedValue: aggregateEarnedValue ?? this.aggregateEarnedValue,
+      aggregateActualCost: aggregateActualCost ?? this.aggregateActualCost,
+      aggregateCpi: aggregateCpi ?? this.aggregateCpi,
+      aggregateSpi: aggregateSpi ?? this.aggregateSpi,
+      aggregateEac: aggregateEac ?? this.aggregateEac,
+      aggregateEtc: aggregateEtc ?? this.aggregateEtc,
+      aggregateVac: aggregateVac ?? this.aggregateVac,
+      aggregateCv: aggregateCv ?? this.aggregateCv,
+      aggregateSv: aggregateSv ?? this.aggregateSv,
+      aggregateTcpi: aggregateTcpi ?? this.aggregateTcpi,
+      evmLastRecalculated: evmLastRecalculated ?? this.evmLastRecalculated,
 
       // New Fields copy
       withinScopeItems: resolveDashboardItems(
@@ -764,6 +831,19 @@ class ProjectDataModel {
       'controlAccounts': controlAccounts.map((ca) => ca.toJson()).toList(),
       'obsElements': obsElements.map((o) => o.toJson()).toList(),
       'cbsElements': cbsElements.map((c) => c.toJson()).toList(),
+      'aggregateBac': aggregateBac,
+      'aggregatePlannedValue': aggregatePlannedValue,
+      'aggregateEarnedValue': aggregateEarnedValue,
+      'aggregateActualCost': aggregateActualCost,
+      'aggregateCpi': aggregateCpi,
+      'aggregateSpi': aggregateSpi,
+      'aggregateEac': aggregateEac,
+      'aggregateEtc': aggregateEtc,
+      'aggregateVac': aggregateVac,
+      'aggregateCv': aggregateCv,
+      'aggregateSv': aggregateSv,
+      'aggregateTcpi': aggregateTcpi,
+      'evmLastRecalculated': evmLastRecalculated?.toIso8601String(),
 
       // New Structured Data persistence
       'withinScopeItems': withinScopeItems.map((x) => x.toJson()).toList(),
@@ -1083,6 +1163,19 @@ class ProjectDataModel {
           safeParseList('controlAccounts', ControlAccount.fromJson),
       obsElements: safeParseList('obsElements', ObsElement.fromJson),
       cbsElements: safeParseList('cbsElements', CbsElement.fromJson),
+      aggregateBac: (json['aggregateBac'] is num) ? (json['aggregateBac'] as num).toDouble() : 0.0,
+      aggregatePlannedValue: (json['aggregatePlannedValue'] is num) ? (json['aggregatePlannedValue'] as num).toDouble() : 0.0,
+      aggregateEarnedValue: (json['aggregateEarnedValue'] is num) ? (json['aggregateEarnedValue'] as num).toDouble() : 0.0,
+      aggregateActualCost: (json['aggregateActualCost'] is num) ? (json['aggregateActualCost'] as num).toDouble() : 0.0,
+      aggregateCpi: (json['aggregateCpi'] is num) ? (json['aggregateCpi'] as num).toDouble() : 1.0,
+      aggregateSpi: (json['aggregateSpi'] is num) ? (json['aggregateSpi'] as num).toDouble() : 1.0,
+      aggregateEac: (json['aggregateEac'] is num) ? (json['aggregateEac'] as num).toDouble() : 0.0,
+      aggregateEtc: (json['aggregateEtc'] is num) ? (json['aggregateEtc'] as num).toDouble() : 0.0,
+      aggregateVac: (json['aggregateVac'] is num) ? (json['aggregateVac'] as num).toDouble() : 0.0,
+      aggregateCv: (json['aggregateCv'] is num) ? (json['aggregateCv'] as num).toDouble() : 0.0,
+      aggregateSv: (json['aggregateSv'] is num) ? (json['aggregateSv'] as num).toDouble() : 0.0,
+      aggregateTcpi: (json['aggregateTcpi'] is num) ? (json['aggregateTcpi'] as num).toDouble() : 0.0,
+      evmLastRecalculated: safeParseDateTime('evmLastRecalculated'),
 
       // Load New Structured Data
       withinScopeItems: parseDashboardItems('withinScopeItems'),
@@ -1090,6 +1183,50 @@ class ProjectDataModel {
       assumptionItems: parseDashboardItems('assumptionItems'),
       constraintItems: parseDashboardItems('constraintItems'),
     );
+  }
+
+  /// ── P2.5: Compute project-level aggregate EVM from control accounts ──
+  /// Rolls up BAC, EV, AC, and PV from all [controlAccounts], then derives
+  /// CPI, SPI, EAC, ETC, VAC, CV, SV, and TCPI using standard EVM formulas.
+  ///
+  /// Call this after [ControlAccountService.recalculateAll] has updated
+  /// individual control account EVM metrics. This method mutates the aggregate
+  /// fields on this model in-place and updates [evmLastRecalculated].
+  ///
+  /// Returns `this` for chaining convenience.
+  ProjectDataModel computeAggregateEvm() {
+    double aggBac = 0, aggEv = 0, aggAc = 0, aggPv = 0;
+    for (final ca in controlAccounts) {
+      aggBac += ca.budgetAtCompletion;
+      aggEv += ca.earnedValue;
+      aggAc += ca.actualCost;
+      // Sum planned value from period data
+      final now = DateTime.now();
+      final currentKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      for (final entry in ca.plannedValueByPeriod.entries) {
+        if (entry.key.compareTo(currentKey) <= 0) {
+          aggPv += entry.value;
+        }
+      }
+    }
+
+    aggregateBac = aggBac;
+    aggregatePlannedValue = aggPv;
+    aggregateEarnedValue = aggEv;
+    aggregateActualCost = aggAc;
+    aggregateCpi = aggAc > 0 ? aggEv / aggAc : 1.0;
+    aggregateSpi = aggPv > 0 ? aggEv / aggPv : 1.0;
+    aggregateEac = aggregateCpi > 0 ? aggBac / aggregateCpi : aggBac;
+    aggregateEtc = aggregateEac - aggAc;
+    aggregateVac = aggBac - aggregateEac;
+    aggregateCv = aggEv - aggAc;
+    aggregateSv = aggEv - aggPv;
+    aggregateTcpi =
+        (aggBac - aggAc) > 0 ? (aggBac - aggEv) / (aggBac - aggAc) : 1.0;
+    evmLastRecalculated = DateTime.now();
+
+    return this;
   }
 
   /// Add a field value to history for undo functionality
@@ -1420,6 +1557,25 @@ class WorkItem {
   List<String> dependencies;
   String controlAccountId;
 
+  /// Formal WBS element code (e.g. "1.2.3.4") — canonical identifier for
+  /// cross-referencing with CBS, OBS, and Control Accounts.
+  String wbsCode;
+
+  /// WBS Dictionary fields: deliverable description, acceptance criteria,
+  /// and work package definition per the Integrated Project Controls guide.
+  String deliverableDescription;
+  String acceptanceCriteria;
+  String workPackageDefinition;
+
+  /// Relative weight (0-1) for progress rollup from children to parent.
+  double weight;
+
+  /// CBS element ID cross-reference — links this WBS node to its cost account.
+  String cbsId;
+
+  /// OBS element ID cross-reference — links this WBS node to its org unit.
+  String obsId;
+
   WorkItem({
     String? id,
     this.parentId = '',
@@ -1430,6 +1586,13 @@ class WorkItem {
     List<WorkItem>? children,
     List<String>? dependencies,
     this.controlAccountId = '',
+    this.wbsCode = '',
+    this.deliverableDescription = '',
+    this.acceptanceCriteria = '',
+    this.workPackageDefinition = '',
+    this.weight = 0,
+    this.cbsId = '',
+    this.obsId = '',
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         children = children ?? [],
         dependencies = dependencies ?? [];
@@ -1444,6 +1607,13 @@ class WorkItem {
         'children': children.map((c) => c.toJson()).toList(),
         'dependencies': dependencies,
         'controlAccountId': controlAccountId,
+        'wbsCode': wbsCode,
+        'deliverableDescription': deliverableDescription,
+        'acceptanceCriteria': acceptanceCriteria,
+        'workPackageDefinition': workPackageDefinition,
+        'weight': weight,
+        'cbsId': cbsId,
+        'obsId': obsId,
       };
 
   factory WorkItem.fromJson(Map<String, dynamic> json) {
@@ -1462,6 +1632,13 @@ class WorkItem {
           (json['dependencies'] as List?)?.map((d) => d.toString()).toList() ??
               [],
       controlAccountId: json['controlAccountId']?.toString() ?? '',
+      wbsCode: json['wbsCode']?.toString() ?? '',
+      deliverableDescription: json['deliverableDescription']?.toString() ?? '',
+      acceptanceCriteria: json['acceptanceCriteria']?.toString() ?? '',
+      workPackageDefinition: json['workPackageDefinition']?.toString() ?? '',
+      weight: (json['weight'] is num) ? (json['weight'] as num).toDouble() : 0,
+      cbsId: json['cbsId']?.toString() ?? '',
+      obsId: json['obsId']?.toString() ?? '',
     );
   }
 }
@@ -1543,6 +1720,11 @@ class ScheduleActivity {
   String controlAccountId;
   String progressMeasurementMethod; // 'zeroHundred' | 'fiftyFifty' | 'percentComplete' | ...
 
+  // ── P3.5: Percent complete, resource assignments, cost ──
+  double percentComplete; // 0-1 for EVM calculation
+  List<String> resourceIds; // assigned team member/resource IDs
+  double estimatedCost; // cost-loaded schedule
+
   ScheduleActivity({
     String? id,
     this.wbsId = '',
@@ -1580,9 +1762,13 @@ class ScheduleActivity {
     this.totalFloat = 0,
     this.controlAccountId = '',
     this.progressMeasurementMethod = '',
+    this.percentComplete = 0,
+    List<String>? resourceIds,
+    this.estimatedCost = 0,
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         predecessorIds = predecessorIds ?? [],
-        dependencyIds = dependencyIds ?? [];
+        dependencyIds = dependencyIds ?? [],
+        resourceIds = resourceIds ?? [];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -1621,6 +1807,9 @@ class ScheduleActivity {
         'totalFloat': totalFloat,
         'controlAccountId': controlAccountId,
         'progressMeasurementMethod': progressMeasurementMethod,
+        'percentComplete': percentComplete,
+        'resourceIds': resourceIds,
+        'estimatedCost': estimatedCost,
       };
 
   factory ScheduleActivity.fromJson(Map<String, dynamic> json) {
@@ -1683,6 +1872,17 @@ class ScheduleActivity {
       controlAccountId: json['controlAccountId']?.toString() ?? '',
       progressMeasurementMethod:
           json['progressMeasurementMethod']?.toString() ?? '',
+      // P3.5: percentComplete and resource fields
+      percentComplete: json['percentComplete'] is num
+          ? (json['percentComplete'] as num).toDouble().clamp(0, 1)
+          : 0,
+      resourceIds: (json['resourceIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      estimatedCost: json['estimatedCost'] is num
+          ? (json['estimatedCost'] as num).toDouble()
+          : 0,
     );
   }
 }
@@ -2477,6 +2677,34 @@ class RiskRegisterItem {
   String owner;
   String status;
 
+  // ── P3.6: Quantitative risk analysis fields ──
+  /// Numeric probability (0-1) for EMV and Monte Carlo calculations.
+  double probabilityNumeric;
+  /// Minimum cost impact if risk materializes.
+  double costImpactMin;
+  /// Most likely cost impact if risk materializes.
+  double costImpactMostLikely;
+  /// Maximum cost impact if risk materializes.
+  double costImpactMax;
+  /// Minimum schedule impact (days) if risk materializes.
+  int scheduleImpactMin;
+  /// Most likely schedule impact (days) if risk materializes.
+  int scheduleImpactMostLikely;
+  /// Maximum schedule impact (days) if risk materializes.
+  int scheduleImpactMax;
+  /// Control Account ID affected by this risk.
+  String controlAccountId;
+  /// CBS element ID for cost risk allocation.
+  String cbsId;
+  /// Whether this is a threat (negative) or opportunity (positive).
+  String riskType; // 'threat' | 'opportunity'
+  /// Risk response strategy category.
+  String responseStrategy; // 'avoid' | 'mitigate' | 'transfer' | 'accept' | 'exploit' | 'enhance' | 'share'
+  /// Residual probability after mitigation.
+  double? residualProbability;
+  /// Residual cost impact after mitigation.
+  double? residualCostImpact;
+
   RiskRegisterItem({
     this.riskName = '',
     this.description = '',
@@ -2490,7 +2718,40 @@ class RiskRegisterItem {
     this.projectRole = '',
     this.owner = '',
     this.status = '',
+    this.probabilityNumeric = 0,
+    this.costImpactMin = 0,
+    this.costImpactMostLikely = 0,
+    this.costImpactMax = 0,
+    this.scheduleImpactMin = 0,
+    this.scheduleImpactMostLikely = 0,
+    this.scheduleImpactMax = 0,
+    this.controlAccountId = '',
+    this.cbsId = '',
+    this.riskType = 'threat',
+    this.responseStrategy = 'accept',
+    this.residualProbability,
+    this.residualCostImpact,
   });
+
+  /// ── P3.6: Computed quantitative metrics ──
+  /// Expected Monetary Value = probability × most likely cost impact.
+  double get emv => probabilityNumeric * costImpactMostLikely;
+
+  /// PERT mean of cost impact = (min + 4×mostLikely + max) / 6.
+  double get pertCostImpact =>
+      (costImpactMin + 4 * costImpactMostLikely + costImpactMax) / 6;
+
+  /// PERT mean of schedule impact = (min + 4×mostLikely + max) / 6.
+  double get pertScheduleImpact =>
+      (scheduleImpactMin +
+          4 * scheduleImpactMostLikely +
+          scheduleImpactMax) /
+      6;
+
+  /// Residual EMV after mitigation.
+  double get residualEmv =>
+      (residualProbability ?? probabilityNumeric) *
+      (residualCostImpact ?? costImpactMostLikely);
 
   Map<String, dynamic> toJson() => {
         'riskName': riskName,
@@ -2505,9 +2766,27 @@ class RiskRegisterItem {
         'projectRole': projectRole,
         'owner': owner,
         'status': status,
+        'probabilityNumeric': probabilityNumeric,
+        'costImpactMin': costImpactMin,
+        'costImpactMostLikely': costImpactMostLikely,
+        'costImpactMax': costImpactMax,
+        'scheduleImpactMin': scheduleImpactMin,
+        'scheduleImpactMostLikely': scheduleImpactMostLikely,
+        'scheduleImpactMax': scheduleImpactMax,
+        'controlAccountId': controlAccountId,
+        'cbsId': cbsId,
+        'riskType': riskType,
+        'responseStrategy': responseStrategy,
+        'residualProbability': residualProbability,
+        'residualCostImpact': residualCostImpact,
       };
 
   factory RiskRegisterItem.fromJson(Map<String, dynamic> json) {
+    double toDouble(dynamic v) =>
+        (v is num) ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
+    int toInt(dynamic v) =>
+        (v is num) ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
+
     return RiskRegisterItem(
       riskName: json['riskName']?.toString() ?? json['risk']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
@@ -2529,6 +2808,23 @@ class RiskRegisterItem {
           json['projectRole']?.toString() ?? json['role']?.toString() ?? '',
       owner: json['owner']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
+      probabilityNumeric: toDouble(json['probabilityNumeric']),
+      costImpactMin: toDouble(json['costImpactMin']),
+      costImpactMostLikely: toDouble(json['costImpactMostLikely']),
+      costImpactMax: toDouble(json['costImpactMax']),
+      scheduleImpactMin: toInt(json['scheduleImpactMin']),
+      scheduleImpactMostLikely: toInt(json['scheduleImpactMostLikely']),
+      scheduleImpactMax: toInt(json['scheduleImpactMax']),
+      controlAccountId: json['controlAccountId']?.toString() ?? '',
+      cbsId: json['cbsId']?.toString() ?? '',
+      riskType: json['riskType']?.toString() ?? 'threat',
+      responseStrategy: json['responseStrategy']?.toString() ?? 'accept',
+      residualProbability: json['residualProbability'] is num
+          ? (json['residualProbability'] as num).toDouble()
+          : null,
+      residualCostImpact: json['residualCostImpact'] is num
+          ? (json['residualCostImpact'] as num).toDouble()
+          : null,
     );
   }
 }
@@ -3531,6 +3827,11 @@ class WorkPackage {
   String notes;
   String controlAccountId;
 
+  /// Physical percent complete (0.0 - 1.0). Used for Earned Value calculation.
+  /// EV = percentComplete × budgetedCost.  This is the standard EVM approach
+  /// per the Integrated Project Controls guide.
+  double percentComplete;
+
   bool get isReleasedForExecution =>
       releaseStatus == 'released' || releaseStatus == 'complete';
 
@@ -3581,6 +3882,7 @@ class WorkPackage {
     List<String>? readinessWarnings,
     this.notes = '',
     this.controlAccountId = '',
+    this.percentComplete = 0,
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         childPackageIds = childPackageIds ?? [],
         linkedEngineeringPackageIds = linkedEngineeringPackageIds ?? [],
@@ -3647,6 +3949,7 @@ class WorkPackage {
         'readinessWarnings': readinessWarnings,
         'notes': notes,
         'controlAccountId': controlAccountId,
+        'percentComplete': percentComplete,
       };
 
   factory WorkPackage.fromJson(Map<String, dynamic> json) {
@@ -3754,6 +4057,9 @@ class WorkPackage {
           [],
       notes: json['notes']?.toString() ?? '',
       controlAccountId: json['controlAccountId']?.toString() ?? '',
+      percentComplete: (json['percentComplete'] is num)
+          ? (json['percentComplete'] as num).toDouble().clamp(0, 1)
+          : 0,
     );
   }
 
@@ -3802,6 +4108,8 @@ class WorkPackage {
     PackageProcurementBreakdown? procurementBreakdown,
     List<String>? readinessWarnings,
     String? notes,
+    String? controlAccountId,
+    double? percentComplete,
   }) {
     return WorkPackage(
       id: id,
@@ -3856,6 +4164,8 @@ class WorkPackage {
       procurementBreakdown: procurementBreakdown ?? this.procurementBreakdown,
       readinessWarnings: readinessWarnings ?? this.readinessWarnings,
       notes: notes ?? this.notes,
+      controlAccountId: controlAccountId ?? this.controlAccountId,
+      percentComplete: percentComplete ?? this.percentComplete,
     );
   }
 }

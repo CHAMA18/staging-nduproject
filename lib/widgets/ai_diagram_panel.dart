@@ -600,11 +600,15 @@ class _AiDiagramPanelState extends State<AiDiagramPanel>
         _generatedAt = DateTime.now();
       });
 
-      // D4 — Persist to Firestore (best-effort)
+      // D4 — Persist to Firestore
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
-        _DiagramPersistence.save(projectId: pid, sectionKey: _sectionKey, diagram: result);
+        await _DiagramPersistence.save(
+          projectId: pid,
+          sectionKey: _sectionKey,
+          diagram: result,
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -640,6 +644,13 @@ class _AiDiagramPanelState extends State<AiDiagramPanel>
     _resetFrom = _transformationController.value.clone();
     _resetTarget = Matrix4.identity();
     _resetAnimController.forward(from: 0.0);
+  }
+
+  // ── Programmatic zoom ──────────────────────────────────────────────────
+  void _zoom(double factor) {
+    final next = Matrix4.copy(_transformationController.value)
+      ..scaleByDouble(factor, factor, 1.0, 1.0);
+    _transformationController.value = next;
   }
 
   // D7 — Export diagram as PNG (saves to temp directory)
@@ -860,6 +871,18 @@ class _AiDiagramPanelState extends State<AiDiagramPanel>
                         children: [
                           // Node type legend (compact)
                           ..._buildCompactLegend(),
+                          const SizedBox(width: 4),
+                          _ToolbarButton(
+                            icon: Icons.zoom_out_rounded,
+                            tooltip: 'Zoom out',
+                            onTap: () => _zoom(0.85),
+                          ),
+                          const SizedBox(width: 4),
+                          _ToolbarButton(
+                            icon: Icons.zoom_in_rounded,
+                            tooltip: 'Zoom in',
+                            onTap: () => _zoom(1.15),
+                          ),
                           const Spacer(),
                           // Generated timestamp
                           if (_generatedAt != null)
@@ -1225,14 +1248,32 @@ class _DiagramFullscreenViewState extends State<_DiagramFullscreenView> {
           widget.sectionLabel,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.fit_screen_rounded),
-            tooltip: 'Reset zoom',
-            onPressed: () => _transformationController.value = Matrix4.identity(),
-          ),
-          const SizedBox(width: 8),
-        ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.zoom_out_rounded),
+              tooltip: 'Zoom out',
+              onPressed: () {
+                final next = Matrix4.copy(_transformationController.value)
+                  ..scaleByDouble(0.85, 0.85, 1.0, 1.0);
+                _transformationController.value = next;
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.zoom_in_rounded),
+              tooltip: 'Zoom in',
+              onPressed: () {
+                final next = Matrix4.copy(_transformationController.value)
+                  ..scaleByDouble(1.15, 1.15, 1.0, 1.0);
+                _transformationController.value = next;
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.fit_screen_rounded),
+              tooltip: 'Reset zoom',
+              onPressed: () => _transformationController.value = Matrix4.identity(),
+            ),
+            const SizedBox(width: 8),
+          ],
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(),

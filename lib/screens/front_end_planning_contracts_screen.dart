@@ -79,7 +79,7 @@ Color _statusColorFor(String status) {
     return const Color(0xFFF59E0B);
   }
   if (normalized.contains('in progress') || normalized.contains('active')) {
-    return const Color(0xFF2563EB);
+    return const Color(0xFFFFC812);
   }
   return const Color(0xFF64748B);
 }
@@ -1427,7 +1427,7 @@ class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
                           child: ElevatedButton.icon(
                             onPressed: _openContractDetails,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2563EB),
+                              backgroundColor: const Color(0xFFFFC812),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 28, vertical: 16),
@@ -1500,7 +1500,7 @@ class _StrategyStepPills extends StatelessWidget {
     Widget buildPill(String label, int index) {
       final bool isSelected = index == selectedIndex;
       final Color backgroundColor =
-          isSelected ? const Color(0xFF1D9BF0) : const Color(0xFFFFC947);
+          isSelected ? const Color(0xFFFFC812) : const Color(0xFFFFC947);
       final Color textColor =
           isSelected ? Colors.white : const Color(0xFF1F2937);
 
@@ -1779,7 +1779,7 @@ class _RadioOptionRow extends StatelessWidget {
               groupValue: groupValue,
               // ignore: deprecated_member_use
               onChanged: (_) => onChanged(label),
-              activeColor: const Color(0xFF2563EB),
+              activeColor: const Color(0xFFFFC812),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             const SizedBox(width: 4),
@@ -2003,7 +2003,7 @@ class _ExistingQuotesRow extends StatelessWidget {
                   ? TextButton(
                       onPressed: onViewDetails,
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
+                        foregroundColor: const Color(0xFFFFC812),
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(0, 0),
                       ),
@@ -2428,7 +2428,7 @@ class _PlanningSummaryRow extends StatelessWidget {
       return _PlanningSummaryCards(
         stats: [
           _SummaryStatData('Planned Contracts', '—', 'No project selected',
-              const Color(0xFF2563EB)),
+              const Color(0xFFFFC812)),
           _SummaryStatData('Estimated Value', '—', 'Set in preview list',
               const Color(0xFF059669)),
           _SummaryStatData('Approval Readiness', '—', 'Define checkpoints',
@@ -2451,7 +2451,7 @@ class _PlanningSummaryRow extends StatelessWidget {
               'Planned Contracts',
               plannedCount.toString(),
               plannedCount == 0 ? 'Add contracts below' : 'Pre-award list',
-              const Color(0xFF2563EB)),
+              const Color(0xFFFFC812)),
           _SummaryStatData(
               'Estimated Value',
               plannedCount == 0 ? 'TBD' : _formatCurrency(totalValue),
@@ -2689,7 +2689,7 @@ class _CollapsibleSectionCardState extends State<_CollapsibleSectionCard> {
                     label: const Text('Regenerate',
                         style: TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF2563EB),
+                      foregroundColor: const Color(0xFFFFC812),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                     ),
@@ -2966,7 +2966,7 @@ class _ContractPreviewRow extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF2563EB))),
+                      color: const Color(0xFFFFC812))),
             ),
             Expanded(
               flex: 2,
@@ -3258,7 +3258,7 @@ class _TimelineSectionState extends State<_TimelineSection> {
                 Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: const Color(0xFFFFC812),
                   foregroundColor: Colors.white),
               child: const Text('Save'),
             ),
@@ -3537,7 +3537,7 @@ class _TimelineStep extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF2563EB),
+                            color: const Color(0xFFFFC812),
                             decoration: TextDecoration.underline,
                           ),
                         ),
@@ -3552,7 +3552,7 @@ class _TimelineStep extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         minimumSize: const Size(0, 0),
-                        foregroundColor: const Color(0xFF2563EB),
+                        foregroundColor: const Color(0xFFFFC812),
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 14),
                       label: const Text('Set days',
@@ -3777,7 +3777,7 @@ class _ContractRecordCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: () {},
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF2563EB),
+                  foregroundColor: const Color(0xFFFFC812),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -3818,7 +3818,7 @@ class _RecordInfoRow extends StatelessWidget {
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFF2563EB), size: 18),
+            child: Icon(icon, color: const Color(0xFFFFC812), size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -4037,12 +4037,12 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
         _ContractMilestoneData(
           title: 'Published Date',
           value: _formatShortDate(created),
-          accentColor: const Color(0xFF2563EB),
+          accentColor: const Color(0xFFFFC812),
         ),
         _ContractMilestoneData(
           title: 'Clarification Deadline',
           value: _formatShortDate(start),
-          accentColor: const Color(0xFF2563EB),
+          accentColor: const Color(0xFFFFC812),
         ),
         _ContractMilestoneData(
           title: 'Submission Deadline',
@@ -4053,7 +4053,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
         _ContractMilestoneData(
           title: 'Bid Opening',
           value: _formatShortDate(bidOpeningDate),
-          accentColor: const Color(0xFF2563EB),
+          accentColor: const Color(0xFFFFC812),
         ),
       ];
     }
@@ -4132,7 +4132,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
             title: title,
             value: value,
             accentColor:
-                emphasize ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+                emphasize ? const Color(0xFFEF4444) : const Color(0xFFFFC812),
             emphasize: emphasize,
           );
         })
@@ -4816,7 +4816,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: const BorderSide(
-                                      color: Color(0xFF2563EB), width: 1.2),
+                                      color: const Color(0xFFFFC812), width: 1.2),
                                 ),
                               ),
                               style: const TextStyle(
@@ -5567,7 +5567,7 @@ class _ContractingSummaryBudgetImpactCard extends StatelessWidget {
           TextButton(
             onPressed: () {},
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
+              foregroundColor: const Color(0xFFFFC812),
               padding: EdgeInsets.zero,
               minimumSize: const Size(0, 0),
               textStyle:
@@ -5625,7 +5625,7 @@ class _ContractingSummaryScheduleImpactCard extends StatelessWidget {
           TextButton(
             onPressed: () {},
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
+              foregroundColor: const Color(0xFFFFC812),
               padding: EdgeInsets.zero,
               minimumSize: const Size(0, 0),
               textStyle:
@@ -5929,7 +5929,7 @@ class _WarrantyTableRow extends StatelessWidget {
                     child: TextButton(
                       onPressed: () {},
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
+                        foregroundColor: const Color(0xFFFFC812),
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(0, 0),
                         textStyle: const TextStyle(
@@ -6119,7 +6119,7 @@ class _SummaryHighlightBullet extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(top: 6),
           child: Icon(Icons.fiber_manual_record,
-              size: 8, color: Color(0xFF2563EB)),
+              size: 8, color: const Color(0xFFFFC812)),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -6347,7 +6347,7 @@ class _TimelineRow extends StatelessWidget {
       case _TimelineStatusState.complete:
         return const Color(0xFF22C55E);
       case _TimelineStatusState.inProgress:
-        return const Color(0xFF2563EB);
+        return const Color(0xFFFFC812);
       case _TimelineStatusState.behindSchedule:
         return const Color(0xFFF59E0B);
       case _TimelineStatusState.notStarted:
@@ -6397,7 +6397,7 @@ class _TimelineLegend extends StatelessWidget {
 
   static const List<_TimelineLegendItem> _items = [
     _TimelineLegendItem(label: 'Complete', color: Color(0xFF22C55E)),
-    _TimelineLegendItem(label: 'In Progress', color: Color(0xFF2563EB)),
+    _TimelineLegendItem(label: 'In Progress', color: const Color(0xFFFFC812)),
     _TimelineLegendItem(label: 'Not Started', color: Color(0xFFE5E7EB)),
     _TimelineLegendItem(label: 'Behind Schedule', color: Color(0xFFF59E0B)),
   ];
@@ -6609,7 +6609,7 @@ class _ContractStatusRecentActivityCard extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.only(top: 5),
                       child: Icon(Icons.fiber_manual_record,
-                          size: 8, color: Color(0xFF2563EB)),
+                          size: 8, color: const Color(0xFFFFC812)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -6968,7 +6968,7 @@ class _ContractorTableRow extends StatelessWidget {
               child: TextButton(
                 onPressed: () {},
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF2563EB),
+                  foregroundColor: const Color(0xFFFFC812),
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -7315,7 +7315,7 @@ class _ContractExecutionSection extends StatelessWidget {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                          color: Color(0xFF2563EB), width: 1.2),
+                          color: const Color(0xFFFFC812), width: 1.2),
                     ),
                   ),
                   style: const TextStyle(
@@ -7376,7 +7376,7 @@ class _ExecutionTimelineRow extends StatelessWidget {
                   height: 24,
                   decoration: BoxDecoration(
                     color: isFirst
-                        ? const Color(0xFF2563EB)
+                        ? const Color(0xFFFFC812)
                         : const Color(0xFFE5E7EB),
                     shape: BoxShape.circle,
                   ),
@@ -7742,7 +7742,7 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
                       const _ContractMilestoneData(
                         title: 'Published Date',
                         value: 'TBD',
-                        accentColor: Color(0xFF2563EB),
+                        accentColor: const Color(0xFFFFC812),
                       ),
                     ];
               if (stack) {
@@ -8062,7 +8062,7 @@ class _ContractDetailsTabBar extends StatelessWidget {
                     height: 3,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF2563EB)
+                          ? const Color(0xFFFFC812)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(999),
                     ),
@@ -8366,7 +8366,7 @@ class _ContactSidebarCard extends StatelessWidget {
                   Text(
                     info?.email ?? 'Email pending',
                     style:
-                        const TextStyle(fontSize: 13, color: Color(0xFF2563EB)),
+                        const TextStyle(fontSize: 13, color: const Color(0xFFFFC812)),
                   ),
                 ],
               ),
@@ -8492,7 +8492,7 @@ class _UploadBidDocumentsCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: const [
-          Icon(Icons.cloud_upload_outlined, size: 44, color: Color(0xFF2563EB)),
+          Icon(Icons.cloud_upload_outlined, size: 44, color: const Color(0xFFFFC812)),
           SizedBox(height: 16),
           Text(
             'Upload Your Bid Documents',
@@ -8512,7 +8512,7 @@ class _UploadBidDocumentsCard extends StatelessWidget {
                     text: 'click to browse',
                     style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF2563EB),
+                        color: const Color(0xFFFFC812),
                         fontWeight: FontWeight.w600)),
               ],
             ),
@@ -8575,7 +8575,7 @@ class _ContractDocumentRow extends StatelessWidget {
           TextButton(
             onPressed: () {},
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
+              foregroundColor: const Color(0xFFFFC812),
               padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
               minimumSize: const Size(0, 0),
             ),
@@ -8626,7 +8626,7 @@ class _ContractDocumentData {
     final details = (json['details'] ?? '').toString().trim();
     final status = (json['status'] ?? '').toString().toLowerCase();
     IconData icon = Icons.description_outlined;
-    Color color = const Color(0xFF2563EB);
+    Color color = const Color(0xFFFFC812);
     if (status.contains('pdf') || details.toLowerCase().contains('pdf')) {
       icon = Icons.picture_as_pdf_outlined;
       color = const Color(0xFFEF4444);
@@ -8788,7 +8788,7 @@ class _BulletItem extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: Color(0xFF2563EB)),
+            child: Icon(Icons.circle, size: 6, color: const Color(0xFFFFC812)),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -8893,7 +8893,7 @@ class _TabButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
                 color:
-                    isSelected ? const Color(0xFF0987FF) : Colors.transparent,
+                    isSelected ? const Color(0xFFFFC812) : Colors.transparent,
                 width: 1.4),
             boxShadow: isSelected
                 ? const [

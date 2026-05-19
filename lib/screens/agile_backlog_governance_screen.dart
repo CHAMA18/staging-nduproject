@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/agile_wireframe_service.dart';
@@ -206,8 +207,8 @@ class _AgileBacklogGovernanceScreenState
       final end = text.lastIndexOf('}');
       if (start == -1 || end == -1) return {};
       final jsonStr = text.substring(start, end + 1);
-      final Map<String, dynamic> parsed = Map<String, dynamic>.from(
-          JsonDecoder().convert(jsonStr) as Map);
+      final Map<String, dynamic> parsed =
+          Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
       return parsed.map((k, v) => MapEntry(k, v.toString()));
     } catch (_) {
       return {};
@@ -353,10 +354,6 @@ class _FieldConfig {
   });
 }
 
-class JsonDecoder {
-  dynamic convert(String source) {
-    return _parseValue(source, 0).value;
-  }
 
   _Result _parseValue(String s, int i) {
     i = _skipWhitespace(s, i);

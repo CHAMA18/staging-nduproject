@@ -268,8 +268,8 @@ String? _adminHostGuard(User? user) {
   if (AccessPolicy.isRestrictedAdminHost()) {
     final allowed = AccessPolicy.isEmailAllowedForAdmin(user?.email);
     if (!allowed) {
-      // Block navigation by sending them to a neutral landing page
-      return '/${AppRoutes.landing}';
+      // Redirect unauthenticated users on admin host to sign-in page
+      return '/${AppRoutes.signIn}';
     }
   }
   return null;
@@ -288,6 +288,14 @@ class AppRouter {
       } catch (_) {}
       final blocked = _adminHostGuard(user);
       if (blocked != null) return blocked;
+
+      // On admin host: authenticated users on root or sign-in go to dashboard
+      if (AccessPolicy.isRestrictedAdminHost() && user != null) {
+        final loc = state.matchedLocation;
+        if (loc == '/' || loc == '/${AppRoutes.signIn}') {
+          return '/${AppRoutes.dashboard}';
+        }
+      }
 
       // Friendly default: if authenticated and on the root, go to dashboard
       if (user != null && state.matchedLocation == '/') {

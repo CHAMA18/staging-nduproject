@@ -11,6 +11,18 @@ class Epic {
   double totalStoryPoints;
   double completedStoryPoints;
 
+  // ── P3.3: WBS traceability for agile↔predictive bridge ──
+  /// WBS element ID this epic maps to for hybrid project traceability.
+  String wbsId;
+  /// OBS element ID (responsible org unit).
+  String obsId;
+  /// CBS element ID (cost account).
+  String cbsId;
+  /// Control Account ID (WBS+OBS intersection for EVM rollup).
+  String controlAccountId;
+  /// List of feature IDs belonging to this epic.
+  List<String> featureIds;
+
   Epic({
     String? id,
     this.title = '',
@@ -23,7 +35,13 @@ class Epic {
     this.owner = '',
     this.totalStoryPoints = 0,
     this.completedStoryPoints = 0,
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    this.wbsId = '',
+    this.obsId = '',
+    this.cbsId = '',
+    this.controlAccountId = '',
+    List<String>? featureIds,
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+       featureIds = featureIds ?? [];
 
   Epic copyWith({
     String? title,
@@ -36,6 +54,11 @@ class Epic {
     String? owner,
     double? totalStoryPoints,
     double? completedStoryPoints,
+    String? wbsId,
+    String? obsId,
+    String? cbsId,
+    String? controlAccountId,
+    List<String>? featureIds,
   }) {
     return Epic(
       id: id,
@@ -49,8 +72,17 @@ class Epic {
       owner: owner ?? this.owner,
       totalStoryPoints: totalStoryPoints ?? this.totalStoryPoints,
       completedStoryPoints: completedStoryPoints ?? this.completedStoryPoints,
+      wbsId: wbsId ?? this.wbsId,
+      obsId: obsId ?? this.obsId,
+      cbsId: cbsId ?? this.cbsId,
+      controlAccountId: controlAccountId ?? this.controlAccountId,
+      featureIds: featureIds ?? List.from(this.featureIds),
     );
   }
+
+  /// Computed: percent complete based on story points.
+  double get percentComplete =>
+      totalStoryPoints > 0 ? completedStoryPoints / totalStoryPoints : 0;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -64,6 +96,11 @@ class Epic {
         'owner': owner,
         'totalStoryPoints': totalStoryPoints,
         'completedStoryPoints': completedStoryPoints,
+        'wbsId': wbsId,
+        'obsId': obsId,
+        'cbsId': cbsId,
+        'controlAccountId': controlAccountId,
+        'featureIds': featureIds,
       };
 
   factory Epic.fromJson(Map<String, dynamic> json) {
@@ -88,6 +125,14 @@ class Epic {
       owner: json['owner']?.toString() ?? '',
       totalStoryPoints: toDouble(json['totalStoryPoints']),
       completedStoryPoints: toDouble(json['completedStoryPoints']),
+      wbsId: json['wbsId']?.toString() ?? '',
+      obsId: json['obsId']?.toString() ?? '',
+      cbsId: json['cbsId']?.toString() ?? '',
+      controlAccountId: json['controlAccountId']?.toString() ?? '',
+      featureIds: (json['featureIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 }

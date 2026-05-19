@@ -1,5 +1,8 @@
 /// Typed Construction Work Package (CWP).
 /// Complements the generic [WorkPackage] with CWP-specific fields.
+///
+/// P3.2: Added WBS/OBS/CBS cross-references and [copyWith] for
+/// immutable updates and full project controls traceability.
 class ConstructionWorkPackage {
   final String id;
   final String workPackageId; // FK to WorkPackage.id
@@ -16,6 +19,12 @@ class ConstructionWorkPackage {
   String status; // 'planned' | 'in_progress' | 'complete' | 'delayed'
   String notes;
 
+  // ── P3.2: Cross-references for project controls traceability ──
+  String wbsId;
+  String obsId;
+  String cbsId;
+  String controlAccountId;
+
   ConstructionWorkPackage({
     String? id,
     required this.workPackageId,
@@ -31,6 +40,10 @@ class ConstructionWorkPackage {
     this.progressPercent = 0,
     this.status = 'planned',
     this.notes = '',
+    this.wbsId = '',
+    this.obsId = '',
+    this.cbsId = '',
+    this.controlAccountId = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +63,10 @@ class ConstructionWorkPackage {
         'progressPercent': progressPercent,
         'status': status,
         'notes': notes,
+        'wbsId': wbsId,
+        'obsId': obsId,
+        'cbsId': cbsId,
+        'controlAccountId': controlAccountId,
       };
 
   factory ConstructionWorkPackage.fromJson(Map<String, dynamic> json) {
@@ -79,6 +96,51 @@ class ConstructionWorkPackage {
       progressPercent: toDouble(json['progressPercent']),
       status: json['status']?.toString() ?? 'planned',
       notes: json['notes']?.toString() ?? '',
+      wbsId: json['wbsId']?.toString() ?? '',
+      obsId: json['obsId']?.toString() ?? '',
+      cbsId: json['cbsId']?.toString() ?? '',
+      controlAccountId: json['controlAccountId']?.toString() ?? '',
+    );
+  }
+
+  /// ── P3.2: copyWith for immutable updates ──
+  ConstructionWorkPackage copyWith({
+    String? workArea,
+    String? swbsCode,
+    String? constructionMethod,
+    String? contractorId,
+    String? siteSupervisor,
+    DateTime? siteMobilizationDate,
+    DateTime? constructionStartDate,
+    DateTime? constructionEndDate,
+    double? manHours,
+    double? progressPercent,
+    String? status,
+    String? notes,
+    String? wbsId,
+    String? obsId,
+    String? cbsId,
+    String? controlAccountId,
+  }) {
+    return ConstructionWorkPackage(
+      id: id,
+      workPackageId: workPackageId,
+      workArea: workArea ?? this.workArea,
+      swbsCode: swbsCode ?? this.swbsCode,
+      constructionMethod: constructionMethod ?? this.constructionMethod,
+      contractorId: contractorId ?? this.contractorId,
+      siteSupervisor: siteSupervisor ?? this.siteSupervisor,
+      siteMobilizationDate: siteMobilizationDate ?? this.siteMobilizationDate,
+      constructionStartDate: constructionStartDate ?? this.constructionStartDate,
+      constructionEndDate: constructionEndDate ?? this.constructionEndDate,
+      manHours: manHours ?? this.manHours,
+      progressPercent: progressPercent ?? this.progressPercent,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      wbsId: wbsId ?? this.wbsId,
+      obsId: obsId ?? this.obsId,
+      cbsId: cbsId ?? this.cbsId,
+      controlAccountId: controlAccountId ?? this.controlAccountId,
     );
   }
 }

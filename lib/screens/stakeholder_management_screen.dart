@@ -334,18 +334,39 @@ class _StakeholderManagementScreenState
       return;
     }
 
+    // Generate engagement plans for each stakeholder
+    final now = DateTime.now();
+    final engagementPlans = newEntries.map((s) => EngagementPlanEntry(
+      id: '${now.microsecondsSinceEpoch}_${s.id}',
+      stakeholder: s.name,
+      objective: 'Engage ${s.name} to align on project objectives and gather input',
+      method: 'Regular meetings',
+      frequency: 'Weekly',
+      owner: 'Project Manager',
+      status: 'Planned',
+      nextTouchpoint: '',
+      notes: 'Auto-generated from Initiation Phase stakeholder data',
+      createdAt: now,
+      updatedAt: now,
+    )).toList();
+
     await ProjectDataHelper.updateAndSave(
       context: context,
       checkpoint: 'stakeholder_management',
       dataUpdater: (d) => d.copyWith(
         stakeholderEntries: newEntries,
+        engagementPlanEntries: [
+          ...d.engagementPlanEntries,
+          ...engagementPlans,
+        ],
       ),
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            'Loaded ${newEntries.length} stakeholders from Initiation Phase.'),
+          'Loaded ${newEntries.length} stakeholders and ${engagementPlans.length} engagement plans from Initiation Phase.',
+        ),
       ),
     );
   }

@@ -21,6 +21,7 @@ import 'package:ndu_project/screens/planning_procurement_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+const Color _kBrandYellow = Color(0xFFFFC812);
 const Color _kFabYellow = Color(0xFFFBBF24);
 const Color _kFabOnYellow = Color(0xFF111827);
 
@@ -236,7 +237,7 @@ class _BuildHeader extends StatelessWidget {
           label: const Text('Procurement',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: _kBrandYellow,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             elevation: 0,
@@ -347,7 +348,7 @@ class _TabPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2563EB) : Colors.transparent,
+          color: selected ? _kBrandYellow : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
@@ -585,7 +586,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                 _StatCard(
                     value: contracts.length.toString(),
                     label: 'Contracts',
-                    color: const Color(0xFF2563EB),
+                    color: _kBrandYellow,
                     supporting: 'Pre-award list'),
                 _StatCard(
                     value: contracts.isEmpty
@@ -735,7 +736,7 @@ class _ApprovalGateSummary extends StatelessWidget {
         _InlineInfoCard(
           title: 'PM Review',
           detail: 'Required for every package before sponsor approval.',
-          color: Color(0xFF2563EB),
+          color: _kBrandYellow,
         ),
         _InlineInfoCard(
           title: 'Sponsor Approval',
@@ -823,7 +824,7 @@ class _RadioGroup extends StatelessWidget {
                     value: o,
                     groupValue: selected,
                     onChanged: (_) => onChanged(o),
-                    activeColor: const Color(0xFF2563EB),
+                    activeColor: _kBrandYellow,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   const SizedBox(width: 4),
@@ -992,7 +993,7 @@ class _PackagePlanningCard extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('Edit Package'),
                 style:
-                    TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+                    TextButton.styleFrom(foregroundColor: _kBrandYellow),
               ),
             ],
           ),
@@ -1175,7 +1176,7 @@ Color _statusColor(String status) {
   if (s.contains('progress') ||
       s.contains('active') ||
       s.contains('identified')) {
-    return const Color(0xFF2563EB);
+    return _kBrandYellow;
   }
   return const Color(0xFF64748B);
 }
@@ -1637,7 +1638,7 @@ Future<void> _showEditPackageDialog(
               );
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: _kBrandYellow,
                 foregroundColor: Colors.white),
             child: const Text('Save Package'),
           ),
@@ -1673,7 +1674,7 @@ class _PackagesTab extends StatelessWidget {
             label: const Text('Add Package',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             style:
-                TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+                TextButton.styleFrom(foregroundColor: _kBrandYellow),
           ),
           child: _ContractsPreview(projectId: projectId),
         ),
@@ -1795,7 +1796,7 @@ class _HandoffTab extends StatelessWidget {
                 _StatCard(
                     value: packageCount.toString(),
                     label: 'Packages',
-                    color: const Color(0xFF2563EB),
+                    color: _kBrandYellow,
                     supporting: 'Planning records prepared'),
                 _StatCard(
                     value: packageCount == 0
@@ -1982,7 +1983,7 @@ class _HandoffChecklist extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.only(top: 2),
                       child: Icon(Icons.check_circle_outline,
-                          size: 16, color: Color(0xFF2563EB)),
+                          size: 16, color: _kBrandYellow),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -2242,7 +2243,7 @@ class _HandoffReadinessCard extends StatelessWidget {
                 label:
                     Text(alreadySent ? 'Sent to Execution' : 'Send to Execution'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: _kBrandYellow,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: const Color(0xFFE5E7EB),
                   disabledForegroundColor: const Color(0xFF9CA3AF),
@@ -2283,7 +2284,7 @@ class _RfpTabState extends State<_RfpTab> {
               label: const Text('Create RFP',
                   style: TextStyle(fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: _kBrandYellow,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -2712,7 +2713,7 @@ void _showRfpDialog(
               }
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: _kBrandYellow,
                 foregroundColor: Colors.white),
             child: Text(existingRfq == null ? 'Create' : 'Save',
                 style: TextStyle(fontWeight: FontWeight.w600)),
@@ -2920,7 +2921,7 @@ class _EvaluationContractRow extends StatelessWidget {
             label: scores.isEmpty ? 'No Scores' : '${scores.length} scores',
             color: scores.isEmpty
                 ? const Color(0xFF64748B)
-                : const Color(0xFF2563EB),
+                : _kBrandYellow,
           ),
           const SizedBox(width: 8),
           TextButton.icon(
@@ -2928,7 +2929,7 @@ class _EvaluationContractRow extends StatelessWidget {
             icon: const Icon(Icons.tune, size: 16),
             label: const Text('Edit'),
             style:
-                TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+                TextButton.styleFrom(foregroundColor: _kBrandYellow),
           ),
         ],
       ),
@@ -3386,7 +3387,7 @@ Future<void> _showEvaluationDialog(
               );
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: _kBrandYellow,
                 foregroundColor: Colors.white),
             child: const Text('Save Evaluation'),
           ),
@@ -3787,7 +3788,7 @@ class _PaymentSummaryCards extends StatelessWidget {
         _StatCard(
             value: '\$${_formatCurrency(totalValue)}',
             label: 'Total Contract Value',
-            color: const Color(0xFF2563EB)),
+            color: _kBrandYellow),
         _StatCard(
             value: '\$${_formatCurrency(totalPlanned)}',
             label: 'Milestones Planned',
@@ -3881,7 +3882,7 @@ Color _paymentStatusColor(String s) {
   final l = s.toLowerCase();
   if (l == 'paid') return const Color(0xFF22C55E);
   if (l == 'approved') return const Color(0xFF7C3AED);
-  if (l == 'submitted') return const Color(0xFF2563EB);
+  if (l == 'submitted') return _kBrandYellow;
   if (l == 'due') return const Color(0xFFF59E0B);
   return const Color(0xFF64748B);
 }
@@ -4197,7 +4198,7 @@ class _NegotiationContractCard extends StatelessWidget {
         icon: const Icon(Icons.edit_outlined, size: 16),
         label: Text(items.isEmpty ? 'Add Plan' : 'Edit Plan'),
         style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF2563EB),
+          foregroundColor: _kBrandYellow,
         ),
       ),
       child: Column(
@@ -4415,7 +4416,7 @@ Future<void> _showNegotiationDialog(
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: _kBrandYellow,
               foregroundColor: Colors.white,
             ),
             child: const Text('Save Negotiation'),
@@ -4478,7 +4479,7 @@ class _BudgetTabState extends State<_BudgetTab> {
                 _StatCard(
                     value: '\$${_formatCurrency(totalBase)}',
                     label: 'Base Contract Value',
-                    color: const Color(0xFF2563EB)),
+                    color: _kBrandYellow),
                 _StatCard(
                     value: '\$${_formatCurrency(totalContingency)}',
                     label: 'Total Contingency',

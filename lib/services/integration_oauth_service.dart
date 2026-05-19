@@ -134,7 +134,6 @@ class IntegrationOAuthService {
         ),
         scopes: scopes,
         clientSecret: secret.isEmpty ? null : secret,
-        preferEphemeralSession: true,
       ),
     );
 

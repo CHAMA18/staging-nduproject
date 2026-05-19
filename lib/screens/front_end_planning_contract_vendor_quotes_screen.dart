@@ -3694,7 +3694,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selected.id,
+                      initialValue: selected.id,
                       decoration: const InputDecoration(labelText: 'Scope'),
                       items: scopes
                           .map((scope) => DropdownMenuItem<String>(
@@ -3721,7 +3721,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       decoration:
                           const InputDecoration(labelText: 'Tracking Status'),
                       items: _trackingStatusOptions
@@ -3788,7 +3788,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration:
                             const InputDecoration(labelText: 'Status'),
                         items: _reportStatusOptions
@@ -4981,7 +4981,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       final title = projectName.isNotEmpty ? projectName : solutionTitle;
       final subtitle = projectName.isNotEmpty ? solutionTitle : '';
       lines.add(
-        'Project: ${title}${subtitle.isNotEmpty ? ' — $subtitle' : ''}',
+        'Project: $title${subtitle.isNotEmpty ? ' — $subtitle' : ''}',
       );
     }
     if (sponsor.isNotEmpty || pm.isNotEmpty) {

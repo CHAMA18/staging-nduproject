@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/user_role.dart';
 import 'package:ndu_project/services/permission_service.dart';
-import 'package:ndu_project/widgets/permission_aware_widgets.dart';
 import 'user_management_screen.dart';
 
 /// World-class Admin Dashboard for platform management

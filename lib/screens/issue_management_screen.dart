@@ -74,16 +74,22 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
       if (_selectedFilter != 'All') {
         if (_selectedFilter == 'Resolved' &&
             i.status != 'Resolved' &&
-            i.status != 'Closed') return false;
-        if (_selectedFilter != 'Resolved' && i.status != _selectedFilter)
+            i.status != 'Closed') {
           return false;
+        }
+        if (_selectedFilter != 'Resolved' && i.status != _selectedFilter) {
+          return false;
+        }
       }
       // Filter by type
-      if (_selectedTypeFilter != 'All' && i.type != _selectedTypeFilter)
+      if (_selectedTypeFilter != 'All' && i.type != _selectedTypeFilter) {
         return false;
+      }
       // Filter by severity
       if (_selectedSeverityFilter != 'All' &&
-          i.severity != _selectedSeverityFilter) return false;
+          i.severity != _selectedSeverityFilter) {
+        return false;
+      }
       return true;
     }).toList();
   }

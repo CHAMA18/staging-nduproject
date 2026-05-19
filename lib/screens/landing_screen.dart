@@ -3299,9 +3299,9 @@ class _MetricData {
     required this.value,
     required this.label,
     required this.caption,
-    this.suffix = '',
     // ignore: unused_element_parameter
     this.decimals = 0,
+    this.suffix = '',
   });
 
   final double value;

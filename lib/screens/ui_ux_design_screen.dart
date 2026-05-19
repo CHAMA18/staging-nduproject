@@ -1598,14 +1598,14 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                 Row(
                   children: [
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: priority,
+                      initialValue: priority,
                       items: ['Critical', 'High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => priority = v); },
                       decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
                     )),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       items: _journeyStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => status = v); },
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
@@ -1669,14 +1669,14 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                 Row(
                   children: [
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: fidelity,
+                      initialValue: fidelity,
                       items: ['High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => fidelity = v); },
                       decoration: const InputDecoration(labelText: 'Fidelity', border: OutlineInputBorder()),
                     )),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       items: _interfaceStateOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => status = v); },
                       decoration: const InputDecoration(labelText: 'State', border: OutlineInputBorder()),
@@ -1739,14 +1739,14 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                 Row(
                   children: [
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       items: ['Colors', 'Typography', 'Layout', 'Effects', 'Motion', 'Iconography'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => category = v); },
                       decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                     )),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       items: _tokenStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => status = v); },
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
@@ -1810,7 +1810,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                     Expanded(child: TextField(controller: standardController, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       items: _usabilityStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => status = v); },
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
@@ -1889,14 +1889,14 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                 Row(
                   children: [
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: priority,
+                      initialValue: priority,
                       items: ['Critical', 'High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => priority = v); },
                       decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
                     )),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       items: _reviewGateStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                       onChanged: (v) { if (v != null) setModalState(() => status = v); },
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),

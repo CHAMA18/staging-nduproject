@@ -114,28 +114,28 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
     // DropdownButton assertion failures ("There should be exactly one item
     // with [DropdownButton]'s value"). Stale data from deleted WBS items
     // or changed enum values can cause this.
-    const _allowedTypes = {
+    const allowedTypes = {
       'design', 'construction', 'execution', 'agile', 'procurement', 'delivery'
     };
-    const _allowedPhases = {'design', 'execution', 'launch'};
-    const _allowedStatuses = {
+    const allowedPhases = {'design', 'execution', 'launch'};
+    const allowedStatuses = {
       'planned', 'in_progress', 'complete', 'blocked', 'on_hold'
     };
-    const _allowedClassifications = {
+    const allowedClassifications = {
       'engineeringEwp', 'procurementPackage', 'constructionCwp',
       'implementationWorkPackage', 'agileIterationPackage',
       'preCommissioningPackage', 'commissioningPackage', ''
     };
-    const _allowedReleaseStatuses = {
+    const allowedReleaseStatuses = {
       'draft', 'ready_for_review', 'released', 'blocked'
     };
-    if (!_allowedTypes.contains(_type)) _type = 'design';
-    if (!_allowedPhases.contains(_phase)) _phase = 'design';
-    if (!_allowedStatuses.contains(_status)) _status = 'planned';
-    if (!_allowedClassifications.contains(_packageClassification)) {
+    if (!allowedTypes.contains(_type)) _type = 'design';
+    if (!allowedPhases.contains(_phase)) _phase = 'design';
+    if (!allowedStatuses.contains(_status)) _status = 'planned';
+    if (!allowedClassifications.contains(_packageClassification)) {
       _packageClassification = '';
     }
-    if (!_allowedReleaseStatuses.contains(_releaseStatus)) {
+    if (!allowedReleaseStatuses.contains(_releaseStatus)) {
       _releaseStatus = 'draft';
     }
     // Validate WBS Level 2 ID against available options
@@ -338,7 +338,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   if (uniqueOpts.isEmpty) return <Widget>[];
                   return [
                     DropdownButtonFormField<String>(
-                      value: (_wbsLevel2Id != null &&
+                      initialValue: (_wbsLevel2Id != null &&
                               _wbsLevel2Id!.isNotEmpty &&
                               seenIds.contains(_wbsLevel2Id))
                           ? _wbsLevel2Id
@@ -407,7 +407,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _packageClassification.isEmpty
+                        initialValue: _packageClassification.isEmpty
                             ? null
                             : _packageClassification,
                         decoration: const InputDecoration(
@@ -443,7 +443,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   ],
                 ),
                 DropdownButtonFormField<String>(
-                  value: _releaseStatus,
+                  initialValue: _releaseStatus,
                   decoration:
                       const InputDecoration(labelText: 'Release Status'),
                   items: const [
@@ -465,7 +465,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _type,
+                        initialValue: _type,
                         decoration: const InputDecoration(labelText: 'Type'),
                         items: const [
                           DropdownMenuItem(
@@ -490,7 +490,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _phase,
+                        initialValue: _phase,
                         decoration: const InputDecoration(labelText: 'Phase'),
                         items: const [
                           DropdownMenuItem(
@@ -508,7 +508,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                   ],
                 ),
                 DropdownButtonFormField<String>(
-                  value: _status,
+                  initialValue: _status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
                     DropdownMenuItem(

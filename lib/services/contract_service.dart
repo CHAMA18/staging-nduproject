@@ -295,19 +295,19 @@ class ContractModel {
       return double.tryParse(v?.toString() ?? '') ?? 0.0;
     }
 
-    String? _ns(dynamic v) {
+    String? ns(dynamic v) {
       final s = (v ?? '').toString().trim();
       return s.isEmpty ? null : s;
     }
 
-    double? _nd(dynamic v) {
+    double? nd(dynamic v) {
       if (v == null) return null;
       if (v is num) return v.toDouble();
       final d = double.tryParse(v.toString());
       return d;
     }
 
-    List<PaymentMilestone>? _pm(dynamic v) {
+    List<PaymentMilestone>? pm(dynamic v) {
       if (v is! List) return null;
       final items = v
           .whereType<Map>()
@@ -316,7 +316,7 @@ class ContractModel {
       return items.isEmpty ? null : items;
     }
 
-    List<NegotiationItem>? _ni(dynamic v) {
+    List<NegotiationItem>? ni(dynamic v) {
       if (v is! List) return null;
       final items = v
           .whereType<Map>()
@@ -325,7 +325,7 @@ class ContractModel {
       return items.isEmpty ? null : items;
     }
 
-    List<EvaluationScore>? _es(dynamic v) {
+    List<EvaluationScore>? es(dynamic v) {
       if (v is! List) return null;
       final items = v
           .whereType<Map>()
@@ -344,7 +344,7 @@ class ContractModel {
       return items.isEmpty ? null : items;
     }
 
-    List<String>? _sl(dynamic v) {
+    List<String>? sl(dynamic v) {
       if (v is! List) return null;
       final items = v.map((e) => e.toString()).toList();
       return items.isEmpty ? null : items;
@@ -377,54 +377,54 @@ class ContractModel {
           parseTs(data['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt:
           parseTs(data['updatedAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
-      paymentMilestones: _pm(data['paymentMilestones']),
-      changeOrderProcedure: _ns(data['changeOrderProcedure']),
-      disputeResolution: _ns(data['disputeResolution']),
-      contractManagerId: _ns(data['contractManagerId']),
-      contractManagerName: _ns(data['contractManagerName']),
-      reportingFrequency: _ns(data['reportingFrequency']),
-      contingencyAmount: _nd(data['contingencyAmount']),
-      contingencyPercent: _nd(data['contingencyPercent']),
-      negotiationStatus: _ns(data['negotiationStatus']),
-      negotiationObjectives: _ns(data['negotiationObjectives']),
-      negotiationAuthority: _ns(data['negotiationAuthority']),
-      negotiationItems: _ni(data['negotiationItems']),
-      linkedRfqId: _ns(data['linkedRfqId']),
-      evaluationScores: _es(data['evaluationScores']),
+      paymentMilestones: pm(data['paymentMilestones']),
+      changeOrderProcedure: ns(data['changeOrderProcedure']),
+      disputeResolution: ns(data['disputeResolution']),
+      contractManagerId: ns(data['contractManagerId']),
+      contractManagerName: ns(data['contractManagerName']),
+      reportingFrequency: ns(data['reportingFrequency']),
+      contingencyAmount: nd(data['contingencyAmount']),
+      contingencyPercent: nd(data['contingencyPercent']),
+      negotiationStatus: ns(data['negotiationStatus']),
+      negotiationObjectives: ns(data['negotiationObjectives']),
+      negotiationAuthority: ns(data['negotiationAuthority']),
+      negotiationItems: ni(data['negotiationItems']),
+      linkedRfqId: ns(data['linkedRfqId']),
+      evaluationScores: es(data['evaluationScores']),
       technicalScreenings: parseTechnicalScreenings(data['technicalScreenings']),
       budgetBreakdown: data['budgetBreakdown'] is Map
           ? ContractBudgetBreakdown.fromMap(
               Map<String, dynamic>.from(data['budgetBreakdown'] as Map))
           : null,
-      performanceKpis: _ns(data['performanceKpis']),
-      awardStrategy: _ns(data['awardStrategy']),
-      linkedFepScopeId: _ns(data['linkedFepScopeId']),
-      packageSummary: _ns(data['packageSummary']),
-      engineerEstimate: _nd(data['engineerEstimate']),
+      performanceKpis: ns(data['performanceKpis']),
+      awardStrategy: ns(data['awardStrategy']),
+      linkedFepScopeId: ns(data['linkedFepScopeId']),
+      packageSummary: ns(data['packageSummary']),
+      engineerEstimate: nd(data['engineerEstimate']),
       targetAwardDate: parseTs(data['targetAwardDate']),
       plannedExecutionStart: parseTs(data['plannedExecutionStart']),
-      linkedScheduleMilestoneIds: _sl(data['linkedScheduleMilestoneIds']),
-      technicalGateStatus: _ns(data['technicalGateStatus']),
-      technicalGateNotes: _ns(data['technicalGateNotes']),
-      recommendedVendor: _ns(data['recommendedVendor']),
-      recommendedAwardValue: _nd(data['recommendedAwardValue']),
-      vendorComparisonSummary: _ns(data['vendorComparisonSummary']),
-      pmReviewStatus: _ns(data['pmReviewStatus']),
-      pmReviewNotes: _ns(data['pmReviewNotes']),
+      linkedScheduleMilestoneIds: sl(data['linkedScheduleMilestoneIds']),
+      technicalGateStatus: ns(data['technicalGateStatus']),
+      technicalGateNotes: ns(data['technicalGateNotes']),
+      recommendedVendor: ns(data['recommendedVendor']),
+      recommendedAwardValue: nd(data['recommendedAwardValue']),
+      vendorComparisonSummary: ns(data['vendorComparisonSummary']),
+      pmReviewStatus: ns(data['pmReviewStatus']),
+      pmReviewNotes: ns(data['pmReviewNotes']),
       pmReviewDate: parseTs(data['pmReviewDate']),
-      sponsorApprovalStatus: _ns(data['sponsorApprovalStatus']),
-      sponsorApprovalNotes: _ns(data['sponsorApprovalNotes']),
+      sponsorApprovalStatus: ns(data['sponsorApprovalStatus']),
+      sponsorApprovalNotes: ns(data['sponsorApprovalNotes']),
       sponsorApprovalDate: parseTs(data['sponsorApprovalDate']),
-      complianceChecklist: _sl(data['complianceChecklist']),
-      retentionPlan: _ns(data['retentionPlan']),
-      taxFeePlan: _nd(data['taxFeePlan']),
-      commitmentForecast: _nd(data['commitmentForecast']),
-      handoffStatus: _ns(data['handoffStatus']),
-      handoffNotes: _ns(data['handoffNotes']),
+      complianceChecklist: sl(data['complianceChecklist']),
+      retentionPlan: ns(data['retentionPlan']),
+      taxFeePlan: nd(data['taxFeePlan']),
+      commitmentForecast: nd(data['commitmentForecast']),
+      handoffStatus: ns(data['handoffStatus']),
+      handoffNotes: ns(data['handoffNotes']),
       handoffReadyAt: parseTs(data['handoffReadyAt']),
-      procurementHandoffStatus: _ns(data['procurementHandoffStatus']),
+      procurementHandoffStatus: ns(data['procurementHandoffStatus']),
       procurementIssuedAt: parseTs(data['procurementIssuedAt']),
-      procurementRfqId: _ns(data['procurementRfqId']),
+      procurementRfqId: ns(data['procurementRfqId']),
     );
   }
 }

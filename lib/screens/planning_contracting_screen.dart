@@ -1226,7 +1226,7 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: contractType,
+                        initialValue: contractType,
                         items: [
                           'Not Sure',
                           'Lump Sum (Fixed Price)',
@@ -1247,7 +1247,7 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: paymentType,
+                        initialValue: paymentType,
                         items: ['TBD', 'Monthly', 'Milestone-Based', 'Upfront']
                             .map((v) => DropdownMenuItem(
                                 value: v,
@@ -2423,10 +2423,12 @@ class _RfqRow extends StatelessWidget {
 
 Color _rfqStatusColor(String s) {
   final l = s.toLowerCase();
-  if (l.contains('award') || l.contains('complete'))
+  if (l.contains('award') || l.contains('complete')) {
     return const Color(0xFF22C55E);
-  if (l.contains('publish') || l.contains('active'))
+  }
+  if (l.contains('publish') || l.contains('active')) {
     return const Color(0xFF2563EB);
+  }
   if (l.contains('evaluat')) return const Color(0xFFF59E0B);
   return const Color(0xFF64748B);
 }
@@ -5110,7 +5112,7 @@ class _CriteriaRowState extends State<_CriteriaRow> {
           SizedBox(
             width: 120,
             child: DropdownButtonFormField<String>(
-              value: widget.criterion.category,
+              initialValue: widget.criterion.category,
               isExpanded: true,
               isDense: true,
               decoration: const InputDecoration(

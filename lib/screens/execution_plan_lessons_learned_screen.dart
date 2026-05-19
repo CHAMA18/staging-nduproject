@@ -117,7 +117,7 @@ class _LessonsLearnedSection extends StatelessWidget {
 }
 
 class LessonsLearnedTable extends StatelessWidget {
-  const LessonsLearnedTable();
+  const LessonsLearnedTable({super.key});
 
   String? _getProjectId(BuildContext context) {
     try {

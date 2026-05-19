@@ -1859,7 +1859,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   ]),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                     items: ['Active', 'Under Review', 'Monitoring', 'At Risk'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) => setDialogState(() => status = v ?? 'Active'),
@@ -1956,7 +1956,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   ]),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                     items: ['On Track', 'Improving', 'Stable', 'At Risk'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) => setDialogState(() => status = v ?? 'On Track'),
@@ -2131,7 +2131,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   Row(children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: riskLevel,
+                        initialValue: riskLevel,
                         decoration: const InputDecoration(labelText: 'Risk Level', border: OutlineInputBorder()),
                         items: ['High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (v) => setDialogState(() => riskLevel = v ?? 'Medium'),
@@ -2140,7 +2140,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                         items: ['Active', 'On Track', 'Under Review', 'At Risk', 'Monitoring'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (v) => setDialogState(() => status = v ?? 'Active'),
@@ -2291,7 +2291,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   Row(children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: complianceStatus,
+                        initialValue: complianceStatus,
                         decoration: const InputDecoration(labelText: 'Compliance', border: OutlineInputBorder()),
                         items: ['Compliant', 'Conditional', 'Non-Compliant'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (v) => setDialogState(() => complianceStatus = v ?? 'Compliant'),
@@ -2300,7 +2300,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: riskFlag,
+                        initialValue: riskFlag,
                         decoration: const InputDecoration(labelText: 'Risk Flag', border: OutlineInputBorder()),
                         items: ['None', 'Low', 'Medium', 'High', 'Critical'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (v) => setDialogState(() => riskFlag = v ?? 'None'),
@@ -2309,7 +2309,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                         items: ['Full', 'Covered', 'Partial', 'Understaffed'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (v) => setDialogState(() => status = v ?? 'Covered'),

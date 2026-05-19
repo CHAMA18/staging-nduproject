@@ -1,24 +1,11 @@
 import 'package:ndu_project/screens/execution_plan_agile_delivery_plan_screen.dart';
-import 'dart:async';
 import 'package:ndu_project/screens/execution_plan_infrastructure_plan_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
-import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/services/execution_service.dart';
-import 'package:ndu_project/services/user_service.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 class ExecutionPlanConstructionPlanScreen extends StatelessWidget {
   const ExecutionPlanConstructionPlanScreen({super.key});

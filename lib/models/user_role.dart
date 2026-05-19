@@ -4,23 +4,23 @@ import 'package:flutter/material.dart';
 enum SiteRole {
   /// Full platform control with authority over billing, user management,
   /// permissions, and all system settings
-  owner('Owner', 5, const Color(0xFFDC2626)),
+  owner('Owner', 5, Color(0xFFDC2626)),
 
   /// Manages users, permissions, and system configurations while supporting
   /// overall platform governance. Limited site control beyond projects.
-  admin('Admin', 4, const Color(0xFF8B5CF6)),
+  admin('Admin', 4, Color(0xFF8B5CF6)),
 
   /// Creates, modifies, and manages content, projects, or data within
   /// assigned areas of the platform. Project, program, and portfolio managers.
-  editor('Editor', 3, const Color(0xFF3B82F6)),
+  editor('Editor', 3, Color(0xFF3B82F6)),
 
   /// Engages with the platform to execute tasks, collaborate, and utilize
   /// available features based on assigned access. Regular project users.
-  user('User', 2, const Color(0xFF10B981)),
+  user('User', 2, Color(0xFF10B981)),
 
   /// Limited, typically view-only access to specific content or areas
   /// without the ability to make changes. For vendors and external parties.
-  guest('Guest', 1, const Color(0xFF9CA3AF));
+  guest('Guest', 1, Color(0xFF9CA3AF));
 
   final String displayName;
   final int level;

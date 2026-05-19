@@ -1310,7 +1310,7 @@ class _MetricsRow extends StatelessWidget {
         ),
         _MetricCard(
           label: 'Epic Story Points',
-          value: '${epicTotalPoints.toStringAsFixed(0)}',
+          value: epicTotalPoints.toStringAsFixed(0),
           accent: const Color(0xFF8B5CF6),
         ),
         _MetricCard(

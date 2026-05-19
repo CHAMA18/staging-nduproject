@@ -1233,7 +1233,7 @@ class _AssignReviewerDialogState extends State<_AssignReviewerDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<ReviewerRole>(
-            value: _selectedRole,
+            initialValue: _selectedRole,
             decoration: const InputDecoration(
               labelText: 'Role',
               border: OutlineInputBorder(),
@@ -1248,7 +1248,7 @@ class _AssignReviewerDialogState extends State<_AssignReviewerDialog> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _selectedUserId.isEmpty ? null : _selectedUserId,
+            initialValue: _selectedUserId.isEmpty ? null : _selectedUserId,
             decoration: const InputDecoration(
               labelText: 'Team Member',
               border: OutlineInputBorder(),

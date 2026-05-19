@@ -31,8 +31,8 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
   String? _hoveredId;
   String _searchQuery = '';
 
-  double _leftColumnWidth = 320;
-  double _chartHeightPerRow = 48;
+  final double _leftColumnWidth = 320;
+  final double _chartHeightPerRow = 48;
   double _pxPerDay = 3.0;
 
   @override

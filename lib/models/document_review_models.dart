@@ -1,4 +1,5 @@
 /// Document review and approval tracking models for the Document Review Matrix
+library;
 
 /// Status of a document in the review workflow
 enum ReviewStatus {
@@ -346,7 +347,9 @@ class DocumentReviewItem {
   bool get isOverdue {
     if (reviewDueDate == null ||
         status == ReviewStatus.approved ||
-        status == ReviewStatus.rejected) return false;
+        status == ReviewStatus.rejected) {
+      return false;
+    }
     return DateTime.now().isAfter(reviewDueDate!);
   }
 

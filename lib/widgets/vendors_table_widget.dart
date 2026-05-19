@@ -588,7 +588,7 @@ class _SlaCell extends StatelessWidget {
                 ),
               ),
               Text(
-                '${vendor.onTimeDelivery >= 0.8 ? 'On track' : vendor.onTimeDelivery >= 0.6 ? 'At risk' : 'Behind'}',
+                vendor.onTimeDelivery >= 0.8 ? 'On track' : vendor.onTimeDelivery >= 0.6 ? 'At risk' : 'Behind',
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,

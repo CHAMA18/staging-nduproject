@@ -30,7 +30,7 @@ class _AgileSprintCalendarScreenState
   bool _isLoading = true;
   TextEditingController _ceremonyController = TextEditingController();
   String _searchQuery = '';
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
 

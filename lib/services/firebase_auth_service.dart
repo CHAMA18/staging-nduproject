@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'google_sign_in_adapter.dart' as gadapter;
 
@@ -25,10 +26,12 @@ class FirebaseAuthService {
     required String password,
     bool rememberMe = false,
   }) async {
-    // Set auth persistence based on Remember Me
-    await _auth.setPersistence(
-      rememberMe ? Persistence.LOCAL : Persistence.SESSION,
-    );
+    if (kIsWeb) {
+      // FirebaseAuth.setPersistence is only implemented by firebase_auth_web.
+      await _auth.setPersistence(
+        rememberMe ? Persistence.LOCAL : Persistence.SESSION,
+      );
+    }
     await setRememberMe(rememberMe);
     final cred = await _auth.signInWithEmailAndPassword(
         email: email, password: password);

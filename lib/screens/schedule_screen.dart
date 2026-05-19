@@ -56,7 +56,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
   String _timelineSearchQuery = '';
   String _workPackageSearchQuery = '';
-  String _ganttSearchQuery = '';
+  final String _ganttSearchQuery = '';
   String _workPackageSortField = 'title'; // title, status, owner, phase, budget
   bool _workPackageSortAscending = true;
   String _listSortField = 'title'; // title, status, priority, assignee, startDate
@@ -78,8 +78,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           : _selectedMethodology;
       // Validate methodology against allowed options to prevent
       // DropdownButton assertion failures.
-      const _allowedMethodologies = {'Waterfall', 'Agile', 'Hybrid'};
-      if (!_allowedMethodologies.contains(_selectedMethodology)) {
+      const allowedMethodologies = {'Waterfall', 'Agile', 'Hybrid'};
+      if (!allowedMethodologies.contains(_selectedMethodology)) {
         _selectedMethodology = 'Waterfall';
       }
       final storedStart =
@@ -819,7 +819,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       if (wbsItems.isNotEmpty)
                         DropdownButtonFormField<String>(
-                          value: selectedWbsRawId,
+                          initialValue: selectedWbsRawId,
                           decoration: const InputDecoration(
                             labelText: 'WBS Item (optional)',
                           ),
@@ -894,7 +894,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             const InputDecoration(labelText: 'Duration (days)'),
                       ),
                       DropdownButtonFormField<String?>(
-                        value: predecessorId,
+                        initialValue: predecessorId,
                         decoration:
                             const InputDecoration(labelText: 'Predecessor'),
                         items: [
@@ -937,7 +937,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration:
                                   const InputDecoration(labelText: 'Status'),
                               items: const [
@@ -961,7 +961,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: priority,
+                              initialValue: priority,
                               decoration:
                                   const InputDecoration(labelText: 'Priority'),
                               items: const [

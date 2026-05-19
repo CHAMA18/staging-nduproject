@@ -1506,7 +1506,7 @@ class _TechnicalDebtManagementScreenState
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedTier,
+                    initialValue: selectedTier,
                     decoration: const InputDecoration(labelText: 'Risk tier'),
                     items: const [
                       DropdownMenuItem(
@@ -1516,13 +1516,14 @@ class _TechnicalDebtManagementScreenState
                       DropdownMenuItem(value: 'Low', child: Text('Low')),
                     ],
                     onChanged: (value) {
-                      if (value != null)
+                      if (value != null) {
                         setDialogState(() => selectedTier = value);
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
-                    value: selectedColorValue,
+                    initialValue: selectedColorValue,
                     decoration:
                         const InputDecoration(labelText: 'Severity color'),
                     items: _governanceColorOptions
@@ -1532,8 +1533,9 @@ class _TechnicalDebtManagementScreenState
                             ))
                         .toList(),
                     onChanged: (value) {
-                      if (value != null)
+                      if (value != null) {
                         setDialogState(() => selectedColorValue = value);
+                      }
                     },
                   ),
                 ],
@@ -1686,7 +1688,7 @@ class _TechnicalDebtManagementScreenState
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
-                    value: selectedColorValue,
+                    initialValue: selectedColorValue,
                     decoration:
                         const InputDecoration(labelText: 'Workstream color'),
                     items: _governanceColorOptions
@@ -1696,8 +1698,9 @@ class _TechnicalDebtManagementScreenState
                             ))
                         .toList(),
                     onChanged: (value) {
-                      if (value != null)
+                      if (value != null) {
                         setDialogState(() => selectedColorValue = value);
+                      }
                     },
                   ),
                 ],

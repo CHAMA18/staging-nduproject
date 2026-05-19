@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/models/project_data_model.dart' as model;
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';

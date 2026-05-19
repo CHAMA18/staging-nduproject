@@ -887,7 +887,7 @@ class _AddDeliverableDialogState extends State<_AddDeliverableDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<DeliverableCategory>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Category *',
                   border: OutlineInputBorder(),
@@ -902,7 +902,7 @@ class _AddDeliverableDialogState extends State<_AddDeliverableDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<RoadmapDeliverablePriority>(
-                value: _selectedPriority,
+                initialValue: _selectedPriority,
                 decoration: const InputDecoration(
                   labelText: 'Priority',
                   border: OutlineInputBorder(),
@@ -1077,7 +1077,7 @@ class _EditDeliverableDialogState extends State<_EditDeliverableDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<RoadmapDeliverableStatus>(
-              value: _selectedStatus,
+              initialValue: _selectedStatus,
               decoration: const InputDecoration(
                 labelText: 'Status',
                 border: OutlineInputBorder(),
@@ -1092,7 +1092,7 @@ class _EditDeliverableDialogState extends State<_EditDeliverableDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<RoadmapDeliverablePriority>(
-              value: _selectedPriority,
+              initialValue: _selectedPriority,
               decoration: const InputDecoration(
                 labelText: 'Priority',
                 border: OutlineInputBorder(),

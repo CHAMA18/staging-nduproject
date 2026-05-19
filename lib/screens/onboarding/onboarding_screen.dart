@@ -179,7 +179,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // Page 1: Concept to Launch
   Widget _buildPage1() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         children: [
@@ -255,11 +255,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // Page 2: Stay on Schedule
   Widget _buildPage2() {
-    return Container(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
           children: [
             const SizedBox(height: 40),
 
@@ -335,13 +333,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
   // Page 3: Competitive Advantage
   Widget _buildPage3() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         children: [

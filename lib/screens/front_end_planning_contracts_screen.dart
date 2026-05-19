@@ -2722,7 +2722,7 @@ class _CollapsibleAiTextCard extends StatefulWidget {
     required this.sectionLabel,
     required this.hintText,
     this.subtitle,
-    this.minLines = 4,
+    this.minLines = 3,
     this.maxLines = 8,
     this.initiallyExpanded = false,
   });
@@ -4032,7 +4032,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
       final start = contract.startDate;
       final end = contract.endDate;
       final bidOpeningDate =
-          end != null ? end.add(const Duration(days: 2)) : null;
+          end?.add(const Duration(days: 2));
       _overviewMilestones = [
         _ContractMilestoneData(
           title: 'Published Date',

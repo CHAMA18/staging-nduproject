@@ -52,10 +52,12 @@ class _AgileReleasePlanScreenState extends State<AgileReleasePlanScreen> {
     setState(() => _isLoading = true);
     try {
       final plans = await AgileWireframeService.loadReleasePlans(pid);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _plans = plans;
         _isLoading = false;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -462,7 +464,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _status,
+              initialValue: _status,
               decoration: const InputDecoration(
                   labelText: 'Status', border: OutlineInputBorder()),
               items: ['Draft', 'Ready', 'Approved']

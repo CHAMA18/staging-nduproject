@@ -82,8 +82,9 @@ class RoadmapDeliverable {
   }
 
   bool get isOverdue {
-    if (dueDate == null || status == RoadmapDeliverableStatus.completed)
+    if (dueDate == null || status == RoadmapDeliverableStatus.completed) {
       return false;
+    }
     return DateTime.now().isAfter(dueDate!);
   }
 

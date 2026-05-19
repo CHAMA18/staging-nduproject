@@ -30,7 +30,6 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/web_utils.dart';
 import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(

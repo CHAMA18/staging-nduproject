@@ -570,7 +570,7 @@ class _InterfaceRegisterSectionState extends State<_InterfaceRegisterSection> {
           SizedBox(
             width: 140,
             child: DropdownButtonFormField<String>(
-              value: _typeFilter,
+              initialValue: _typeFilter,
               decoration: InputDecoration(
                 labelText: 'Type',
                 labelStyle: const TextStyle(fontSize: 11),
@@ -588,7 +588,7 @@ class _InterfaceRegisterSectionState extends State<_InterfaceRegisterSection> {
           SizedBox(
             width: 140,
             child: DropdownButtonFormField<String>(
-              value: _statusFilter,
+              initialValue: _statusFilter,
               decoration: InputDecoration(
                 labelText: 'Status',
                 labelStyle: const TextStyle(fontSize: 11),
@@ -606,7 +606,7 @@ class _InterfaceRegisterSectionState extends State<_InterfaceRegisterSection> {
           SizedBox(
             width: 140,
             child: DropdownButtonFormField<String>(
-              value: _priorityFilter,
+              initialValue: _priorityFilter,
               decoration: InputDecoration(
                 labelText: 'Priority',
                 labelStyle: const TextStyle(fontSize: 11),
@@ -1139,7 +1139,7 @@ class _InterfaceEntryDialogState extends State<_InterfaceEntryDialog> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: DropdownButtonFormField<String>(
-        value: items.contains(value) ? value : items.first,
+        initialValue: items.contains(value) ? value : items.first,
         decoration: InputDecoration(
           labelText: label,
           border:
@@ -1819,7 +1819,7 @@ class _RisksDecisionsSection extends StatelessWidget {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
               ),

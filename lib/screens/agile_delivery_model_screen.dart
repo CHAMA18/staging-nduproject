@@ -407,8 +407,9 @@ class JsonDecoder {
         i++;
         if (i < s.length) {
           final esc = s[i];
-          if (esc == '"') buf.write('"');
-          else if (esc == '\\') buf.write('\\');
+          if (esc == '"') {
+            buf.write('"');
+          } else if (esc == '\\') buf.write('\\');
           else if (esc == '/') buf.write('/');
           else if (esc == 'n') buf.write('\n');
           else if (esc == 'r') buf.write('\r');
@@ -427,15 +428,21 @@ class JsonDecoder {
   _Result _parseNumber(String s, int i) {
     final start = i;
     if (s[i] == '-') i++;
-    while (i < s.length && _isDigit(s[i])) i++;
+    while (i < s.length && _isDigit(s[i])) {
+      i++;
+    }
     if (i < s.length && s[i] == '.') {
       i++;
-      while (i < s.length && _isDigit(s[i])) i++;
+      while (i < s.length && _isDigit(s[i])) {
+        i++;
+      }
     }
     if (i < s.length && (s[i] == 'e' || s[i] == 'E')) {
       i++;
       if (i < s.length && (s[i] == '+' || s[i] == '-')) i++;
-      while (i < s.length && _isDigit(s[i])) i++;
+      while (i < s.length && _isDigit(s[i])) {
+        i++;
+      }
     }
     final numStr = s.substring(start, i);
     if (numStr.contains('.') || numStr.contains('e') || numStr.contains('E')) {
@@ -461,7 +468,9 @@ class JsonDecoder {
   }
 
   int _skipWhitespace(String s, int i) {
-    while (i < s.length && s.codeUnitAt(i) <= 32) i++;
+    while (i < s.length && s.codeUnitAt(i) <= 32) {
+      i++;
+    }
     return i;
   }
 }

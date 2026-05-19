@@ -8,7 +8,6 @@ import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 import 'package:ndu_project/widgets/ai_diagram_panel.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 
 class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {

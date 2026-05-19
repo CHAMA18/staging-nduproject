@@ -1398,8 +1398,9 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                                   ))
                               .toList(),
                           onChanged: (v) {
-                            if (v != null)
+                            if (v != null) {
                               setDialogState(() => storyPoints = v);
+                            }
                           },
                         ),
                       ),

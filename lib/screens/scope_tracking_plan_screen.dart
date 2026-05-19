@@ -988,7 +988,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: 'predictive',
+                initialValue: 'predictive',
                 decoration: const InputDecoration(
                   labelText: 'Scope Type',
                   border: OutlineInputBorder(),
@@ -1018,7 +1018,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: 'Not Started',
+                initialValue: 'Not Started',
                 decoration: const InputDecoration(
                   labelText: 'Status',
                   border: OutlineInputBorder(),

@@ -145,11 +145,12 @@ class RoadmapService {
   }) async {
     try {
       final doc = await _roadmapDoc(projectId).get();
-      if (!doc.exists)
+      if (!doc.exists) {
         return (
           sprints: <RoadmapSprint>[],
           deliverables: <RoadmapDeliverable>[]
         );
+      }
 
       final data = doc.data() ?? {};
 

@@ -1165,14 +1165,14 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
-                    value: severity,
+                    initialValue: severity,
                     decoration: const InputDecoration(labelText: 'Severity', isDense: true, border: OutlineInputBorder()),
                     items: ['Critical', 'High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => severity = v); },
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status', isDense: true, border: OutlineInputBorder()),
                     items: ['Open', 'Monitoring', 'Mitigated', 'Closed'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => status = v); },
@@ -1377,14 +1377,14 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
-                    value: priority,
+                    initialValue: priority,
                     decoration: const InputDecoration(labelText: 'Priority', isDense: true, border: OutlineInputBorder()),
                     items: ['Critical', 'High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => priority = v); },
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status', isDense: true, border: OutlineInputBorder()),
                     items: ['Agenda locked', 'Docs requested', 'Pending invite', 'Completed', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => status = v); },

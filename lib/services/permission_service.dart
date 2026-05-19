@@ -60,10 +60,8 @@ class PermissionService {
         ? UserRoleAssignment.fromMap(doc.data()!)
         : _createDefaultRole(userId);
 
-    if (role != null) {
-      _roleCache[userId] = role;
-    }
-
+    _roleCache[userId] = role;
+  
     return role;
   }
 

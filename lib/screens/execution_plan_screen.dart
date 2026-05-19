@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class ExecutionPlanScreen extends StatefulWidget {

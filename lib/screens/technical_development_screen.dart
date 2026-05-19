@@ -534,10 +534,14 @@ class _TechnicalDevelopmentScreenState
     return _issues.where((i) {
       // Issues show on "Blocked" or "At risk" filters
       if (_selectedFilters.contains('Blocked') &&
-          i.severity.toLowerCase() == 'critical') return true;
+          i.severity.toLowerCase() == 'critical') {
+        return true;
+      }
       if (_selectedFilters.contains('At risk') &&
           (i.severity.toLowerCase() == 'high' ||
-           i.severity.toLowerCase() == 'critical')) return true;
+           i.severity.toLowerCase() == 'critical')) {
+        return true;
+      }
       return false;
     }).toList();
   }
@@ -1959,7 +1963,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _workstreamStatusOptions.contains(status)
+                  initialValue: _workstreamStatusOptions.contains(status)
                       ? status
                       : _workstreamStatusOptions.first,
                   items: _workstreamStatusOptions
@@ -2149,7 +2153,7 @@ class _TechnicalDevelopmentScreenState
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _buildStatusOptions.contains(status)
+                        initialValue: _buildStatusOptions.contains(status)
                             ? status
                             : _buildStatusOptions.first,
                         items: _buildStatusOptions
@@ -2172,7 +2176,7 @@ class _TechnicalDevelopmentScreenState
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: type,
+                        initialValue: type,
                         items: ['Software', 'Physical', 'Mixed']
                             .map((option) => DropdownMenuItem(
                                   value: option,
@@ -2324,7 +2328,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _integrationStatusOptions.contains(status)
+                  initialValue: _integrationStatusOptions.contains(status)
                       ? status
                       : _integrationStatusOptions.first,
                   items: _integrationStatusOptions
@@ -2462,7 +2466,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _severityOptions.contains(severity)
+                  initialValue: _severityOptions.contains(severity)
                       ? severity
                       : _severityOptions[1],
                   items: _severityOptions
@@ -2614,7 +2618,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _severityOptions.contains(severity)
+                  initialValue: _severityOptions.contains(severity)
                       ? severity
                       : _severityOptions[1],
                   items: _severityOptions
@@ -2767,7 +2771,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _ownerOptions(currentValue: owner).contains(owner)
+                  initialValue: _ownerOptions(currentValue: owner).contains(owner)
                       ? owner
                       : _ownerOptions(currentValue: owner).first,
                   items: _ownerOptions(currentValue: owner)
@@ -2788,7 +2792,7 @@ class _TechnicalDevelopmentScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _readinessStatusOptions.contains(status)
+                  initialValue: _readinessStatusOptions.contains(status)
                       ? status
                       : _readinessStatusOptions.first,
                   items: _readinessStatusOptions

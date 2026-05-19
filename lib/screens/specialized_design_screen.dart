@@ -811,7 +811,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         Row(children: [
           Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
       ])),
@@ -850,7 +850,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         Row(children: [
           Expanded(child: TextField(controller: slaCtrl, decoration: const InputDecoration(labelText: 'SLA target', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
       ])),
@@ -889,7 +889,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         Row(children: [
           Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(value: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
       ])),
@@ -929,7 +929,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         Row(children: [
           Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(value: status, items: _complianceStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _complianceStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
         const SizedBox(height: 12),
@@ -977,10 +977,10 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         ]),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(value: priority, items: ['Critical', 'High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: priority, items: ['Critical', 'High', 'Medium', 'Low'].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => priority = v); }, decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: DropdownButtonFormField<String>(value: status, items: _reviewGateStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _reviewGateStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
       ])),

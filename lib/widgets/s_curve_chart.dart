@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SCurveChart extends StatelessWidget {
-  const SCurveChart({
+  const SCurveChart({super.key, 
     required this.plannedData,
     required this.actualData,
     required this.startDate,

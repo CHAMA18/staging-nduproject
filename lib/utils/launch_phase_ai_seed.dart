@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/launch_phase_models.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:provider/provider.dart';
 
 /// Provides comprehensive cross-phase context building and AI generation
 /// for all nine Launch Phase screens.

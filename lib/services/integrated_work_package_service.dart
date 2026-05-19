@@ -430,9 +430,13 @@ class IntegratedWorkPackageService {
       final specDiscipline = spec.discipline.toLowerCase();
       final specArea = spec.area.toLowerCase();
       if (specDiscipline.isNotEmpty &&
-          allTitlesLower.any((t) => t.contains(specDiscipline))) return true;
+          allTitlesLower.any((t) => t.contains(specDiscipline))) {
+        return true;
+      }
       if (specArea.isNotEmpty &&
-          allTitlesLower.any((t) => t.contains(specArea))) return true;
+          allTitlesLower.any((t) => t.contains(specArea))) {
+        return true;
+      }
 
       return false;
     }).toList();

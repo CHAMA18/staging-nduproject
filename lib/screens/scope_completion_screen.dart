@@ -1433,7 +1433,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Status'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -1459,7 +1459,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Impact'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: impact,
+                              initialValue: impact,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -1946,7 +1946,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Status'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -2374,7 +2374,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Category'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: category,
+                              initialValue: category,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -2400,7 +2400,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Status'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -2907,7 +2907,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Type'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: changeType,
+                              initialValue: changeType,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -2933,7 +2933,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Impact'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: impactLevel,
+                              initialValue: impactLevel,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),
@@ -2959,7 +2959,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                             const _DialogLabel('Status'),
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
-                              value: status,
+                              initialValue: status,
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: OutlineInputBorder(),

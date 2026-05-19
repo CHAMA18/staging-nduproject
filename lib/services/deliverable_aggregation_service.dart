@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/models/aggregated_deliverable.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/models/roadmap_deliverable.dart';
-import 'package:ndu_project/models/roadmap_sprint.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:flutter/material.dart';
 
 /// Service for aggregating deliverables from across all project phases

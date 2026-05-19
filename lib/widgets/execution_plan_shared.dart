@@ -43,7 +43,7 @@ String resolveExecutionCheckpoint(String key) {
 }
 
 class ExecutionPlanHeader extends StatelessWidget {
-  const ExecutionPlanHeader({required this.onBack, this.onNext});
+  const ExecutionPlanHeader({super.key, required this.onBack, this.onNext});
 
   final VoidCallback onBack;
   final VoidCallback? onNext;
@@ -95,7 +95,7 @@ class ExecutionPlanHeader extends StatelessWidget {
 }
 
 class CircleIconButton extends StatelessWidget {
-  const CircleIconButton({required this.icon, this.onTap});
+  const CircleIconButton({super.key, required this.icon, this.onTap});
 
   final IconData icon;
   final VoidCallback? onTap;
@@ -124,7 +124,7 @@ class CircleIconButton extends StatelessWidget {
 }
 
 class CurrentUserProfileChip extends StatelessWidget {
-  const CurrentUserProfileChip();
+  const CurrentUserProfileChip({super.key});
 
   String _initials(String text) {
     final trimmed = text.trim();
@@ -203,7 +203,7 @@ class CurrentUserProfileChip extends StatelessWidget {
 }
 
 class SectionIntro extends StatelessWidget {
-  const SectionIntro({this.title = 'Executive Plan Outline'});
+  const SectionIntro({super.key, this.title = 'Executive Plan Outline'});
 
   final String title;
 
@@ -236,7 +236,7 @@ class SectionIntro extends StatelessWidget {
 }
 
 class ExecutionPlanForm extends StatefulWidget {
-  const ExecutionPlanForm({
+  const ExecutionPlanForm({super.key, 
     this.title = 'Executive Plan Outline',
     required this.hintText,
     this.noteKey,
@@ -370,7 +370,7 @@ class _ExecutionPlanFormState extends State<ExecutionPlanForm> {
 }
 
 class InfoBadge extends StatelessWidget {
-  const InfoBadge();
+  const InfoBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -387,7 +387,7 @@ class InfoBadge extends StatelessWidget {
 }
 
 class AiTipCard extends StatelessWidget {
-  const AiTipCard({this.text});
+  const AiTipCard({super.key, this.text});
 
   final String? text;
 
@@ -422,7 +422,7 @@ class AiTipCard extends StatelessWidget {
 }
 
 class AiBadge extends StatelessWidget {
-  const AiBadge();
+  const AiBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -452,7 +452,7 @@ class AiBadge extends StatelessWidget {
 }
 
 class AddRowButton extends StatelessWidget {
-  const AddRowButton({required this.onPressed});
+  const AddRowButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
@@ -480,7 +480,7 @@ class AddRowButton extends StatelessWidget {
 }
 
 class AddSolutionButton extends StatelessWidget {
-  const AddSolutionButton({required this.onPressed});
+  const AddSolutionButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
@@ -508,7 +508,7 @@ class AddSolutionButton extends StatelessWidget {
 }
 
 class CrossReferenceNote extends StatelessWidget {
-  const CrossReferenceNote({required this.standalonePage, this.standaloneLabel});
+  const CrossReferenceNote({super.key, required this.standalonePage, this.standaloneLabel});
 
   final String standalonePage;
   final String? standaloneLabel;
@@ -543,7 +543,7 @@ class CrossReferenceNote extends StatelessWidget {
 }
 
 class YellowActionButton extends StatelessWidget {
-  const YellowActionButton({required this.label, required this.onPressed});
+  const YellowActionButton({super.key, required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback onPressed;

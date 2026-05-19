@@ -579,7 +579,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
 
     // System message
     _addSupportMessage(_ChatMessage(
-      text: 'Support ticket **#$ticketId** created: "${subject}"\n\nA support agent will be with you shortly. You can continue the conversation below.',
+      text: 'Support ticket **#$ticketId** created: "$subject"\n\nA support agent will be with you shortly. You can continue the conversation below.',
       source: _MessageSource.system,
       timestamp: DateTime.now(),
     ));

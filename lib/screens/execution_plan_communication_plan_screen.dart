@@ -267,7 +267,7 @@ class _CommunicationPlanTable extends StatelessWidget {
                         const InputDecoration(labelText: 'Info Type *')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: frequency,
+                  initialValue: frequency,
                   decoration: const InputDecoration(labelText: 'Frequency *'),
                   items: frequencies
                       .map((f) => DropdownMenuItem(value: f, child: Text(f)))
@@ -276,7 +276,7 @@ class _CommunicationPlanTable extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: channel,
+                  initialValue: channel,
                   decoration: const InputDecoration(labelText: 'Channel *'),
                   items: channels
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -289,7 +289,7 @@ class _CommunicationPlanTable extends StatelessWidget {
                     decoration: const InputDecoration(labelText: 'Owner *')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: status,
+                  initialValue: status,
                   decoration: const InputDecoration(labelText: 'Status *'),
                   items: statuses
                       .map((s) => DropdownMenuItem(value: s, child: Text(s)))

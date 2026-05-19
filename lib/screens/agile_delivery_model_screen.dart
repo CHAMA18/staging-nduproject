@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/agile_wireframe_service.dart';
@@ -160,15 +161,15 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
       final result = await openai.generateCompletion(
         'Based on this project context, suggest a delivery model approach.\n\n'
         'Context:\n$contextText\n\n'
-        'For each area, provide 2-3 sentences of specific recommendations:\n'
-        '- Delivery model (Scrum, Kanban, or hybrid and why)\n'
-        '- Sprint cadence & calendar\n'
-        '- Release strategy\n'
-        '- Backlog governance\n'
-        '- Team structure & roles\n'
-        '- Metrics & reporting\n'
-        '- Impediment & risk handling\n\n'
-        'Return as a JSON object with keys matching the areas above.',
+        'For each area, provide 2-3 sentences of specific recommendations.\n'
+        'Return ONLY a valid JSON object with these exact keys:\n'
+        '- "model": Delivery model (Scrum, Kanban, or hybrid and why)\n'
+        '- "cadence": Sprint cadence & calendar\n'
+        '- "release": Release strategy\n'
+        '- "backlog": Backlog governance\n'
+        '- "team": Team structure & roles\n'
+        '- "metrics": Metrics & reporting\n'
+        '- "risks": Impediment & risk handling',
         maxTokens: 1200,
         temperature: 0.5,
       );
@@ -195,8 +196,8 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
       final end = text.lastIndexOf('}');
       if (start == -1 || end == -1) return {};
       final jsonStr = text.substring(start, end + 1);
-      final Map<String, dynamic> parsed = Map<String, dynamic>.from(
-          JsonDecoder().convert(jsonStr) as Map);
+      final Map<String, dynamic> parsed =
+          Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
       return parsed.map((k, v) => MapEntry(k, v.toString()));
     } catch (_) {
       return {};
@@ -344,10 +345,6 @@ class _FieldConfig {
   });
 }
 
-class JsonDecoder {
-  dynamic convert(String source) {
-    return _parseValue(source, 0).value;
-  }
 
   _Result _parseValue(String s, int i) {
     i = _skipWhitespace(s, i);

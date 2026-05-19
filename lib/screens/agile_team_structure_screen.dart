@@ -47,6 +47,7 @@ class _AgileTeamStructureScreenState
     extends State<AgileTeamStructureScreen> {
   List<TeamRow> _teams = [];
   final Map<String, TextEditingController> _noteControllers = {};
+  final Map<String, List<TextEditingController>> _teamControllers = {};
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isGenerating = false;
@@ -71,6 +72,11 @@ class _AgileTeamStructureScreenState
     _autoSaveDebounce?.cancel();
     for (final c in _noteControllers.values) {
       c.dispose();
+    }
+    for (final controllers in _teamControllers.values) {
+      for (final c in controllers) {
+        c.dispose();
+      }
     }
     super.dispose();
   }
@@ -97,6 +103,15 @@ class _AgileTeamStructureScreenState
         final dm = await AgileWireframeService.loadDeliveryModel(pid);
         notesText = dm['team'] as String? ?? '';
       }
+      // Dispose stale team controllers
+      for (final controllers in _teamControllers.values) {
+        for (final c in controllers) {
+          c.dispose();
+        }
+      }
+      _teamControllers.clear();
+      // Dispose and recreate notes controller
+      _noteControllers['notes']?.dispose();
       final notesCtrl = TextEditingController(text: notesText);
       _noteControllers['notes'] = notesCtrl;
       setState(() {
@@ -154,6 +169,13 @@ class _AgileTeamStructureScreenState
   }
 
   void _removeTeam(int index) {
+    final removed = _teams[index];
+    final controllers = _teamControllers.remove(removed.id);
+    if (controllers != null) {
+      for (final c in controllers) {
+        c.dispose();
+      }
+    }
     setState(() => _teams.removeAt(index));
     _scheduleAutoSave();
   }
@@ -327,7 +349,33 @@ class _AgileTeamStructureScreenState
     );
   }
 
+  List<TextEditingController> _controllersForTeam(TeamRow team) {
+    if (!_teamControllers.containsKey(team.id)) {
+      _teamControllers[team.id] = [
+        TextEditingController(text: team.name),
+        TextEditingController(text: team.count),
+        TextEditingController(text: team.role),
+        TextEditingController(text: team.skills),
+      ];
+      // Sync controller text back to the TeamRow on change
+      _teamControllers[team.id]![0].addListener(() {
+        team.name = _teamControllers[team.id]![0].text;
+      });
+      _teamControllers[team.id]![1].addListener(() {
+        team.count = _teamControllers[team.id]![1].text;
+      });
+      _teamControllers[team.id]![2].addListener(() {
+        team.role = _teamControllers[team.id]![2].text;
+      });
+      _teamControllers[team.id]![3].addListener(() {
+        team.skills = _teamControllers[team.id]![3].text;
+      });
+    }
+    return _teamControllers[team.id]!;
+  }
+
   Widget _buildTeamCard(int index, TeamRow team) {
+    final ctrls = _controllersForTeam(team);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -348,11 +396,8 @@ class _AgileTeamStructureScreenState
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    controller: TextEditingController(text: team.name),
-                    onChanged: (v) {
-                      team.name = v;
-                      _scheduleAutoSave();
-                    },
+                    controller: ctrls[0],
+                    onChanged: (_) => _scheduleAutoSave(),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -364,12 +409,9 @@ class _AgileTeamStructureScreenState
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    controller: TextEditingController(text: team.count),
+                    controller: ctrls[1],
                     keyboardType: TextInputType.number,
-                    onChanged: (v) {
-                      team.count = v;
-                      _scheduleAutoSave();
-                    },
+                    onChanged: (_) => _scheduleAutoSave(),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -386,11 +428,8 @@ class _AgileTeamStructureScreenState
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              controller: TextEditingController(text: team.role),
-              onChanged: (v) {
-                team.role = v;
-                _scheduleAutoSave();
-              },
+              controller: ctrls[2],
+              onChanged: (_) => _scheduleAutoSave(),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -399,12 +438,9 @@ class _AgileTeamStructureScreenState
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              controller: TextEditingController(text: team.skills),
+              controller: ctrls[3],
               maxLines: 2,
-              onChanged: (v) {
-                team.skills = v;
-                _scheduleAutoSave();
-              },
+              onChanged: (_) => _scheduleAutoSave(),
             ),
           ],
         ),

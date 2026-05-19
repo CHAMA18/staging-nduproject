@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/control_account_model.dart';
 import 'package:ndu_project/models/evm_snapshot_model.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/services/control_account_service.dart';
 import 'package:ndu_project/services/forecast_service.dart';
 
 class EvmSnapshotService {
@@ -34,18 +35,23 @@ class EvmSnapshotService {
     final double ac =
         workPackages.fold<double>(0, (s, wp) => s + wp.actualCost);
 
+    // ── P1.5 Fix: Use standard EV = percentComplete × budgetedCost ──
+    // Previously used actualCost/budgetedCost which conflates cost with value.
     double ev = 0;
     for (final wp in workPackages) {
       if (wp.status == 'complete') {
         ev += wp.budgetedCost;
       } else if (wp.status == 'in_progress') {
-        ev += wp.budgetedCost > 0
-            ? (wp.actualCost / wp.budgetedCost).clamp(0, 1) * wp.budgetedCost
-            : 0;
+        if (wp.percentComplete > 0) {
+          ev += wp.percentComplete.clamp(0, 1) * wp.budgetedCost;
+        } else {
+          // 50/50 rule: 50% earned when started
+          ev += wp.budgetedCost * 0.5;
+        }
       }
     }
 
-    final double pv = _computePlannedValueToDate(data.controlAccounts);
+    final double pv = ControlAccountService.computeAggregatePlannedValueToDate(data.controlAccounts);
 
     final forecast = ForecastService.calculateEac(
       bac: bac,
@@ -100,18 +106,4 @@ class EvmSnapshotService {
             .toList());
   }
 
-  static double _computePlannedValueToDate(List<ControlAccount> accounts) {
-    final now = DateTime.now();
-    final currentKey =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}';
-    double total = 0;
-    for (final account in accounts) {
-      for (final entry in account.plannedValueByPeriod.entries) {
-        if (entry.key.compareTo(currentKey) <= 0) {
-          total += entry.value;
-        }
-      }
-    }
-    return total;
-  }
 }

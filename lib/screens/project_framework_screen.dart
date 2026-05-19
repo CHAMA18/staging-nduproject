@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
@@ -51,6 +53,14 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   bool _isGeneratingGoals = false;
   bool _goalsGenerationAttempted = false;
   bool _reviewConfirmed = false;
+  Timer? _saveDebounce;
+
+  void _onFieldChanged() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _saveData();
+    });
+  }
 
   @override
   void initState() {
@@ -78,8 +88,10 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         projectName = projectData.potentialSolutions.first.title;
       }
       _projectNameController.text = projectName;
+      _projectNameController.addListener(_onFieldChanged);
 
       _projectObjectiveController.text = projectData.projectObjective.trim();
+      _projectObjectiveController.addListener(_onFieldChanged);
 
       if (projectData.projectGoals.isNotEmpty) {
         _goals.clear();
@@ -154,6 +166,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     goal.descFocus.addListener(() {
       if (!goal.descFocus.hasFocus) _saveData();
     });
+    goal.nameController.addListener(_onFieldChanged);
+    goal.controller.addListener(_onFieldChanged);
   }
 
   DesignManagementData? _syncedDesignManagementData(ProjectDataModel data) {
@@ -346,12 +360,17 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
+    _projectNameController.removeListener(_onFieldChanged);
+    _projectObjectiveController.removeListener(_onFieldChanged);
     _mainContentScrollController.dispose();
     _projectNameController.dispose();
     _projectObjectiveController.dispose();
     _projectNameFocus.dispose();
     _projectObjectiveFocus.dispose();
     for (var goal in _goals) {
+      goal.nameController.removeListener(_onFieldChanged);
+      goal.controller.removeListener(_onFieldChanged);
       goal.dispose();
     }
     super.dispose();
@@ -409,6 +428,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   void _deleteGoal(int goalId) {
     setState(() {
       final goal = _goals.firstWhere((g) => g.id == goalId);
+      goal.nameController.removeListener(_onFieldChanged);
+      goal.controller.removeListener(_onFieldChanged);
       goal.dispose();
       _goals.removeWhere((g) => g.id == goalId);
     });

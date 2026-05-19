@@ -176,6 +176,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     'Organization Plan - Staffing Plan',
     'Team Training and Team Building',
     'Stakeholder Management',
+    'Team Management',
   };
 
   static const Set<String> _executionPlanLabels = {
@@ -339,7 +340,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     'Change Management',
     'Issue Management',
     'Lessons Learned',
-    'Team Management',
     'Security Management',
     ..._startUpPlanningLabels,
     ..._deliverableRoadmapLabels,
@@ -2198,6 +2198,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           _buildSubSubMenuItem('Stakeholder Management',
               onTap: _openStakeholderManagement,
               isActive: widget.activeItemLabel == 'Stakeholder Management'),
+          _buildSubSubMenuItem('Team Management',
+              onTap: lockTeamManagement ? null : _openTeamManagement,
+              isActive: widget.activeItemLabel == 'Team Management',
+              isDisabled: lockTeamManagement),
         ],
         _buildSubMenuItem('SSHER',
             onTap: _openSSHER, isActive: widget.activeItemLabel == 'SSHER'),
@@ -2416,12 +2420,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Lessons Learned',
             onTap: _openLessonsLearned,
             isActive: widget.activeItemLabel == 'Lessons Learned'),
-        _buildSubMenuItem(
-          'Team Management',
-          onTap: lockTeamManagement ? null : _openTeamManagement,
-          isActive: widget.activeItemLabel == 'Team Management',
-          isDisabled: lockTeamManagement,
-        ),
         _buildSubMenuItem('Security Management',
             onTap: _openSecurityManagement,
             isActive: widget.activeItemLabel == 'Security Management'),

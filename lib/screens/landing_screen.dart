@@ -5,6 +5,7 @@ import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/screens/pricing_screen.dart';
 import 'package:ndu_project/screens/sign_in_screen.dart';
 import 'package:ndu_project/theme.dart';
+import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -108,7 +109,16 @@ class _LandingScreenState extends State<LandingScreen>
 
     if (_workflowTapCount >= 5) {
       _workflowTapCount = 0;
-      context.go('/${AppRoutes.adminPortal}');
+      // Domain-aware source code navigation:
+      // - staging.nduproject.com (or any non-admin host) → User source code
+      // - admin.nduproject.com → Admin source code
+      if (AccessPolicy.isRestrictedAdminHost()) {
+        // Admin domain: open admin source code repository
+        launchUrl(Uri.parse('https://github.com/CHAMA18/Ndu_Project'));
+      } else {
+        // User/staging domain: open user source code repository
+        launchUrl(Uri.parse('https://github.com/NduProject/NDU-Project'));
+      }
       return;
     }
 

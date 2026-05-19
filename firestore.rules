@@ -185,6 +185,9 @@ service cloud.firestore {
       match /planning_phase/{docId} {
         allow read, write: if isProjectMember();
       }
+      match /planning_phase_entries/{docId} {
+        allow read, write: if isProjectMember();
+      }
       match /organization_plan_sections/{docId} {
         allow read, write: if isProjectMember();
       }
@@ -213,6 +216,9 @@ service cloud.firestore {
         allow read, write: if isProjectMember();
       }
       match /execution_phase_entries/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /execution_diagrams/{docId} {
         allow read, write: if isProjectMember();
       }
     }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/agile_project_baseline.dart';
+import 'package:ndu_project/models/agile_release_plan.dart';
 import 'package:ndu_project/models/epic_model.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/models/roadmap_deliverable.dart';
@@ -142,6 +143,7 @@ class _AgileProjectBaselineScreenState
       _loadRiskSummary(projectId),
       AgileWireframeService.loadBacklogGovernance(projectId),
       EpicFeatureService.loadEpics(projectId),
+      AgileWireframeService.loadReleasePlans(projectId),
     ]);
 
     if (!mounted) return;
@@ -155,6 +157,7 @@ class _AgileProjectBaselineScreenState
     final risk = results[3] as _RiskSummary;
     final backlogGov = results[4] as Map<String, dynamic>;
     final epics = results[5] as List<Epic>;
+    final releasePlans = results[6] as List<AgileReleasePlan>;
     _backlogDoD = backlogGov['definition_of_done'] as String? ?? '';
     _epicTotalPoints = epics.fold<double>(
         0, (sum, e) => sum + e.totalStoryPoints);
@@ -164,7 +167,7 @@ class _AgileProjectBaselineScreenState
     _approverOptions = approvers;
     _formalRiskCount = risk.totalCount;
     _highRiskCount = risk.highCount;
-    _hydrateFromBaseline(baseline);
+    _hydrateFromBaseline(baseline, releasePlans);
 
     setState(() {
       _isHydrating = false;
@@ -172,15 +175,21 @@ class _AgileProjectBaselineScreenState
     });
   }
 
-  void _hydrateFromBaseline(AgileProjectBaseline baseline) {
+  void _hydrateFromBaseline(AgileProjectBaseline baseline,
+      [List<AgileReleasePlan> releasePlans = const []]) {
     _selectedStatus = _statusOptions.contains(baseline.status)
         ? baseline.status
         : _statusOptions.first;
     _selectedApproverId =
         baseline.approverUserId.isEmpty ? null : baseline.approverUserId;
-    _selectedReleaseDate = baseline.targetReleaseDate;
     _selectedApprovalDate = baseline.approvalDate;
-    _releaseLabelController.text = baseline.targetReleaseLabel;
+
+    // Prefer baseline values, fall back to first release plan
+    _selectedReleaseDate =
+        baseline.targetReleaseDate ?? releasePlans.firstOrNull?.releaseDate;
+    _releaseLabelController.text = baseline.targetReleaseLabel.isNotEmpty
+        ? baseline.targetReleaseLabel
+        : (releasePlans.firstOrNull?.releaseLabel ?? '');
     _capacityController.text = baseline.capacityThresholdPointsPerSprint == null
         ? ''
         : baseline.capacityThresholdPointsPerSprint.toString();

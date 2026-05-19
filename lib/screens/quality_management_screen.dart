@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -613,6 +615,14 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
   late final TextEditingController _changeControlController;
   bool _didInit = false;
   bool _isGenerating = false;
+  Timer? _saveDebounce;
+
+  void _onFieldChanged() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _savePlan();
+    });
+  }
 
   @override
   void initState() {
@@ -633,11 +643,20 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
     _reviewCadenceController.text = qData.reviewCadence;
     _escalationPathController.text = qData.escalationPath;
     _changeControlController.text = qData.changeControlProcess;
+    _planController.addListener(_onFieldChanged);
+    _reviewCadenceController.addListener(_onFieldChanged);
+    _escalationPathController.addListener(_onFieldChanged);
+    _changeControlController.addListener(_onFieldChanged);
     _didInit = true;
   }
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
+    _planController.removeListener(_onFieldChanged);
+    _reviewCadenceController.removeListener(_onFieldChanged);
+    _escalationPathController.removeListener(_onFieldChanged);
+    _changeControlController.removeListener(_onFieldChanged);
     _planController.dispose();
     _reviewCadenceController.dispose();
     _escalationPathController.dispose();

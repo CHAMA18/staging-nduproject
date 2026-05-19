@@ -18,22 +18,44 @@ class ProjectDataProvider extends ChangeNotifier {
   String? _activeLoadProjectId;
   bool _queuedAnotherSave = false;
   String? _queuedCheckpoint;
+  Timer? _autoSaveDebounce;
 
   ProjectDataModel get projectData => _projectData;
   bool get isSaving => _isSaving;
   String? get lastError => _lastError;
 
-  /// Update project data and notify listeners
+  /// Mark data as dirty and schedule a debounced auto-save to Firebase.
+  /// Cancels any pending auto-save so rapid changes are coalesced.
+  void _markDirty() {
+    _autoSaveDebounce?.cancel();
+    _autoSaveDebounce = Timer(const Duration(seconds: 2), () {
+      saveToFirebase();
+    });
+  }
+
+  /// Flush any pending auto-save immediately. Call before navigation so
+  /// in-memory changes are persisted before the next screen loads.
+  Future<void> flushAutoSave() async {
+    _autoSaveDebounce?.cancel();
+    _autoSaveDebounce = null;
+    if (_projectData.projectId != null) {
+      await saveToFirebase();
+    }
+  }
+
+  /// Update project data and notify listeners, then schedule auto-save
   void updateProjectData(ProjectDataModel data) {
     _projectData = ProjectIntelligenceService.rebuildActivityLog(data);
     notifyListeners();
+    _markDirty();
   }
 
-  /// Update specific fields in project data
+  /// Update specific fields in project data, then schedule auto-save
   void updateField(ProjectDataModel Function(ProjectDataModel) updater) {
     final updated = updater(_projectData);
     _projectData = ProjectIntelligenceService.rebuildActivityLog(updated);
     notifyListeners();
+    _markDirty();
   }
 
   /// Save current project data to Firebase
@@ -56,6 +78,8 @@ class ProjectDataProvider extends ChangeNotifier {
   }
 
   Future<bool> _drainSaveQueue() async {
+    _autoSaveDebounce?.cancel();
+    _autoSaveDebounce = null;
     var overallSuccess = true;
     var checkpointToSave = _queuedCheckpoint;
     _queuedCheckpoint = null;
@@ -436,6 +460,7 @@ class ProjectDataProvider extends ChangeNotifier {
           riskMitigationPlans ?? _projectData.riskMitigationPlans,
     );
     notifyListeners();
+    _markDirty();
   }
 
   /// Update project framework data
@@ -448,6 +473,7 @@ class ProjectDataProvider extends ChangeNotifier {
       projectGoals: projectGoals ?? _projectData.projectGoals,
     );
     notifyListeners();
+    _markDirty();
   }
 
   /// Update planning phase data
@@ -466,6 +492,7 @@ class ProjectDataProvider extends ChangeNotifier {
       planningNotes: planningNotes ?? _projectData.planningNotes,
     );
     notifyListeners();
+    _markDirty();
   }
 
   /// Update work breakdown structure data
@@ -482,24 +509,28 @@ class ProjectDataProvider extends ChangeNotifier {
       wbsTree: wbsTree ?? _projectData.wbsTree,
     );
     notifyListeners();
+    _markDirty();
   }
 
   /// Update front end planning data
   void updateFrontEndPlanningData(FrontEndPlanningData data) {
     _projectData = _projectData.copyWith(frontEndPlanning: data);
     notifyListeners();
+    _markDirty();
   }
 
   /// Update SSHER data
   void updateSSHERData(SSHERData data) {
     _projectData = _projectData.copyWith(ssherData: data);
     notifyListeners();
+    _markDirty();
   }
 
   /// Update team members
   void updateTeamMembers(List<TeamMember> members) {
     _projectData = _projectData.copyWith(teamMembers: members);
     notifyListeners();
+    _markDirty();
   }
 
   /// Add a field value to history for undo functionality
@@ -596,6 +627,7 @@ class ProjectDataProvider extends ChangeNotifier {
   void updateCostBenefitCurrency(String currency) {
     _projectData = _projectData.copyWith(costBenefitCurrency: currency);
     notifyListeners();
+    _markDirty();
   }
 }
 

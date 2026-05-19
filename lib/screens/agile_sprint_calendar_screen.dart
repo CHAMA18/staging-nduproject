@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/models/roadmap_sprint.dart';
@@ -7,6 +9,7 @@ import 'package:ndu_project/services/agile_wireframe_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
@@ -31,6 +34,7 @@ class _AgileSprintCalendarScreenState
   TextEditingController _ceremonyController = TextEditingController();
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  Timer? _saveDebounce;
 
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -59,6 +63,7 @@ class _AgileSprintCalendarScreenState
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
     _ceremonyController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -219,9 +224,25 @@ class _AgileSprintCalendarScreenState
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 4,
-                        onChanged: (_) => _saveCeremonies(),
+                        onChanged: (_) {
+                          _saveDebounce?.cancel();
+                          _saveDebounce = Timer(
+                              const Duration(milliseconds: 500),
+                              _saveCeremonies);
+                        },
                       ),
                     ],
+                    const SizedBox(height: 24),
+                    LaunchPhaseNavigation(
+                      backLabel: PlanningPhaseNavigation.backLabel(
+                          'agile_sprint_calendar'),
+                      nextLabel: PlanningPhaseNavigation.nextLabel(
+                          'agile_sprint_calendar'),
+                      onBack: () => PlanningPhaseNavigation.goToPrevious(
+                          context, 'agile_sprint_calendar'),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'agile_sprint_calendar'),
+                    ),
                     const SizedBox(height: 48),
                   ],
                 ),

@@ -479,7 +479,6 @@ class _FieldConfig {
     }
     return i;
   }
-}
 
 class _Result {
   final dynamic value;

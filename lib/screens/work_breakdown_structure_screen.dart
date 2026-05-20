@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -654,37 +655,30 @@ class _WorkBreakdownStructureBodyState
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: _kCardBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: _kCardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: _kAccentColor),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
       icon: const Icon(Icons.keyboard_arrow_down_rounded,
-          color: _kSecondaryText),
+          color: _kTextLight, size: 18),
       items: _criteriaOptions
           .map((option) => DropdownMenuItem<String>(
                 value: option['value'],
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(option['value']!,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _kPrimaryText)),
-                    Text(option['description']!,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: _kSecondaryText)),
-                  ],
-                ),
+                child: Text(option['value']!,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _kPrimaryText)),
               ))
           .toList(),
       onChanged: onChanged,
@@ -739,16 +733,17 @@ class _WorkBreakdownStructureBodyState
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: _kPrimaryText),
                     )
-                  : const Icon(Icons.auto_awesome, size: 18),
+                  : const Icon(Icons.auto_fix_high, size: 18),
               label: Text(_isAiLoading ? 'Generating...' : 'Suggest Structure'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kGrayBg,
                 foregroundColor: _kPrimaryText,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(6)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 side: const BorderSide(color: _kCardBorder),
                 elevation: 0,
+                shadowColor: Colors.black.withOpacity(0.1),
               ),
             ),
           ),
@@ -801,14 +796,15 @@ class _WorkBreakdownStructureBodyState
     final isCollapsed = _collapsedNodeIds.contains(item.id);
     final level = path.length - 1;
     final canAddChild = path.length < _maxWbsDepth;
-    final displayTitle = _formatWbsTitle(path: path, title: item.title);
     final goalIndex = path.isNotEmpty ? path.first - 1 : 0;
     final isTopLevel = level == 0;
+    final segmentLabel = path.isEmpty ? '' : 'S${path.first}';
+    final cleanTitle = _stripWbsPrefix(item.title);
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _kCardBorder),
         boxShadow: [
           BoxShadow(
@@ -827,8 +823,8 @@ class _WorkBreakdownStructureBodyState
             decoration: BoxDecoration(
               color: _kStatusRed,
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
               ),
             ),
           ),
@@ -838,48 +834,68 @@ class _WorkBreakdownStructureBodyState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title row with status dot and collapse chevron
+                // Title row with segment label, title, and status dot
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Row(
                         children: [
-                          _buildStatusDot(item.status),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              displayTitle,
+                          if (segmentLabel.isNotEmpty) ...[
+                            Text(
+                              '$segmentLabel:',
                               style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  color: _kPrimaryText),
+                                  color: _kPrimaryText,
+                                  height: 1.2),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: GestureDetector(
+                              onTap: item.children.isNotEmpty ? () => _toggleCollapse(item) : null,
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      cleanTitle,
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                          color: _kPrimaryText,
+                                          height: 1.2),
+                                    ),
+                                  ),
+                                  if (item.children.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      isCollapsed ? Icons.chevron_right : Icons.expand_more,
+                                      size: 20,
+                                      color: _kTextLight,
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (item.children.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => _toggleCollapse(item),
-                        child: Icon(
-                          isCollapsed ? Icons.chevron_right : Icons.expand_more,
-                          size: 20,
-                          color: _kTextLight,
-                        ),
-                      ),
-                    ],
+                    const SizedBox(width: 8),
+                    _buildStatusDot(item.status),
                   ],
                 ),
                 // Description
                 if (item.description.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     item.description,
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: _kSecondaryText,
                         height: 1.4),
@@ -908,48 +924,42 @@ class _WorkBreakdownStructureBodyState
           const SizedBox(height: 8),
           Container(
             decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _kCardBorder)),
+              border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: GestureDetector(
+                // Edit button
+                Tooltip(
+                  message: 'Edit',
+                  child: InkWell(
                     onTap: () => _handleEditNode(item),
-                    behavior: HitTestBehavior.opaque,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.edit_outlined, size: 16, color: _kTextLight),
-                          SizedBox(width: 4),
-                          Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _kTextLight)),
-                        ],
-                      ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.edit_outlined, size: 20, color: _kTextLight),
                     ),
                   ),
                 ),
-                Container(width: 1, height: 24, color: _kCardBorder),
-                Expanded(
-                  child: GestureDetector(
+                const SizedBox(width: 12),
+                // Delete button
+                Tooltip(
+                  message: 'Delete',
+                  child: InkWell(
                     onTap: () => _handleDeleteNode(item),
-                    behavior: HitTestBehavior.opaque,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.delete_outline, size: 16, color: _kTextLight),
-                          SizedBox(width: 4),
-                          Text('Delete', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _kTextLight)),
-                        ],
-                      ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.delete_outline, size: 20, color: _kTextLight),
                     ),
                   ),
                 ),
-                Container(width: 1, height: 24, color: _kCardBorder),
-                Expanded(
-                  child: GestureDetector(
+                const SizedBox(width: 12),
+                // Add sub-segment button
+                Tooltip(
+                  message: 'Add Sub-segment',
+                  child: InkWell(
                     onTap: () {
                       if (!canAddChild) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -962,17 +972,10 @@ class _WorkBreakdownStructureBodyState
                       }
                       _handleAddNode(parent: item);
                     },
-                    behavior: HitTestBehavior.opaque,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, size: 16, color: _kTextLight),
-                          SizedBox(width: 4),
-                          Text('Sub-item', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _kTextLight)),
-                        ],
-                      ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.add, size: 20, color: _kTextLight),
                     ),
                   ),
                 ),
@@ -1029,30 +1032,37 @@ class _WorkBreakdownStructureBodyState
   Widget _buildAddTopLevelButton() {
     return GestureDetector(
       onTap: () => _handleAddNode(),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _kCardBorder, style: BorderStyle.none),
-        ),
-        child: _DottedBorder(
-          color: _kCardBorder,
-          strokeWidth: 2,
-          dashPattern: const [8, 4],
-          borderType: BorderType.rRect,
-          radius: const Radius.circular(8),
+      child: _DottedBorder(
+        color: _kCardBorder,
+        strokeWidth: 2,
+        dashPattern: const [8, 4],
+        borderType: BorderType.rRect,
+        radius: const Radius.circular(6),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add, size: 24, color: _kTextLight),
-                const SizedBox(height: 4),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _kGrayBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, size: 22, color: _kTextLight),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   'Add Main Segment',
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: _kTextLight),
                 ),
               ],
@@ -1196,13 +1206,11 @@ class _WorkBreakdownStructureBodyState
   Widget _buildNotesSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: const PlanningAiNotesCard(
-        title: 'Notes',
-        sectionLabel: 'Work Breakdown Structure',
-        noteKey: 'planning_wbs_notes',
-        checkpoint: 'wbs',
+      child: _WbsNotesCard(
         description:
             'Summarize the WBS structure, criteria decisions, and any key dependencies.',
+        noteKey: 'planning_wbs_notes',
+        checkpoint: 'wbs',
       ),
     );
   }
@@ -1218,13 +1226,13 @@ class _WorkBreakdownStructureBodyState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info, size: 18, color: _kInfoText),
+          const Icon(Icons.info_rounded, size: 16, color: _kInfoText),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'The WBS is a breakdown of the project into manageable bitesize components for more effective execution. This is dependent on the project type and could be by project area, sub scope, discipline, contract, or a different criteria.',
               style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: _kInfoText, height: 1.4),
+                  fontSize: 14, fontWeight: FontWeight.w400, color: _kInfoText, height: 1.5),
             ),
           ),
         ],
@@ -1505,13 +1513,13 @@ class _WorkBreakdownStructureBodyState
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: _kCardBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -1520,7 +1528,7 @@ class _WorkBreakdownStructureBodyState
         children: [
           InkWell(
             onTap: () => setState(() => _contextExpanded = !_contextExpanded),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1973,4 +1981,271 @@ class _DottedBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ---------------------------------------------------------------------------
+// WBS Notes Card — matches the HTML design's inline notes section with
+// sparkle icon header, format button, and textarea, while retaining
+// Firebase persistence through ProjectDataHelper.
+// ---------------------------------------------------------------------------
+class _WbsNotesCard extends StatefulWidget {
+  final String description;
+  final String noteKey;
+  final String checkpoint;
+
+  const _WbsNotesCard({
+    required this.description,
+    required this.noteKey,
+    required this.checkpoint,
+  });
+
+  @override
+  State<_WbsNotesCard> createState() => _WbsNotesCardState();
+}
+
+class _WbsNotesCardState extends State<_WbsNotesCard> {
+  late TextEditingController _controller;
+  String _currentText = '';
+  bool _saving = false;
+  DateTime? _lastSavedAt;
+  bool _didInit = false;
+  Timer? _debounceTimer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInit) return;
+    _didInit = true;
+
+    final stored =
+        ProjectDataHelper.getData(context).planningNotes[widget.noteKey] ?? '';
+    _currentText = stored.trim();
+    _controller = TextEditingController(text: _currentText);
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleChanged(String value) {
+    final trimmed = value.trim();
+    if (trimmed == _currentText) return;
+    setState(() {
+      _currentText = trimmed;
+    });
+
+    // Update in-memory state
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField((data) => data.copyWith(
+      planningNotes: {
+        ...data.planningNotes,
+        widget.noteKey: trimmed,
+      },
+    ));
+
+    // Debounced save
+    _scheduleSave();
+  }
+
+  void _scheduleSave() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 700), _saveNow);
+  }
+
+  Future<void> _saveNow() async {
+    if (_saving) return;
+    _saving = true;
+    try {
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: widget.checkpoint,
+        showSnackbar: false,
+        dataUpdater: (data) => data.copyWith(
+          planningNotes: {
+            ...data.planningNotes,
+            widget.noteKey: _currentText,
+          },
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _lastSavedAt = DateTime.now();
+        });
+      }
+    } catch (_) {
+      // Silent fail
+    } finally {
+      _saving = false;
+    }
+  }
+
+  String _formatSaveTime(DateTime? time) {
+    if (time == null) return '';
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return 'Saved $hour:$minute';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _kCardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF9FAFB),
+              border: Border(bottom: BorderSide(color: _kCardBorder)),
+            ),
+            child: Row(
+              children: [
+                // Sparkle icon + "Notes" label
+                const Icon(Icons.auto_awesome, size: 18, color: _kAccentColor),
+                const SizedBox(width: 8),
+                const Text(
+                  'Notes',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _kAccentColor,
+                  ),
+                ),
+                const Spacer(),
+                // Save status
+                if (_saving)
+                  const Text(
+                    'Saving...',
+                    style: TextStyle(fontSize: 11, color: _kTextLight),
+                  )
+                else if (_lastSavedAt != null)
+                  Text(
+                    _formatSaveTime(_lastSavedAt),
+                    style: const TextStyle(fontSize: 11, color: _kTextLight),
+                  ),
+                if (_lastSavedAt != null || _saving)
+                  const SizedBox(width: 8),
+                // History button
+                Tooltip(
+                  message: 'History',
+                  child: InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.history, size: 18, color: _kTextLight),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Undo button
+                Tooltip(
+                  message: 'Undo',
+                  child: InkWell(
+                    onTap: () {
+                      _controller.clear();
+                      _handleChanged('');
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.undo, size: 18, color: _kTextLight),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Body
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Description
+                Text(
+                  widget.description,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: _kSecondaryText,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Format button
+                InkWell(
+                  onTap: () {},
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _kCardBorder),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.text_fields, size: 14, color: _kTextLight),
+                        SizedBox(width: 4),
+                        Text(
+                          'Format',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: _kTextLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Textarea
+                TextField(
+                  controller: _controller,
+                  onChanged: _handleChanged,
+                  maxLines: 4,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: _kPrimaryText,
+                    height: 1.5,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: 'Capture the key decisions and details for this section...',
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: _kTextLight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

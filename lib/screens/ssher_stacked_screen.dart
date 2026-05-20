@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/ssher_add_safety_item_dialog.dart';
-import 'package:ndu_project/screens/ssher_category_full_view.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -8,8 +7,6 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
-import 'package:ndu_project/widgets/content_text.dart';
-import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/ssher_export_helper.dart';
@@ -17,10 +14,38 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/web_utils_stub.dart'
     if (dart.library.html) 'package:ndu_project/utils/web_utils_web.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 enum _SsherCategory { safety, security, health, environment, regulatory }
 
 String _categoryKey(_SsherCategory category) => category.name;
+
+// ── Color Palette (matching HTML design tokens) ──
+class _Palette {
+  static const Color primary = Color(0xFF005BB3);
+  static const Color primaryContainer = Color(0xFF0073DF);
+  static const Color tertiaryFixedDim = Color(0xFFFABD00);
+  static const Color tertiaryContainer = Color(0xFF946F00);
+  static const Color onTertiaryFixed = Color(0xFF261A00);
+  static const Color surface = Color(0xFFF7F9FB);
+  static const Color surfaceBright = Color(0xFFF7F9FB);
+  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const Color surfaceContainerLow = Color(0xFFF2F4F6);
+  static const Color surfaceContainer = Color(0xFFECEEF0);
+  static const Color surfaceContainerHigh = Color(0xFFE6E8EA);
+  static const Color surfaceVariant = Color(0xFFE0E3E5);
+  static const Color surfaceDim = Color(0xFFD8DADC);
+  static const Color onBackground = Color(0xFF191C1E);
+  static const Color onSurface = Color(0xFF191C1E);
+  static const Color onSurfaceVariant = Color(0xFF414754);
+  static const Color outline = Color(0xFF717786);
+  static const Color outlineVariant = Color(0xFFC0C6D6);
+  static const Color error = Color(0xFFBA1A1A);
+  static const Color errorContainer = Color(0xFFFFDAD6);
+  static const Color onErrorContainer = Color(0xFF93000A);
+  static const Color primaryFixed = Color(0xFFD6E3FF);
+  static const Color headerBg = Color(0xFF1C1B1B);
+}
 
 class SsherStackedScreen extends StatefulWidget {
   const SsherStackedScreen({super.key});
@@ -29,13 +54,13 @@ class SsherStackedScreen extends StatefulWidget {
   State<SsherStackedScreen> createState() => _SsherStackedScreenState();
 }
 
-class _SsherStackedScreenState extends State<SsherStackedScreen> {
+class _SsherStackedScreenState extends State<SsherStackedScreen>
+    with SingleTickerProviderStateMixin {
   final Color _safetyAccent = const Color(0xFF34A853);
   final Color _securityAccent = const Color(0xFFEF5350);
   final Color _healthAccent = const Color(0xFF1E88E5);
   final Color _environmentAccent = const Color(0xFF2E7D32);
   final Color _regulatoryAccent = const Color(0xFF8E24AA);
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String _aiPlanSummary = '';
   bool _isGeneratingSummary = false;
@@ -49,6 +74,12 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   late List<SsherEntry> _environmentEntries;
   late List<SsherEntry> _regulatoryEntries;
 
+  _SsherCategory _selectedCategory = _SsherCategory.safety;
+  late TabController _tabController;
+
+  final TextEditingController _notesController = TextEditingController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
@@ -57,10 +88,46 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     _healthEntries = [];
     _environmentEntries = [];
     _regulatoryEntries = [];
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedCategory = _SsherCategory.values[_tabController.index];
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSavedEntries();
       _populateSsherSummaryFromAi();
+      _loadNotes();
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _loadNotes() {
+    final data = ProjectDataHelper.getData(context);
+    final existingNotes = data.ssherData.screen2Data.trim();
+    if (existingNotes.isNotEmpty) {
+      _notesController.text = existingNotes;
+    }
+  }
+
+  Future<void> _saveNotes() async {
+    final notes = _notesController.text.trim();
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'ssher',
+      showSnackbar: false,
+      dataUpdater: (data) => data.copyWith(
+        ssherData: data.ssherData.copyWith(screen2Data: notes),
+      ),
+    );
   }
 
   void _loadSavedEntries() {
@@ -423,22 +490,6 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     await _saveEntries();
   }
 
-  Future<void> _downloadCategory(_SsherCategory category) async {
-    final isAdmin = await UserService.isCurrentUserAdmin();
-    final hostname = getCurrentHostname() ?? '';
-    final allowCsv = isAdmin && hostname.startsWith('admin.');
-
-    if (allowCsv) {
-      final entries = _entriesForCategory(category);
-      final csv = SsherExportHelper.entriesToCsv(entries,
-          categoryTitle: category.name.toUpperCase());
-      await SsherExportHelper.downloadCsv(csv, 'ssher_${category.name}.csv');
-    } else {
-      await SsherExportHelper.exportToPdf(_entriesForCategory(category),
-          categoryTitle: category.name.toUpperCase());
-    }
-  }
-
   Future<void> _downloadAll() async {
     final isAdmin = await UserService.isCurrentUserAdmin();
     final hostname = getCurrentHostname() ?? '';
@@ -460,11 +511,56 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     }
   }
 
+  Color _accentForCategory(_SsherCategory cat) {
+    switch (cat) {
+      case _SsherCategory.safety:
+        return _safetyAccent;
+      case _SsherCategory.security:
+        return _securityAccent;
+      case _SsherCategory.health:
+        return _healthAccent;
+      case _SsherCategory.environment:
+        return _environmentAccent;
+      case _SsherCategory.regulatory:
+        return _regulatoryAccent;
+    }
+  }
+
+  IconData _iconForCategory(_SsherCategory cat) {
+    switch (cat) {
+      case _SsherCategory.safety:
+        return Icons.health_and_safety;
+      case _SsherCategory.security:
+        return Icons.security;
+      case _SsherCategory.health:
+        return Icons.medical_services;
+      case _SsherCategory.environment:
+        return Icons.eco;
+      case _SsherCategory.regulatory:
+        return Icons.gavel;
+    }
+  }
+
+  String _labelForCategory(_SsherCategory cat) {
+    switch (cat) {
+      case _SsherCategory.safety:
+        return 'Safety';
+      case _SsherCategory.security:
+        return 'Security';
+      case _SsherCategory.health:
+        return 'Health';
+      case _SsherCategory.environment:
+        return 'Environment';
+      case _SsherCategory.regulatory:
+        return 'Regulatory';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Colors.white,
+      backgroundColor: _Palette.surface,
       body: SafeArea(
         child: StreamBuilder<bool>(
             stream: UserService.watchAdminStatus(),
@@ -472,332 +568,273 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
               final isAdmin = snapshot.data ?? false;
               final hostname = getCurrentHostname() ?? '';
               final allowCsv = isAdmin && hostname.startsWith('admin.');
+              final isMobile = AppBreakpoints.isMobile(context);
 
-              return Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      DraggableSidebar(
-                        openWidth: AppBreakpoints.sidebarWidth(context),
-                        child: const InitiationLikeSidebar(
-                            activeItemLabel: 'SSHER'),
-                      ),
-                      Expanded(
-                        child: DefaultTabController(
-                          length: 5,
-                          child: _buildMainContent(const EdgeInsets.all(24),
-                              allowCsv: allowCsv),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const KazAiChatBubble(),
-                  const AdminEditToggle(),
-                ],
-              );
+              if (!isMobile) {
+                return _buildDesktopLayout(allowCsv);
+              }
+              return _buildMobileLayout(allowCsv);
             }),
       ),
     );
   }
 
-  Widget _buildMainContent(EdgeInsetsGeometry padding,
-      {required bool allowCsv}) {
-    return NestedScrollView(
-      headerSliverBuilder: (context, innerBoxIsScrolled) {
-        return [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Column(children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('SSHER Planning',
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold)),
-                    ElevatedButton.icon(
-                      onPressed: _downloadAll,
-                      icon: Icon(allowCsv
-                          ? Icons.download_for_offline
-                          : Icons.picture_as_pdf),
-                      label: Text(allowCsv
-                          ? 'Download All (CSV)'
-                          : 'Download All (PDF)'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const PlanningAiNotesCard(
-                  title: 'Notes',
-                  sectionLabel: 'SSHER',
-                  noteKey: 'planning_ssher_notes',
-                  checkpoint: 'ssher',
-                  description:
-                      'Summarize key SSHER risks, mitigation plans, and compliance requirements.',
-                ),
-                const SizedBox(height: 20),
-                // Plan Summary
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: Colors.grey.withOpacity(0.2)),
-                  ),
-                  child: Column(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.08),
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12)),
-                      ),
-                      child: Row(children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.15),
-                              shape: BoxShape.circle),
-                          child: const Icon(Icons.receipt_long,
-                              size: 18, color: Colors.blue),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: EditableContentText(
-                            contentKey: 'ssher_plan_summary_title',
-                            fallback: 'SSHER Plan Summary',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700),
-                            category: 'ssher',
-                          ),
-                        ),
-                      ]),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: Colors.grey.withOpacity(0.25)),
-                      ),
-                      child: EditableContentText(
-                        contentKey: 'ssher_plan_summary_description',
-                        fallback:
-                            'AI-generated SSHER summary appears below once project context is available. If unavailable, use notes and category tables to capture key risks and mitigations.',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                        category: 'ssher',
-                      ),
-                    ),
-                  ]),
-                ),
-
-                if (_isGeneratingSummary)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.blue.withOpacity(0.3)),
-                    ),
-                    child: const Row(
-                      children: [
-                        SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2)),
-                        SizedBox(width: 12),
-                        Expanded(
-                            child: Text(
-                                'KAZ AI is preparing a tailored SSHER summary...',
-                                style: TextStyle(
-                                    color: Colors.blue, fontSize: 13))),
-                      ],
-                    ),
-                  )
-                else if (_aiPlanSummary.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.grey.withOpacity(0.25)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('KAZ AI-generated SSHER Summary',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Text(_aiPlanSummary,
-                            style: TextStyle(
-                                color: Colors.grey[800],
-                                fontSize: 14,
-                                height: 1.5)),
-                      ],
-                    ),
-                  )
-                else
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.auto_awesome_outlined,
-                            color: Color(0xFFB45309), size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'AI-generated SSHER Summary Unavailable',
-                                style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF92400E)),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _buildSummaryPlaceholderText(),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1.45,
-                                  color: Color(0xFF92400E),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              OutlinedButton.icon(
-                                onPressed: () => _retrySummaryGeneration(),
-                                icon: const Icon(Icons.refresh, size: 16),
-                                label: const Text('Try Generate Again'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF92400E),
-                                  side: const BorderSide(
-                                      color: Color(0xFFF59E0B)),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  textStyle: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ]),
+  // ── Desktop Layout ──
+  Widget _buildDesktopLayout(bool allowCsv) {
+    return Stack(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DraggableSidebar(
+              openWidth: AppBreakpoints.sidebarWidth(context),
+              child: const InitiationLikeSidebar(activeItemLabel: 'SSHER'),
             ),
+            Expanded(child: _buildMainContent(allowCsv)),
+          ],
+        ),
+        const KazAiChatBubble(),
+        const AdminEditToggle(),
+      ],
+    );
+  }
+
+  // ── Mobile Layout (matches HTML) ──
+  Widget _buildMobileLayout(bool allowCsv) {
+    return Column(
+      children: [
+        _buildMobileHeader(),
+        Expanded(child: _buildMainContent(allowCsv)),
+      ],
+    );
+  }
+
+  // ── Mobile TopAppBar (matching HTML header) ──
+  Widget _buildMobileHeader() {
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(
+        color: _Palette.headerBg,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            icon: const Icon(Icons.menu, color: _Palette.primaryFixed),
+            tooltip: 'Menu',
           ),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverAppBarDelegate(
-              const TabBar(
-                labelColor: Colors.blue,
-                unselectedLabelColor: Colors.grey,
-                indicatorSize: TabBarIndicatorSize.tab,
-                tabs: [
-                  Tab(text: 'Safety', icon: Icon(Icons.health_and_safety)),
-                  Tab(text: 'Security', icon: Icon(Icons.shield_outlined)),
-                  Tab(
-                      text: 'Health',
-                      icon: Icon(Icons.volunteer_activism_outlined)),
-                  Tab(text: 'Environment', icon: Icon(Icons.eco_outlined)),
-                  Tab(text: 'Regulatory', icon: Icon(Icons.gavel_outlined)),
-                ],
+          const Expanded(
+            child: Center(
+              child: Text(
+                'NDUPROJECT',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: _Palette.tertiaryFixedDim,
+                  letterSpacing: -0.5,
+                ),
               ),
             ),
           ),
-        ];
-      },
-      body: Column(
-        children: [
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildTab(
-                    _SsherCategory.safety,
-                    'Safety',
-                    'Workplace safety protocols',
-                    _safetyAccent,
-                    Icons.health_and_safety,
-                    'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems, and regular safety training programs for all personnel.',
-                    allowCsv: allowCsv),
-                _buildTab(
-                    _SsherCategory.security,
-                    'Security',
-                    'Physical and cyber security',
-                    _securityAccent,
-                    Icons.shield_outlined,
-                    'Multi-layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response.',
-                    allowCsv: allowCsv),
-                _buildTab(
-                    _SsherCategory.health,
-                    'Health',
-                    'Occupational health programs',
-                    _healthAccent,
-                    Icons.volunteer_activism_outlined,
-                    'Occupational health standards including ergonomic assessments, wellness programs, medical surveillance, and mental health support initiatives.',
-                    allowCsv: allowCsv),
-                _buildTab(
-                    _SsherCategory.environment,
-                    'Environment',
-                    'Environmental sustainability',
-                    _environmentAccent,
-                    Icons.eco_outlined,
-                    'Environmental stewardship program including waste reduction initiatives, energy efficiency measures, carbon footprint monitoring, and sustainable resource management.',
-                    allowCsv: allowCsv),
-                _buildTab(
-                    _SsherCategory.regulatory,
-                    'Regulatory',
-                    'Compliance requirements',
-                    _regulatoryAccent,
-                    Icons.gavel_outlined,
-                    'Comprehensive regulatory compliance framework ensuring adherence to industry standards, legal requirements, and best practices.',
-                    allowCsv: allowCsv),
-              ],
-            ),
+          StreamBuilder<bool>(
+            stream: UserService.watchAdminStatus(),
+            builder: (context, snapshot) {
+              final user = FirebaseAuth.instance.currentUser;
+              final photoUrl = user?.photoURL ?? '';
+              return IconButton(
+                onPressed: () {},
+                icon: photoUrl.isNotEmpty
+                    ? CircleAvatar(
+                        radius: 16,
+                        backgroundImage: NetworkImage(photoUrl),
+                      )
+                    : const Icon(Icons.account_circle,
+                        color: _Palette.primaryFixed, size: 28),
+                tooltip: 'Profile',
+              );
+            },
           ),
-          // Navigation
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: LaunchPhaseNavigation(
-              backLabel: 'Back',
-              nextLabel: 'Next',
-              onBack: () =>
-                  PlanningPhaseNavigation.goToPrevious(context, 'ssher'),
-              onNext: () =>
-                  PlanningPhaseNavigation.goToNext(context, 'ssher'),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared Main Content ──
+  Widget _buildMainContent(bool allowCsv) {
+    final isMobile = AppBreakpoints.isMobile(context);
+
+    return SingleChildScrollView(
+      padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Breadcrumbs ──
+          if (isMobile) _buildBreadcrumbs(),
+
+          // ── Context Section (Title + PDF download) ──
+          _buildContextSection(allowCsv, isMobile),
+
+          // ── Notes Input ──
+          _buildNotesSection(isMobile),
+
+          // ── Phase Navigation (Scrollable Pill Tabs) ──
+          _buildPhaseTabs(isMobile),
+
+          // ── Data Cards Section ──
+          _buildDataCardsSection(isMobile, allowCsv),
+
+          // ── Save & Continue Button ──
+          if (isMobile)
+            _buildSaveContinueButton()
+          else
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: LaunchPhaseNavigation(
+                backLabel: 'Back',
+                nextLabel: 'Next',
+                onBack: () =>
+                    PlanningPhaseNavigation.goToPrevious(context, 'ssher'),
+                onNext: () =>
+                    PlanningPhaseNavigation.goToNext(context, 'ssher'),
+              ),
+            ),
+
+          // Bottom padding for mobile
+          if (isMobile) const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  // ── Breadcrumbs ──
+  Widget _buildBreadcrumbs() {
+    final projectName =
+        ProjectDataHelper.getData(context).projectName.trim();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Projects',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.05,
+                  color: _Palette.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.chevron_right, size: 16, color: _Palette.onSurfaceVariant),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Text(
+                projectName.isNotEmpty ? projectName : 'Project',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.05,
+                  color: _Palette.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.chevron_right, size: 16, color: _Palette.onSurfaceVariant),
+            ),
+            const Text(
+              'SSHE Planning',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.05,
+                color: _Palette.onBackground,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Context Section ──
+  Widget _buildContextSection(bool allowCsv, bool isMobile) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          isMobile ? 16 : 0, isMobile ? 12 : 0, isMobile ? 16 : 0, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  'SSHE Planning',
+                  style: TextStyle(
+                    fontSize: isMobile ? 24 : 28,
+                    fontWeight: FontWeight.w700,
+                    color: _Palette.onBackground,
+                    letterSpacing: isMobile ? -0.02 : 0,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (isMobile)
+                OutlinedButton.icon(
+                  onPressed: _downloadAll,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('PDF'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _Palette.onSurface,
+                    side: const BorderSide(color: _Palette.outlineVariant),
+                    backgroundColor: _Palette.surfaceContainerLowest,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.05),
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: _downloadAll,
+                  icon: Icon(allowCsv
+                      ? Icons.download_for_offline
+                      : Icons.picture_as_pdf),
+                  label: Text(allowCsv
+                      ? 'Download All (CSV)'
+                      : 'Download All (PDF)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _Palette.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Identify and mitigate Safety, Security, Health, and Environmental risks for this project.',
+            style: TextStyle(
+              fontSize: isMobile ? 14 : 15,
+              color: _Palette.onSurfaceVariant,
+              height: 1.5,
             ),
           ),
         ],
@@ -805,57 +842,853 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     );
   }
 
-  Widget _buildTab(_SsherCategory category, String title, String subtitle,
-      Color accent, IconData icon, String details,
-      {required bool allowCsv}) {
-    return SsherCategoryFullView(
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      accentColor: accent,
-      detailsText: details,
-      allowCsv: allowCsv,
-      columns: const [
-        '#',
-        'Department',
-        'Team Member',
-        'Concern',
-        'Risk Level',
-        'Mitigation Strategy',
-        'Actions'
-      ],
-      entries: _entriesForCategory(category),
-      addButtonLabel: 'Add $title Item',
-      concernLabel: '$title Concern',
-      onAddItem: (input) => _addEntry(category, input),
-      onEditItem: _editEntry,
-      onDeleteItem: _deleteEntry,
-      onDownload: () => _downloadCategory(category),
+  // ── Notes Section ──
+  Widget _buildNotesSection(bool isMobile) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          isMobile ? 16 : 0, isMobile ? 16 : 16, isMobile ? 16 : 0, 0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _Palette.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _Palette.surfaceVariant.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.notes, size: 18, color: _Palette.outline),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'General Notes',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.05,
+                      color: _Palette.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _notesController,
+                maxLines: 2,
+                onChanged: (_) => _saveNotes(),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: _Palette.surfaceBright,
+                  hintText:
+                      'Add any overarching safety notes for this project phase...',
+                  hintStyle: TextStyle(
+                    color: _Palette.outlineVariant,
+                    fontSize: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        const BorderSide(color: _Palette.primaryContainer, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: _Palette.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
-}
 
-class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar);
+  // ── Phase Navigation Tabs (Scrollable Pills) ──
+  Widget _buildPhaseTabs(bool isMobile) {
+    final categories = _SsherCategory.values;
 
-  final TabBar _tabBar;
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Colors.white,
-      child: _tabBar,
+      decoration: isMobile
+          ? BoxDecoration(
+              color: _Palette.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            )
+          : null,
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 16 : 0, vertical: isMobile ? 8 : 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: categories.map((cat) {
+            final isSelected = cat == _selectedCategory;
+            final icon = _iconForCategory(cat);
+            final label = _labelForCategory(cat);
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _selectedCategory = cat);
+                    _tabController.animateTo(cat.index);
+                  },
+                  borderRadius: BorderRadius.circular(24),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? _Palette.primaryContainer
+                          : _Palette.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(24),
+                      border: isSelected
+                          ? null
+                          : Border.all(color: _Palette.outlineVariant),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color:
+                                    _Palette.primaryContainer.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon,
+                            size: 18,
+                            color: isSelected
+                                ? Colors.white
+                                : _Palette.onSurfaceVariant,
+                            fill: isSelected ? 1.0 : 0.0),
+                        const SizedBox(width: 8),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : _Palette.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
-  @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
+  // ── Data Cards Section ──
+  Widget _buildDataCardsSection(bool isMobile, bool allowCsv) {
+    final entries = _entriesForCategory(_selectedCategory);
+    final accent = _accentForCategory(_selectedCategory);
+    final catLabel = _labelForCategory(_selectedCategory);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 0, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Header
+          _buildSectionHeader(catLabel, entries.length, accent),
+
+          const SizedBox(height: 16),
+
+          // AI Summary (desktop only)
+          if (!isMobile) ...[
+            _buildAiSummaryDesktop(),
+            const SizedBox(height: 16),
+          ],
+
+          // Loading state
+          if (_isGeneratingEntries)
+            _buildLoadingState()
+          else if (entries.isEmpty)
+            _buildEmptyState(accent, catLabel)
+          else
+            ...entries.map((entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildEntryCard(entry, accent, isMobile),
+                )),
+        ],
+      ),
+    );
+  }
+
+  // ── Section Header ──
+  Widget _buildSectionHeader(String label, int count, Color accent) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: _Palette.surfaceVariant),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text(
+                '$label Items',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _Palette.onSurface,
+                  letterSpacing: -0.01,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _Palette.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _Palette.onSurfaceVariant,
+                    letterSpacing: 0.05,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap: () => _handleAddItem(),
+            child: Row(
+              children: [
+                Icon(Icons.add_circle,
+                    size: 20, color: _Palette.primary),
+                const SizedBox(width: 4),
+                Text(
+                  'Add Item',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _Palette.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Entry Card (matches HTML data card) ──
+  Widget _buildEntryCard(SsherEntry entry, Color accent, bool isMobile) {
+    final riskLevel = entry.riskLevel.trim().toLowerCase();
+    final Color accentLineColor;
+    final Color riskBadgeBg;
+    final Color riskBadgeText;
+    final IconData riskIcon;
+    final String riskLabel;
+
+    switch (riskLevel) {
+      case 'high':
+        accentLineColor = _Palette.error;
+        riskBadgeBg = _Palette.errorContainer;
+        riskBadgeText = _Palette.onErrorContainer;
+        riskIcon = Icons.warning;
+        riskLabel = 'High Risk';
+        break;
+      case 'medium':
+        accentLineColor = _Palette.tertiaryFixedDim;
+        riskBadgeBg = _Palette.tertiaryFixedDim;
+        riskBadgeText = _Palette.tertiaryContainer;
+        riskIcon = Icons.info;
+        riskLabel = 'Medium Risk';
+        break;
+      default:
+        accentLineColor = _Palette.surfaceVariant;
+        riskBadgeBg = _Palette.surfaceContainer;
+        riskBadgeText = _Palette.onSurfaceVariant;
+        riskIcon = Icons.check_circle;
+        riskLabel = 'Low Risk';
+    }
+
+    // Get assignee initials
+    final assigneeName = entry.teamMember.trim();
+    final initials = assigneeName.isEmpty
+        ? 'Un'
+        : assigneeName
+            .split(' ')
+            .map((n) => n.isNotEmpty ? n[0].toUpperCase() : '')
+            .take(2)
+            .join();
+    final isUnassigned = assigneeName.isEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _Palette.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: _Palette.surfaceVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Left accent line
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: accentLineColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          // Card content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: badges + more button
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Department + Risk level badges
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _Palette.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  entry.department.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.08,
+                                    color: _Palette.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: riskBadgeBg,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(riskIcon, size: 14, color: riskBadgeText),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      riskLabel.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.08,
+                                        color: riskBadgeText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Concern title
+                          Text(
+                            entry.concern.isNotEmpty
+                                ? entry.concern
+                                : 'Untitled Concern',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _Palette.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: _Palette.outline),
+                      onSelected: (value) {
+                        if (value == 'edit') _editEntry(entry);
+                        if (value == 'delete') _deleteEntry(entry);
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(children: [
+                              Icon(Icons.edit_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ])),
+                        const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(children: [
+                              Icon(Icons.delete_outline,
+                                  size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
+                            ])),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Mitigation Strategy
+                const Text(
+                  'Mitigation Strategy',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.05,
+                    color: _Palette.outline,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _Palette.surfaceBright,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: _Palette.surfaceVariant.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    entry.mitigation.isNotEmpty
+                        ? entry.mitigation
+                        : 'No mitigation strategy defined.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: entry.mitigation.isNotEmpty
+                          ? _Palette.onSurface
+                          : _Palette.outline,
+                      fontStyle: entry.mitigation.isNotEmpty
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Assignee row
+                Container(
+                  padding: const EdgeInsets.only(top: 12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                          color: _Palette.surfaceVariant, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Avatar circle
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isUnassigned
+                              ? _Palette.surfaceDim
+                              : _Palette.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            initials,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isUnassigned
+                                  ? _Palette.onSurfaceVariant
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Assignee',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.05,
+                                color: _Palette.outline,
+                              ),
+                            ),
+                            Text(
+                              isUnassigned ? 'Unassigned' : assigneeName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isUnassigned
+                                    ? _Palette.outline
+                                    : _Palette.onSurface,
+                                fontStyle: isUnassigned
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isUnassigned)
+                        TextButton(
+                          onPressed: () => _editEntry(entry),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _Palette.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Assign',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Loading State ──
+  Widget _buildLoadingState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(strokeWidth: 2),
+            const SizedBox(height: 16),
+            Text(
+              'KAZ AI is generating SSHE entries...',
+              style: TextStyle(color: _Palette.primary, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Empty State ──
+  Widget _buildEmptyState(Color accent, String catLabel) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _Palette.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _Palette.surfaceVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.add_circle_outline, size: 40, color: accent.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text(
+            'No $catLabel items yet',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _Palette.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap "Add Item" to create your first $catLabel entry, or let KAZ AI generate suggestions.',
+            style: TextStyle(fontSize: 14, color: _Palette.outline),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => _handleAddItem(),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text('Add $catLabel Item'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── AI Summary (Desktop version) ──
+  Widget _buildAiSummaryDesktop() {
+    if (_isGeneratingSummary) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _Palette.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _Palette.primary.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 12),
+            Expanded(
+                child: Text('KAZ AI is preparing a tailored SSHER summary...',
+                    style: TextStyle(color: _Palette.primary, fontSize: 13))),
+          ],
+        ),
+      );
+    } else if (_aiPlanSummary.isNotEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _Palette.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _Palette.surfaceVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('KAZ AI-generated SSHER Summary',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text(_aiPlanSummary,
+                style: TextStyle(
+                    color: _Palette.onSurfaceVariant,
+                    fontSize: 14,
+                    height: 1.5)),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.auto_awesome_outlined,
+                color: Color(0xFFB45309), size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'AI-generated SSHER Summary Unavailable',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF92400E)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _buildSummaryPlaceholderText(),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: Color(0xFF92400E),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _retrySummaryGeneration,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Try Generate Again'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF92400E),
+                      side: const BorderSide(color: Color(0xFFF59E0B)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      textStyle: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // ── Save & Continue Button ──
+  Widget _buildSaveContinueButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: () =>
+              PlanningPhaseNavigation.goToNext(context, 'ssher'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _Palette.tertiaryFixedDim,
+            foregroundColor: _Palette.onTertiaryFixed,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            elevation: 1,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Save & Continue to Next Phase',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Handle Add Item ──
+  Future<void> _handleAddItem() async {
+    Color accentColor;
+    IconData icon;
+    String heading;
+    String blurb;
+    String concernLabel;
+
+    switch (_selectedCategory) {
+      case _SsherCategory.safety:
+        accentColor = _safetyAccent;
+        icon = Icons.health_and_safety;
+        heading = 'Add Safety Item';
+        blurb = 'Provide details for the new safety record.';
+        concernLabel = 'Safety Concern';
+        break;
+      case _SsherCategory.security:
+        accentColor = _securityAccent;
+        icon = Icons.shield_outlined;
+        heading = 'Add Security Item';
+        blurb = 'Provide details for the new security record.';
+        concernLabel = 'Security Concern';
+        break;
+      case _SsherCategory.health:
+        accentColor = _healthAccent;
+        icon = Icons.volunteer_activism_outlined;
+        heading = 'Add Health Item';
+        blurb = 'Provide details for the new health record.';
+        concernLabel = 'Health Concern';
+        break;
+      case _SsherCategory.environment:
+        accentColor = _environmentAccent;
+        icon = Icons.eco_outlined;
+        heading = 'Add Environment Item';
+        blurb = 'Provide details for the new environmental record.';
+        concernLabel = 'Environmental Concern';
+        break;
+      case _SsherCategory.regulatory:
+        accentColor = _regulatoryAccent;
+        icon = Icons.gavel_outlined;
+        heading = 'Add Regulatory Item';
+        blurb = 'Provide details for the new compliance record.';
+        concernLabel = 'Regulatory Requirement';
+        break;
+    }
+
+    final result = await showDialog<SsherItemInput>(
+      context: context,
+      builder: (ctx) => AddSsherItemDialog(
+        accentColor: accentColor,
+        icon: icon,
+        heading: heading,
+        blurb: blurb,
+        concernLabel: concernLabel,
+      ),
+    );
+    if (result == null) return;
+    await _addEntry(_selectedCategory, result);
   }
 }

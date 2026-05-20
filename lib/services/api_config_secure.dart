@@ -12,7 +12,7 @@ class SecureAPIConfig {
       'https://us-central1-ndu-d3f60.cloudfunctions.net/openaiProxy';
 
   // Default model used across OpenAI requests.
-  static const String model = 'gpt-5.4';
+  static const String model = 'gpt-4o';
 
   /// Returns model parameters for API requests.
   static Map<String, dynamic> modelParams({int? maxTokens, double? temperature}) {

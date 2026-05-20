@@ -70,6 +70,20 @@ class OpenAiConfig {
     return Uri.parse('$base/chat/completions');
   }
 
+  /// Wraps a request body map with a workflow_id override that tells the
+  /// Firebase Cloud Function proxy to skip the default OpenAI Workflow and
+  /// forward the request directly to the Chat Completions / Responses API.
+  /// This prevents the workflow from injecting unsupported parameters (e.g.
+  /// 'reasoning') that cause 400 errors with models like gpt-4o.
+  ///
+  /// When the proxy receives `workflow_id: 'none'`, it evaluates to a truthy
+  /// string but does NOT start with 'wf_', so `getConfiguredOpenAiWorkflowId`
+  /// returns '' and the request goes directly to OpenAI.
+  static Map<String, dynamic> wrapBody(Map<String, dynamic> body) {
+    if (!_isProxyEndpoint) return body;
+    return {...body, 'workflow_id': 'none'};
+  }
+
   /// Helpful diagnostic used by UI to provide actionable error messages
   static String? configurationWarning() {
     if (!kIsWeb) return null;
@@ -152,7 +166,7 @@ class OpenAiAutocompleteService {
         debugPrint('OpenAI configuration warning: $warn (endpoint=${OpenAiConfig.baseEndpoint})');
       }
       final response = await _client
-          .post(uri, headers: headers, body: jsonEncode(payload))
+          .post(uri, headers: headers, body: jsonEncode(OpenAiConfig.wrapBody(payload)))
           .timeout(_timeout);
 
       if (response.statusCode == 429) {
@@ -285,7 +299,7 @@ class OpenAiDiagramService {
     };
 
     final prompt = _diagramPrompt(section: section, context: contextText, refinementHint: refinementHint);
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': maxTokens,
@@ -309,7 +323,7 @@ Always return ONLY a valid JSON object with nodes and edges arrays.'''
           'content': prompt,
         }
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 16));

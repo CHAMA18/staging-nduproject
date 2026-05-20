@@ -524,12 +524,12 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
         });
       }
 
-      final body = jsonEncode({
+      final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': 0.7,
         'max_tokens': 800,
         'messages': messages,
-      });
+      }));
 
       final response = await http
           .post(uri, headers: headers, body: body)

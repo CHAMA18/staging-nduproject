@@ -2337,7 +2337,7 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
       },
-      body: jsonEncode({
+      body: jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'messages': [
           {
@@ -2348,7 +2348,7 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
         ],
         'max_tokens': 60,
         'temperature': 0.7,
-      }),
+      })),
     );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

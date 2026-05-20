@@ -414,7 +414,7 @@ class OpenAiServiceSecure {
         'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
       };
 
-      final body = jsonEncode({
+      final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': temperature,
         'max_tokens': maxTokens,
@@ -430,7 +430,7 @@ class OpenAiServiceSecure {
           },
           {'role': 'user', 'content': trimmedPrompt},
         ],
-      });
+      }));
 
       final response = await _client
           .post(uri, headers: headers, body: body)
@@ -469,7 +469,7 @@ class OpenAiServiceSecure {
     };
 
     final prompt = _fepSectionPrompt(section: section, context: trimmedContext);
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -488,7 +488,7 @@ class OpenAiServiceSecure {
           'content': prompt,
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -545,7 +545,7 @@ class OpenAiServiceSecure {
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -562,7 +562,7 @@ class OpenAiServiceSecure {
               _qualitySeedPrompt(section: section, context: trimmedContext),
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -890,7 +890,7 @@ class OpenAiServiceSecure {
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -906,7 +906,7 @@ class OpenAiServiceSecure {
           'content': 'Project Context:\n$trimmedContext',
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -953,7 +953,7 @@ class OpenAiServiceSecure {
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -969,7 +969,7 @@ class OpenAiServiceSecure {
           'content': 'Project Context:\n$trimmedContext',
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1038,7 +1038,7 @@ class OpenAiServiceSecure {
 
     final prompt = _buildMitigationPrompt(trimmedRisks, context);
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1054,7 +1054,7 @@ class OpenAiServiceSecure {
           'content': prompt,
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1142,7 +1142,7 @@ class OpenAiServiceSecure {
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1158,7 +1158,7 @@ class OpenAiServiceSecure {
           'content': 'Project Context:\n$trimmedContext',
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1238,7 +1238,7 @@ Rules:
 - For "Constraints": lists budget, timeline, or resource limitations.
 ''';
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1256,7 +1256,7 @@ Rules:
         },
         {'role': 'user', 'content': prompt}
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1327,7 +1327,7 @@ $trimmedContext
 Return ONLY valid JSON: {"objective": "..." }
 ''';
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1340,7 +1340,7 @@ Return ONLY valid JSON: {"objective": "..." }
         },
         {'role': 'user', 'content': prompt},
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1402,7 +1402,7 @@ Project Context:
 $trimmedContext
 ''';
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1420,7 +1420,7 @@ $trimmedContext
         },
         {'role': 'user', 'content': prompt},
       ],
-    });
+    }));
 
     String normalize(dynamic value) {
       if (value == null) return '';
@@ -1807,7 +1807,7 @@ $trimmedContext
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1830,7 +1830,7 @@ Use concise professional language. Status should use In progress, Pending, In re
         },
         {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1896,7 +1896,7 @@ Use concise professional language. Status should use In progress, Pending, In re
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1917,7 +1917,7 @@ Use concise professional language. Status must be one of: Approved, Aligned, Rea
         },
         {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -1955,7 +1955,7 @@ Use concise professional language. Status must be one of: Approved, Aligned, Rea
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -1974,7 +1974,7 @@ Return JSON with:
         },
         {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -2158,7 +2158,7 @@ Return JSON with:
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -2174,7 +2174,7 @@ Return JSON with:
           'content': _projectFrameworkPrompt(trimmedContext),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -2225,7 +2225,7 @@ Return JSON with:
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.55,
       'max_tokens': 1200,
@@ -2246,7 +2246,7 @@ Return JSON with:
           'content': _opportunitiesPrompt(trimmed),
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -2485,7 +2485,7 @@ $c
       domainHints: domainHints,
     );
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.35,
       'max_tokens': 300,
@@ -2506,7 +2506,7 @@ $c
           'content': prompt,
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -2738,7 +2738,7 @@ $domainHints
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 1200,
@@ -2763,7 +2763,7 @@ $domainHints
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -2824,7 +2824,7 @@ $domainHints
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -2845,7 +2845,7 @@ $domainHints
           'content': _allowancesPrompt(trimmed),
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -3095,7 +3095,7 @@ $domainHints
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.7,
       'max_tokens': 1000,
@@ -3119,7 +3119,7 @@ $domainHints
           )
         },
       ],
-    });
+    }));
 
     final response = await _client
         .post(uri, headers: headers, body: body)
@@ -3159,7 +3159,7 @@ $domainHints
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 1200,
@@ -3177,7 +3177,7 @@ $domainHints
         },
         {'role': 'user', 'content': _risksPrompt(solutions, contextNotes)},
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -3360,7 +3360,7 @@ $domainHints
     }
 
     final response = await _client
-        .post(uri, headers: headers, body: jsonEncode(payload))
+        .post(uri, headers: headers, body: jsonEncode(OpenAiConfig.wrapBody(payload)))
         .timeout(const Duration(seconds: 15));
     if (response.statusCode == 429) {
       throw Exception('API quota exceeded. Please check your OpenAI billing.');
@@ -3509,7 +3509,7 @@ $domainHints
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -3530,7 +3530,7 @@ $domainHints
           'content': _technologiesPrompt(solutions, contextNotes)
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -3602,7 +3602,7 @@ $domainHints
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.45,
       'max_tokens': 1400,
@@ -3628,7 +3628,7 @@ $domainHints
           )
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -4633,7 +4633,7 @@ Domain guardrail: $guardrails
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.4,
       'max_tokens': 900,
@@ -4658,7 +4658,7 @@ Domain guardrail: $guardrails
           )
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -4912,7 +4912,7 @@ $domainHints
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 1200,
@@ -4934,7 +4934,7 @@ Include: problem statement, proposed solution, benefits, risks, success metrics,
 Return plain text only.'''
         }
       ],
-    });
+    }));
 
     final response = await _client
         .post(uri, headers: headers, body: body)
@@ -4981,7 +4981,7 @@ Return plain text only.'''
         .map((s) =>
             '{"title":"${_escape(s.title)}","description":"${_escape(s.description)}"}')
         .join(',');
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -5009,7 +5009,7 @@ Return plain text only.'''
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -5313,7 +5313,7 @@ Return ONLY JSON.
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.4,
       'max_tokens': 1200,
@@ -5340,7 +5340,7 @@ Return ONLY JSON.
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -5511,7 +5511,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -5532,7 +5532,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
           'content': _infrastructurePrompt(solutions, contextNotes)
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -5698,7 +5698,7 @@ Context notes (optional): $notes
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 2000,
@@ -5714,7 +5714,7 @@ Context notes (optional): $notes
           'content': _stakeholdersPrompt(solutions, contextNotes)
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6078,7 +6078,7 @@ Context notes (optional): $notes
         ? 'None yet'
         : existingRisks.map((r) => '- $r').join('\n');
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.7,
       'max_tokens': 600,
@@ -6112,7 +6112,7 @@ Make each suggestion:
 '''
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6207,7 +6207,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6223,7 +6223,7 @@ $escaped
           'content': _ssherSummaryPrompt(trimmedContext),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6271,7 +6271,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6287,7 +6287,7 @@ $escaped
           'content': _ssherEntriesPrompt(trimmedContext, itemsPerCategory),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6336,7 +6336,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6358,7 +6358,7 @@ $escaped
               trimmedContext, sections, itemsPerSection),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6410,7 +6410,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6432,7 +6432,7 @@ $escaped
               _staffingRoleSuggestionsPrompt(trimmedContext, maxSuggestions),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6529,7 +6529,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6550,7 +6550,7 @@ $escaped
           'content': _staffingRowsPrompt(trimmedContext, maxRows),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6737,7 +6737,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6759,7 +6759,7 @@ $escaped
               _meetingRowsPrompt(trimmedContext, availableRoles, maxRows),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -6923,7 +6923,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -6945,7 +6945,7 @@ $escaped
               trimmedContext, maxRoles, maxPermissions),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -7143,7 +7143,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -7160,7 +7160,7 @@ $escaped
               trimmedContext, meetingType, participantRoles),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -8504,7 +8504,7 @@ Context notes (optional): $notes
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 2000,
@@ -8544,7 +8544,7 @@ Return JSON in this format:
 }'''
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -8607,7 +8607,7 @@ Return JSON in this format:
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1500,
@@ -8631,7 +8631,7 @@ Return JSON in this format:
           )
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -8769,7 +8769,7 @@ Additional Context: $contextNotes
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -8785,7 +8785,7 @@ Additional Context: $contextNotes
           'content': _scheduleActivitiesPrompt(trimmedContext, wbsItems),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -8894,7 +8894,7 @@ $escaped
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 800,
@@ -8916,7 +8916,7 @@ $escaped
               _vendorPrompt(projectName, solutionTitle, category, contextNotes)
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -9039,7 +9039,7 @@ Return ONLY valid JSON.
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
       'max_tokens': 1000,
@@ -9061,7 +9061,7 @@ Return ONLY valid JSON.
               projectName, solutionTitle, category, contextNotes)
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -9221,7 +9221,7 @@ Return ONLY valid JSON.
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.45,
       'max_tokens': 2200,
@@ -9250,7 +9250,7 @@ Return ONLY valid JSON.
           ),
         },
       ],
-    });
+    }));
 
     String clean(dynamic value) =>
         _stripAsterisks(value?.toString() ?? '').trim();
@@ -9710,7 +9710,7 @@ Return ONLY valid JSON in this exact structure:
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -9735,7 +9735,7 @@ Context: $contextNotes
 Return ONLY JSON: {"items":[...]}'''
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -9768,7 +9768,7 @@ Return ONLY JSON: {"items":[...]}'''
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1200,
@@ -9793,7 +9793,7 @@ Context: $contextNotes
 Return ONLY JSON: {"items":[...]}'''
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -9826,7 +9826,7 @@ Return ONLY JSON: {"items":[...]}'''
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
       'max_tokens': 1400,
@@ -9850,7 +9850,7 @@ Context: $contextNotes
 Return ONLY JSON: {"items":[...]}'''
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -9964,7 +9964,7 @@ Return ONLY JSON: {"items":[...]}'''
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -9985,7 +9985,7 @@ Return ONLY JSON: {"items":[...]}'''
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10141,7 +10141,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10163,7 +10163,7 @@ $escaped
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10269,7 +10269,7 @@ $escaped
 
     final tasksText = completedTasks.join('\n');
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10285,7 +10285,7 @@ $escaped
           'content': _weeklyWinsPrompt(trimmedContext, tasksText),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10368,7 +10368,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10384,7 +10384,7 @@ $escaped
           'content': _contractKeyTermsPrompt(trimmedContext, contractType),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10473,7 +10473,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10489,7 +10489,7 @@ $escaped
           'content': _vendorSLATermsPrompt(trimmedContext, vendorCategory),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10579,7 +10579,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10596,7 +10596,7 @@ $escaped
               trimmedContext, componentName, category),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10688,7 +10688,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10710,7 +10710,7 @@ $escaped
               _taskBreakdownPrompt(trimmedContext, userStory, designComponents),
         },
       ],
-    });
+    }));
 
     try {
       final response = await http.post(uri, headers: headers, body: body);
@@ -10795,7 +10795,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10817,7 +10817,7 @@ $escaped
               trimmedContext, scopeItem, designComponents),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -10909,7 +10909,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -10925,7 +10925,7 @@ $escaped
           'content': _acceptanceCriteriaPrompt(trimmedContext, requirementText),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -11019,7 +11019,7 @@ $escaped
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
     };
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -11047,7 +11047,7 @@ $escaped
           ),
         },
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -11173,7 +11173,7 @@ Requirements:
 
 Return only the title, no additional text.''';
 
-    final body = jsonEncode({
+    final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
       'max_tokens': maxTokens,
@@ -11188,7 +11188,7 @@ Return only the title, no additional text.''';
           'content': prompt,
         }
       ],
-    });
+    }));
 
     try {
       final response = await _client
@@ -11270,7 +11270,7 @@ IMPORTANT RULES:
         'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
       };
 
-      final body = jsonEncode({
+      final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': 0.5,
         'max_tokens': maxTokens,
@@ -11283,7 +11283,7 @@ IMPORTANT RULES:
           },
           {'role': 'user', 'content': prompt},
         ],
-      });
+      }));
 
       final response = await _client
           .post(uri, headers: headers, body: body)

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -665,30 +666,23 @@ class _ProjectDashboardMobileShellState
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Text(
-                                widget.isBasicPlan
-                                    ? 'Basic plan dashboard'
-                                    : 'Project dashboard',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: _Tokens.onSurface,
-                                  letterSpacing: -0.02,
-                                  height: 1.33,
+                              // ── Personalized Greeting (world‑class) ────────────
+                              _PremiumUserGreeting(isBasicPlan: widget.isBasicPlan),
+                              // ── Description (web only – hidden on Android/iOS) ──
+                              if (kIsWeb) ...[
+                                const SizedBox(height: 10),
+                                Text(
+                                  widget.isBasicPlan
+                                      ? 'Manage your basic plan project workspace. Build the core initiation details and upgrade when you are ready to unlock more sections.'
+                                      : 'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: _Tokens.onSurfaceVariant,
+                                    height: 1.5,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                widget.isBasicPlan
-                                    ? 'Manage your basic plan project workspace. Build the core initiation details and upgrade when you are ready to unlock more sections.'
-                                    : 'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: _Tokens.onSurfaceVariant,
-                                  height: 1.5,
-                                ),
-                              ),
+                              ],
 
                               const SizedBox(
                                   height: _Tokens.sectionGap),
@@ -1114,6 +1108,224 @@ class _ProjectDashboardMobileShellState
           },
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium User Greeting Widget – world‑class personalised greeting
+// ─────────────────────────────────────────────────────────────────────────────
+class _PremiumUserGreeting extends StatelessWidget {
+  const _PremiumUserGreeting({required this.isBasicPlan});
+
+  final bool isBasicPlan;
+
+  /// Time‑aware greeting prefix
+  static String _timePrefix() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  /// Extract initials (up to 2 chars) from display name
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : 'U';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final firstName = displayName.split(' ').first;
+    final initials = _initials(displayName);
+    final greeting = '${_timePrefix()}, $firstName';
+
+    // Photo URL from Firebase Auth
+    final photoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFF7F9FB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE0E3E5).withOpacity(0.6),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: const Color(0xFFFFCC00).withOpacity(0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // ── Avatar ───────────────────────────────────────────────────
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFCC00),
+                  Color(0xFFFFE066),
+                  Color(0xFFFFD633),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFCC00).withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: photoUrl != null && photoUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        photoUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildInitialsText(initials),
+                      ),
+                    )
+                  : _buildInitialsText(initials),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // ── Greeting text ────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF191C1E),
+                    letterSpacing: -0.02,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    // Plan badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isBasicPlan
+                            ? const Color(0xFFEFF6FF)
+                            : const Color(0xFFFFF8E1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isBasicPlan
+                              ? const Color(0xFFBFDBFE)
+                              : const Color(0xFFFFE082),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isBasicPlan ? Icons.star_outline : Icons.workspace_premium_outlined,
+                            size: 11,
+                            color: isBasicPlan
+                                ? const Color(0xFF2563EB)
+                                : const Color(0xFFF59E0B),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            isBasicPlan ? 'Basic Plan' : 'Pro Plan',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.04,
+                              color: isBasicPlan
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isBasicPlan ? 'Basic plan dashboard' : 'Project dashboard',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF414754),
+                          letterSpacing: 0.02,
+                          height: 1.3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Status dot (online indicator) ────────────────────────────
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF22C55E),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF22C55E).withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInitialsText(String initials) {
+    return Text(
+      initials,
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF191C1D),
+        height: 1,
+      ),
     );
   }
 }

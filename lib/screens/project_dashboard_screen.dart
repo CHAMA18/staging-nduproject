@@ -846,23 +846,20 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                 ],
               ),
             const SizedBox(height: 26),
-            Text(
-              widget.isBasicPlan ? 'Basic plan dashboard' : 'Project dashboard',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F1117),
+            // ── Premium Personalized Greeting ─────────────────────────
+            _DesktopPremiumGreeting(isBasicPlan: widget.isBasicPlan),
+            const SizedBox(height: 14),
+            // ── Description (web only – hidden on Android/iOS) ────────
+            if (kIsWeb)
+              Text(
+                widget.isBasicPlan
+                    ? 'Manage your basic plan project workspace. Build the core initiation details and upgrade when you are ready to unlock more sections.'
+                    : 'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade700,
+                  height: 1.55,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.isBasicPlan
-                  ? 'Manage your basic plan project workspace. Build the core initiation details and upgrade when you are ready to unlock more sections.'
-                  : 'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
-              style: textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
-                height: 1.55,
-              ),
-            ),
           ],
         );
       },
@@ -3745,5 +3742,259 @@ class _FrostedSurface extends StatelessWidget {
       ),
       child: child,
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desktop Premium User Greeting Widget – world‑class personalised greeting
+// ─────────────────────────────────────────────────────────────────────────────
+class _DesktopPremiumGreeting extends StatelessWidget {
+  const _DesktopPremiumGreeting({required this.isBasicPlan});
+
+  final bool isBasicPlan;
+
+  /// Time‑aware greeting prefix
+  static String _timePrefix() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  /// Extract initials (up to 2 chars) from display name
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : 'U';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final firstName = displayName.split(' ').first;
+    final initials = _initials(displayName);
+    final greeting = '${_timePrefix()}, $firstName';
+
+    // Photo URL from Firebase Auth
+    final photoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFF7F9FB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFE0E3E5).withOpacity(0.6),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: const Color(0xFFFFCC00).withOpacity(0.06),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // ── Avatar ───────────────────────────────────────────────────
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFCC00),
+                  Color(0xFFFFE066),
+                  Color(0xFFFFD633),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFCC00).withOpacity(0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Center(
+              child: photoUrl != null && photoUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        photoUrl,
+                        width: 46,
+                        height: 46,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildInitialsText(initials, 24),
+                      ),
+                    )
+                  : _buildInitialsText(initials, 24),
+            ),
+          ),
+          const SizedBox(width: 20),
+
+          // ── Greeting text ────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0F1117),
+                    letterSpacing: -0.02,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    // Plan badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isBasicPlan
+                            ? const Color(0xFFEFF6FF)
+                            : const Color(0xFFFFF8E1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isBasicPlan
+                              ? const Color(0xFFBFDBFE)
+                              : const Color(0xFFFFE082),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isBasicPlan ? Icons.star_outline : Icons.workspace_premium_outlined,
+                            size: 14,
+                            color: isBasicPlan
+                                ? const Color(0xFF2563EB)
+                                : const Color(0xFFF59E0B),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isBasicPlan ? 'Basic Plan' : 'Pro Plan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.04,
+                              color: isBasicPlan
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        isBasicPlan ? 'Basic plan dashboard' : 'Project dashboard',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF414754),
+                          letterSpacing: 0.01,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Online indicator + date ──────────────────────────────────
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF22C55E).withOpacity(0.4),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Online',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF22C55E),
+                      letterSpacing: 0.04,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatDate(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInitialsText(String initials, double fontSize) {
+    return Text(
+      initials,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
+        color: const Color(0xFF191C1D),
+        height: 1,
+      ),
+    );
+  }
+
+  static String _formatDate() {
+    final now = DateTime.now();
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[now.month]} ${now.day}, ${now.year}';
   }
 }

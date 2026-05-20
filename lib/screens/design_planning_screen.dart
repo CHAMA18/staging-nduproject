@@ -17,23 +17,30 @@ import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/widgets/planning_phase_header.dart';
+// import 'package:ndu_project/widgets/launch_phase_navigation.dart'; // removed: UI redesign
+// import 'package:ndu_project/widgets/planning_phase_header.dart'; // removed: UI redesign
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/responsive_scaffold.dart';
+// import 'package:ndu_project/widgets/responsive_scaffold.dart'; // removed: UI redesign
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-const Color _kPageBg = Color(0xFFF5F7FB);
 const Color _kSurface = Colors.white;
-const Color _kBorder = Color(0xFFE2E8F0);
-const Color _kText = Color(0xFF0F172A);
-const Color _kMuted = Color(0xFF64748B);
+const Color _kBorder = Color(0xFFE5E7EB);
+const Color _kText = Color(0xFF111827);
+const Color _kMuted = Color(0xFF6B7280);
 const Color _kPrimary = Color(0xFF2563EB);
-const Color _kPrimarySoft = Color(0xFFE8F0FF);
 const Color _kSuccess = Color(0xFF0F9D58);
 const Color _kWarning = Color(0xFFF59E0B);
+// Brand colors from HTML design
+const Color _kBrandYellow = Color(0xFFFFC107);
+const Color _kBrandDark = Color(0xFF1A1A1A);
+const Color _kGray400 = Color(0xFF9CA3AF);
+const Color _kGray500 = Color(0xFF6B7280);
+const Color _kGray700 = Color(0xFF374151);
+const Color _kGray900 = Color(0xFF111827);
+const Color _kBlue50 = Color(0xFFEFF6FF);
+const Color _kBlue600 = Color(0xFF2563EB);
 const String _kSectionProgressNotesKey = 'planning_design_section_progress';
 
 enum _SectionProgressState { pending, complete, notApplicable }
@@ -52,7 +59,6 @@ class DesignPlanningScreen extends StatefulWidget {
 }
 
 class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
-  static const _statusOptions = ['Draft', 'In Review', 'Approved'];
   static const _mappingStatusOptions = [
     'Draft',
     'Planned',
@@ -146,37 +152,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     'Data',
     'Interface',
   ];
-
-  Future<void> _editVersion() async {
-    final controller = TextEditingController(text: _document.version);
-    final updated = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Set document version'),
-          content: TextField(
-            controller: controller,
-            decoration: _inputDecoration('e.g. v1.0, v1.2, v2.0'),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-    if (!mounted || updated == null || updated.isEmpty) return;
-    setState(() => _document.version = updated);
-    _queueSave();
-  }
 
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _sectionKeys = {
@@ -322,29 +297,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeInOut,
       alignment: 0.0,
-    );
-  }
-
-  Future<void> _openSpecificationsAndScrollToRow(String rowId) async {
-    if (!mounted) return;
-    setState(() {
-      _sectionExpanded['design_specifications_workspace'] = true;
-      _sectionTileVersion['design_specifications_workspace'] =
-          (_sectionTileVersion['design_specifications_workspace'] ?? 0) + 1;
-      _activeSectionId = 'design_specifications_workspace';
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    if (!mounted) return;
-    await _scrollToSectionStart('design_specifications_workspace');
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!mounted) return;
-    final target = _specificationRowKeys[rowId]?.currentContext;
-    if (target == null || !target.mounted) return;
-    await Scrollable.ensureVisible(
-      target,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-      alignment: 0.12,
     );
   }
 
@@ -548,16 +500,12 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   Widget _buildSectionProgressControls(String sectionId) {
     final state = _sectionProgress[sectionId] ?? _SectionProgressState.pending;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorder),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _kBorder)),
       ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 8,
+      child: Row(
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -573,9 +521,11 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                   );
                 },
               ),
-              const Text('Complete'),
+              const Text('Complete',
+                  style: TextStyle(fontSize: 13, color: _kGray700)),
             ],
           ),
+          const SizedBox(width: 16),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -590,7 +540,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                   );
                 },
               ),
-              const Text('Not applicable'),
+              const Text('Not applicable',
+                  style: TextStyle(fontSize: 13, color: _kGray700)),
             ],
           ),
         ],
@@ -1721,452 +1672,230 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
-    final isMobile = AppBreakpoints.isMobile(context);
     final owners = _ownerOptions(projectData);
-    final pagePadding = AppBreakpoints.pagePadding(context);
 
-    return ResponsiveScaffold(
-      activeItemLabel: 'Design Planning',
-      backgroundColor: _kPageBg,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
-          PlanningPhaseHeader(
-            title: 'Design Planning',
-            showImportButton: false,
-            showContentButton: false,
-            onBack: () =>
-                PlanningPhaseNavigation.goToPrevious(context, 'design'),
-            onForward: () =>
-                PlanningPhaseNavigation.goToNext(context, 'design'),
-          ),
+          _buildMobileHeader(projectData),
+          _buildPageContext(projectData),
           Expanded(
             child: SingleChildScrollView(
               controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                pagePadding,
-                20,
-                pagePadding,
-                120,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopBar(projectData),
-                  const SizedBox(height: 20),
-                  if (isMobile)
-                    Column(
-                      children: [
-                        _buildMainColumn(projectData, owners),
-                        const SizedBox(height: 20),
-                        _buildSectionNav(),
-                        const SizedBox(height: 20),
-                        _buildRightRail(projectData),
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 220, child: _buildSectionNav()),
-                        const SizedBox(width: 20),
-                        Expanded(
-                            flex: 7,
-                            child: _buildMainColumn(projectData, owners)),
-                        const SizedBox(width: 20),
-                        SizedBox(
-                            width: 320, child: _buildRightRail(projectData)),
-                      ],
-                    ),
-                  const SizedBox(height: 24),
-                  LaunchPhaseNavigation(
-                    backLabel: PlanningPhaseNavigation.backLabel('design'),
-                    nextLabel: PlanningPhaseNavigation.nextLabel('design'),
-                    onBack: () =>
-                        PlanningPhaseNavigation.goToPrevious(context, 'design'),
-                    onNext: () =>
-                        PlanningPhaseNavigation.goToNext(context, 'design'),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.only(top: 8, bottom: 100),
+              child: _buildMainColumn(projectData, owners),
             ),
           ),
         ],
       ),
+      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
-  Widget _buildTopBar(ProjectDataModel data) {
-    final counts = [
-      _StatChip(
-          label: 'Requirements', value: '${_document.requirements.length}'),
-      _StatChip(label: 'Risks', value: '${_document.risks.length}'),
-      _StatChip(label: 'Approvals', value: '${_document.approvals.length}'),
-    ];
+  Widget _buildMobileHeader(ProjectDataModel data) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: _kBorder)),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x0A000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
         children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _Badge(
-                label: data.projectName.trim().isEmpty
-                    ? 'Unnamed Project'
-                    : data.projectName.trim(),
-                background: _kPrimarySoft,
-                foreground: _kPrimary,
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _kBrandDark,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'NDU',
+              style: TextStyle(
+                color: _kBrandYellow,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
               ),
-              _VersionChip(
-                version: _document.version,
-                onPressed: _editVersion,
-              ),
-              _DropdownBadge(
-                value: _document.status,
-                items: _statusOptions,
-                onChanged: (value) {
-                  _document.status = value;
-                  _queueSave();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Design Basis Document',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _kText,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Define the planning-level design basis, keep requirement traceability intact, and hand structured direction into the design phase.',
-            style: const TextStyle(
-              fontSize: 13,
-              color: _kMuted,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(spacing: 10, runSpacing: 10, children: counts),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _ActionButton(
-                label: _saving ? 'Saving...' : 'Save',
-                icon: Icons.save_outlined,
-                primary: true,
-                onPressed: _saving ? null : _saveDocument,
-              ),
-              const SizedBox(width: 10),
-              _ActionButton(
-                label: 'Submit for Review',
-                icon: Icons.rate_review_outlined,
-                onPressed: () {
-                  _document.status = 'In Review';
-                  _queueSave();
-                },
-              ),
-              const Spacer(),
-              ValueListenableBuilder<_SaveIndicatorState>(
-                valueListenable: _saveIndicatorNotifier,
-                builder: (context, state, _) => _AutoSaveIndicator(
-                  saving: state.saving,
-                  pending: state.pending,
-                  lastSavedAt: state.lastSavedAt,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionNav() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(width: 8),
           const Text(
-            'Sections',
+            'PROJECT',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: _kText,
+              color: _kGray900,
+              letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 12),
-          for (final section in _sectionOrder) ...[
-            Builder(
-              builder: (context) {
-                final isLocked = !_canOpenSection(section.id);
-                final isActive = _activeSectionId == section.id;
-                final state = _sectionProgress[section.id] ??
-                    _SectionProgressState.pending;
-                final sectionColor =
-                    isLocked ? _kMuted.withOpacity(0.45) : section.accent;
-                final textColor = isLocked ? _kMuted : _kText;
-                return InkWell(
-                  onTap: () => _activateSection(section.id),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isActive ? _kPrimarySoft : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: sectionColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            section.label,
-                            style: TextStyle(fontSize: 13, color: textColor),
-                          ),
-                        ),
-                        if (state == _SectionProgressState.complete)
-                          const Icon(
-                            Icons.check_circle,
-                            size: 16,
-                            color: _kSuccess,
-                          ),
-                        if (state == _SectionProgressState.notApplicable)
-                          const Icon(
-                            Icons.remove_circle,
-                            size: 16,
-                            color: _kWarning,
-                          ),
-                        if (isLocked)
-                          Icon(
-                            Icons.lock_outline,
-                            size: 14,
-                            color: _kMuted.withOpacity(0.8),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          const Spacer(),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.notifications_outlined, size: 22),
+            color: _kGray500,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: _kBlue600,
+              shape: BoxShape.circle,
             ),
-          ],
+            alignment: Alignment.center,
+            child: const Text(
+              'C',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRightRail(ProjectDataModel data) {
-    final mappedSpecificationIds = _document.requirements
-        .map((item) => item.requirementId.trim())
-        .where((id) => id.isNotEmpty)
-        .toSet();
-    final mappedSpecsCount = _document.specifications
-        .where((item) => mappedSpecificationIds.contains(item.id))
-        .length;
-    final deviationsCount = _document.deviations
-        .where((item) =>
-            item.specificationId.trim().isNotEmpty ||
-            item.description.trim().isNotEmpty)
-        .length;
-    final summary = [
-      (
-        'Solution',
-        data.solutionTitle.trim().isEmpty
-            ? 'Not set'
-            : data.solutionTitle.trim()
+  Widget _buildPageContext(ProjectDataModel data) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: _kBorder)),
       ),
-      ('Milestones', '${data.keyMilestones.length}'),
-      ('Team', '${data.teamMembers.length}'),
-      ('Technology', data.technology),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _RailCard(
-          title: 'Initiation Context',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              for (final item in summary) ...[
-                Text(
-                  item.$1,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: _kMuted,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.$2,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: _kText,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (data.businessCase.trim().isNotEmpty)
-                Text(
-                  data.businessCase.trim(),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: _kMuted,
-                    height: 1.5,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _RailCard(
-          title: 'Design Phase Handoff',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _MiniMetric(
-                label: 'Architecture modules',
-                value:
-                    '${_document.modules.where((item) => item.name.trim().isNotEmpty).length}',
-              ),
-              _MiniMetric(
-                label: 'UI/UX journeys',
-                value:
-                    '${_document.journeys.where((item) => item.name.trim().isNotEmpty).length}',
-              ),
-              _MiniMetric(
-                label: 'Technical integrations',
-                value:
-                    '${_document.integrations.where((item) => item.name.trim().isNotEmpty).length}',
-              ),
-              _MiniMetric(
-                label: 'Validation lines',
-                value: '${_splitLines(_document.validationSummary).length}',
-              ),
-              const SizedBox(height: 10),
               Text(
-                _document.buildExecutionHandoff().isEmpty
-                    ? 'Fill the document to seed architecture, UI/UX, engineering, and governance context downstream.'
-                    : _document.buildExecutionHandoff(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _kMuted,
-                  height: 1.5,
+                data.projectName.trim().isEmpty
+                    ? 'Unnamed Project'
+                    : data.projectName.trim(),
+                style: const TextStyle(fontSize: 12, color: _kGray500),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right, size: 14, color: _kGray400),
+              const SizedBox(width: 6),
+              const Text(
+                'Planning Phase',
+                style: TextStyle(fontSize: 12, color: _kGray500),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text(
+                'Design Planning',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _kGray900,
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.schedule, size: 16),
+                label: const Text('Activity'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF9FAFB),
+                  foregroundColor: _kGray700,
+                  side: const BorderSide(color: _kBorder),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  textStyle: const TextStyle(fontSize: 12),
+                  minimumSize: Size.zero,
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        _RailCard(
-          title: 'Specs',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+          const SizedBox(height: 8),
+          ValueListenableBuilder<_SaveIndicatorState>(
+            valueListenable: _saveIndicatorNotifier,
+            builder: (context, state, _) => _AutoSaveIndicator(
+              saving: state.saving,
+              pending: state.pending,
+              lastSavedAt: state.lastSavedAt,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: _kBorder)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding + 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () =>
+                  PlanningPhaseNavigation.goToPrevious(context, 'design'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: const BorderSide(color: _kBorder),
+                foregroundColor: _kGray700,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _Badge(
-                    label: 'Mapped specs: $mappedSpecsCount',
-                    background: const Color(0xFFE8F0FF),
-                    foreground: _kPrimary,
-                  ),
-                  _Badge(
-                    label: 'Deviations: $deviationsCount',
-                    background: const Color(0xFFECFDF3),
-                    foreground: _kSuccess,
-                  ),
+                  const Icon(Icons.arrow_back, size: 16),
+                  const SizedBox(width: 6),
+                  Text(PlanningPhaseNavigation.backLabel('design')),
                 ],
               ),
-              const SizedBox(height: 10),
-              if (_document.specifications.isEmpty)
-                const Text(
-                  'No specification rows yet.',
-                  style: TextStyle(fontSize: 12, color: _kMuted, height: 1.45),
-                ),
-              for (var i = 0; i < _document.specifications.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () => _openSpecificationsAndScrollToRow(
-                      _document.specifications[i].id,
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            margin: const EdgeInsets.only(top: 6),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF0F766E),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Text(
-                              _document.specifications[i].title.trim().isEmpty
-                                  ? 'Spec Row ${i + 1}'
-                                  : _document.specifications[i].title.trim(),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: _kText,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: FilledButton(
+              onPressed: () =>
+                  PlanningPhaseNavigation.goToNext(context, 'design'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kBrandYellow,
+                foregroundColor: _kBrandDark,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(PlanningPhaseNavigation.nextLabel('design')),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.arrow_forward, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2175,31 +1904,18 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildOverviewSection(data),
-        const SizedBox(height: 18),
         _buildDesignOverviewSection(data),
-        const SizedBox(height: 18),
         _buildDesignSpecificationsWorkspaceSection(),
-        const SizedBox(height: 18),
         _buildDeviationsSection(),
-        const SizedBox(height: 18),
         _buildRequirementsSection(owners),
-        const SizedBox(height: 18),
         _buildArchitectureSection(owners),
-        const SizedBox(height: 18),
         _buildUiUxSection(owners),
-        const SizedBox(height: 18),
         _buildTechnicalSection(owners),
-        const SizedBox(height: 18),
         _buildConstraintsSection(),
-        const SizedBox(height: 18),
         _buildRisksSection(owners),
-        const SizedBox(height: 18),
         _buildDependenciesSection(owners),
-        const SizedBox(height: 18),
         _buildDecisionLogSection(owners),
-        const SizedBox(height: 18),
         _buildValidationSection(),
-        const SizedBox(height: 18),
         _buildApprovalsSection(owners),
       ],
     );
@@ -2214,6 +1930,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     required Widget child,
   }) {
     final isExpanded = _sectionExpanded[sectionId] == true;
+    final progressState =
+        _sectionProgress[sectionId] ?? _SectionProgressState.pending;
     return Container(
       key: sectionKey,
       child: _SectionCard(
@@ -2224,11 +1942,9 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         accent: accent,
         expanded: isExpanded,
         enabled: true,
+        progressState: progressState,
         onExpansionChanged: (expanded) =>
             _onSectionExpansionChanged(sectionId, expanded),
-        // Only build the full section content when expanded — prevents
-        // thousands of dropdown widgets from being created for collapsed
-        // sections on every rebuild.
         child: isExpanded
             ? Column(
                 children: [
@@ -3209,6 +2925,7 @@ class _SectionCard extends StatelessWidget {
     required this.child,
     required this.expanded,
     required this.enabled,
+    this.progressState = _SectionProgressState.pending,
     required this.onExpansionChanged,
   });
 
@@ -3219,53 +2936,131 @@ class _SectionCard extends StatelessWidget {
   final Widget child;
   final bool expanded;
   final bool enabled;
+  final _SectionProgressState progressState;
   final ValueChanged<bool> onExpansionChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ExpansionTile(
+    if (expanded) {
+      // Expanded section: border-y, blue-tinted header, content area
+      return Container(
         key: expansionKey,
-        initiallyExpanded: expanded,
-        enabled: enabled,
-        onExpansionChanged: onExpansionChanged,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        leading: Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: _kText,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: _kBorder),
+            bottom: BorderSide(color: _kBorder),
           ),
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: _kMuted, height: 1.45),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Blue-tinted header
+            Container(
+              color: _kBlue50.withValues(alpha: 0.3),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration:
+                        BoxDecoration(color: accent, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _kGray900,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => onExpansionChanged(false),
+                    child: const Icon(Icons.expand_less,
+                        size: 20, color: _kGray500),
+                  ),
+                ],
+              ),
+            ),
+            // Content area
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                        fontSize: 13, color: _kGray500, height: 1.5),
+                  ),
+                  child,
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Collapsed section: dot + title + truncated subtitle + chevron
+      return InkWell(
+        key: expansionKey,
+        onTap: () => onExpansionChanged(true),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration:
+                    BoxDecoration(color: accent, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _kGray900,
+                  ),
+                ),
+              ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: _kGray500),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (progressState == _SectionProgressState.complete)
+                const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.check_circle, size: 16, color: _kSuccess),
+                ),
+              if (progressState == _SectionProgressState.notApplicable)
+                const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.remove_circle, size: 16, color: _kWarning),
+                ),
+              const Icon(Icons.expand_more, size: 18, color: _kGray400),
+            ],
           ),
         ),
-        children: [child],
-      ),
-    );
+      );
+    }
   }
 }
 
@@ -3316,11 +3111,12 @@ class _TextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          label.toUpperCase(),
           style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: _kMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: _kGray500,
+            letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 6),
@@ -3355,11 +3151,12 @@ class _TextAreaField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          label.toUpperCase(),
           style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: _kMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: _kGray500,
+            letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 6),
@@ -5134,200 +4931,29 @@ class _FourColumnGrid extends StatelessWidget {
   }
 }
 
-class _RailCard extends StatelessWidget {
-  const _RailCard({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _kText,
-            ),
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: _kMuted),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _kText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: foreground,
-        ),
-      ),
-    );
-  }
-}
-
-class _VersionChip extends StatelessWidget {
-  const _VersionChip({required this.version, required this.onPressed});
-
-  final String version;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.edit_outlined, size: 16),
-      label: Text(
-        'Version ${version.trim().isEmpty ? 'v1.0' : version.trim()}',
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-      ),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: _kText,
-        side: const BorderSide(color: _kBorder),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-    );
-  }
-}
-
-class _DropdownBadge extends StatelessWidget {
-  const _DropdownBadge({
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String value;
-  final List<String> items;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = items.contains(value) ? value : items.first;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _kBorder),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selected,
-          items: items
-              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            onChanged(value);
-          },
-        ),
-      ),
-    );
-  }
-}
-
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.label,
     required this.icon,
-    this.primary = false,
     this.onPressed,
   });
 
   final String label;
   final IconData icon;
-  final bool primary;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final style = primary
-        ? ElevatedButton.styleFrom(
-            backgroundColor: _kPrimary,
-            foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          )
-        : OutlinedButton.styleFrom(
-            foregroundColor: _kText,
-            side: const BorderSide(color: _kBorder),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          );
-    final child = primary ? ElevatedButton.icon : OutlinedButton.icon;
-    return child(
+    return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
       label: Text(label),
-      style: style,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _kText,
+        side: const BorderSide(color: _kBorder),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 }
@@ -5361,53 +4987,39 @@ class _AutoSaveIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     late final String label;
     late final Color color;
-    late final Color background;
     late final IconData icon;
     if (saving) {
       label = 'Auto-save: saving...';
       color = const Color(0xFF0F62FE);
-      background = const Color(0xFFE9F0FF);
       icon = Icons.sync;
     } else if (pending) {
       label = 'Auto-save: unsaved changes';
       color = const Color(0xFFB45309);
-      background = const Color(0xFFFFF7ED);
       icon = Icons.schedule;
     } else if (lastSavedAt != null) {
       label =
           'Auto-save: saved ${TimeOfDay.fromDateTime(lastSavedAt!).format(context)}';
       color = const Color(0xFF15803D);
-      background = const Color(0xFFECFDF3);
       icon = Icons.check_circle_outline;
     } else {
       label = 'Auto-save: waiting for first change';
-      color = _kMuted;
-      background = const Color(0xFFF8FAFC);
+      color = _kGray500;
       icon = Icons.info_outline;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: color,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -5425,76 +5037,50 @@ class _AssistActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: onAutofill,
-            icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
-            label: const Text('Autofill From Context'),
+    return Row(
+      children: [
+        OutlinedButton.icon(
+          onPressed: onAutofill,
+          icon: const Icon(Icons.bolt, size: 16),
+          label: const Text('Autofill From Context'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kGray700,
+            side: const BorderSide(color: _kBorder),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            textStyle: const TextStyle(fontSize: 12),
           ),
-          ElevatedButton.icon(
-            onPressed: generating ? null : onGenerate,
-            icon: generating
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome, size: 16),
-            label: Text(generating ? 'Generating...' : 'Generate With AI'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF111827),
-              foregroundColor: Colors.white,
-            ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: generating ? null : onGenerate,
+          icon: generating
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: _kBrandYellow),
+                )
+              : const Icon(Icons.star, size: 16, color: _kBrandYellow),
+          label: Text(generating ? 'Generating...' : 'Generate With AI'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kGray900,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            textStyle: const TextStyle(fontSize: 12),
           ),
-          TextButton.icon(
-            onPressed: generating ? null : onGenerate,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Regenerate'),
+        ),
+        const Spacer(),
+        TextButton.icon(
+          onPressed: generating ? null : onGenerate,
+          icon: const Icon(Icons.refresh, size: 16),
+          label: const Text('Regenerate'),
+          style: TextButton.styleFrom(
+            foregroundColor: _kGray500,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            textStyle: const TextStyle(fontSize: 12),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: _kText,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: _kMuted),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -5584,19 +5170,19 @@ InputDecoration _inputDecoration(String hintText) {
   return InputDecoration(
     hintText: hintText.isEmpty ? null : hintText,
     filled: true,
-    fillColor: Colors.white,
+    fillColor: const Color(0xFFF9FAFB).withValues(alpha: 0.5),
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _kBorder),
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _kBorder),
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _kPrimary),
+      borderRadius: BorderRadius.circular(6),
+      borderSide: const BorderSide(color: _kBrandYellow, width: 1.5),
     ),
   );
 }

@@ -416,7 +416,6 @@ class OpenAiServiceSecure {
 
       final body = jsonEncode({
         'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
         'temperature': temperature,
         'max_tokens': maxTokens,
         'messages': [
@@ -472,7 +471,6 @@ class OpenAiServiceSecure {
     final prompt = _fepSectionPrompt(section: section, context: trimmedContext);
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -549,7 +547,6 @@ class OpenAiServiceSecure {
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -895,7 +892,6 @@ class OpenAiServiceSecure {
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -959,7 +955,6 @@ class OpenAiServiceSecure {
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1045,7 +1040,6 @@ class OpenAiServiceSecure {
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1150,7 +1144,6 @@ class OpenAiServiceSecure {
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1247,7 +1240,6 @@ Rules:
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1337,7 +1329,6 @@ Return ONLY valid JSON: {"objective": "..." }
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1413,7 +1404,6 @@ $trimmedContext
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1819,7 +1809,6 @@ $trimmedContext
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1909,7 +1898,6 @@ Use concise professional language. Status should use In progress, Pending, In re
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -1969,7 +1957,6 @@ Use concise professional language. Status must be one of: Approved, Aligned, Rea
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -2173,7 +2160,6 @@ Return JSON with:
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -2241,7 +2227,6 @@ Return JSON with:
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.55,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -2502,7 +2487,6 @@ $c
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.35,
       'max_tokens': 300,
       'response_format': {'type': 'json_object'},
@@ -2756,7 +2740,6 @@ $domainHints
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -2843,7 +2826,6 @@ $domainHints
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -3115,7 +3097,6 @@ $domainHints
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.7,
       'max_tokens': 1000,
       'response_format': {'type': 'json_object'},
@@ -3180,7 +3161,6 @@ $domainHints
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -3359,7 +3339,6 @@ $domainHints
     };
     final payload = {
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.7,
       'max_tokens': 2000,
       'messages': [
@@ -3532,7 +3511,6 @@ $domainHints
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -3626,7 +3604,6 @@ $domainHints
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.45,
       'max_tokens': 1400,
       'response_format': {'type': 'json_object'},
@@ -4658,7 +4635,6 @@ Domain guardrail: $guardrails
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.4,
       'max_tokens': 900,
       'response_format': {'type': 'json_object'},
@@ -4938,7 +4914,6 @@ $domainHints
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 1200,
       'messages': [
@@ -5008,7 +4983,6 @@ Return plain text only.'''
         .join(',');
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -5341,7 +5315,6 @@ Return ONLY JSON.
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.4,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -5540,7 +5513,6 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -5728,7 +5700,6 @@ Context notes (optional): $notes
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 2000,
       'response_format': {'type': 'json_object'},
@@ -6109,7 +6080,6 @@ Context notes (optional): $notes
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.7,
       'max_tokens': 600,
       'response_format': {'type': 'json_object'},
@@ -6239,7 +6209,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6304,7 +6273,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6370,7 +6338,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6445,7 +6412,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6565,7 +6531,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6774,7 +6739,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -6961,7 +6925,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -7182,7 +7145,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -8544,7 +8506,6 @@ Context notes (optional): $notes
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 2000,
       'response_format': {'type': 'json_object'},
@@ -8648,7 +8609,6 @@ Return JSON in this format:
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1500,
       'response_format': {'type': 'json_object'},
@@ -8811,7 +8771,6 @@ Additional Context: $contextNotes
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -8937,7 +8896,6 @@ $escaped
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 800,
       'response_format': {'type': 'json_object'},
@@ -9083,7 +9041,6 @@ Return ONLY valid JSON.
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.6,
       'max_tokens': 1000,
       'response_format': {'type': 'json_object'},
@@ -9266,7 +9223,6 @@ Return ONLY valid JSON.
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.45,
       'max_tokens': 2200,
       'response_format': {'type': 'json_object'},
@@ -9756,7 +9712,6 @@ Return ONLY valid JSON in this exact structure:
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -9815,7 +9770,6 @@ Return ONLY JSON: {"items":[...]}'''
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1200,
       'response_format': {'type': 'json_object'},
@@ -9874,7 +9828,6 @@ Return ONLY JSON: {"items":[...]}'''
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': 0.5,
       'max_tokens': 1400,
       'response_format': {'type': 'json_object'},
@@ -10013,7 +9966,6 @@ Return ONLY JSON: {"items":[...]}'''
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10191,7 +10143,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10320,7 +10271,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10420,7 +10370,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10526,7 +10475,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10633,7 +10581,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10743,7 +10690,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10851,7 +10797,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -10966,7 +10911,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -11077,7 +11021,6 @@ $escaped
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
@@ -11232,7 +11175,6 @@ Return only the title, no additional text.''';
 
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
       'temperature': temperature,
       'max_tokens': maxTokens,
       'messages': [
@@ -11330,7 +11272,6 @@ IMPORTANT RULES:
 
       final body = jsonEncode({
         'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
         'temperature': 0.5,
         'max_tokens': maxTokens,
         'response_format': {'type': 'json_object'},

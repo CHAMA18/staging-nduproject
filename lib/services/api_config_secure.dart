@@ -14,18 +14,10 @@ class SecureAPIConfig {
   // Default model used across OpenAI requests.
   static const String model = 'gpt-5.4';
 
-  // Reasoning effort level for gpt-5.4 model.
-  // 'high' enables deep chain-of-thought reasoning for more accurate,
-  // thorough, and well-structured project management content.
-  static const String reasoningEffort = 'high';
-
-  /// Returns model parameters including reasoning configuration for gpt-5.4.
-  /// Callers should merge this into their request body map, e.g.:
-  ///   final body = {...SecureAPIConfig.modelParams(), 'messages': [...], ...};
+  /// Returns model parameters for API requests.
   static Map<String, dynamic> modelParams({int? maxTokens, double? temperature}) {
     final params = <String, dynamic>{
       'model': model,
-      'reasoning': {'effort': reasoningEffort},
     };
     if (maxTokens != null) params['max_tokens'] = maxTokens;
     if (temperature != null) params['temperature'] = temperature;

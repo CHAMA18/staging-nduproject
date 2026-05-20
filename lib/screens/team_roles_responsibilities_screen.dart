@@ -2339,7 +2339,6 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
       },
       body: jsonEncode({
         'model': OpenAiConfig.model,
-        'reasoning': {'effort': 'high'},
         'messages': [
           {
             'role': 'system',

@@ -383,8 +383,6 @@ class _ProjectFrameworkNextScreenState
                                       const SizedBox(height: 16),
                                       _buildGoalsSection(isMobile: true),
                                       const SizedBox(height: 24),
-                                      _buildMilestonesOverview(),
-                                      const SizedBox(height: 24),
                                     ],
                                   )
                                 : Column(
@@ -396,8 +394,6 @@ class _ProjectFrameworkNextScreenState
                                       _buildContextSection(),
                                       const SizedBox(height: 16),
                                       _buildGoalsSection(isMobile: false),
-                                      const SizedBox(height: 24),
-                                      _buildMilestonesOverview(),
                                       const SizedBox(height: 24),
                                     ],
                                   ),
@@ -820,14 +816,7 @@ class _ProjectFrameworkNextScreenState
     );
   }
 
-  // ─── Milestones Overview ────────────────────────────────────────
-  Widget _buildMilestonesOverview() {
-    return _MilestonesSection(
-      goalMilestones: _goalMilestones,
-      goalTitles: _goalTitleControllers.map((c) => c.text).toList(),
-      currentFilter: _currentFilter,
-    );
-  }
+
 
   // ─── Fixed Footer ───────────────────────────────────────────────
   Widget _buildFixedFooter() {
@@ -1190,224 +1179,230 @@ class _GoalCardWidgetState extends State<_GoalCardWidget> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // ── Milestones sub-section ──
+                // ── Milestones sub-section (single yellow container) ──
                 const Divider(height: 1, color: _kLightGray),
                 const SizedBox(height: 12),
-                ...widget.milestones.asMap().entries.map((entry) {
-                  final mIndex = entry.key;
-                  final milestone = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _kLightYellow,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: const Color(0xFFFFE082)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top row: clock icon + title + delete
-                          Row(
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _kLightYellow,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFFE082)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // All milestones inside the yellow container
+                      ...widget.milestones.asMap().entries.map((entry) {
+                        final mIndex = entry.key;
+                        final milestone = entry.value;
+                        return Padding(
+                          padding: EdgeInsets.only(
+                              bottom: mIndex < widget.milestones.length - 1 ? 12 : 0),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 2),
-                                child: Icon(Icons.schedule_outlined,
-                                    size: 18, color: _kAccentColor),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: VoiceTextField(
-                                  controller: milestone.titleController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Milestone title',
-                                    hintStyle: TextStyle(
-                                        color: Color(0x80F59E0B),
-                                        fontSize: 14),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
+                              // Top row: clock icon + title + delete
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 2),
+                                    child: Icon(Icons.schedule_outlined,
+                                        size: 18, color: _kAccentColor),
                                   ),
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: _kPrimaryText),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: VoiceTextField(
+                                      controller: milestone.titleController,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Milestone title',
+                                        hintStyle: TextStyle(
+                                            color: Color(0x80F59E0B),
+                                            fontSize: 14),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: _kPrimaryText),
+                                    ),
+                                  ),
+                                  InkWell(
+                                    onTap: () =>
+                                        widget.onDeleteMilestone(mIndex),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Icon(Icons.close_rounded,
+                                          size: 16, color: _kSecondaryText),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              InkWell(
-                                onTap: () =>
-                                    widget.onDeleteMilestone(mIndex),
-                                borderRadius: BorderRadius.circular(4),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(Icons.close_rounded,
-                                      size: 16, color: _kSecondaryText),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Bottom row: date + status
-                          Row(
-                            children: [
-                              // Date picker
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _pickMilestoneDate(milestone),
-                                  child: Container(
+                              const SizedBox(height: 8),
+                              // Bottom row: date + status
+                              Row(
+                                children: [
+                                  // Date picker
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          _pickMilestoneDate(milestone),
+                                      child: Container(
+                                        height: 32,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0x80FFFFFF),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: const Color(0x80FFFFFF)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                                Icons.calendar_today_outlined,
+                                                size: 13,
+                                                color: _kSecondaryText),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                milestone.deadlineDate != null
+                                                    ? _formatDate(
+                                                        milestone.deadlineDate)
+                                                    : 'Select date',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: milestone.deadlineDate !=
+                                                          null
+                                                      ? _kPrimaryText
+                                                      : _kSecondaryText,
+                                                ),
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Status dropdown
+                                  Container(
                                     height: 32,
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0x80FFFFFF),
-                                      borderRadius:
-                                          BorderRadius.circular(6),
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
                                           color: const Color(0x80FFFFFF)),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                            color: _kCardShadow,
+                                            blurRadius: 2,
+                                            offset: Offset(0, 1))
+                                      ],
                                     ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                            Icons.calendar_today_outlined,
-                                            size: 13,
-                                            color: _kSecondaryText),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            milestone.deadlineDate != null
-                                                ? _formatDate(
-                                                    milestone.deadlineDate)
-                                                : 'Select date',
+                                    child: PopupMenuButton<String>(
+                                      initialValue: milestone.status,
+                                      onSelected: (val) {
+                                        setState(() => milestone.status = val);
+                                      },
+                                      offset: const Offset(0, 32),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: _milestoneStatusColor(
+                                                  milestone.status),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            milestone.status,
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: milestone.deadlineDate !=
-                                                      null
-                                                  ? _kPrimaryText
-                                                  : _kSecondaryText,
+                                              fontWeight: FontWeight.w500,
+                                              color: _milestoneStatusColor(
+                                                  milestone.status),
                                             ),
-                                            overflow:
-                                                TextOverflow.ellipsis,
                                           ),
-                                        ),
+                                          const SizedBox(width: 2),
+                                          const Icon(
+                                              Icons
+                                                  .keyboard_arrow_down_rounded,
+                                              size: 14,
+                                              color: _kSecondaryText),
+                                        ],
+                                      ),
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(
+                                            value: 'Not Started',
+                                            child: Text('Not Started')),
+                                        const PopupMenuItem(
+                                            value: 'In Progress',
+                                            child: Text('In Progress')),
+                                        const PopupMenuItem(
+                                            value: 'Completed',
+                                            child: Text('Completed')),
                                       ],
                                     ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Status dropdown
-                              Container(
-                                height: 32,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                      color: const Color(0x80FFFFFF)),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                        color: _kCardShadow,
-                                        blurRadius: 2,
-                                        offset: Offset(0, 1))
-                                  ],
-                                ),
-                                child: PopupMenuButton<String>(
-                                  initialValue: milestone.status,
-                                  onSelected: (val) {
-                                    setState(() => milestone.status = val);
-                                  },
-                                  offset: const Offset(0, 32),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 6,
-                                        height: 6,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: _milestoneStatusColor(
-                                              milestone.status),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        milestone.status,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: _milestoneStatusColor(
-                                              milestone.status),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      const Icon(
-                                          Icons
-                                              .keyboard_arrow_down_rounded,
-                                          size: 14,
-                                          color: _kSecondaryText),
-                                    ],
-                                  ),
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                        value: 'Not Started',
-                                        child: Text('Not Started')),
-                                    const PopupMenuItem(
-                                        value: 'In Progress',
-                                        child: Text('In Progress')),
-                                    const PopupMenuItem(
-                                        value: 'Completed',
-                                        child: Text('Completed')),
-                                  ],
-                                ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                // Add Milestone + Clear buttons
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    InkWell(
-                      onTap: widget.onAddMilestone,
-                      borderRadius: BorderRadius.circular(4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        );
+                      }),
+                      // Add Milestone + Clear buttons inside the yellow container
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Icon(Icons.add_rounded,
-                              size: 16, color: _kAccentColor),
-                          const SizedBox(width: 4),
-                          Text('Add Milestone',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: _kAccentColor)),
+                          InkWell(
+                            onTap: widget.onAddMilestone,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_rounded,
+                                    size: 16, color: _kAccentColor),
+                                const SizedBox(width: 4),
+                                Text('Add Milestone',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: _kAccentColor)),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: widget.onClear,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: Text('Clear',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: _kSecondaryText)),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                    InkWell(
-                      onTap: widget.onClear,
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        child: Text('Clear',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: _kSecondaryText)),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1433,165 +1428,4 @@ class _Milestone {
   }
 }
 
-class _MilestonesSection extends StatelessWidget {
-  const _MilestonesSection({
-    required this.goalMilestones,
-    required this.goalTitles,
-    required this.currentFilter,
-  });
 
-  final List<List<_Milestone>> goalMilestones;
-  final List<String> goalTitles;
-  final String currentFilter;
-
-  static const List<String> _headers = [
-    'No',
-    'Milestones',
-    'Status',
-    'Due Date',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    // Flatten rows based on filter
-    final List<List<String>> rows = [];
-    for (int i = 0; i < 3; i++) {
-      if (currentFilter != 'View All' && currentFilter != 'Goal ${i + 1}') {
-        continue;
-      }
-
-      for (final m in goalMilestones[i]) {
-        if (m.titleController.text.isNotEmpty ||
-            m.deadlineController.text.isNotEmpty) {
-          rows.add([
-            '${i + 1}',
-            m.titleController.text.isEmpty
-                ? 'Untitled Milestone'
-                : m.titleController.text,
-            m.status,
-            m.deadlineController.text.isEmpty
-                ? 'No Deadline'
-                : m.deadlineController.text,
-          ]);
-        }
-      }
-    }
-
-    if (rows.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: const TextSpan(
-            children: [
-              TextSpan(
-                  text: 'Key Project Milestones',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: _kPrimaryText)),
-              TextSpan(
-                  text: ' (List core milestones associated with each goal)',
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: _kSecondaryText,
-                      fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 100), // Adjusted
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: _kBorderColor),
-            boxShadow: const [
-              BoxShadow(
-                  color: _kCardShadow, blurRadius: 16, offset: Offset(0, 8))
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                child: Row(
-                  children: [
-                    for (int i = 0; i < _headers.length; i++)
-                      Expanded(
-                        flex: i == 1 ? 3 : 1,
-                        child: _HeaderCell(label: _headers[i]),
-                      ),
-                  ],
-                ),
-              ),
-              for (int index = 0; index < rows.length; index++)
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                          color: _kBorderColor.withValues(alpha: index == rows.length - 1 ? 0.0 : 0.6)),
-                    ),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Row(
-                    children: [
-                      for (int cell = 0; cell < rows[index].length; cell++)
-                        Expanded(
-                          flex: cell == 1 ? 3 : 1,
-                          child: _DataCell(text: rows[index][cell]),
-                        ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeaderCell extends StatelessWidget {
-  const _HeaderCell({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Text(label,
-          style: const TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimaryText)),
-    );
-  }
-}
-
-class _DataCell extends StatelessWidget {
-  const _DataCell({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _kSecondaryText)),
-    );
-  }
-}

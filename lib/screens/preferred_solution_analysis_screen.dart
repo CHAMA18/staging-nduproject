@@ -80,6 +80,7 @@ class _PreferredSolutionAnalysisScreenState
   String? _projectNameError;
   Timer? _notesSaveTimer;
   String _currentUserRole = 'Member';
+  int? _expandedSolutionIndex;
 
   @override
   void initState() {
@@ -1038,29 +1039,135 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   Widget _buildMainContent() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Initiation Phase',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        _buildHeaderRow(),
-        const SizedBox(height: 16),
-        _buildNotesField(),
-        const SizedBox(height: 20),
-        if (_isLoading) _buildLoadingBlock(),
-        if (!_isLoading && _error != null) ...[
-          _buildErrorBanner(),
-          const SizedBox(height: 16),
-        ],
-        if (!_isLoading) ...[
-          _buildCardBasedView(),
-          const SizedBox(height: 16),
-          _buildBottomPreferredActions(),
-          const SizedBox(height: 24),
-        ],
-        if (_isLoading) const SizedBox(height: 24),
-      ]),
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: AppBreakpoints.pagePadding(context),
+            right: AppBreakpoints.pagePadding(context),
+            top: 0,
+            bottom: 100,
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Breadcrumbs
+            _buildBreadcrumbs(),
+            const SizedBox(height: 16),
+            // Section title & description
+            _buildHeaderRow(),
+            const SizedBox(height: 12),
+            // Authorized banner
+            if (_isUserAuthorizedToFinalize()) _buildAuthorizedBanner(),
+            if (_isUserAuthorizedToFinalize()) const SizedBox(height: 12),
+            if (_isLoading) _buildLoadingBlock(),
+            if (!_isLoading && _error != null) ...[
+              _buildErrorBanner(),
+              const SizedBox(height: 16),
+            ],
+            if (!_isLoading) ...[
+              _buildCardBasedView(),
+              const SizedBox(height: 16),
+              // Selection summary
+              _buildSelectionSummary(),
+              const SizedBox(height: 16),
+              // Action links row
+              _buildActionLinksRow(),
+              const SizedBox(height: 16),
+              // Working notes
+              _buildNotesField(),
+              const SizedBox(height: 24),
+            ],
+            if (_isLoading) const SizedBox(height: 24),
+          ]),
+        ),
+        // Fixed bottom bar
+        Positioned(
+          left: 0, right: 0, bottom: 0,
+          child: _buildFixedFooter(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBreadcrumbs() {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectName = provider.projectData.projectName.trim().isNotEmpty
+        ? provider.projectData.projectName.trim()
+        : 'Untitled Project';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF9FAFB),
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: InkWell(
+        onTap: () => Navigator.of(context).pop(),
+        borderRadius: BorderRadius.circular(4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.chevron_left, size: 18, color: Color(0xFF6B7280)),
+            const SizedBox(width: 4),
+            Text(
+              'Preferred Solution - $projectName',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFixedFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Back button
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: Color(0xFF4B5563))),
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+            ),
+            const Spacer(),
+            // Next button
+            ElevatedButton.icon(
+              onPressed: _analysis.isEmpty ? null : _handleNextToSelectionPage,
+              icon: const Icon(Icons.arrow_forward, size: 16),
+              label: const Text('Next',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC107),
+                foregroundColor: const Color(0xFF1a1a1a),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                elevation: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1621,45 +1728,21 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   Widget _buildHeaderRow() {
-    final isMobile = AppBreakpoints.isMobile(context);
-    final heading =
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-      Text('Preferred Solution Analysis',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-      SizedBox(height: 6),
-      Text(
-          'Review stakeholders, risks, and costs together so you can back a preferred path with confidence.',
-          style: TextStyle(fontSize: 13, color: Colors.black54)),
-    ]);
-
-    if (isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          heading,
-          const SizedBox(height: 12),
-          // Page-level Regenerate All button
-          if (!_isLoading && _analysis.isNotEmpty)
-            IconButton(
-              icon:
-                  const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
-              tooltip: 'Regenerate all solutions',
-              onPressed: _confirmRegenerateAll,
-            ),
-        ],
-      );
-    }
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: heading),
-        // Page-level Regenerate All button
-        if (!_isLoading && _analysis.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
-            tooltip: 'Regenerate all solutions',
-            onPressed: _confirmRegenerateAll,
-          ),
+      children: const [
+        Text('Preferred Solution Selection',
+            style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1a1a1a))),
+        SizedBox(height: 4),
+        Text(
+            'Review all potential solutions and select preferred option.',
+            style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF6B7280),
+                height: 1.4)),
       ],
     );
   }
@@ -1785,36 +1868,57 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   Widget _buildNotesField() {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 150),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.withOpacity(0.25))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Working notes',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextFormattingToolbar(
-          controller: _notesController,
-          onBeforeUndo: _saveAnalysisData,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Working notes',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1a1a1a))),
+            OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Format', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        VoiceTextField(
-          controller: _notesController,
-          keyboardType: TextInputType.multiline,
-          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-          decoration: const InputDecoration(
-              hintText: 'Capture rationale, assumptions, or follow-ups here...',
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero),
-          minLines: 6,
-          maxLines: null,
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            children: [
+              TextFormattingToolbar(
+                controller: _notesController,
+                onBeforeUndo: _saveAnalysisData,
+              ),
+              VoiceTextField(
+                controller: _notesController,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)),
+                decoration: const InputDecoration(
+                    hintText: 'Capture rationale, assumptions, or follow-ups here...',
+                    hintStyle: TextStyle(color: Color(0xFF666666), fontSize: 14),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.all(12)),
+                minLines: 4,
+                maxLines: null,
+              ),
+            ],
+          ),
         ),
-      ]),
+      ],
     );
   }
 
@@ -2729,90 +2833,467 @@ class _PreferredSolutionAnalysisScreenState
       return _buildEmptyState();
     }
 
-    // Get project data for card summaries
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectData = provider.projectData;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Side-by-side Comparison Table Header
-        const Text(
-          'Side-by-side Solution Comparison',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Click on any cell or "View more" to see full details. Click solution header to view complete analysis.',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Comparison Table - fills available width
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth = constraints.maxWidth;
-            // Calculate minimum width needed (for horizontal scroll fallback)
-            final minTableWidth = 120.0 + (250.0 * _analysis.length);
-            final needsScroll = minTableWidth > availableWidth;
+        ...List.generate(_analysis.length, (index) {
+          final analysis = _analysis[index];
+          final isSelected = _selectedSolutionIndex == index;
+          final solutionTitle = analysis.solution.title.trim().isNotEmpty
+              ? analysis.solution.title
+              : 'Proposed Solution ${index + 1}';
+          final solutionDesc = analysis.solution.description.trim().isNotEmpty
+              ? analysis.solution.description
+              : 'Discipline';
 
-            return Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+          // Compute Cost / ROI / NPV from costs
+          final costs = analysis.costs;
+          final totalCost =
+              costs.fold<double>(0, (sum, c) => sum + c.estimatedCost);
+          final avgRoi = costs.isEmpty
+              ? 0.0
+              : costs.fold<double>(0, (sum, c) => sum + c.roiPercent) /
+                  costs.length;
+          final bestNpv = costs.isEmpty
+              ? 0.0
+              : costs.fold<double>(0, (sum, c) => math.max(sum, c.npv));
+
+          // Stakeholders (max 2)
+          final allStakeholders = <String>[
+            ...analysis.stakeholders,
+            if (analysis.internalStakeholders != null)
+              ...analysis.internalStakeholders!,
+            if (analysis.externalStakeholders != null)
+              ...analysis.externalStakeholders!,
+          ];
+          final displayStakeholders =
+              allStakeholders.toSet().take(2).toList();
+          final hasStakeholders = displayStakeholders.isNotEmpty;
+
+          // Risks (max 2)
+          final displayRisks = analysis.risks.take(2).toList();
+          final hasRisks = displayRisks.isNotEmpty;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: GestureDetector(
+              onTap: () => _onInlineSelect(index),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFFFFC107)
+                        : const Color(0xFFE5E7EB),
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: label + title + radio
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SOLUTION ${index + 1}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF6B7280),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                solutionTitle,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1a1a1a),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Radio indicator
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFFFFC107)
+                                  : const Color(0xFFD1D5DB),
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Center(
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFFC107),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Description
+                    Text(
+                      solutionDesc,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF4B5563),
+                        height: 1.5,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 12),
+                    // Badge row: Cost, ROI, NPV
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _buildMetricBadge(
+                            'Cost', _formatCurrency(totalCost)),
+                        _buildMetricBadge(
+                            'ROI', '${avgRoi.toStringAsFixed(1)}%'),
+                        _buildMetricBadge(
+                            'NPV', _formatCurrency(bestNpv)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Core Stakeholders summary
+                    const Text(
+                      'CORE STAKEHOLDERS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (hasStakeholders)
+                      ...displayStakeholders.map((s) => Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• ',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF4B5563))),
+                                Expanded(
+                                  child: Text(s,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF4B5563)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                              ],
+                            ),
+                          ))
+                    else
+                      const Text('No data available',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF9CA3AF),
+                              fontStyle: FontStyle.italic)),
+                    const SizedBox(height: 10),
+                    // Key Risks summary
+                    const Text(
+                      'KEY RISKS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (hasRisks)
+                      ...displayRisks.map((r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• ',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF4B5563))),
+                                Expanded(
+                                  child: Text(r,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF4B5563)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                              ],
+                            ),
+                          ))
+                    else
+                      const Text('No data available',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF9CA3AF),
+                              fontStyle: FontStyle.italic)),
+                    const SizedBox(height: 12),
+                    // Bottom action links
+                    Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                            top: BorderSide(color: Color(0xFFF3F4F6))),
+                      ),
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => _navigateToSolutionDetails(index),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.visibility_outlined,
+                                    size: 16, color: Color(0xFF0084ff)),
+                                SizedBox(width: 4),
+                                Text('View This Solution',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF0084ff))),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          InkWell(
+                            onTap: () => _navigateToSolutionDetails(index),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.expand_more,
+                                    size: 16, color: Color(0xFF0084ff)),
+                                SizedBox(width: 4),
+                                Text('View more',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF0084ff))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildMetricBadge(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280))),
+          const SizedBox(width: 4),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1a1a1a))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuthorizedBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Authorized role detected: $_currentUserRole. You can finalize the preferred solution.',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF166534),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionSummary() {
+    final hasSelection = _selectedSolutionIndex != null &&
+        _selectedSolutionIndex! >= 0 &&
+        _selectedSolutionIndex! < _analysis.length;
+    final selectedTitle = hasSelection
+        ? _analysis[_selectedSolutionIndex!].solution.title
+        : null;
+    final isAuthorized = _isUserAuthorizedToFinalize();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Preferred Solution Selection',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1a1a1a),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasSelection
+                ? 'Selected candidate: Solution ${_selectedSolutionIndex! + 1} of ${_analysis.length} - $selectedTitle'
+                : 'No solution selected yet',
+            style: TextStyle(
+              fontSize: 14,
+              color: hasSelection
+                  ? const Color(0xFF1a1a1a)
+                  : const Color(0xFF9CA3AF),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This selection will form the basis of the entire project and cannot be changed once confirmed. Please ensure you have reviewed all options carefully.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: (hasSelection && isAuthorized)
+                  ? () => _showFinalPreferredConfirmation(
+                      index: _selectedSolutionIndex!)
+                  : (!hasSelection)
+                      ? null
+                      : () => _showAuthorizationBlockedDialog(),
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text('Select Preferred Solution',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC107),
+                foregroundColor: const Color(0xFF1a1a1a),
+                disabledBackgroundColor: const Color(0xFFE5E7EB),
+                disabledForegroundColor: const Color(0xFF9CA3AF),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleSolutionAccordion(int index) {
+    setState(() {
+      if (_expandedSolutionIndex == index) {
+        _expandedSolutionIndex = null;
+      } else {
+        _expandedSolutionIndex = index;
+      }
+    });
+  }
+
+  Widget _buildActionLinksRow() {
+    return Container(
+      padding: const EdgeInsets.only(top: 12),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        children: [
+          for (int i = 0; i < _analysis.length; i++)
+            InkWell(
+              onTap: () => _navigateToSolutionDetails(i),
+              borderRadius: BorderRadius.circular(4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.visibility_outlined,
+                      size: 14, color: Color(0xFF0084ff)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'View Solution ${i + 1}',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF0084ff)),
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: needsScroll
-                    ? Scrollbar(
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: minTableWidth,
-                            child: _buildComparisonTableFillWidth(
-                                projectData, minTableWidth),
-                          ),
-                        ),
-                      )
-                    : _buildComparisonTableFillWidth(
-                        projectData, availableWidth),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (int i = 0; i < _analysis.length; i++)
-              OutlinedButton.icon(
-                onPressed: () => _navigateToSolutionDetails(i),
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: Text(
-                  'View This Solution / View more - ${i + 1}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-          ],
-        ),
-      ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -4605,6 +5086,460 @@ class _PreferredSolutionAnalysisScreenState
     }
 
     return lines.join('\n');
+  }
+}
+
+// ─── Accordion Card Widget for each solution ───────────────────────
+class _SolutionAccordionCard extends StatelessWidget {
+  const _SolutionAccordionCard({
+    required this.index,
+    required this.analysis,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onViewSolution,
+    required this.onViewCostAnalysis,
+    required this.projectData,
+  });
+
+  final int index;
+  final _SolutionAnalysisData analysis;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final VoidCallback onViewSolution;
+  final VoidCallback onViewCostAnalysis;
+  final ProjectDataModel projectData;
+
+  static const List<Color> _numberBgColors = [
+    Color(0xFFFFEDD5), // orange-100
+    Color(0xFFFEF9C3), // yellow-100
+    Color(0xFFFFEDD5), // orange-100
+  ];
+  static const List<Color> _numberBorderColors = [
+    Color(0xFFFDBA74), // orange-300
+    Color(0xFFFDE047), // yellow-300
+    Color(0xFFFDBA74), // orange-300
+  ];
+  static const List<Color> _numberTextColors = [
+    Color(0xFFEA580C), // orange-600
+    Color(0xFFCA8A04), // yellow-600
+    Color(0xFFEA580C), // orange-600
+  ];
+
+  Color get _bg => _numberBgColors[index % 3];
+  Color get _border => _numberBorderColors[index % 3];
+  Color get _text => _numberTextColors[index % 3];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Accordion header
+          InkWell(
+            onTap: onToggle,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Number circle
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: _bg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _border),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _text,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      analysis.solution.title.trim().isNotEmpty
+                          ? analysis.solution.title
+                          : 'Proposed Solution ${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1a1a1a),
+                      ),
+                    ),
+                  ),
+                  // View This Solution link
+                  InkWell(
+                    onTap: onViewSolution,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.open_in_new_outlined, size: 14, color: Color(0xFF0084ff)),
+                        SizedBox(width: 4),
+                        Text(
+                          'View This Solution',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0084ff),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Expand/collapse icon
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 20,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Accordion content
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: _buildAccordionContent(),
+            crossFadeState:
+                isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccordionContent() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          // Solution Description
+          _buildCategorySection(
+            title: 'Solution Description',
+            child: Text(
+              analysis.solution.description.trim().isNotEmpty
+                  ? analysis.solution.description
+                  : 'Describe how this option addresses the project\'s needs, assumptions, constraints, and expected benefits.',
+              style: TextStyle(
+                fontSize: 14,
+                color: analysis.solution.description.trim().isNotEmpty
+                    ? const Color(0xFF1a1a1a)
+                    : const Color(0xFF666666),
+                height: 1.5,
+              ),
+            ),
+          ),
+          _categoryDivider(),
+          // Risk Identification
+          _buildCategorySection(
+            title: 'Risk Identification',
+            child: _buildBulletList(analysis.risks, maxItems: 2),
+          ),
+          _categoryDivider(),
+          // IT Considerations
+          _buildCategorySection(
+            title: 'IT Considerations',
+            child: _buildBulletList(analysis.technologies, maxItems: 4),
+          ),
+          _categoryDivider(),
+          // Infrastructure Considerations
+          _buildCategorySection(
+            title: 'Infrastructure Considerations',
+            child: _buildBulletList(analysis.infrastructure, maxItems: 2),
+          ),
+          _categoryDivider(),
+          // Core Stakeholders
+          _buildCategorySection(
+            title: 'Core Stakeholders',
+            child: _buildStakeholdersContent(),
+          ),
+          _categoryDivider(),
+          // Cost Benefit Analysis Overview
+          _buildCategorySection(
+            title: 'Cost Benefit Analysis Overview',
+            child: _buildCostBenefitContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection({
+    required String title,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF666666),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        child,
+      ],
+    );
+  }
+
+  Widget _categoryDivider() {
+    return const Divider(height: 24, color: Color(0xFFE5E7EB));
+  }
+
+  Widget _buildBulletList(List<String> items, {int maxItems = 3}) {
+    if (items.isEmpty) {
+      return const Text(
+        'No data available',
+        style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+      );
+    }
+    final displayItems = items.take(maxItems).toList();
+    final hasMore = items.length > maxItems;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...displayItems.map((item) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('— ', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+              Expanded(
+                child: Text(
+                  item.trim(),
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        )),
+        if (hasMore)
+          InkWell(
+            onTap: onViewSolution,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  'View more',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0084ff),
+                  ),
+                ),
+                SizedBox(width: 4),
+                Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF0084ff)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStakeholdersContent() {
+    final internal = analysis.internalStakeholders ?? const [];
+    final external = analysis.externalStakeholders ?? const [];
+    final allStakeholders = analysis.stakeholders;
+
+    if (internal.isEmpty && external.isEmpty && allStakeholders.isEmpty) {
+      return const Text(
+        'No stakeholder data available',
+        style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (internal.isNotEmpty) ...[
+          const Text('Internal:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1a1a1a))),
+          ...internal.take(3).map((item) => Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('— ', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                Expanded(child: Text(item.trim(), style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          )),
+        ],
+        if (external.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          const Text('External:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1a1a1a))),
+          ...external.take(2).map((item) => Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('— ', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                Expanded(child: Text(item.trim(), style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          )),
+        ],
+        if (internal.isEmpty && external.isEmpty && allStakeholders.isNotEmpty)
+          ...allStakeholders.take(3).map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('— ', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+                Expanded(child: Text(item.trim(), style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          )),
+        InkWell(
+          onTap: onViewSolution,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text('View more', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF0084ff))),
+              SizedBox(width: 4),
+              Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF0084ff)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCostBenefitContent() {
+    final costs = analysis.costs;
+    if (costs.isEmpty) {
+      return const Text(
+        'No cost data available',
+        style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+      );
+    }
+
+    final totalCost = costs.fold<double>(0, (sum, c) => sum + (c.estimatedCost));
+    // Calculate total benefits (approximate from ROI)
+    final totalBenefits = costs.fold<double>(0, (sum, c) {
+      final roi = c.roiPercent;
+      return sum + (c.estimatedCost * (1 + roi / 100));
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Total cost: \$${_formatCurrency(totalCost)}',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a))),
+        Text('Total benefits: \$${_formatCurrency(totalBenefits)}',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a))),
+        const SizedBox(height: 8),
+        ...costs.take(2).map((c) => Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            '— ${c.item}: ${c.estimatedCost.toStringAsFixed(2)}...',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1a1a1a)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        )),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: onViewSolution,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text('View more', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF0084ff))),
+              SizedBox(width: 4),
+              Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF0084ff)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Action links at bottom of cost section
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            InkWell(
+              onTap: onViewSolution,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.visibility_outlined, size: 14, color: Color(0xFF0084ff)),
+                  SizedBox(width: 4),
+                  Text('View This Solution', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF0084ff))),
+                ],
+              ),
+            ),
+            InkWell(
+              onTap: onViewSolution,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.keyboard_arrow_down, size: 14, color: Color(0xFF0084ff)),
+                  SizedBox(width: 4),
+                  Text('View more', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF0084ff))),
+                ],
+              ),
+            ),
+            InkWell(
+              onTap: onViewCostAnalysis,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.open_in_new_outlined, size: 14, color: Color(0xFF0084ff)),
+                  SizedBox(width: 4),
+                  Text('Open Cost Analysis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF0084ff))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatCurrency(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return value.toStringAsFixed(0);
   }
 }
 

@@ -6,7 +6,6 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -16,15 +15,52 @@ import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
 import 'project_framework_next_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
-
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
+
+// ─── Design Tokens ───────────────────────────────────────────────────────────
+class _Tokens {
+  _Tokens._();
+
+  // Surface
+  static const surface = Color(0xFFF7F9FB);
+  static const surfaceDim = Color(0xFFD8DADC);
+  static const surfaceBright = Color(0xFFFFFFFF);
+  static const surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const surfaceContainerLow = Color(0xFFF2F4F6);
+  static const surfaceContainer = Color(0xFFEBEDEF);
+  static const surfaceContainerHigh = Color(0xFFE6E8EA);
+  static const surfaceContainerHighest = Color(0xFFE0E2E4);
+
+  // On-Surface
+  static const onSurface = Color(0xFF191C1D);
+  static const onSurfaceVariant = Color(0xFF40484C);
+
+  // Primary (Yellow)
+  static const primary = Color(0xFFFFCC00);
+  static const primaryOn = Color(0xFF000000);
+  static const primaryContainer = Color(0xFFFFE480);
+  static const primaryOnContainer = Color(0xFF1A1400);
+
+  // Outline
+  static const outline = Color(0xFF71787D);
+  static const outlineVariant = Color(0xFFC0C7CD);
+
+  // Error
+  static const error = Color(0xFFBA1A1A);
+
+  // Text
+  static const textDark = Color(0xFF191C1D);
+  static const textMuted = Color(0xFF40484C);
+  static const textLight = Color(0xFF71787D);
+}
+
 class ProjectFrameworkScreen extends StatefulWidget {
   const ProjectFrameworkScreen({super.key});
 
@@ -111,7 +147,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         setState(() {});
       } else if (projectData.planningGoals.isNotEmpty &&
           projectData.planningGoals.any((g) => g.title.isNotEmpty)) {
-        // Fallback: Populate from Planning Goals (Charter) if Project Goals are empty
         _goals.clear();
         int idCounter = 1;
         for (final planGoal in projectData.planningGoals) {
@@ -469,7 +504,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     final isBasicPlan =
         ProjectDataHelper.getProvider(context).projectData.isBasicPlanProject;
 
-    // Use SidebarNavigationService to find the next accessible step given the current checkpoint 'project_framework'
     final nextItem = SidebarNavigationService.instance
         .getNextAccessibleItem('project_framework', isBasicPlan);
 
@@ -481,7 +515,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     } else if (nextItem?.checkpoint == 'ssher') {
       nextScreen = const SsherStackedScreen();
     } else {
-      // Fallback
       nextScreen = const WorkBreakdownStructureScreen();
     }
 
@@ -502,10 +535,132 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // ─── Mobile Layout ─────────────────────────────────────────────────────────
+  Widget _buildMobileLayout() {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _Tokens.surface,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── Sticky TopAppBar ──
+            _MobileTopBar(),
+            // ── Scrollable Content ──
+            Expanded(
+              child: ScrollIndicatorOverlay(
+                controller: _mainContentScrollController,
+                child: SingleChildScrollView(
+                  controller: _mainContentScrollController,
+                  padding: const EdgeInsets.only(
+                      left: 16, right: 16, top: 16, bottom: 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Page Title
+                      const Text(
+                        'Project Details',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: _Tokens.onSurface,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Manage your project details, objectives, and overall framework structure.',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: _Tokens.onSurfaceVariant,
+                            height: 1.4),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── Notes Section ──
+                      const PlanningAiNotesCard(
+                        title: 'Notes',
+                        sectionLabel: 'Project Details',
+                        noteKey: 'planning_framework_notes',
+                        checkpoint: 'project_framework',
+                        description:
+                            'Capture the framework approach, governance model, and key objectives.',
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Project Information ──
+                      _MobileProjectInfoSection(
+                        projectNameController: _projectNameController,
+                        projectObjectiveController:
+                            _projectObjectiveController,
+                        projectNameFocus: _projectNameFocus,
+                        projectObjectiveFocus: _projectObjectiveFocus,
+                        onBeforeUndo: _saveData,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── Project Framework ──
+                      _MobileFrameworkSection(
+                        selectedFramework: _selectedOverallFramework,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedOverallFramework = value;
+                            if (value == 'Waterfall' || value == 'Agile') {
+                              for (var goal in _goals) {
+                                goal.framework = value;
+                              }
+                            }
+                          });
+                          _saveData();
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── Project Goals ──
+                      _MobileGoalsSection(
+                        goals: _goals,
+                        onAddGoal: _addGoal,
+                        onDeleteGoal: (goalId) {
+                          _deleteGoal(goalId);
+                          _saveData();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Confirmation ──
+                      ProceedConfirmationGate(
+                        value: _reviewConfirmed,
+                        onChanged: (value) {
+                          setState(() => _reviewConfirmed = value);
+                        },
+                        scrollController: _mainContentScrollController,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      // ── Fixed Bottom Navigation ──
+      bottomNavigationBar: _MobileBottomNav(
+        backLabel: PlanningPhaseNavigation.backLabel('project_framework'),
+        nextLabel: PlanningPhaseNavigation.nextLabel('project_framework'),
+        onBack: () =>
+            PlanningPhaseNavigation.goToPrevious(context, 'project_framework'),
+        onNext: () => _handleNextPressed(),
+        nextEnabled: _reviewConfirmed,
+      ),
+      // ── Floating Chat Bubble ──
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  // ─── Desktop / Tablet Layout ───────────────────────────────────────────────
+  Widget _buildDesktopLayout() {
+    return Scaffold(
+      backgroundColor: _Tokens.surface,
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,7 +676,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const FrontEndPlanningHeader(title: 'Project Details'),
+                      // ── Desktop Header Bar ──
+                      _DesktopHeaderBar(),
                       Expanded(
                         child: ScrollIndicatorOverlay(
                           controller: _mainContentScrollController,
@@ -532,72 +688,100 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                              const PlanningAiNotesCard(
-                                title: 'Notes',
-                                sectionLabel: 'Project Details',
-                                noteKey: 'planning_framework_notes',
-                                checkpoint: 'project_framework',
-                                description:
-                                    'Capture the framework approach, governance model, and key objectives.',
-                              ),
-                              const SizedBox(height: 40),
-                              _MainContentCard(
-                                projectNameController: _projectNameController,
-                                projectObjectiveController:
-                                    _projectObjectiveController,
-                                projectNameFocus: _projectNameFocus,
-                                projectObjectiveFocus: _projectObjectiveFocus,
-                                selectedOverallFramework:
-                                    _selectedOverallFramework,
-                                onBeforeUndo: _saveData,
-                                onOverallFrameworkChanged: (value) {
-                                  setState(() {
-                                    _selectedOverallFramework = value;
-                                    // If Waterfall or Agile is selected, enforce it on all goals
-                                    if (value == 'Waterfall' ||
-                                        value == 'Agile') {
-                                      for (var goal in _goals) {
-                                        goal.framework = value;
-                                      }
-                                    }
-                                  });
-                                  _saveData();
-                                },
-                                goals: _goals,
-                                onAddGoal: _addGoal,
-                                onDeleteGoal: (goalId) {
-                                  _deleteGoal(goalId);
-                                  _saveData();
-                                },
-                                onGoalTitleResize: (goalId, height) {
-                                  setState(() {
-                                    _goals
-                                        .firstWhere((g) => g.id == goalId)
-                                        .titleHeight = height;
-                                  });
-                                },
-                                onGoalDescriptionResize: (goalId, height) {
-                                  setState(() {
-                                    _goals
-                                        .firstWhere((g) => g.id == goalId)
-                                        .descriptionHeight = height;
-                                  });
-                                },
-                              ),
+                                // Page Title
+                                const Text(
+                                  'Project Details',
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    color: _Tokens.onSurface,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Manage your project details, objectives, and overall framework structure.',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: _Tokens.onSurfaceVariant,
+                                      height: 1.4),
+                                ),
+                                const SizedBox(height: 28),
+
+                                // ── Notes Section ──
+                                const PlanningAiNotesCard(
+                                  title: 'Notes',
+                                  sectionLabel: 'Project Details',
+                                  noteKey: 'planning_framework_notes',
+                                  checkpoint: 'project_framework',
+                                  description:
+                                      'Capture the framework approach, governance model, and key objectives.',
+                                ),
                                 const SizedBox(height: 24),
+
+                                // ── Project Information ──
+                                _MobileProjectInfoSection(
+                                  projectNameController:
+                                      _projectNameController,
+                                  projectObjectiveController:
+                                      _projectObjectiveController,
+                                  projectNameFocus: _projectNameFocus,
+                                  projectObjectiveFocus:
+                                      _projectObjectiveFocus,
+                                  onBeforeUndo: _saveData,
+                                ),
+                                const SizedBox(height: 28),
+
+                                // ── Project Framework ──
+                                _MobileFrameworkSection(
+                                  selectedFramework:
+                                      _selectedOverallFramework,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedOverallFramework = value;
+                                      if (value == 'Waterfall' ||
+                                          value == 'Agile') {
+                                        for (var goal in _goals) {
+                                          goal.framework = value;
+                                        }
+                                      }
+                                    });
+                                    _saveData();
+                                  },
+                                ),
+                                const SizedBox(height: 28),
+
+                                // ── Project Goals ──
+                                _MobileGoalsSection(
+                                  goals: _goals,
+                                  onAddGoal: _addGoal,
+                                  onDeleteGoal: (goalId) {
+                                    _deleteGoal(goalId);
+                                    _saveData();
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // ── Confirmation ──
                                 ProceedConfirmationGate(
                                   value: _reviewConfirmed,
                                   onChanged: (value) {
-                                    setState(() => _reviewConfirmed = value);
+                                    setState(
+                                        () => _reviewConfirmed = value);
                                   },
-                                  scrollController: _mainContentScrollController,
+                                  scrollController:
+                                      _mainContentScrollController,
                                 ),
                                 const SizedBox(height: 16),
+
+                                // ── Navigation (inline for desktop) ──
                                 LaunchPhaseNavigation(
-                                  backLabel: PlanningPhaseNavigation.backLabel(
-                                      'project_framework'),
-                                  nextLabel: PlanningPhaseNavigation.nextLabel(
-                                      'project_framework'),
+                                  backLabel:
+                                      PlanningPhaseNavigation.backLabel(
+                                          'project_framework'),
+                                  nextLabel:
+                                      PlanningPhaseNavigation.nextLabel(
+                                          'project_framework'),
                                   onBack: () =>
                                       PlanningPhaseNavigation.goToPrevious(
                                           context, 'project_framework'),
@@ -621,7 +805,19 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    if (AppBreakpoints.isMobile(context)) {
+      return _buildMobileLayout();
+    }
+    return _buildDesktopLayout();
+  }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHARED DATA MODEL
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _Goal {
   _Goal({
@@ -632,9 +828,7 @@ class _Goal {
   })  : controller = TextEditingController(text: description),
         nameController = TextEditingController(text: name),
         nameFocus = FocusNode(),
-        descFocus = FocusNode(),
-        titleHeight = 0,
-        descriptionHeight = 0;
+        descFocus = FocusNode();
 
   final int id;
   final TextEditingController nameController;
@@ -642,8 +836,6 @@ class _Goal {
   final FocusNode nameFocus;
   final FocusNode descFocus;
   String? framework;
-  double titleHeight;
-  double descriptionHeight;
 
   void dispose() {
     nameController.dispose();
@@ -653,108 +845,121 @@ class _Goal {
   }
 }
 
-class _MainContentCard extends StatelessWidget {
-  const _MainContentCard({
-    required this.projectNameController,
-    required this.projectObjectiveController,
-    required this.projectNameFocus,
-    required this.projectObjectiveFocus,
-    required this.selectedOverallFramework,
-    required this.onOverallFrameworkChanged,
-    required this.onBeforeUndo,
-    required this.goals,
-    required this.onAddGoal,
-    required this.onDeleteGoal,
-    required this.onGoalTitleResize,
-    required this.onGoalDescriptionResize,
-  });
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE TOP BAR
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  final TextEditingController projectNameController;
-  final TextEditingController projectObjectiveController;
-  final FocusNode projectNameFocus;
-  final FocusNode projectObjectiveFocus;
-  final String? selectedOverallFramework;
-  final ValueChanged<String?> onOverallFrameworkChanged;
-  final VoidCallback onBeforeUndo;
-  final List<_Goal> goals;
-  final VoidCallback onAddGoal;
-  final void Function(int goalId) onDeleteGoal;
-  final void Function(int goalId, double height) onGoalTitleResize;
-  final void Function(int goalId, double height) onGoalDescriptionResize;
-
+class _MobileTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+      decoration: const BoxDecoration(
+        color: _Tokens.surfaceBright,
+        border: Border(
+          bottom: BorderSide(color: _Tokens.surfaceContainer, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(40),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Project Details',
-            style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827)),
+          // Main header row
+          SizedBox(
+            height: 56,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.menu, size: 24),
+                    color: _Tokens.onSurface,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                        minWidth: 48, minHeight: 48),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'NDUPROJECT',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: _Tokens.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.notifications_none, size: 22),
+                    color: _Tokens.onSurfaceVariant,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                        minWidth: 48, minHeight: 48),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: _Tokens.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'C',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _Tokens.primaryOn,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Manage your project details, objectives, and overall framework structure.',
-            style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 40),
-
-          // Project Name
-          const Text('Project Name',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF374151))),
-          const SizedBox(height: 8),
-          _roundedField(
-              controller: projectNameController,
-              focusNode: projectNameFocus,
-              hint: 'Enter project name...'),
-          const SizedBox(height: 24),
-
-          // Project Objective
-          const Text('Project Objective',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF374151))),
-          const SizedBox(height: 8),
-          TextFormattingToolbar(
-            controller: projectObjectiveController,
-            onBeforeUndo: onBeforeUndo,
-          ),
-          const SizedBox(height: 8),
-          _roundedField(
-              controller: projectObjectiveController,
-              focusNode: projectObjectiveFocus,
-              hint: 'What is the main objective of this project?',
-              minLines: 4),
-          const SizedBox(height: 48),
-
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          const SizedBox(height: 48),
-
-          _OverallFrameworkSection(
-            selectedFramework: selectedOverallFramework,
-            onChanged: onOverallFrameworkChanged,
-          ),
-          const SizedBox(height: 48),
-          _GoalsSection(
-            goals: goals,
-            onAddGoal: onAddGoal,
-            onDeleteGoal: onDeleteGoal,
-            onGoalTitleResize: onGoalTitleResize,
-            onGoalDescriptionResize: onGoalDescriptionResize,
+          // Breadcrumb
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: const BoxDecoration(
+              color: _Tokens.surface,
+              border: Border(
+                bottom:
+                    BorderSide(color: _Tokens.surfaceContainerLow, width: 1),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  'Planning Phase',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _Tokens.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(width: 4),
+                Icon(Icons.chevron_right, size: 14,
+                    color: _Tokens.outlineVariant),
+                SizedBox(width: 4),
+                Text(
+                  'Project Details',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _Tokens.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -762,8 +967,321 @@ class _MainContentCard extends StatelessWidget {
   }
 }
 
-class _OverallFrameworkSection extends StatelessWidget {
-  const _OverallFrameworkSection({
+// ═══════════════════════════════════════════════════════════════════════════════
+// DESKTOP HEADER BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _DesktopHeaderBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _Tokens.surfaceBright,
+        border: Border(
+          bottom: BorderSide(color: _Tokens.surfaceContainer, width: 1),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      child: const Row(
+        children: [
+          Text(
+            'Planning Phase',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: _Tokens.onSurfaceVariant,
+            ),
+          ),
+          SizedBox(width: 6),
+          Icon(Icons.chevron_right, size: 16,
+              color: _Tokens.outlineVariant),
+          SizedBox(width: 6),
+          Text(
+            'Project Details',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _Tokens.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE BOTTOM NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _MobileBottomNav extends StatelessWidget {
+  const _MobileBottomNav({
+    required this.backLabel,
+    required this.nextLabel,
+    required this.onBack,
+    required this.onNext,
+    required this.nextEnabled,
+  });
+
+  final String backLabel;
+  final String nextLabel;
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+  final bool nextEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _Tokens.surfaceBright,
+        border: Border(
+          top: BorderSide(color: _Tokens.surfaceContainer, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, -3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Back button
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back, size: 18,
+                    color: _Tokens.onSurface),
+                label: const Text(
+                  'Back',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _Tokens.onSurface,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: _Tokens.outlineVariant),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Next button (wider)
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: nextEnabled
+                    ? onNext
+                    : () async {
+                        final proceed =
+                            await showProceedWithoutReviewDialog(
+                          context,
+                          title:
+                              'Please confirm you have reviewed and understood this step',
+                          message:
+                              'You have not confirmed this page yet. You can continue now and return to update missing information later, or stay and complete it now.',
+                        );
+                        if (proceed) onNext();
+                      },
+                icon: const Icon(Icons.arrow_forward, size: 18,
+                    color: _Tokens.primaryOn),
+                label: Text(
+                  'Next: Work Breakdown Structure',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _Tokens.primaryOn,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Tokens.primary,
+                  foregroundColor: _Tokens.primaryOn,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE PROJECT INFO SECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _MobileProjectInfoSection extends StatelessWidget {
+  const _MobileProjectInfoSection({
+    required this.projectNameController,
+    required this.projectObjectiveController,
+    required this.projectNameFocus,
+    required this.projectObjectiveFocus,
+    required this.onBeforeUndo,
+  });
+
+  final TextEditingController projectNameController;
+  final TextEditingController projectObjectiveController;
+  final FocusNode projectNameFocus;
+  final FocusNode projectObjectiveFocus;
+  final VoidCallback onBeforeUndo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Project Name ──
+        const Text(
+          'Project Name',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _Tokens.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        VoiceTextField(
+          controller: projectNameController,
+          focusNode: projectNameFocus,
+          decoration: InputDecoration(
+            hintText: 'Enter project name...',
+            filled: true,
+            fillColor: _Tokens.surfaceBright,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _Tokens.outlineVariant),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _Tokens.outlineVariant),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: _Tokens.primary, width: 1.5),
+            ),
+          ),
+          style: const TextStyle(fontSize: 14, color: _Tokens.onSurface),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Project Objective ──
+        const Text(
+          'Project Objective',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _Tokens.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: _Tokens.surfaceBright,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _Tokens.outlineVariant),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Formatting toolbar
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: const BoxDecoration(
+                  color: _Tokens.surfaceContainerLowest,
+                  border: Border(
+                    bottom: BorderSide(
+                        color: _Tokens.surfaceContainerLow, width: 1),
+                  ),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(10)),
+                ),
+                child: Row(
+                  children: [
+                    _ToolbarIconButton(
+                        icon: Icons.format_bold, onTap: () {}),
+                    _ToolbarIconButton(
+                        icon: Icons.format_italic, onTap: () {}),
+                  ],
+                ),
+              ),
+              // Textarea
+              Focus(
+                onFocusChange: (hasFocus) {
+                  // Dynamic border color handled by parent Container
+                },
+                child: VoiceTextField(
+                  controller: projectObjectiveController,
+                  focusNode: projectObjectiveFocus,
+                  maxLines: null,
+                  minLines: 5,
+                  decoration: InputDecoration(
+                    hintText:
+                        'What is the main objective of this project?',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                  ),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: _Tokens.onSurface,
+                      height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ToolbarIconButton extends StatelessWidget {
+  const _ToolbarIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: _Tokens.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE FRAMEWORK SECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _MobileFrameworkSection extends StatelessWidget {
+  const _MobileFrameworkSection({
     required this.selectedFramework,
     required this.onChanged,
   });
@@ -800,69 +1318,27 @@ class _OverallFrameworkSection extends StatelessWidget {
         const Text(
           'Project Framework',
           style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827)),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _Tokens.onSurface,
+          ),
         ),
-        const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 900;
-            if (isNarrow) {
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: options
-                    .map((option) => SizedBox(
-                          width: constraints.maxWidth,
-                          child: _FrameworkOptionCard(
-                            title: option.title,
-                            description: option.description,
-                            isSelected: selectedFramework == option.value,
-                            onTap: () => onChanged(option.value),
-                          ),
-                        ))
-                    .toList(),
-              );
-            }
-
-            return Row(
-              children: [
-                Expanded(
-                  child: _FrameworkOptionCard(
-                    title: options[0].title,
-                    description: options[0].description,
-                    isSelected: selectedFramework == options[0].value,
-                    onTap: () => onChanged(options[0].value),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _FrameworkOptionCard(
-                    title: options[1].title,
-                    description: options[1].description,
-                    isSelected: selectedFramework == options[1].value,
-                    onTap: () => onChanged(options[1].value),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _FrameworkOptionCard(
-                    title: options[2].title,
-                    description: options[2].description,
-                    isSelected: selectedFramework == options[2].value,
-                    onTap: () => onChanged(options[2].value),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         const Text(
           'If \'Waterfall\' or \'Agile\' is chosen, all goals will inherit this framework. If \'Hybrid\' is chosen, set a framework for each goal in the WBS.',
-          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          style: TextStyle(
+              fontSize: 11, color: _Tokens.onSurfaceVariant, height: 1.4),
         ),
+        const SizedBox(height: 12),
+        ...options.map((option) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _FrameworkRadioCard(
+                title: option.title,
+                description: option.description,
+                isSelected: selectedFramework == option.value,
+                onTap: () => onChanged(option.value),
+              ),
+            )),
       ],
     );
   }
@@ -874,14 +1350,13 @@ class _FrameworkOption {
     required this.title,
     required this.description,
   });
-
   final String value;
   final String title;
   final String description;
 }
 
-class _FrameworkOptionCard extends StatelessWidget {
-  const _FrameworkOptionCard({
+class _FrameworkRadioCard extends StatelessWidget {
+  const _FrameworkRadioCard({
     required this.title,
     required this.description,
     required this.isSelected,
@@ -896,39 +1371,81 @@ class _FrameworkOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor =
-        isSelected ? const Color(0xFF111827) : const Color(0xFFD1D5DB);
-    final backgroundColor = isSelected ? const Color(0xFFFFF3BF) : Colors.white;
-
+        isSelected ? _Tokens.primary : _Tokens.outlineVariant;
     return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(14),
+      color: _Tokens.surfaceBright,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: borderColor, width: 1.4),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: borderColor,
+              width: isSelected ? 1.5 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: _Tokens.primary.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    const BoxShadow(
+                      color: Color(0x05000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
           ),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _Tokens.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: _Tokens.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                description,
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.35,
-                  color: Color(0xFF6B7280),
+              const SizedBox(width: 12),
+              // Radio dot
+              Container(
+                width: 20,
+                height: 20,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? _Tokens.primary
+                      : _Tokens.surfaceBright,
+                  border: Border.all(
+                    color: isSelected
+                        ? _Tokens.primary
+                        : _Tokens.outlineVariant,
+                    width: isSelected ? 6 : 1.5,
+                  ),
                 ),
               ),
             ],
@@ -939,78 +1456,96 @@ class _FrameworkOptionCard extends StatelessWidget {
   }
 }
 
-class _GoalsSection extends StatelessWidget {
-  const _GoalsSection({
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE GOALS SECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _MobileGoalsSection extends StatelessWidget {
+  const _MobileGoalsSection({
     required this.goals,
     required this.onAddGoal,
     required this.onDeleteGoal,
-    required this.onGoalTitleResize,
-    required this.onGoalDescriptionResize,
   });
 
   final List<_Goal> goals;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
-  final void Function(int goalId, double height) onGoalTitleResize;
-  final void Function(int goalId, double height) onGoalDescriptionResize;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Project Goals',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Indicate upto 5 key high-level outcomes for this project',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-            ElevatedButton(
-              onPressed: onAddGoal,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF8A50),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Project Goals',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _Tokens.onSurface,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Indicate upto 5 key high-level outcomes for this project',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: _Tokens.onSurfaceVariant,
+                        height: 1.3),
+                  ),
+                ],
               ),
-              child: const Text('Add Goal',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 12),
+            Material(
+              color: _Tokens.primary.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: onAddGoal,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 16,
+                          color: _Tokens.primaryOnContainer),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add Goal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _Tokens.primaryOnContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+
+        // Goal cards
         ...goals.asMap().entries.map((entry) {
           final index = entry.key;
           final goal = entry.value;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _GoalCard(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _MobileGoalCard(
               index: index,
               goal: goal,
               onDelete: () => onDeleteGoal(goal.id),
-              onTitleResize: (height) => onGoalTitleResize(goal.id, height),
-              onDescriptionResize: (height) =>
-                  onGoalDescriptionResize(goal.id, height),
             ),
           );
         }),
@@ -1019,249 +1554,107 @@ class _GoalsSection extends StatelessWidget {
   }
 }
 
-class _GoalCard extends StatelessWidget {
-  const _GoalCard({
+class _MobileGoalCard extends StatelessWidget {
+  const _MobileGoalCard({
     required this.index,
     required this.goal,
     required this.onDelete,
-    required this.onTitleResize,
-    required this.onDescriptionResize,
   });
 
   final int index;
   final _Goal goal;
   final VoidCallback onDelete;
-  final ValueChanged<double> onTitleResize;
-  final ValueChanged<double> onDescriptionResize;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        color: _Tokens.surfaceBright,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _Tokens.surfaceContainer),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Goal header row
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Numbered circle
               Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3BF),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  color: _Tokens.surfaceContainerHigh,
+                  shape: BoxShape.circle,
                 ),
+                alignment: Alignment.center,
                 child: Text(
                   '${index + 1}',
                   style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _Tokens.onSurfaceVariant,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 180,
-                child: _ResizableTextField(
-                  controller: goal.nameController,
-                  focusNode: goal.nameFocus,
-                  minHeight: 44,
-                  maxHeight: 110,
-                  height: goal.titleHeight,
-                  maxLines: 2,
-                  hintText: 'Goal title',
-                  textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827)),
-                  onResize: onTitleResize,
-                ),
-              ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 8),
+              // Goal name as dropdown-style
               Expanded(
-                child: _ResizableTextField(
-                  controller: goal.controller,
-                  focusNode: goal.descFocus,
-                  minHeight: 90,
-                  maxHeight: 220,
-                  height: goal.descriptionHeight,
-                  maxLines: null,
-                  hintText: 'Enter goal description...',
-                  textStyle:
-                      const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-                  onResize: onDescriptionResize,
+                child: Text(
+                  goal.nameController.text.isEmpty
+                      ? 'Goal ${index + 1}'
+                      : goal.nameController.text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _Tokens.onSurface,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              // Delete button
               IconButton(
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded,
-                    color: Color(0xFFEF4444)),
-                tooltip: 'Delete goal',
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEE2E2),
-                  padding: const EdgeInsets.all(10),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
+                icon: const Icon(Icons.delete_outline, size: 20),
+                color: _Tokens.error,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                tooltip: 'Delete Goal',
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          // Description textarea
+          VoiceTextField(
+            controller: goal.controller,
+            focusNode: goal.descFocus,
+            maxLines: null,
+            minLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Enter goal description...',
+              filled: true,
+              fillColor: _Tokens.surface,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _Tokens.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _Tokens.outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    const BorderSide(color: _Tokens.primary, width: 1.5),
+              ),
+            ),
+            style: const TextStyle(fontSize: 13, color: _Tokens.onSurface, height: 1.4),
           ),
         ],
       ),
     );
   }
-}
-
-class _ResizableTextField extends StatelessWidget {
-  const _ResizableTextField({
-    required this.controller,
-    required this.focusNode,
-    required this.height,
-    required this.minHeight,
-    required this.maxHeight,
-    required this.hintText,
-    required this.textStyle,
-    required this.maxLines,
-    required this.onResize,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final double height;
-  final double minHeight;
-  final double maxHeight;
-  final String hintText;
-  final TextStyle textStyle;
-  final int? maxLines;
-  final ValueChanged<double> onResize;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedHeight = height.clamp(minHeight, maxHeight);
-    final isExpandable = maxLines == null;
-
-    return Stack(
-      children: [
-        Container(
-          height: clampedHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD1D5DB)),
-          ),
-          child: VoiceTextField(
-            controller: controller,
-            focusNode: focusNode,
-            minLines: isExpandable ? null : 1,
-            maxLines: isExpandable ? null : maxLines,
-            expands: isExpandable,
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              border: InputBorder.none,
-              hintText: hintText,
-              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-            ),
-            style: textStyle,
-          ),
-        ),
-        Positioned(
-          right: 6,
-          bottom: 6,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.resizeUpDown,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                final next = (clampedHeight + details.delta.dy)
-                    .clamp(minHeight, maxHeight);
-                onResize(next);
-              },
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Icon(Icons.drag_handle,
-                    size: 14, color: Color(0xFF6B7280)),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ignore: unused_element
-class _BottomOverlay extends StatelessWidget {
-  const _BottomOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    final state =
-        context.findAncestorStateOfType<_ProjectFrameworkScreenState>();
-    return Positioned(
-      right: 24,
-      bottom: 24,
-      child: ElevatedButton(
-        onPressed: () async {
-          if (state != null) {
-            await state._handleNextPressed();
-          } else {
-            ProjectFrameworkNextScreen.open(context);
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFC812),
-          foregroundColor: const Color(0xFF111827),
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          elevation: 0,
-        ),
-        child: const Text('Next',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-      ),
-    );
-  }
-}
-
-Widget _roundedField(
-    {required TextEditingController controller,
-    FocusNode? focusNode,
-    required String hint,
-    int minLines = 1}) {
-  return Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE4E7EC)),
-    ),
-    padding: const EdgeInsets.all(14),
-    child: VoiceTextField(
-      controller: controller,
-      focusNode: focusNode,
-      minLines: minLines,
-      maxLines: null,
-      decoration: InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-      ),
-      style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-    ),
-  );
 }

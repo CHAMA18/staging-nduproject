@@ -31,6 +31,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/web_utils.dart';
 import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
       {super.key, this.activeItemLabel = 'Design Management'});
@@ -612,7 +613,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppSemanticColors.border),
             ),
-            child: TextField(
+            child: VoiceTextField(
               controller: _richTextController,
               minLines: 4,
               maxLines: 6,
@@ -1063,7 +1064,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppSemanticColors.border),
             ),
-            child: TextField(
+            child: VoiceTextField(
               controller: _richTextController,
               minLines: 12,
               maxLines: 18,
@@ -2288,7 +2289,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               size: 18, color: const Color(0xFF475467)),
           const SizedBox(width: 10),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('web-node-${node.id}'),
               initialValue: node.label,
               decoration: const InputDecoration(
@@ -2347,7 +2348,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: TextField(
+                child: VoiceTextField(
                   controller: _richTextController,
                   expands: true,
                   maxLines: null,

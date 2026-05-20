@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // KAZ AI Chat Bubble — World-Class AI + Support Agent Interface
 // Features:
@@ -1137,7 +1138,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
           // Subject field
           const Text('Subject', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3)),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _ticketSubjectController,
             decoration: InputDecoration(
               hintText: 'Brief description of your issue',
@@ -1165,7 +1166,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
           // Description field
           const Text('Details (optional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3)),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _ticketDescController,
             maxLines: 4,
             decoration: InputDecoration(
@@ -1417,7 +1418,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: TextField(
+              child: VoiceTextField(
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: hintText,

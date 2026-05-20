@@ -20,6 +20,7 @@ import 'package:ndu_project/widgets/procurement_tables.dart';
 import 'package:ndu_project/widgets/procurement_dialogs.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // Layout Imports
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
@@ -546,13 +547,13 @@ class _FrontEndPlanningContractVendorQuotesScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Step Name'),
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: durationController,
                   decoration:
                       const InputDecoration(labelText: 'Duration (number)'),
@@ -1866,7 +1867,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                   ),
                                   SizedBox(
                                     width: 220,
-                                    child: TextFormField(
+                                    child: VoiceTextFormField(
                                       initialValue:
                                           item.projectPhase.trim().isEmpty
                                               ? 'Planning'
@@ -2419,21 +2420,21 @@ class _FrontEndPlanningContractVendorQuotesScreenState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: scopeController,
                     decoration:
                         const InputDecoration(labelText: 'Contract Scope'),
                     textCapitalization: TextCapitalization.sentences,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: descriptionController,
                     decoration: const InputDecoration(labelText: 'Description'),
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: contractorsController,
                     decoration: const InputDecoration(
                       labelText:
@@ -2459,7 +2460,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                         const InputDecoration(labelText: 'Contract Type'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: valueController,
                     decoration: const InputDecoration(
                       labelText: 'Estimated Value (USD)',
@@ -2468,7 +2469,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                         const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: durationController,
                     decoration:
                         const InputDecoration(labelText: 'Estimated Duration'),
@@ -2776,7 +2777,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: controller,
                       decoration: const InputDecoration(
                         labelText: 'Or enter contractor name',
@@ -2947,7 +2948,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
             ),
             content: SizedBox(
               width: 560,
-              child: TextField(
+              child: VoiceTextField(
                 controller: controller,
                 maxLines: 8,
                 decoration: const InputDecoration(
@@ -3781,7 +3782,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextField(
+                      VoiceTextField(
                         controller: titleController,
                         decoration:
                             const InputDecoration(labelText: 'Report Title'),
@@ -3803,13 +3804,13 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: ownerController,
                         decoration:
                             const InputDecoration(labelText: 'Owner'),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: summaryController,
                         decoration:
                             const InputDecoration(labelText: 'Summary'),
@@ -6380,7 +6381,7 @@ class _ContractScopeDetailCardState extends State<_ContractScopeDetailCard> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Add Potential Contractors'),
-        content: TextField(
+        content: VoiceTextField(
           controller: controller,
           maxLines: 2,
           decoration: const InputDecoration(

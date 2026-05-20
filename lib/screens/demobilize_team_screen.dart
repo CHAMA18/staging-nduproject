@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class DemobilizeTeamScreen extends StatefulWidget {
   const DemobilizeTeamScreen({super.key});
 
@@ -466,7 +467,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       initiallyExpanded: true,
       headerIcon: Icons.groups_outlined,
       headerIconColor: const Color(0xFF7C3AED),
-      child: TextFormField(
+      child: VoiceTextFormField(
         initialValue: _debriefNotes.notes,
         maxLines: 6,
         style: const TextStyle(fontSize: 13, height: 1.6),

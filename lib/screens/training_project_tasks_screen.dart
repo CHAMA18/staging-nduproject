@@ -4,6 +4,7 @@ import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class TrainingProjectTasksScreen extends StatelessWidget {
   const TrainingProjectTasksScreen({super.key});
 
@@ -94,7 +95,7 @@ class TrainingProjectTasksScreen extends StatelessWidget {
                   Icon(Icons.search, color: Colors.grey[600]),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: TextField(
+                    child: VoiceTextField(
                       decoration: const InputDecoration.collapsed(hintText: 'Search...'),
                     ),
                   ),

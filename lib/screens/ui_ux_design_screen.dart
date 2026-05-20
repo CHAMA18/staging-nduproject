@@ -1,3 +1,4 @@
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -1587,13 +1588,13 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Journey title', border: OutlineInputBorder())),
+                VoiceTextField(controller: titleController, decoration: const InputDecoration(labelText: 'Journey title', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                VoiceTextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: touchpointsController, decoration: const InputDecoration(labelText: 'Touchpoints', border: OutlineInputBorder())),
+                VoiceTextField(controller: touchpointsController, decoration: const InputDecoration(labelText: 'Touchpoints', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
+                VoiceTextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1660,11 +1661,11 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: areaController, decoration: const InputDecoration(labelText: 'Area / screen name', border: OutlineInputBorder())),
+                VoiceTextField(controller: areaController, decoration: const InputDecoration(labelText: 'Area / screen name', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: purposeController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Purpose', border: OutlineInputBorder())),
+                VoiceTextField(controller: purposeController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Purpose', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
+                VoiceTextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1730,11 +1731,11 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Token name', border: OutlineInputBorder())),
+                VoiceTextField(controller: titleController, decoration: const InputDecoration(labelText: 'Token name', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description / value', border: OutlineInputBorder())),
+                VoiceTextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description / value', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
+                VoiceTextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1801,13 +1802,13 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: criteriaController, decoration: const InputDecoration(labelText: 'Criteria', border: OutlineInputBorder())),
+                VoiceTextField(controller: criteriaController, decoration: const InputDecoration(labelText: 'Criteria', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                VoiceTextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: standardController, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: standardController, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(child: DropdownButtonFormField<String>(
                       initialValue: status,
@@ -1820,11 +1821,11 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: notesController, minLines: 2, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes', border: OutlineInputBorder())),
+                VoiceTextField(controller: notesController, minLines: 2, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes', border: OutlineInputBorder())),
               ],
             ),
           ),
@@ -1874,15 +1875,15 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: gateController, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
+                VoiceTextField(controller: gateController, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                VoiceTextField(controller: descController, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: approverController, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: approverController, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: deptController, decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: deptController, decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()))),
                   ],
                 ),
                 const SizedBox(height: 12),

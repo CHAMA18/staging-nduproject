@@ -5,6 +5,7 @@ import 'package:ndu_project/models/procurement/procurement_ui_extensions.dart';
 import 'package:ndu_project/widgets/procurement/procurement_common_widgets.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProcurementItemsListView extends StatelessWidget {
   const ProcurementItemsListView({
     super.key,
@@ -206,7 +207,7 @@ class _SearchField extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: const TextField(
+      child: const VoiceTextField(
         decoration: InputDecoration(
           border: InputBorder.none,
           icon: Icon(Icons.search, color: Color(0xFF94A3B8)),

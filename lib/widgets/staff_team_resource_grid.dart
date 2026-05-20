@@ -4,6 +4,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'dart:async';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class StaffTeamResourceGrid extends StatefulWidget {
   const StaffTeamResourceGrid({
     super.key,
@@ -935,7 +936,7 @@ class _PremiumEditableCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       controller: TextEditingController(text: value)
         ..selection = TextSelection.collapsed(offset: value.length),
       onChanged: onChanged,

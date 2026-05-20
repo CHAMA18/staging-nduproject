@@ -14,6 +14,7 @@ import 'package:ndu_project/widgets/detailed_design_table_widget.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// ────────────────────────────────────────────────────────────────
 /// Design Specifications Screen
 ///
@@ -1063,7 +1064,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: specIdController,
                           decoration: const InputDecoration(
                             labelText: 'Spec ID *',
@@ -1097,7 +1098,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     children: [
                       Expanded(
                         flex: 2,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: componentNameController,
                           decoration: const InputDecoration(
                             labelText: 'Design Element Name *',
@@ -1182,7 +1183,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: specificationController,
                     decoration: const InputDecoration(
                       labelText: 'Specification Details',
@@ -1195,7 +1196,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: traceabilityController,
                           decoration: const InputDecoration(
                             labelText: 'Traceability (Req ID)',
@@ -1207,7 +1208,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: notesController,
                     decoration: const InputDecoration(
                       labelText: 'Design Notes / Rationale',

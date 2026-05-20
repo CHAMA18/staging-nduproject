@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/theme.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ScheduleGanttEnhanced extends StatefulWidget {
   const ScheduleGanttEnhanced({
     super.key,
@@ -352,7 +353,7 @@ class _ScheduleGanttEnhancedState extends State<ScheduleGanttEnhanced> {
     return SizedBox(
       width: 220,
       height: 34,
-      child: TextField(
+      child: VoiceTextField(
         onChanged: (value) {
           setState(() {
             _searchQuery = value.trim();

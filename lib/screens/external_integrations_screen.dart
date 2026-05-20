@@ -6,6 +6,7 @@ import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExternalIntegrationsScreen extends StatefulWidget {
   const ExternalIntegrationsScreen({super.key});
   static void open(BuildContext context) => Navigator.of(context).push(
@@ -115,7 +116,7 @@ class _ExternalIntegrationsScreenState
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Add integration'),
-        content: TextField(
+        content: VoiceTextField(
             controller: name,
             decoration: const InputDecoration(labelText: 'Name')),
         actions: [

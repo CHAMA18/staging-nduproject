@@ -8,6 +8,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanAgileDeliveryPlanScreen extends StatelessWidget {
   const ExecutionPlanAgileDeliveryPlanScreen({super.key});
 
@@ -614,7 +615,7 @@ class _PlanTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       controller: controller,
       minLines: minLines,
       maxLines: maxLines,

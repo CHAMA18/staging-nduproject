@@ -6,6 +6,7 @@ import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/services/navigation_context_service.dart';
 import 'package:ndu_project/widgets/unified_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AdminCouponsScreen extends StatefulWidget {
   const AdminCouponsScreen({super.key});
 
@@ -471,7 +472,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _codeController,
                   decoration: const InputDecoration(
                     labelText: 'Coupon Code',
@@ -483,7 +484,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                   validator: (v) => v?.isEmpty == true ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
                     labelText: 'Description',
@@ -497,7 +498,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _discountController,
                         decoration: const InputDecoration(
                           labelText: 'Discount %',
@@ -516,7 +517,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _maxUsesController,
                         decoration: const InputDecoration(
                           labelText: 'Max Uses (optional)',

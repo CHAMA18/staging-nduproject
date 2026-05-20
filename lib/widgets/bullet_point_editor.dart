@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class BulletPointEditor extends StatefulWidget {
   final String title;
   final String? subtitle;
@@ -122,7 +123,7 @@ class _BulletPointEditorState extends State<BulletPointEditor> {
                   child: Icon(Icons.circle, size: 6, color: Color(0xFF94A3B8)),
                 ),
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     controller: _controllers[index],
                     decoration: InputDecoration(
                       hintText: widget.hintText,

@@ -2,6 +2,7 @@
  import 'package:flutter/services.dart';
  import 'package:ndu_project/services/api_key_manager.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ApiKeyInputDialog extends StatefulWidget {
   const ApiKeyInputDialog({super.key});
 
@@ -56,7 +57,7 @@ class _ApiKeyInputDialogState extends State<ApiKeyInputDialog> {
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 16),
-            TextField(
+            VoiceTextField(
               controller: _apiKeyController,
               focusNode: _focusNode,
               obscureText: _isObscured,

@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/bullet_point_editor.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kAccentColor = Color(0xFFFFC812);
 const Color _kTextPrimary = Color(0xFF1A1D1F);
 const Color _kTextSecondary = Color(0xFF6B7280);
@@ -302,7 +303,7 @@ class _InputGroup extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        TextField(
+        VoiceTextField(
           maxLines: maxLines,
           decoration: InputDecoration(
             hintText: hint,
@@ -662,7 +663,7 @@ class _NotesInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return VoiceTextFormField(
       initialValue: initialValue,
       onChanged: onChanged,
       // Allow the Notes field to grow with content with no character/line cap

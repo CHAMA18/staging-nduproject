@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/routing/app_router.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
 
@@ -227,7 +228,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
@@ -239,7 +240,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                VoiceTextField(
                   controller: passwordController,
                   obscureText: !isPasswordVisible,
                   decoration: InputDecoration(
@@ -441,7 +442,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 52,
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: _companyController,
                               style: const TextStyle(fontSize: 15),
                               decoration: InputDecoration(
@@ -474,7 +475,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 52,
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
                               style: const TextStyle(fontSize: 15),
@@ -508,7 +509,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 52,
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
                               style: const TextStyle(fontSize: 15),
@@ -546,7 +547,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 52,
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: _confirmPasswordController,
                               obscureText: !_isConfirmPasswordVisible,
                               style: const TextStyle(fontSize: 15),
@@ -696,7 +697,7 @@ class _NameField extends StatelessWidget {
         const SizedBox(height: 8),
         SizedBox(
           height: 52,
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             style: const TextStyle(fontSize: 15),
             decoration: InputDecoration(

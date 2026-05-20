@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _QualityTab { plan, targets, qaTracking, qcTracking, metrics }
 
 const _dateHint = 'Select date';
@@ -135,7 +136,7 @@ Widget _datePickerField(
   required TextEditingController controller,
   required Future<void> Function() onTap,
 }) {
-  return TextField(
+  return VoiceTextField(
     controller: controller,
     readOnly: true,
     onTap: () => onTap(),
@@ -953,7 +954,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _FieldLabel('Quality Narrative'),
-          TextField(
+          VoiceTextField(
             controller: _planController,
             minLines: 5,
             maxLines: 10,
@@ -970,7 +971,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _FieldLabel('Review Cadence'),
-                    TextField(
+                    VoiceTextField(
                       controller: _reviewCadenceController,
                       decoration: _inputDecoration(
                         context,
@@ -986,7 +987,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _FieldLabel('Escalation Path'),
-                    TextField(
+                    VoiceTextField(
                       controller: _escalationPathController,
                       decoration: _inputDecoration(
                         context,
@@ -1000,7 +1001,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
           ),
           const SizedBox(height: 12),
           _FieldLabel('Change Control Process'),
-          TextField(
+          VoiceTextField(
             controller: _changeControlController,
             minLines: 2,
             maxLines: 4,
@@ -3133,21 +3134,21 @@ class _QualityStandardDialogState extends State<_QualityStandardDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _FieldLabel('Name'),
-            TextField(
+            VoiceTextField(
                 controller: _name, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Source'),
-            TextField(
+            VoiceTextField(
                 controller: _source,
                 decoration: _inputDecoration(context, 'e.g. ISO 9001')),
             const SizedBox(height: 10),
             _FieldLabel('Category'),
-            TextField(
+            VoiceTextField(
                 controller: _category,
                 decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Description'),
-            TextField(
+            VoiceTextField(
               controller: _description,
               minLines: 2,
               maxLines: 4,
@@ -3155,7 +3156,7 @@ class _QualityStandardDialogState extends State<_QualityStandardDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Applicability'),
-            TextField(
+            VoiceTextField(
                 controller: _applicability,
                 decoration: _inputDecoration(context, '')),
           ],
@@ -3263,11 +3264,11 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Objective'),
-            TextField(
+            VoiceTextField(
                 controller: _title, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Acceptance Criteria'),
-            TextField(
+            VoiceTextField(
               controller: _acceptance,
               minLines: 2,
               maxLines: 4,
@@ -3281,7 +3282,7 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Metric'),
-                      TextField(
+                      VoiceTextField(
                           controller: _metric,
                           decoration: _inputDecoration(context, '')),
                     ],
@@ -3293,7 +3294,7 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Target'),
-                      TextField(
+                      VoiceTextField(
                           controller: _target,
                           decoration: _inputDecoration(context, '')),
                     ],
@@ -3309,7 +3310,7 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Current'),
-                      TextField(
+                      VoiceTextField(
                           controller: _current,
                           decoration: _inputDecoration(context, '')),
                     ],
@@ -3339,17 +3340,17 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Linked Requirement'),
-            TextField(
+            VoiceTextField(
                 controller: _linkedReq,
                 decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Linked WBS'),
-            TextField(
+            VoiceTextField(
                 controller: _linkedWbs,
                 decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Status'),
-            TextField(
+            VoiceTextField(
                 controller: _status,
                 decoration:
                     _inputDecoration(context, 'Draft/On Track/Off Track')),
@@ -3454,11 +3455,11 @@ class _WorkflowControlDialogState extends State<_WorkflowControlDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Control Name'),
-            TextField(
+            VoiceTextField(
                 controller: _name, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Method'),
-            TextField(
+            VoiceTextField(
               controller: _method,
               minLines: 2,
               maxLines: 4,
@@ -3466,11 +3467,11 @@ class _WorkflowControlDialogState extends State<_WorkflowControlDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Tools'),
-            TextField(
+            VoiceTextField(
                 controller: _tools, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Checklist'),
-            TextField(
+            VoiceTextField(
                 controller: _checklist,
                 decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
@@ -3481,7 +3482,7 @@ class _WorkflowControlDialogState extends State<_WorkflowControlDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Frequency'),
-                      TextField(
+                      VoiceTextField(
                           controller: _frequency,
                           decoration: _inputDecoration(context, 'Weekly')),
                     ],
@@ -3511,7 +3512,7 @@ class _WorkflowControlDialogState extends State<_WorkflowControlDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Standards Reference'),
-            TextField(
+            VoiceTextField(
                 controller: _standards,
                 decoration:
                     _inputDecoration(context, 'ISO 9001 / Internal SOP')),
@@ -3659,7 +3660,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Task'),
-            TextField(
+            VoiceTextField(
                 controller: _task,
                 decoration: _inputDecoration(context, 'Task title')),
             const SizedBox(height: 10),
@@ -3670,7 +3671,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('% Complete'),
-                      TextField(
+                      VoiceTextField(
                           controller: _percent,
                           decoration: _inputDecoration(context, '0-100')),
                     ],
@@ -3795,7 +3796,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Comments'),
-            TextField(
+            VoiceTextField(
               controller: _comments,
               minLines: 2,
               maxLines: 4,
@@ -3940,11 +3941,11 @@ class _QualityAuditDialogState extends State<_QualityAuditDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Audit Title'),
-            TextField(
+            VoiceTextField(
                 controller: _title, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Scope'),
-            TextField(
+            VoiceTextField(
               controller: _scope,
               minLines: 2,
               maxLines: 3,
@@ -4042,7 +4043,7 @@ class _QualityAuditDialogState extends State<_QualityAuditDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Findings'),
-            TextField(
+            VoiceTextField(
               controller: _findings,
               minLines: 2,
               maxLines: 4,
@@ -4050,7 +4051,7 @@ class _QualityAuditDialogState extends State<_QualityAuditDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Notes'),
-            TextField(
+            VoiceTextField(
               controller: _notes,
               minLines: 2,
               maxLines: 4,
@@ -4190,11 +4191,11 @@ class _CorrectiveActionDialogState extends State<_CorrectiveActionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Title'),
-            TextField(
+            VoiceTextField(
                 controller: _title, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Root Cause'),
-            TextField(
+            VoiceTextField(
               controller: _rootCause,
               minLines: 2,
               maxLines: 4,
@@ -4202,7 +4203,7 @@ class _CorrectiveActionDialogState extends State<_CorrectiveActionDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Action'),
-            TextField(
+            VoiceTextField(
               controller: _action,
               minLines: 2,
               maxLines: 4,
@@ -4273,7 +4274,7 @@ class _CorrectiveActionDialogState extends State<_CorrectiveActionDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Verification Notes'),
-            TextField(
+            VoiceTextField(
               controller: _verification,
               minLines: 2,
               maxLines: 4,
@@ -4388,7 +4389,7 @@ class _QualityChangeDialogState extends State<_QualityChangeDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Description'),
-            TextField(
+            VoiceTextField(
               controller: _description,
               minLines: 2,
               maxLines: 4,
@@ -4396,7 +4397,7 @@ class _QualityChangeDialogState extends State<_QualityChangeDialog> {
             ),
             const SizedBox(height: 10),
             _FieldLabel('Reason'),
-            TextField(
+            VoiceTextField(
                 controller: _reason, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             Row(
@@ -4406,7 +4407,7 @@ class _QualityChangeDialogState extends State<_QualityChangeDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Requested By'),
-                      TextField(
+                      VoiceTextField(
                           controller: _requestedBy,
                           decoration: _inputDecoration(context, '')),
                     ],
@@ -4418,7 +4419,7 @@ class _QualityChangeDialogState extends State<_QualityChangeDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Approved By'),
-                      TextField(
+                      VoiceTextField(
                           controller: _approvedBy,
                           decoration: _inputDecoration(context, '')),
                     ],
@@ -4448,7 +4449,7 @@ class _QualityChangeDialogState extends State<_QualityChangeDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Status'),
-                      TextField(
+                      VoiceTextField(
                           controller: _status,
                           decoration:
                               _inputDecoration(context, 'Draft/Approved')),
@@ -4546,11 +4547,11 @@ class _TrainingShortcutDialogState extends State<_TrainingShortcutDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Title'),
-            TextField(
+            VoiceTextField(
                 controller: _title, decoration: _inputDecoration(context, '')),
             const SizedBox(height: 10),
             _FieldLabel('Description'),
-            TextField(
+            VoiceTextField(
               controller: _description,
               minLines: 2,
               maxLines: 4,
@@ -4578,7 +4579,7 @@ class _TrainingShortcutDialogState extends State<_TrainingShortcutDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _FieldLabel('Duration'),
-                      TextField(
+                      VoiceTextField(
                           controller: _duration,
                           decoration: _inputDecoration(context, '60 mins')),
                     ],
@@ -4681,12 +4682,12 @@ class _DashboardConfigDialogState extends State<_DashboardConfigDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _FieldLabel('Target Time to Resolution (days)'),
-            TextField(
+            VoiceTextField(
                 controller: _target,
                 decoration: _inputDecoration(context, '15')),
             const SizedBox(height: 10),
             _FieldLabel('Max Trend Points'),
-            TextField(
+            VoiceTextField(
                 controller: _trendPoints,
                 decoration: _inputDecoration(context, '12')),
             const SizedBox(height: 10),
@@ -4820,14 +4821,14 @@ class _MetricsEditDialogState extends State<_MetricsEditDialog> {
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: VoiceTextField(
                 controller: value,
                 decoration: _inputDecoration(context, 'Value'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: TextField(
+              child: VoiceTextField(
                 controller: change,
                 decoration: _inputDecoration(context, 'Change'),
               ),
@@ -4889,13 +4890,13 @@ class _MetricsEditDialogState extends State<_MetricsEditDialog> {
             ),
             const SizedBox(height: 12),
             _FieldLabel('Defect Trend (comma-separated)'),
-            TextField(
+            VoiceTextField(
               controller: _defectTrend,
               decoration: _inputDecoration(context, '12, 10, 9, 8, 7, 6'),
             ),
             const SizedBox(height: 10),
             _FieldLabel('Satisfaction Trend (comma-separated)'),
-            TextField(
+            VoiceTextField(
               controller: _satisfactionTrend,
               decoration:
                   _inputDecoration(context, '3.5, 3.7, 4.0, 4.1, 4.3, 4.4'),

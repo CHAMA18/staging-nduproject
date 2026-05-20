@@ -13,6 +13,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectBaselineScreen extends StatefulWidget {
   const ProjectBaselineScreen({super.key});
 
@@ -432,7 +433,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                VoiceTextField(
                   controller: approvedByController,
                   decoration: const InputDecoration(
                     labelText: 'Approved By',
@@ -441,7 +442,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   minLines: 3,
                   maxLines: 5,

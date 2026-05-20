@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class MobileForgotPasswordScreen extends StatefulWidget {
   const MobileForgotPasswordScreen({super.key});
 
@@ -133,7 +134,7 @@ class _MobileForgotPasswordScreenState
                 const SizedBox(height: 32),
 
                 // Email
-                TextFormField(
+                VoiceTextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   autofocus: true,

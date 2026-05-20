@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class CommerceViabilityScreen extends StatefulWidget {
   const CommerceViabilityScreen({super.key});
 
@@ -387,7 +388,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       initiallyExpanded: true,
       headerIcon: Icons.trending_up_rounded,
       headerIconColor: const Color(0xFF10B981),
-      child: TextFormField(
+      child: VoiceTextFormField(
         initialValue: _decision.notes,
         maxLines: 4,
         style: const TextStyle(fontSize: 13, height: 1.6),

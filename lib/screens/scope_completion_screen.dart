@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ScopeCompletionScreen extends StatefulWidget {
   const ScopeCompletionScreen({super.key});
 
@@ -837,7 +838,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          VoiceTextField(
             controller: valueController,
             keyboardType: TextInputType.number,
             textAlign: TextAlign.right,
@@ -857,7 +858,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
             style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: statusController,
             textAlign: TextAlign.center,
             style: const TextStyle(
@@ -1304,7 +1305,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // WBS Code
                   const _DialogLabel('WBS Code'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: wbsCtl,
                     decoration: const InputDecoration(
                       hintText: 'e.g. 1.2.3',
@@ -1317,7 +1318,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Title
                   const _DialogLabel('Work Package Title *'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: titleCtl,
                     decoration: const InputDecoration(
                       hintText: 'Describe the deliverable',
@@ -1336,7 +1337,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                           children: [
                             const _DialogLabel('Owner'),
                             const SizedBox(height: 4),
-                            TextField(
+                            VoiceTextField(
                               controller: ownerCtl,
                               decoration: const InputDecoration(
                                 hintText: 'Responsible person',
@@ -1354,7 +1355,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                           children: [
                             const _DialogLabel('Milestone'),
                             const SizedBox(height: 4),
-                            TextField(
+                            VoiceTextField(
                               controller: milestoneCtl,
                               decoration: const InputDecoration(
                                 hintText: 'Target milestone',
@@ -1412,7 +1413,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                           children: [
                             const _DialogLabel('% Complete'),
                             const SizedBox(height: 4),
-                            TextField(
+                            VoiceTextField(
                               controller: pctCtl,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
@@ -1483,7 +1484,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Notes
                   const _DialogLabel('Notes'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: notesCtl,
                     decoration: const InputDecoration(
                       hintText: 'Additional context or remarks',
@@ -1895,7 +1896,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Ref Code
                   const _DialogLabel('Reference Code'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: refCodeCtl,
                     decoration: const InputDecoration(
                       hintText: 'e.g. ACC-001',
@@ -1908,7 +1909,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Title
                   const _DialogLabel('Checkpoint Description *'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: titleCtl,
                     decoration: const InputDecoration(
                       hintText: 'Describe the acceptance checkpoint',
@@ -1927,7 +1928,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                           children: [
                             const _DialogLabel('Approver'),
                             const SizedBox(height: 4),
-                            TextField(
+                            VoiceTextField(
                               controller: ownerCtl,
                               decoration: const InputDecoration(
                                 hintText: 'Approver name',
@@ -2005,7 +2006,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Evidence
                   const _DialogLabel('Evidence / Artifact'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: evidenceCtl,
                     decoration: const InputDecoration(
                       hintText: 'Reference to evidence or artifact',
@@ -2017,7 +2018,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Notes
                   const _DialogLabel('Notes'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: notesCtl,
                     decoration: const InputDecoration(
                       hintText: 'Additional context or remarks',
@@ -2354,7 +2355,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Label
                   const _DialogLabel('Signal / Tag Name *'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: labelCtl,
                     decoration: const InputDecoration(
                       hintText: 'Name of the acceptance signal',
@@ -2430,7 +2431,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                           children: [
                             const _DialogLabel('Verified By'),
                             const SizedBox(height: 4),
-                            TextField(
+                            VoiceTextField(
                               controller: verifiedByCtl,
                               decoration: const InputDecoration(
                                 hintText: 'Person who verified',
@@ -2462,7 +2463,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Notes
                   const _DialogLabel('Notes'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: notesCtl,
                     decoration: const InputDecoration(
                       hintText: 'Additional context or remarks',
@@ -2874,7 +2875,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // CR ID
                   const _DialogLabel('Change Request ID'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: crIdCtl,
                     decoration: const InputDecoration(
                       hintText: 'e.g. CR-001',
@@ -2887,7 +2888,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Detail
                   const _DialogLabel('Change Description *'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: detailCtl,
                     decoration: const InputDecoration(
                       hintText: 'Describe the scope change',
@@ -2983,7 +2984,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Requested By
                   const _DialogLabel('Requested By'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: requestedByCtl,
                     decoration: const InputDecoration(
                       hintText: 'Who requested this change',
@@ -3030,7 +3031,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                   // Notes
                   const _DialogLabel('Notes'),
                   const SizedBox(height: 4),
-                  TextField(
+                  VoiceTextField(
                     controller: notesCtl,
                     decoration: const InputDecoration(
                       hintText: 'Additional context or remarks',
@@ -3204,7 +3205,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           const SizedBox(width: 8),
           SizedBox(
             width: 60,
-            child: TextField(
+            child: VoiceTextField(
               controller: controller,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.right,
@@ -3238,7 +3239,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               color: Color(0xFF374151)),
         ),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           maxLines: maxLines,
           decoration: _inputDecoration(hintText),
@@ -4189,7 +4190,7 @@ class _DateField extends StatelessWidget {
       text: initialDate != null ? _formatDateShort(initialDate!) : '',
     );
 
-    return TextField(
+    return VoiceTextField(
       controller: controller,
       readOnly: true,
       decoration: InputDecoration(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/theme.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ScheduleMasterView extends StatefulWidget {
   const ScheduleMasterView({
     super.key,
@@ -131,7 +132,7 @@ class _ScheduleMasterViewState extends State<ScheduleMasterView> {
               SizedBox(
                 width: 280,
                 height: 40,
-                child: TextField(
+                child: VoiceTextField(
                   controller: _searchController,
                   onChanged: (value) {
                     setState(() {

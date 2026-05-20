@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Allowance screen
 /// Refactored to support structured "Program-Aware Financial Inputs".
 ///
@@ -385,7 +386,7 @@ class _FrontEndPlanningAllowanceScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   fieldLabel('Name'),
-                  TextField(
+                  VoiceTextField(
                     controller: nameController,
                     decoration: fieldDecoration(hintText: 'Allowance name'),
                   ),
@@ -411,7 +412,7 @@ class _FrontEndPlanningAllowanceScreenState
                   ),
                   const SizedBox(height: 12),
                   fieldLabel('Amount'),
-                  TextField(
+                  VoiceTextField(
                     controller: amountController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
@@ -446,7 +447,7 @@ class _FrontEndPlanningAllowanceScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             fieldLabel('Released Amount'),
-                            TextField(
+                            VoiceTextField(
                               controller: releasedAmountController,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
@@ -464,7 +465,7 @@ class _FrontEndPlanningAllowanceScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             fieldLabel('Actual Amount'),
-                            TextField(
+                            VoiceTextField(
                               controller: actualAmountController,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
@@ -480,21 +481,21 @@ class _FrontEndPlanningAllowanceScreenState
                   ),
                   const SizedBox(height: 12),
                   fieldLabel('Applies To'),
-                  TextField(
+                  VoiceTextField(
                     controller: appliesToController,
                     decoration: fieldDecoration(
                         hintText: 'Estimate, Schedule, Training'),
                   ),
                   const SizedBox(height: 12),
                   fieldLabel('Assigned To'),
-                  TextField(
+                  VoiceTextField(
                     controller: assignedToController,
                     decoration:
                         fieldDecoration(hintText: 'Role or person name'),
                   ),
                   const SizedBox(height: 12),
                   fieldLabel('Notes'),
-                  TextField(
+                  VoiceTextField(
                     controller: notesController,
                     maxLines: 4,
                     decoration:
@@ -1265,7 +1266,7 @@ Widget _roundedField(
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       minLines: minLines,
       maxLines: null,

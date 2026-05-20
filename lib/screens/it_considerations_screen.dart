@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // AiSolutionItem is exported from openai_service_secure.dart
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/auth_nav.dart';
@@ -418,7 +419,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFDCE3EE)),
                       ),
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: _notesController,
                         minLines: 3,
                         maxLines: 6,
@@ -630,7 +631,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                     ),
                   ],
                 ),
-                TextField(
+                VoiceTextField(
                   controller: _techControllers[index],
                   minLines: 4,
                   maxLines: null,
@@ -1488,7 +1489,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.withOpacity(0.3))),
-          child: TextField(
+          child: VoiceTextField(
             controller: _notesController,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             decoration: InputDecoration(
@@ -1755,7 +1756,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Colors.grey.withOpacity(0.25))),
-            child: TextField(
+            child: VoiceTextField(
               controller: controller,
               minLines: 2,
               maxLines: null,

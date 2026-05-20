@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class SalvageDisposalTeamScreen extends StatefulWidget {
   const SalvageDisposalTeamScreen({super.key});
 
@@ -1443,31 +1444,31 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: assetIdController,
                   decoration: const InputDecoration(labelText: 'Asset ID *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: categoryController,
                   decoration: const InputDecoration(labelText: 'Category *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: conditionController,
                   decoration: const InputDecoration(labelText: 'Condition *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: locationController,
                   decoration: const InputDecoration(labelText: 'Location *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: statusController,
                   decoration: const InputDecoration(labelText: 'Status *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: valueController,
                   decoration:
                       const InputDecoration(labelText: 'Estimated Value *')),
@@ -1538,31 +1539,31 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: assetIdController,
                   decoration: const InputDecoration(labelText: 'Asset ID *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: categoryController,
                   decoration: const InputDecoration(labelText: 'Category *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: conditionController,
                   decoration: const InputDecoration(labelText: 'Condition *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: locationController,
                   decoration: const InputDecoration(labelText: 'Location *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: statusController,
                   decoration: const InputDecoration(labelText: 'Status *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: valueController,
                   decoration:
                       const InputDecoration(labelText: 'Estimated Value *')),
@@ -1721,17 +1722,17 @@ Execution snapshot:
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name *'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: roleController,
                   decoration: const InputDecoration(labelText: 'Role *'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: emailController,
                   decoration: const InputDecoration(labelText: 'Email *'),
                 ),
@@ -1750,7 +1751,7 @@ Execution snapshot:
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: itemsHandledController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Items Handled'),
@@ -1923,7 +1924,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: assetIdController,
                           decoration: const InputDecoration(
                             labelText: 'Asset ID *',
@@ -1935,7 +1936,7 @@ Execution snapshot:
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 2,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: nameController,
                           decoration: const InputDecoration(
                             labelText: 'Description *',
@@ -1951,7 +1952,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: categoryController,
                           decoration: const InputDecoration(
                             labelText: 'Category *',
@@ -1986,7 +1987,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: locationController,
                           decoration: const InputDecoration(
                             labelText: 'Location',
@@ -2063,7 +2064,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: valueController,
                           decoration: const InputDecoration(
                             labelText: 'Estimated Value *',
@@ -2076,7 +2077,7 @@ Execution snapshot:
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: disposalCostController,
                           decoration: const InputDecoration(
                             labelText: 'Disposal Cost',
@@ -2094,7 +2095,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: assignedToController,
                           decoration: const InputDecoration(
                             labelText: 'Assigned To',
@@ -2105,7 +2106,7 @@ Execution snapshot:
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: targetDateController,
                           decoration: const InputDecoration(
                             labelText: 'Target Date',
@@ -3700,7 +3701,7 @@ Execution snapshot:
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: regulationCtrl, decoration: const InputDecoration(labelText: 'Regulation/Standard', border: OutlineInputBorder())),
+                  VoiceTextField(controller: regulationCtrl, decoration: const InputDecoration(labelText: 'Regulation/Standard', border: OutlineInputBorder())),
                   const SizedBox(height: 14),
                   Row(children: [
                     Expanded(child: DropdownButtonFormField<String>(
@@ -3719,18 +3720,18 @@ Execution snapshot:
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: scoreCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Compliance Score %', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: scoreCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Compliance Score %', border: OutlineInputBorder()))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: daysToExpiryCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Days to Expiry', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: daysToExpiryCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Days to Expiry', border: OutlineInputBorder()))),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: lastAuditCtrl, decoration: const InputDecoration(labelText: 'Last Audit Date', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: lastAuditCtrl, decoration: const InputDecoration(labelText: 'Last Audit Date', border: OutlineInputBorder()))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: nextAuditCtrl, decoration: const InputDecoration(labelText: 'Next Audit Due', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: nextAuditCtrl, decoration: const InputDecoration(labelText: 'Next Audit Due', border: OutlineInputBorder()))),
                   ]),
                   const SizedBox(height: 14),
-                  TextField(controller: responsibleCtrl, decoration: const InputDecoration(labelText: 'Responsible Party', border: OutlineInputBorder())),
+                  VoiceTextField(controller: responsibleCtrl, decoration: const InputDecoration(labelText: 'Responsible Party', border: OutlineInputBorder())),
                   const SizedBox(height: 14),
                   Row(children: [
                     Expanded(child: DropdownButtonFormField<String>(
@@ -3756,11 +3757,11 @@ Execution snapshot:
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: findingsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Findings', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: findingsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Findings', border: OutlineInputBorder()))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: correctiveCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Corrective Actions', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: correctiveCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Corrective Actions', border: OutlineInputBorder()))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()))),
                   ]),
                 ],
               ),
@@ -4226,7 +4227,7 @@ Execution snapshot:
                     children: [
                       Expanded(
                         flex: 2,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: milestoneController,
                           decoration: const InputDecoration(
                             labelText: 'Milestone *',
@@ -4238,7 +4239,7 @@ Execution snapshot:
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 3,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: descriptionController,
                           decoration: const InputDecoration(
                             labelText: 'Description',
@@ -4291,7 +4292,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: ownerController,
                           decoration: const InputDecoration(
                             labelText: 'Owner / Responsible',
@@ -4323,7 +4324,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: startDateController,
                           decoration: const InputDecoration(
                             labelText: 'Start Date',
@@ -4335,7 +4336,7 @@ Execution snapshot:
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: dueDateController,
                           decoration: const InputDecoration(
                             labelText: 'Due Date',
@@ -4370,7 +4371,7 @@ Execution snapshot:
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: dependenciesController,
                           decoration: const InputDecoration(
                             labelText: 'Dependencies',
@@ -4382,7 +4383,7 @@ Execution snapshot:
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: notesController,
                           decoration: const InputDecoration(
                             labelText: 'Notes',

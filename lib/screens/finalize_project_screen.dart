@@ -11,6 +11,7 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class FinalizeProjectScreen extends StatefulWidget {
   const FinalizeProjectScreen({super.key});
 
@@ -861,7 +862,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
         children: [
           Expanded(
             flex: 4,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('checklist-title-${item.id}'),
               initialValue: item.title,
               decoration: _inputDecoration('Checklist item'),
@@ -873,7 +874,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('checklist-owner-${item.id}'),
               initialValue: item.owner,
               decoration: _inputDecoration('Owner'),
@@ -884,7 +885,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('checklist-date-${item.id}'),
               initialValue: item.dueDate,
               decoration: _inputDecoration('Due date'),
@@ -964,7 +965,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
         children: [
           Expanded(
             flex: 3,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('signoff-name-${item.id}'),
               initialValue: item.name,
               decoration: _inputDecoration('Stakeholder'),
@@ -975,7 +976,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           const SizedBox(width: 12),
           Expanded(
             flex: 3,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('signoff-role-${item.id}'),
               initialValue: item.role,
               decoration: _inputDecoration('Role'),
@@ -1002,7 +1003,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               key: ValueKey('signoff-date-${item.id}'),
               initialValue: item.decisionDate,
               decoration: _inputDecoration('Decision date'),
@@ -1441,7 +1442,7 @@ class _InsightCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
+          VoiceTextFormField(
             key: ValueKey('insight-title-${item.id}'),
             initialValue: item.title,
             decoration: const InputDecoration(
@@ -1456,7 +1457,7 @@ class _InsightCard extends StatelessWidget {
                 onChanged(item.copyWith(title: value)),
           ),
           const SizedBox(height: 8),
-          TextFormField(
+          VoiceTextFormField(
             key: ValueKey('insight-detail-${item.id}'),
             initialValue: item.detail,
             decoration: const InputDecoration(

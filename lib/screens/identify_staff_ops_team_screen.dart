@@ -12,6 +12,7 @@ import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class IdentifyStaffOpsTeamScreen extends StatefulWidget {
   const IdentifyStaffOpsTeamScreen({super.key});
 
@@ -880,15 +881,15 @@ class _IdentifyStaffOpsTeamScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: roleController,
                   decoration: const InputDecoration(labelText: 'Role *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: responsibilityController,
                   decoration:
                       const InputDecoration(labelText: 'Responsibility *')),
@@ -902,12 +903,12 @@ class _IdentifyStaffOpsTeamScreenState
                 onChanged: (v) => statusController.text = v ?? 'Active',
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: readinessController,
                   decoration: const InputDecoration(
                       labelText: 'Readiness Score (0-100) *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: notesController,
                   decoration: const InputDecoration(labelText: 'Notes'),
                   maxLines: 3),
@@ -1073,7 +1074,7 @@ class _IdentifyStaffOpsTeamScreenState
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: itemController,
                   decoration: const InputDecoration(labelText: 'Item *')),
               const SizedBox(height: 12),
@@ -1083,7 +1084,7 @@ class _IdentifyStaffOpsTeamScreenState
                 onChanged: (v) => setState(() => completed = v ?? false),
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: notesController,
                   decoration: const InputDecoration(labelText: 'Notes'),
                   maxLines: 2),

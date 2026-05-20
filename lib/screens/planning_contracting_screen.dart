@@ -17,6 +17,7 @@ import 'package:ndu_project/services/procurement_service.dart';
 import 'package:ndu_project/models/planning_contracting_models.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart'
     as procurement_models;
+import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
@@ -1201,20 +1202,20 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: nameCtrl,
                     decoration: const InputDecoration(
                         labelText: 'Contract Name *',
                         border: OutlineInputBorder())),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: descCtrl,
                     maxLines: 2,
                     decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder())),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: valueCtrl,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
@@ -1267,7 +1268,7 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                           controller: scopeCtrl,
                           decoration: const InputDecoration(
                               labelText: 'Scope',
@@ -1275,7 +1276,7 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                           controller: disciplineCtrl,
                           decoration: const InputDecoration(
                               labelText: 'Discipline',
@@ -1386,7 +1387,7 @@ Future<void> _showEditPackageDialog(
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: summaryCtrl,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -1398,7 +1399,7 @@ Future<void> _showEditPackageDialog(
                 if (isNarrow)
                   Column(
                     children: [
-                      TextField(
+                      VoiceTextField(
                         controller: engineerEstimateCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
@@ -1408,7 +1409,7 @@ Future<void> _showEditPackageDialog(
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: plannedValueCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
@@ -1423,7 +1424,7 @@ Future<void> _showEditPackageDialog(
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: engineerEstimateCtrl,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
@@ -1435,7 +1436,7 @@ Future<void> _showEditPackageDialog(
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: plannedValueCtrl,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
@@ -2488,12 +2489,12 @@ void _showRfpDialog(
                   },
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: titleCtrl,
                     decoration: const InputDecoration(
                         labelText: 'RFP Title *', border: OutlineInputBorder())),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: scopeCtrl,
                     maxLines: 4,
                     decoration: const InputDecoration(
@@ -2519,7 +2520,7 @@ void _showRfpDialog(
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: vendorsCtrl,
                     maxLines: 2,
                     decoration: const InputDecoration(
@@ -2578,7 +2579,7 @@ void _showRfpDialog(
                   ],
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                     controller: notesCtrl,
                     maxLines: 2,
                     decoration: const InputDecoration(
@@ -3122,7 +3123,7 @@ Future<void> _showEvaluationDialog(
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: awardValueCtrl,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
@@ -3135,7 +3136,7 @@ Future<void> _showEvaluationDialog(
                   ],
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: criteriaCtrl,
                   maxLines: 4,
                   decoration: const InputDecoration(
@@ -3145,7 +3146,7 @@ Future<void> _showEvaluationDialog(
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: vendorListCtrl,
                   maxLines: 2,
                   decoration: const InputDecoration(
@@ -3179,7 +3180,7 @@ Future<void> _showEvaluationDialog(
                   },
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: vendorCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Recommended Vendor',
@@ -3187,7 +3188,7 @@ Future<void> _showEvaluationDialog(
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: comparisonCtrl,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -3196,7 +3197,7 @@ Future<void> _showEvaluationDialog(
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: technicalNotesCtrl,
                   maxLines: 2,
                   decoration: const InputDecoration(
@@ -3614,7 +3615,7 @@ class _EvaluationScoreEditor extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
+                VoiceTextFormField(
                   initialValue: screening.notes,
                   onChanged: (value) =>
                       onTechnicalChanged(vendor, screening.status, value),
@@ -3666,7 +3667,7 @@ class _EvaluationScoreEditor extends StatelessWidget {
                           const SizedBox(width: 12),
                           SizedBox(
                             width: 120,
-                            child: TextFormField(
+                            child: VoiceTextFormField(
                               initialValue: scoreMap[key] ?? '',
                               enabled: enabled &&
                                   technicalStatus.toLowerCase() == 'passed',
@@ -4296,7 +4297,7 @@ Future<void> _showNegotiationDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: objectivesCtrl,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -4352,7 +4353,7 @@ Future<void> _showNegotiationDialog(
                   ],
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                VoiceTextField(
                   controller: itemsCtrl,
                   maxLines: 8,
                   decoration: const InputDecoration(
@@ -4554,7 +4555,7 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 280,
-      child: TextField(
+      child: VoiceTextField(
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hintText,
@@ -4762,7 +4763,7 @@ class _NumberInputCellState extends State<_NumberInputCell> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       controller: _controller,
       keyboardType: TextInputType.number,
       style: const TextStyle(fontSize: 12),
@@ -5077,7 +5078,7 @@ class _CriteriaRowState extends State<_CriteriaRow> {
         children: [
           Expanded(
             flex: 3,
-            child: TextField(
+            child: VoiceTextField(
               controller: _nameController,
               decoration: const InputDecoration(
                 hintText: 'Criterion name',
@@ -5091,7 +5092,7 @@ class _CriteriaRowState extends State<_CriteriaRow> {
           const SizedBox(width: 8),
           SizedBox(
             width: 70,
-            child: TextField(
+            child: VoiceTextField(
               controller: _weightController,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,

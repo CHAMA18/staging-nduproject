@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/scope_tracking_table_widget.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:provider/provider.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _ScopeTab { overview, registry, traceability, baseline }
 
 const List<String> _tabLabels = [
@@ -976,7 +977,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Scope Item',
@@ -1053,7 +1054,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
                 fieldViewBuilder:
                     (context, controller, focusNode, onSubmitted) {
                   ownerCtrl.text = controller.text;
-                  return TextField(
+                  return VoiceTextField(
                     controller: controller,
                     focusNode: focusNode,
                     decoration: const InputDecoration(

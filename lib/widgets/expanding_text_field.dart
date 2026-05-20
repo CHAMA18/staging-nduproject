@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/services/voice_input_service.dart';
 
-/// A drop-in TextField that grows vertically as the user types.
+/// A drop-in TextField that grows vertically as the user types,
+/// with optional voice-to-text input via a microphone button.
 /// - No internal scrolling; the enclosing page scrolls instead.
 /// - By default starts with [minLines] and expands with content (maxLines=null).
 /// - Use for multiline content such as notes, descriptions, comments.
-class ExpandingTextField extends StatelessWidget {
+/// - Set [enableVoice] to false to hide the mic button (defaults to true).
+class ExpandingTextField extends StatefulWidget {
   const ExpandingTextField({
     super.key,
     this.controller,
@@ -21,6 +25,8 @@ class ExpandingTextField extends StatelessWidget {
     this.enabled,
     this.onEditingComplete,
     this.onSubmitted,
+    this.enableVoice = true,
+    this.voiceIconColor,
   });
 
   final TextEditingController? controller;
@@ -38,36 +44,194 @@ class ExpandingTextField extends StatelessWidget {
   final VoidCallback? onEditingComplete;
   final ValueChanged<String>? onSubmitted;
 
+  /// Whether to show the voice input mic button. Defaults to true.
+  final bool enableVoice;
+
+  /// Color of the mic icon. Defaults to brand yellow.
+  final Color? voiceIconColor;
+
+  @override
+  State<ExpandingTextField> createState() => _ExpandingTextFieldState();
+}
+
+class _ExpandingTextFieldState extends State<ExpandingTextField> {
+  late TextEditingController _controller;
+  final VoiceInputService _voiceService = VoiceInputService.instance;
+  StreamSubscription<VoiceResult>? _resultSubscription;
+  StreamSubscription<VoiceStatus>? _statusSubscription;
+  bool _isListening = false;
+  bool _voiceAvailable = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController();
+    _checkAvailability();
+  }
+
+  @override
+  void didUpdateWidget(ExpandingTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      _controller = widget.controller ?? TextEditingController();
+    }
+  }
+
+  Future<void> _checkAvailability() async {
+    final available = await _voiceService.initialize();
+    if (mounted && available != _voiceAvailable) {
+      setState(() => _voiceAvailable = available);
+    }
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      _cleanupSubscriptions();
+      if (mounted) setState(() => _isListening = false);
+    } else {
+      final started = await _voiceService.startListening(
+        existingText: _controller.text,
+      );
+      if (!started) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Speech recognition is not available on this device.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      _resultSubscription = _voiceService.onResult.listen((result) {
+        if (!mounted) return;
+        final text = result.text;
+        _controller.text = text;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: text.length),
+        );
+        widget.onChanged?.call(text);
+
+        if (result.isFinal) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupSubscriptions();
+        }
+      });
+
+      _statusSubscription = _voiceService.onStatusChanged.listen((status) {
+        if (status == VoiceStatus.stopped || status == VoiceStatus.error) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupSubscriptions();
+        }
+      });
+
+      if (mounted) setState(() => _isListening = true);
+    }
+  }
+
+  void _cleanupSubscriptions() {
+    _resultSubscription?.cancel();
+    _resultSubscription = null;
+    _statusSubscription?.cancel();
+    _statusSubscription = null;
+  }
+
+  @override
+  void dispose() {
+    _cleanupSubscriptions();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final InputDecoration baseDecoration = decoration ?? const InputDecoration(
+    final voiceEnabled = widget.enableVoice && _voiceAvailable;
+    final InputDecoration baseDecoration = widget.decoration ?? const InputDecoration(
       border: OutlineInputBorder(),
       isDense: true,
     );
 
+    final effectiveDecoration = _buildDecoration(baseDecoration, voiceEnabled);
+
     return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      readOnly: readOnly,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      minLines: minLines,
+      controller: _controller,
+      focusNode: widget.focusNode,
+      readOnly: widget.readOnly,
+      onChanged: widget.onChanged,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      minLines: widget.minLines,
       maxLines: null, // allow vertical growth with content
-      decoration: baseDecoration.copyWith(
-        hintText: hintText ?? baseDecoration.hintText,
-        labelText: labelText ?? baseDecoration.labelText,
-      ),
-      style: style,
-      enabled: enabled,
-      onEditingComplete: onEditingComplete,
-      onSubmitted: onSubmitted,
+      decoration: effectiveDecoration,
+      style: widget.style,
+      enabled: widget.enabled,
+      onEditingComplete: widget.onEditingComplete,
+      onSubmitted: widget.onSubmitted,
+    );
+  }
+
+  InputDecoration _buildDecoration(InputDecoration base, bool voiceEnabled) {
+    final decorated = base.copyWith(
+      hintText: widget.hintText ?? base.hintText,
+      labelText: widget.labelText ?? base.labelText,
+    );
+
+    if (!voiceEnabled) return decorated;
+
+    final micIcon = _buildMicIcon();
+    final existingSuffix = decorated.suffixIcon;
+    Widget suffixWidget;
+
+    if (existingSuffix != null) {
+      suffixWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [existingSuffix, micIcon],
+      );
+    } else {
+      suffixWidget = micIcon;
+    }
+
+    return decorated.copyWith(suffixIcon: suffixWidget);
+  }
+
+  Widget _buildMicIcon() {
+    final iconColor = widget.voiceIconColor ?? const Color(0xFFFFB800);
+
+    if (_isListening) {
+      return Container(
+        width: 36,
+        height: 36,
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: IconButton(
+          icon: Icon(Icons.mic, color: iconColor, size: 18),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: _toggleVoiceInput,
+          tooltip: 'Stop voice input',
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: Icon(Icons.mic_none_outlined, color: iconColor, size: 18),
+      padding: const EdgeInsets.only(right: 4),
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: _toggleVoiceInput,
+      tooltip: 'Voice input',
     );
   }
 }
 
-/// A Form-compatible variant using TextFormField.
-class ExpandingTextFormField extends StatelessWidget {
+/// A Form-compatible variant using TextFormField, with voice-to-text support.
+class ExpandingTextFormField extends StatefulWidget {
   const ExpandingTextFormField({
     super.key,
     this.controller,
@@ -87,6 +251,8 @@ class ExpandingTextFormField extends StatelessWidget {
     this.onEditingComplete,
     this.onFieldSubmitted,
     this.autovalidateMode,
+    this.enableVoice = true,
+    this.voiceIconColor,
   });
 
   final TextEditingController? controller;
@@ -107,33 +273,191 @@ class ExpandingTextFormField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final AutovalidateMode? autovalidateMode;
 
+  /// Whether to show the voice input mic button. Defaults to true.
+  final bool enableVoice;
+
+  /// Color of the mic icon. Defaults to brand yellow.
+  final Color? voiceIconColor;
+
+  @override
+  State<ExpandingTextFormField> createState() => _ExpandingTextFormFieldState();
+}
+
+class _ExpandingTextFormFieldState extends State<ExpandingTextFormField> {
+  late TextEditingController _controller;
+  final VoiceInputService _voiceService = VoiceInputService.instance;
+  StreamSubscription<VoiceResult>? _resultSubscription;
+  StreamSubscription<VoiceStatus>? _statusSubscription;
+  bool _isListening = false;
+  bool _voiceAvailable = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController();
+    _checkAvailability();
+  }
+
+  @override
+  void didUpdateWidget(ExpandingTextFormField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      _controller = widget.controller ?? TextEditingController();
+    }
+  }
+
+  Future<void> _checkAvailability() async {
+    final available = await _voiceService.initialize();
+    if (mounted && available != _voiceAvailable) {
+      setState(() => _voiceAvailable = available);
+    }
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      _cleanupSubscriptions();
+      if (mounted) setState(() => _isListening = false);
+    } else {
+      final started = await _voiceService.startListening(
+        existingText: _controller.text,
+      );
+      if (!started) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Speech recognition is not available on this device.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      _resultSubscription = _voiceService.onResult.listen((result) {
+        if (!mounted) return;
+        final text = result.text;
+        _controller.text = text;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: text.length),
+        );
+        widget.onChanged?.call(text);
+
+        if (result.isFinal) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupSubscriptions();
+        }
+      });
+
+      _statusSubscription = _voiceService.onStatusChanged.listen((status) {
+        if (status == VoiceStatus.stopped || status == VoiceStatus.error) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupSubscriptions();
+        }
+      });
+
+      if (mounted) setState(() => _isListening = true);
+    }
+  }
+
+  void _cleanupSubscriptions() {
+    _resultSubscription?.cancel();
+    _resultSubscription = null;
+    _statusSubscription?.cancel();
+    _statusSubscription = null;
+  }
+
+  @override
+  void dispose() {
+    _cleanupSubscriptions();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final InputDecoration baseDecoration = decoration ?? const InputDecoration(
+    final voiceEnabled = widget.enableVoice && _voiceAvailable;
+    final InputDecoration baseDecoration = widget.decoration ?? const InputDecoration(
       border: OutlineInputBorder(),
       isDense: true,
     );
 
+    final effectiveDecoration = _buildDecoration(baseDecoration, voiceEnabled);
+
     return TextFormField(
-      controller: controller,
-      focusNode: focusNode,
-      readOnly: readOnly,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      minLines: minLines,
+      controller: _controller,
+      focusNode: widget.focusNode,
+      readOnly: widget.readOnly,
+      onChanged: widget.onChanged,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      minLines: widget.minLines,
       maxLines: null,
-      decoration: baseDecoration.copyWith(
-        hintText: hintText ?? baseDecoration.hintText,
-        labelText: labelText ?? baseDecoration.labelText,
-      ),
-      style: style,
-      enabled: enabled,
-      validator: validator,
-      onSaved: onSaved,
-      onEditingComplete: onEditingComplete,
-      onFieldSubmitted: onFieldSubmitted,
-      autovalidateMode: autovalidateMode,
+      decoration: effectiveDecoration,
+      style: widget.style,
+      enabled: widget.enabled,
+      validator: widget.validator,
+      onSaved: widget.onSaved,
+      onEditingComplete: widget.onEditingComplete,
+      onFieldSubmitted: widget.onFieldSubmitted,
+      autovalidateMode: widget.autovalidateMode,
+    );
+  }
+
+  InputDecoration _buildDecoration(InputDecoration base, bool voiceEnabled) {
+    final decorated = base.copyWith(
+      hintText: widget.hintText ?? base.hintText,
+      labelText: widget.labelText ?? base.labelText,
+    );
+
+    if (!voiceEnabled) return decorated;
+
+    final micIcon = _buildMicIcon();
+    final existingSuffix = decorated.suffixIcon;
+    Widget suffixWidget;
+
+    if (existingSuffix != null) {
+      suffixWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [existingSuffix, micIcon],
+      );
+    } else {
+      suffixWidget = micIcon;
+    }
+
+    return decorated.copyWith(suffixIcon: suffixWidget);
+  }
+
+  Widget _buildMicIcon() {
+    final iconColor = widget.voiceIconColor ?? const Color(0xFFFFB800);
+
+    if (_isListening) {
+      return Container(
+        width: 36,
+        height: 36,
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: IconButton(
+          icon: Icon(Icons.mic, color: iconColor, size: 18),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: _toggleVoiceInput,
+          tooltip: 'Stop voice input',
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: Icon(Icons.mic_none_outlined, color: iconColor, size: 18),
+      padding: const EdgeInsets.only(right: 4),
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: _toggleVoiceInput,
+      tooltip: 'Voice input',
     );
   }
 }

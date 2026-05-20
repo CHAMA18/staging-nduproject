@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
@@ -176,7 +177,7 @@ class _AgileSprintCalendarScreenState
                     if (_isLoading)
                       const Center(child: CircularProgressIndicator())
                     else ...[
-                      TextField(
+                      VoiceTextField(
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Search sprints...',
@@ -216,7 +217,7 @@ class _AgileSprintCalendarScreenState
                               fontWeight: FontWeight.w600,
                               color: _kHeadline)),
                       const SizedBox(height: 8),
-                      TextField(
+                      VoiceTextField(
                         controller: _ceremonyController,
                         decoration: const InputDecoration(
                           hintText:
@@ -387,13 +388,13 @@ class _SprintEditDialogState extends State<_SprintEditDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
                   labelText: 'Sprint Name', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: _orderCtrl,
               decoration: const InputDecoration(
                   labelText: 'Sprint #', border: OutlineInputBorder()),
@@ -437,7 +438,7 @@ class _SprintEditDialogState extends State<_SprintEditDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: _goalCtrl,
               decoration: const InputDecoration(
                   labelText: 'Sprint Goal', border: OutlineInputBorder()),

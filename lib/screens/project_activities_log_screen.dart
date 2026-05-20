@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/activity_log_panel.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectActivitiesLogScreen extends StatefulWidget {
   const ProjectActivitiesLogScreen({super.key});
 
@@ -127,7 +128,7 @@ class _ProjectActivitiesLogScreenState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                       onChanged: (value) {
                         setModalState(() {
                           localQuery = value;
@@ -1409,7 +1410,7 @@ class _FilterToolbar extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: searchWidth,
-                    child: TextField(
+                    child: VoiceTextField(
                       controller: searchController,
                       onChanged: onSearchChanged,
                       decoration: InputDecoration(
@@ -2250,7 +2251,7 @@ class _ActivityField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         enabled: enabled,
         maxLines: maxLines,

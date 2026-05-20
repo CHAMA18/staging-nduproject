@@ -14,6 +14,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
@@ -410,7 +411,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: _labelCtrl,
               decoration: const InputDecoration(
                   labelText: 'Release Label', border: OutlineInputBorder()),
@@ -419,7 +420,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     controller: _versionCtrl,
                     decoration: const InputDecoration(
                         labelText: 'Version', border: OutlineInputBorder()),
@@ -427,7 +428,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     controller: _piCtrl,
                     decoration: const InputDecoration(
                         labelText: 'PI Number', border: OutlineInputBorder()),
@@ -437,7 +438,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
               ],
             ),
             const SizedBox(height: 10),
-            TextField(
+            VoiceTextField(
               controller: _trainCtrl,
               decoration: const InputDecoration(
                   labelText: 'Release Train / ART Name',
@@ -476,7 +477,7 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
               },
             ),
             const SizedBox(height: 10),
-            TextField(
+            VoiceTextField(
               controller: _goalCtrl,
               decoration: const InputDecoration(
                   labelText: 'Release Goal', border: OutlineInputBorder()),

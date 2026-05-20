@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/user_access_chip.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Summary screen
 /// Mirrors the provided layout with shared workspace chrome,
 /// large notes area, summary text panel, and AI hint + Next controls.
@@ -176,7 +177,7 @@ class _SummaryPanel extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       padding: const EdgeInsets.all(16),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         minLines: 12,
         maxLines: null,
@@ -267,7 +268,7 @@ Widget _roundedField({required TextEditingController controller, required String
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       minLines: minLines,
       maxLines: null,

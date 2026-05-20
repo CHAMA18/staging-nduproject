@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanSolutionsScreen extends StatelessWidget {
   const ExecutionPlanSolutionsScreen({super.key});
 
@@ -210,25 +211,25 @@ class _ExecutionPlanTable extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: toolController,
                   decoration: const InputDecoration(labelText: 'Tool *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description *'),
                   maxLines: 2),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: sourceController,
                   decoration: const InputDecoration(labelText: 'Source *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: costController,
                   decoration: const InputDecoration(
                       labelText: 'Cost', hintText: 'Optional')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: commentsController,
                   decoration: const InputDecoration(labelText: 'Comments *'),
                   maxLines: 3),

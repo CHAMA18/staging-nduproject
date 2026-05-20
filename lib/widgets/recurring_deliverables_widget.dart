@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/inline_editable_text.dart';
 import 'package:ndu_project/widgets/progress_quick_actions.dart';
 import 'package:intl/intl.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Recurring Deliverables Tracking sub-page
 class RecurringDeliverablesWidget extends StatefulWidget {
   const RecurringDeliverablesWidget({
@@ -308,7 +309,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextField(
+                        VoiceTextField(
                           controller: titleController,
                           decoration: const InputDecoration(
                             labelText: 'Title',
@@ -316,7 +317,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: descriptionController,
                           minLines: 3,
                           maxLines: 5,
@@ -370,7 +371,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: ownerController,
                           decoration: const InputDecoration(
                             labelText: 'Owner',
@@ -378,7 +379,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: notesController,
                           minLines: 2,
                           maxLines: 4,

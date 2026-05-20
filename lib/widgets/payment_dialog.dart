@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/services/subscription_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _pageBackground = Color(0xFFF5F6F8);
 const Color _primaryText = Color(0xFF0F0F0F);
 const Color _secondaryText = Color(0xFF5A5C60);
@@ -505,7 +506,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: _couponController,
                         decoration: InputDecoration(
                           hintText: 'Enter coupon code',

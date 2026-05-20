@@ -1,3 +1,4 @@
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -804,12 +805,12 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
       title: Text(existing == null ? 'Add security control' : 'Edit security control'),
       content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: patternCtrl, decoration: const InputDecoration(labelText: 'Pattern name', border: OutlineInputBorder())),
+        VoiceTextField(controller: patternCtrl, decoration: const InputDecoration(labelText: 'Pattern name', border: OutlineInputBorder())),
         const SizedBox(height: 12),
-        TextField(controller: decisionCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Decision & scope', border: OutlineInputBorder())),
+        VoiceTextField(controller: decisionCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Decision & scope', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
           Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
@@ -843,12 +844,12 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
       title: Text(existing == null ? 'Add performance hotspot' : 'Edit performance hotspot'),
       content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: hotspotCtrl, decoration: const InputDecoration(labelText: 'Service hotspot', border: OutlineInputBorder())),
+        VoiceTextField(controller: hotspotCtrl, decoration: const InputDecoration(labelText: 'Service hotspot', border: OutlineInputBorder())),
         const SizedBox(height: 12),
-        TextField(controller: focusCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Design focus', border: OutlineInputBorder())),
+        VoiceTextField(controller: focusCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Design focus', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: TextField(controller: slaCtrl, decoration: const InputDecoration(labelText: 'SLA target', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: slaCtrl, decoration: const InputDecoration(labelText: 'SLA target', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
           Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
@@ -882,12 +883,12 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
       title: Text(existing == null ? 'Add integration flow' : 'Edit integration flow'),
       content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: flowCtrl, decoration: const InputDecoration(labelText: 'Flow name', border: OutlineInputBorder())),
+        VoiceTextField(controller: flowCtrl, decoration: const InputDecoration(labelText: 'Flow name', border: OutlineInputBorder())),
         const SizedBox(height: 12),
-        TextField(controller: systemCtrl, decoration: const InputDecoration(labelText: 'External system', border: OutlineInputBorder())),
+        VoiceTextField(controller: systemCtrl, decoration: const InputDecoration(labelText: 'External system', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
           Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _statusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
@@ -922,18 +923,18 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
       title: Text(existing == null ? 'Add compliance standard' : 'Edit compliance standard'),
       content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: standardCtrl, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder())),
+        VoiceTextField(controller: standardCtrl, decoration: const InputDecoration(labelText: 'Standard', border: OutlineInputBorder())),
         const SizedBox(height: 12),
-        TextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+        VoiceTextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
           Expanded(child: DropdownButtonFormField<String>(initialValue: status, items: _complianceStatusOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: (v) { if (v != null) setModalState(() => status = v); }, decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()))),
         ]),
         const SizedBox(height: 12),
-        TextField(controller: evidenceCtrl, decoration: const InputDecoration(labelText: 'Evidence / notes', border: OutlineInputBorder())),
+        VoiceTextField(controller: evidenceCtrl, decoration: const InputDecoration(labelText: 'Evidence / notes', border: OutlineInputBorder())),
       ])),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
@@ -966,14 +967,14 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     final saved = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (context, setModalState) => AlertDialog(
       title: Text(existing == null ? 'Add review gate' : 'Edit review gate'),
       content: SizedBox(width: 560, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: gateCtrl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
+        VoiceTextField(controller: gateCtrl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
         const SizedBox(height: 12),
-        TextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+        VoiceTextField(controller: descCtrl, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: TextField(controller: approverCtrl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: approverCtrl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
           const SizedBox(width: 12),
-          Expanded(child: TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()))),
+          Expanded(child: VoiceTextField(controller: deptCtrl, decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()))),
         ]),
         const SizedBox(height: 12),
         Row(children: [

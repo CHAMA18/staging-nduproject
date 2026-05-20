@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/theme.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ChartBuilderWorkspace extends StatefulWidget {
   const ChartBuilderWorkspace({super.key});
 
@@ -248,7 +249,7 @@ class _DataRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: point.label,
                   decoration: const InputDecoration(
                     isDense: true,
@@ -261,7 +262,7 @@ class _DataRow extends StatelessWidget {
               const SizedBox(width: 8),
               SizedBox(
                 width: 80,
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: point.value.toStringAsFixed(0),
                   decoration: const InputDecoration(
                     isDense: true,

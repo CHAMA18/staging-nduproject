@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// A world-class "Select Project" button styled with KAZ AI chat bubble theme.
 /// Features smooth animations, gradient backgrounds, and exceptional visual design.
 class SelectProjectKazButton extends StatefulWidget {
@@ -406,7 +407,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextField(
+                    VoiceTextField(
                       controller: _projectNameController,
                       onChanged: (_) {
                         if (_projectNameError != null) {

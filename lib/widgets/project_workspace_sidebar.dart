@@ -3,6 +3,7 @@ import 'package:ndu_project/widgets/app_logo.dart';
 
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kAccentColor = Color(0xFFFFC812);
 const Color _kTextPrimary = Color(0xFF1A1D1F);
 const Color _kTextSecondary = Color(0xFF6B7280);
@@ -102,7 +103,7 @@ class _ProjectWorkspaceSidebarState extends State<ProjectWorkspaceSidebar> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _kSurfaceBorder),
             ),
-            child: TextField(
+            child: VoiceTextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value),
               style: const TextStyle(color: _kTextPrimary, fontSize: 14, fontWeight: FontWeight.w500),

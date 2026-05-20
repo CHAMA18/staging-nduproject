@@ -13,6 +13,7 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class LessonsLearnedScreen extends StatefulWidget {
   const LessonsLearnedScreen({super.key});
 
@@ -582,7 +583,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                   children: [
                     SizedBox(
                       width: 260,
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: _searchController,
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.search),
@@ -640,7 +641,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
               padding: const EdgeInsets.only(top: 16),
               child: Column(
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search),
@@ -1145,7 +1146,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 24),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: _lessonController,
                     decoration: _inputDecoration('Lesson'),
                     textInputAction: TextInputAction.newline,
@@ -1203,7 +1204,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: VoiceTextFormField(
                           controller: _categoryController,
                           decoration: _inputDecoration('Category',
                               hintText: 'e.g. Process'),
@@ -1216,7 +1217,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
+                        child: VoiceTextFormField(
                           controller: _phaseController,
                           decoration: _inputDecoration('Phase',
                               hintText: 'e.g. Planning'),
@@ -1233,7 +1234,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: VoiceTextFormField(
                           controller: _statusController,
                           decoration: _inputDecoration('Status',
                               hintText: 'e.g. In Review'),
@@ -1246,7 +1247,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
+                        child: VoiceTextFormField(
                           controller: _submittedByController,
                           decoration: _inputDecoration('Submitted By',
                               hintText: 'e.g. Emily Johnson'),
@@ -1260,7 +1261,7 @@ class _LessonDialogState extends State<_LessonDialog> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: _dateController,
                     decoration: _inputDecoration('Date', hintText: 'YYYY-MM-DD')
                         .copyWith(

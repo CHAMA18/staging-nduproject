@@ -1,3 +1,4 @@
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -1807,7 +1808,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
   Widget _dialogField(String label, TextEditingController controller, {String? hint}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         decoration: InputDecoration(
           labelText: label,

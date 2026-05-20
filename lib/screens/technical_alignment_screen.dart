@@ -1,3 +1,4 @@
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -618,7 +619,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           const SizedBox(height: 24),
           _buildStableSectionCard(
             title: 'Technical Alignment Notes',
-            child: TextField(
+            child: VoiceTextField(
               controller: _notesController,
               enabled: _canEditAlignment || _canCreateAlignment,
               minLines: 6,
@@ -1451,7 +1452,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: TextField(
+            child: VoiceTextField(
               controller: _notesController,
               enabled: _canEditAlignment || _canCreateAlignment,
               maxLines: null,
@@ -3298,7 +3299,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     bool enabled = true,
     ValueChanged<String>? onChanged,
   }) {
-    return TextFormField(
+    return VoiceTextFormField(
       initialValue: initialValue,
       enabled: enabled,
       minLines: minLines,

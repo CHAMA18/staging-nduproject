@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PlanningRequirementsScreen extends StatefulWidget {
   const PlanningRequirementsScreen({super.key});
 
@@ -1537,7 +1538,7 @@ $requirementsList
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       padding: const EdgeInsets.all(14),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         minLines: minLines,
         maxLines: null,
@@ -1731,7 +1732,7 @@ class _RequirementRow {
                   ],
                 ),
               ),
-              TextField(
+              VoiceTextField(
                 controller: descriptionController,
                 minLines: 2,
                 maxLines: null,
@@ -1769,7 +1770,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: roleController,
             maxLines: 1,
             onChanged: (_) => onChanged?.call(),
@@ -1806,7 +1807,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: sourceController,
             maxLines: 1,
             onChanged: (_) => onChanged?.call(),
@@ -1821,7 +1822,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: commentsController,
             minLines: 2,
             maxLines: null,
@@ -2198,7 +2199,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
         height: 420,
         child: Column(
           children: [
-            TextField(
+            VoiceTextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(

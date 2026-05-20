@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kMuted = Color(0xFF6B7280);
 const Color _kHeadline = Color(0xFF111827);
@@ -316,7 +317,7 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
                   fontWeight: FontWeight.w600,
                   color: _kHeadline)),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _controllers[f.key],
             decoration: InputDecoration(
               hintText: f.hint,

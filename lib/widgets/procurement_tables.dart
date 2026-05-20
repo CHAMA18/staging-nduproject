@@ -6,6 +6,7 @@ import 'package:ndu_project/models/procurement/procurement_models.dart';
 import 'package:ndu_project/widgets/expandable_text.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ContractsTable extends StatefulWidget {
   const ContractsTable({
     super.key,
@@ -641,7 +642,7 @@ class _ResponsiblePickerDialogState extends State<_ResponsiblePickerDialog> {
         height: 380,
         child: Column(
           children: [
-            TextField(
+            VoiceTextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(

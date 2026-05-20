@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/progress_quick_actions.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:intl/intl.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Deliverables Tracking sub-page with Timeline view and full CRUD
 class DeliverablesTrackingWidget extends StatefulWidget {
   const DeliverablesTrackingWidget({
@@ -433,7 +434,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: titleController,
                     decoration: const InputDecoration(
                       labelText: 'Deliverable Title *',
@@ -443,7 +444,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                   const SizedBox(height: 12),
                   TextFormattingToolbar(controller: descriptionController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: descriptionController,
                     decoration: const InputDecoration(
                       labelText: 'Description (Prose)',
@@ -453,7 +454,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: ownerController,
                     decoration: const InputDecoration(
                       labelText: 'Owner',
@@ -461,7 +462,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: TextEditingController(
                       text: selectedDueDate != null
                           ? DateFormat('yyyy-MM-dd').format(selectedDueDate!)
@@ -506,7 +507,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: blockersController,
                     decoration: const InputDecoration(
                       labelText: 'Blockers',
@@ -516,7 +517,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: nextStepsController,
                     decoration: const InputDecoration(
                       labelText: 'Next Steps',
@@ -528,7 +529,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                   const SizedBox(height: 12),
                   TextFormattingToolbar(controller: notesController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: notesController,
                     decoration: const InputDecoration(
                       labelText: 'Notes',

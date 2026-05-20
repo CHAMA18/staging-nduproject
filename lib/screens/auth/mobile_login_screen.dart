@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ndu_project/routing/app_router.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Mobile-optimized Login screen
 /// Matches the design from provided screenshots
 class MobileLoginScreen extends StatefulWidget {
@@ -254,7 +255,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
                 const SizedBox(height: 24),
 
                 // Email
-                TextFormField(
+                VoiceTextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
@@ -280,7 +281,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
                 const SizedBox(height: 16),
 
                 // Password
-                TextFormField(
+                VoiceTextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(

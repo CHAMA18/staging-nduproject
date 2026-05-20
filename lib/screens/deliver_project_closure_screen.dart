@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class DeliverProjectClosureScreen extends StatefulWidget {
   const DeliverProjectClosureScreen({super.key});
 
@@ -400,7 +401,7 @@ class _DeliverProjectClosureScreenState
       initiallyExpanded: true,
       headerIcon: Icons.note_alt_outlined,
       headerIconColor: const Color(0xFF6366F1),
-      child: TextFormField(
+      child: VoiceTextFormField(
         initialValue: _closureNotes.notes,
         maxLines: 5,
         style: const TextStyle(fontSize: 13, height: 1.5),

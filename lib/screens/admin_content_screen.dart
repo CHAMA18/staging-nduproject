@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:provider/provider.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AdminContentScreen extends StatefulWidget {
   const AdminContentScreen({super.key});
 
@@ -529,7 +530,7 @@ class _ContentEditorDialogState extends State<_ContentEditorDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: _keyController,
                 decoration: const InputDecoration(
                   labelText: 'Key',
@@ -538,7 +539,7 @@ class _ContentEditorDialogState extends State<_ContentEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              VoiceTextField(
                 controller: _valueController,
                 maxLines: 3,
                 decoration: const InputDecoration(
@@ -548,7 +549,7 @@ class _ContentEditorDialogState extends State<_ContentEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              VoiceTextField(
                 controller: _categoryController,
                 decoration: const InputDecoration(
                   labelText: 'Category',
@@ -557,7 +558,7 @@ class _ContentEditorDialogState extends State<_ContentEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              VoiceTextField(
                 controller: _descriptionController,
                 maxLines: 2,
                 decoration: const InputDecoration(

@@ -5,6 +5,7 @@ import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class RequirementsTraceabilityDashboard extends StatelessWidget {
   const RequirementsTraceabilityDashboard({
     super.key,
@@ -317,7 +318,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
           'Keep prior planning, AI signals, and design assumptions visible.',
       icon: Icons.history_edu_outlined,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        TextField(
+        VoiceTextField(
           controller: notesController,
           minLines: 6,
           maxLines: 8,
@@ -1218,7 +1219,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF475569))),
           const SizedBox(height: 8),
-          TextFormField(
+          VoiceTextFormField(
             key: ValueKey(fieldKey),
             initialValue: value,
             maxLines: maxLines,

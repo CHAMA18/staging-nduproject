@@ -16,6 +16,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectPlanLevel1ScheduleScreen extends StatefulWidget {
   const ProjectPlanLevel1ScheduleScreen({super.key});
 
@@ -3778,7 +3779,7 @@ class _CondensedSummaryState extends State<ProjectPlanCondensedSummaryScreen> {
             style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 16),
-          TextField(
+          VoiceTextField(
             controller: _summaryController,
             maxLines: 5,
             decoration: InputDecoration(

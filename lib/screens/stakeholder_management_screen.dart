@@ -14,6 +14,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class StakeholderManagementScreen extends StatefulWidget {
   const StakeholderManagementScreen({super.key});
 
@@ -1208,7 +1209,7 @@ class _SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       enabled: enabled,
       onChanged: onChanged,
       decoration: InputDecoration(
@@ -1684,7 +1685,7 @@ class _TextCellState extends State<_TextCell> {
   @override
   Widget build(BuildContext context) {
     return _TableFieldShell(
-      child: TextFormField(
+      child: VoiceTextFormField(
         controller: _controller,
         minLines: widget.minLines,
         maxLines: widget.maxLines,

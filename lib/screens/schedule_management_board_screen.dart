@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const String _currencySymbol = r'$';
 
 class ScheduleManagementBoardScreen extends StatelessWidget {
@@ -197,7 +198,7 @@ class _NotesArea extends StatelessWidget {
           BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 24, offset: const Offset(0, 12)),
         ],
       ),
-      child: TextField(
+      child: VoiceTextField(
         minLines: isMobile ? 4 : 6,
         maxLines: isMobile ? 6 : 10,
         decoration: InputDecoration(
@@ -222,7 +223,7 @@ class _ScheduleToolbar extends StatelessWidget {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Create Task'),
-          content: TextField(
+          content: VoiceTextField(
             controller: controller,
             decoration: const InputDecoration(
               labelText: 'Task title',
@@ -725,7 +726,7 @@ class _BoardFooter extends StatelessWidget {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Add Note'),
-          content: TextField(
+          content: VoiceTextField(
             controller: controller,
             minLines: 3,
             maxLines: 5,

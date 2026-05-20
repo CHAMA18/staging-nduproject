@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/program_workspace_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class FrontEndPlanningTechnologyPersonnelScreen extends StatefulWidget {
   const FrontEndPlanningTechnologyPersonnelScreen({super.key});
 
@@ -90,7 +91,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                       controller: technologyController,
                       decoration: const InputDecoration(
                         labelText: 'Technology Area',
@@ -98,7 +99,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: ownerController,
                       decoration: const InputDecoration(
                         labelText: 'Primary Owner',
@@ -106,7 +107,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: supportController,
                       decoration: const InputDecoration(
                         labelText: 'Backup / Support',
@@ -114,7 +115,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: notesController,
                       minLines: 3,
                       maxLines: 5,
@@ -194,7 +195,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      VoiceTextField(
                         controller: _notes,
                         minLines: 3,
                         maxLines: 5,

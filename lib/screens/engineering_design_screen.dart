@@ -17,6 +17,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ─── Data Models ─────────────────────────────────────────────────────────────
 
 class _StructuralItem {
@@ -1108,7 +1109,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: layerController,
                   decoration: const InputDecoration(
                     labelText: 'Layer name',
@@ -1116,7 +1117,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descController,
                   minLines: 2,
                   maxLines: 4,
@@ -1126,7 +1127,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: specController,
                   decoration: const InputDecoration(
                     labelText: 'Specification',
@@ -1152,7 +1153,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: owner),
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -1233,7 +1234,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Component name',
@@ -1241,7 +1242,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: respController,
                   minLines: 2,
                   maxLines: 4,
@@ -1251,7 +1252,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ifaceController,
                   decoration: const InputDecoration(
                     labelText: 'Interface type',
@@ -1277,7 +1278,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: owner),
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -1360,7 +1361,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: calcController,
                   decoration: const InputDecoration(
                     labelText: 'Calculation name',
@@ -1368,7 +1369,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: typeController,
                   decoration: const InputDecoration(
                     labelText: 'Type',
@@ -1376,7 +1377,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: stdController,
                   decoration: const InputDecoration(
                     labelText: 'Standard',
@@ -1420,7 +1421,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: reviewer),
                   decoration: const InputDecoration(
                     labelText: 'Reviewer',
@@ -1505,7 +1506,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: stdController,
                   decoration: const InputDecoration(
                     labelText: 'Standard',
@@ -1513,7 +1514,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: scopeController,
                   decoration: const InputDecoration(
                     labelText: 'Scope',
@@ -1521,7 +1522,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: applController,
                   decoration: const InputDecoration(
                     labelText: 'Applicability',
@@ -1547,7 +1548,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: evidence),
                   decoration: const InputDecoration(
                     labelText: 'Evidence',
@@ -1556,7 +1557,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   onChanged: (v) => evidence = v,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: owner),
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -1639,7 +1640,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: ecnIdController,
                   decoration: const InputDecoration(
                     labelText: 'ECN ID',
@@ -1647,7 +1648,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: titleController,
                   decoration: const InputDecoration(
                     labelText: 'Title',
@@ -1691,7 +1692,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: originator),
                   decoration: const InputDecoration(
                     labelText: 'Originator',
@@ -1700,7 +1701,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   onChanged: (v) => originator = v,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: approver),
                   decoration: const InputDecoration(
                     labelText: 'Approver',
@@ -1709,7 +1710,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   onChanged: (v) => approver = v,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: date),
                   decoration: const InputDecoration(
                     labelText: 'Date',
@@ -1788,7 +1789,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: gateController,
                   decoration: const InputDecoration(
                     labelText: 'Gate name',
@@ -1796,7 +1797,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: TextEditingController(text: owner),
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -3354,7 +3355,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          TextField(
+          VoiceTextField(
             controller: _notesController,
             maxLines: 3,
             decoration: InputDecoration(
@@ -3372,7 +3373,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: _keyDecisionsController,
             maxLines: 3,
             decoration: InputDecoration(

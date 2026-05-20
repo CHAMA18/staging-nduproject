@@ -20,6 +20,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ContractsTrackingScreen extends StatefulWidget {
   const ContractsTrackingScreen({super.key});
 
@@ -1504,7 +1505,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      VoiceTextField(
                         controller: nameController,
                         decoration: const InputDecoration(
                           labelText: 'Contract / Vendor name *',
@@ -1554,7 +1555,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: expiryController,
                               decoration: const InputDecoration(
                                 labelText: 'Expiry date',
@@ -1566,7 +1567,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                           const SizedBox(width: 12),
                           SizedBox(
                             width: 120,
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: daysController,
                               decoration: const InputDecoration(
                                 labelText: 'Days left',
@@ -1582,7 +1583,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: ownerController,
                               decoration: const InputDecoration(
                                 labelText: 'Renewal owner',
@@ -1593,7 +1594,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: valueController,
                               decoration: const InputDecoration(
                                 labelText: 'Committed value',
@@ -1620,7 +1621,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: notesController,
                         decoration: const InputDecoration(
                           labelText: 'Notes',
@@ -1745,7 +1746,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: titleController,
                         decoration: const InputDecoration(
                           labelText: 'Signal title',
@@ -1759,7 +1760,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: detailController,
                         decoration: const InputDecoration(
                           labelText: 'Why it matters',
@@ -1773,7 +1774,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
+                            child: VoiceTextFormField(
                               controller: ownerController,
                               decoration: const InputDecoration(
                                 labelText: 'Owner',
@@ -1947,7 +1948,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      VoiceTextField(
                         controller: gateController,
                         decoration: const InputDecoration(
                           labelText: 'Approval gate name *',
@@ -1957,7 +1958,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: descController,
                         decoration: const InputDecoration(
                           labelText: 'Description',
@@ -1972,7 +1973,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: approverController,
                               decoration: const InputDecoration(
                                 labelText: 'Approver *',
@@ -2042,7 +2043,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: targetDateController,
                         decoration: const InputDecoration(
                           labelText: 'Target date',
@@ -2051,7 +2052,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      VoiceTextField(
                         controller: notesController,
                         decoration: const InputDecoration(
                           labelText: 'Notes',
@@ -2250,7 +2251,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Vendor/Party Name *',
@@ -2258,7 +2259,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
                     labelText: 'Description *',
@@ -2295,7 +2296,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: paymentTypeController,
                   decoration: const InputDecoration(
                     labelText: 'Payment Type *',
@@ -2326,7 +2327,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: estimatedValueController,
                   decoration: const InputDecoration(
                     labelText: 'Total Value *',
@@ -2365,7 +2366,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: scopeController,
                   decoration: const InputDecoration(
                     labelText: 'Key Terms',
@@ -2375,7 +2376,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                   maxLines: 5,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: disciplineController,
                   decoration: const InputDecoration(
                     labelText: 'Discipline',
@@ -2385,7 +2386,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 const SizedBox(height: 12),
                 TextFormattingToolbar(controller: notesController),
                 const SizedBox(height: 6),
-                TextField(
+                VoiceTextField(
                   controller: notesController,
                   decoration: const InputDecoration(
                     labelText: 'Contract Notes',

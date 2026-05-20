@@ -14,6 +14,7 @@ import '../widgets/planning_ai_notes_card.dart';
 import '../widgets/launch_phase_navigation.dart';
 import '../utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF7F8FC);
 const Color _kAccent = Color(0xFFFFC812);
 const Color _kHeadline = Color(0xFF1A1D1F);
@@ -1200,7 +1201,7 @@ Future<Map<String, dynamic>?> _showSprintDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: nameCtl,
                     decoration: const InputDecoration(labelText: 'Sprint Name'),
                     textCapitalization: TextCapitalization.sentences,
@@ -1228,7 +1229,7 @@ Future<Map<String, dynamic>?> _showSprintDialog(
                     ],
                   ),
                   const SizedBox(height: 14),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: goalCtl,
                     decoration: const InputDecoration(labelText: 'Sprint Goal'),
                     minLines: 2,
@@ -1312,7 +1313,7 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: titleCtl,
                     decoration:
                         const InputDecoration(labelText: 'Deliverable Title'),
@@ -1322,7 +1323,7 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                         : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: descCtl,
                     decoration: const InputDecoration(labelText: 'Description'),
                     minLines: 2,
@@ -1415,12 +1416,12 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: assigneeCtl,
                     decoration: const InputDecoration(labelText: 'Assigned To'),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: criteriaCtl,
                     decoration:
                         const InputDecoration(labelText: 'Acceptance Criteria'),
@@ -1428,14 +1429,14 @@ Future<Map<String, dynamic>?> _showDeliverableDialog(
                     maxLines: 4,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: blockersCtl,
                     decoration: const InputDecoration(labelText: 'Blockers'),
                     minLines: 1,
                     maxLines: 3,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: notesCtl,
                     decoration: const InputDecoration(labelText: 'Notes'),
                     minLines: 1,

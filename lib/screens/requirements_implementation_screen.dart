@@ -1,3 +1,4 @@
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -854,7 +855,7 @@ class _RequirementsImplementationScreenState
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextField(
+                child: VoiceTextField(
                   controller: _sectionApprovalDateController,
                   onChanged: (_) => _scheduleSave(),
                   decoration: const InputDecoration(
@@ -868,7 +869,7 @@ class _RequirementsImplementationScreenState
             ],
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: _sectionApprovalNotesController,
             onChanged: (_) => _scheduleSave(),
             minLines: 2,
@@ -944,7 +945,7 @@ class _RequirementsImplementationScreenState
           Row(
             children: [
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.name,
                   onChanged: (value) => _updateDocumentRow(
                       index, (current) => current.copyWith(name: value)),
@@ -957,7 +958,7 @@ class _RequirementsImplementationScreenState
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.category,
                   onChanged: (value) => _updateDocumentRow(
                       index, (current) => current.copyWith(category: value)),
@@ -970,7 +971,7 @@ class _RequirementsImplementationScreenState
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.version,
                   onChanged: (value) => _updateDocumentRow(
                       index, (current) => current.copyWith(version: value)),
@@ -1006,7 +1007,7 @@ class _RequirementsImplementationScreenState
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.linkedSpecId,
                   onChanged: (value) => _updateDocumentRow(index,
                       (current) => current.copyWith(linkedSpecId: value)),
@@ -1019,7 +1020,7 @@ class _RequirementsImplementationScreenState
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.status,
                   onChanged: (value) => _updateDocumentRow(
                       index, (current) => current.copyWith(status: value)),
@@ -1036,7 +1037,7 @@ class _RequirementsImplementationScreenState
           Row(
             children: [
               Expanded(
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: row.link,
                   onChanged: (value) => _updateDocumentRow(
                       index, (current) => current.copyWith(link: value)),
@@ -2722,7 +2723,7 @@ class _RequirementsImplementationScreenState
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: _notesController,
             minLines: 4,
             maxLines: 10,
@@ -2784,7 +2785,7 @@ class _RequirementsImplementationScreenState
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: reqIdController,
                           decoration: const InputDecoration(
                             labelText: 'Requirement ID *',
@@ -2821,7 +2822,7 @@ class _RequirementsImplementationScreenState
                   ),
                   const SizedBox(height: 12),
                   // Title
-                  TextField(
+                  VoiceTextField(
                     controller: titleController,
                     decoration: const InputDecoration(
                       labelText: 'Title *',
@@ -2830,7 +2831,7 @@ class _RequirementsImplementationScreenState
                   ),
                   const SizedBox(height: 12),
                   // Owner
-                  TextField(
+                  VoiceTextField(
                     controller: ownerController,
                     decoration: const InputDecoration(
                       labelText: 'Owner *',
@@ -2839,7 +2840,7 @@ class _RequirementsImplementationScreenState
                   ),
                   const SizedBox(height: 12),
                   // Definition
-                  TextField(
+                  VoiceTextField(
                     controller: definitionController,
                     minLines: 2,
                     maxLines: 4,
@@ -2930,7 +2931,7 @@ class _RequirementsImplementationScreenState
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: artifactLabelController,
                           decoration: const InputDecoration(
                             labelText: 'Artifact Label',
@@ -2991,7 +2992,7 @@ class _RequirementsImplementationScreenState
                   ),
                   const SizedBox(height: 12),
                   // Acceptance Criteria
-                  TextField(
+                  VoiceTextField(
                     controller: criteriaController,
                     minLines: 2,
                     maxLines: 4,
@@ -3005,7 +3006,7 @@ class _RequirementsImplementationScreenState
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: testMethodController,
                           decoration: const InputDecoration(
                             labelText: 'Test Method',
@@ -3015,7 +3016,7 @@ class _RequirementsImplementationScreenState
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: sourceDocController,
                           decoration: const InputDecoration(
                             labelText: 'Source Document',
@@ -3027,7 +3028,7 @@ class _RequirementsImplementationScreenState
                   ),
                   const SizedBox(height: 12),
                   // Artifact URL
-                  TextField(
+                  VoiceTextField(
                     controller: artifactUrlController,
                     decoration: const InputDecoration(
                       labelText: 'Artifact URL',
@@ -3040,7 +3041,7 @@ class _RequirementsImplementationScreenState
                     children: [
                       Expanded(
                         flex: 3,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: conflictNoteController,
                           decoration: const InputDecoration(
                             labelText: 'Conflict Note',
@@ -3127,7 +3128,7 @@ class _RequirementsImplementationScreenState
     int maxLines = 1,
     required ValueChanged<String> onChanged,
   }) {
-    return TextField(
+    return VoiceTextField(
       controller: TextEditingController(text: value),
       onChanged: onChanged,
       maxLines: maxLines,

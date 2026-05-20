@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/routing/app_router.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Mobile-optimized Create Account screen
 /// Matches the design from provided screenshots
 class MobileCreateAccountScreen extends StatefulWidget {
@@ -263,7 +264,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _firstNameController,
                         decoration: InputDecoration(
                           labelText: 'First Name',
@@ -284,7 +285,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _lastNameController,
                         decoration: InputDecoration(
                           labelText: 'Last Name',
@@ -309,7 +310,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                 const SizedBox(height: 16),
 
                 // Company Name
-                TextFormField(
+                VoiceTextFormField(
                   controller: _companyController,
                   decoration: InputDecoration(
                     labelText: 'Company Name',
@@ -325,7 +326,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                 const SizedBox(height: 16),
 
                 // Email
-                TextFormField(
+                VoiceTextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
@@ -351,7 +352,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                 const SizedBox(height: 16),
 
                 // Password
-                TextFormField(
+                VoiceTextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
@@ -387,7 +388,7 @@ class _MobileCreateAccountScreenState extends State<MobileCreateAccountScreen> {
                 const SizedBox(height: 16),
 
                 // Confirm Password
-                TextFormField(
+                VoiceTextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
                   decoration: InputDecoration(

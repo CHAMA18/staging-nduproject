@@ -24,6 +24,7 @@ import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectFrameworkScreen extends StatefulWidget {
   const ProjectFrameworkScreen({super.key});
 
@@ -1157,7 +1158,7 @@ class _ResizableTextField extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFD1D5DB)),
           ),
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             focusNode: focusNode,
             minLines: isExpandable ? null : 1,
@@ -1249,7 +1250,7 @@ Widget _roundedField(
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       focusNode: focusNode,
       minLines: minLines,

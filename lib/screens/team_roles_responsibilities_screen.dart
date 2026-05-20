@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:ndu_project/openai/openai_config.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class TeamRolesResponsibilitiesScreen extends StatefulWidget {
   const TeamRolesResponsibilitiesScreen({super.key});
 
@@ -322,7 +323,7 @@ class _TeamRolesResponsibilitiesScreenState
                                   border: Border.all(
                                       color: const Color(0xFFE5E7EB)),
                                 ),
-                                child: TextField(
+                                child: VoiceTextField(
                                   controller: _notesSectionController,
                                   maxLines: 4,
                                   decoration: const InputDecoration(
@@ -534,7 +535,7 @@ class _TeamRolesResponsibilitiesScreenState
         children: [
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.area,
               decoration: _inlineInputDecoration('Role/Area'),
               onChanged: (value) => _updateCoverage(row.copyWith(area: value)),
@@ -542,7 +543,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.owner,
               decoration: _inlineInputDecoration('Primary owner'),
               onChanged: (value) => _updateCoverage(row.copyWith(owner: value)),
@@ -550,7 +551,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.backup,
               decoration: _inlineInputDecoration('Backup'),
               onChanged: (value) =>
@@ -575,7 +576,7 @@ class _TeamRolesResponsibilitiesScreenState
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.notes,
               decoration: _inlineInputDecoration('Notes'),
               onChanged: (value) => _updateCoverage(row.copyWith(notes: value)),
@@ -650,7 +651,7 @@ class _TeamRolesResponsibilitiesScreenState
         children: [
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.role,
               decoration: _inlineInputDecoration('Role'),
               onChanged: (value) => _updateHiring(row.copyWith(role: value)),
@@ -658,7 +659,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.headcount,
               decoration: _inlineInputDecoration('Headcount'),
               keyboardType: TextInputType.number,
@@ -668,7 +669,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.startDate,
               decoration: _inlineInputDecoration('Start date'),
               onChanged: (value) =>
@@ -678,7 +679,7 @@ class _TeamRolesResponsibilitiesScreenState
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.rampPlan,
               decoration: _inlineInputDecoration('Ramp plan'),
               onChanged: (value) =>
@@ -767,7 +768,7 @@ class _TeamRolesResponsibilitiesScreenState
         children: [
           Expanded(
             flex: 2,
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.decision,
               decoration: _inlineInputDecoration('Decision area'),
               onChanged: (value) =>
@@ -776,7 +777,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.owner,
               decoration: _inlineInputDecoration('Owner'),
               onChanged: (value) => _updateDecision(row.copyWith(owner: value)),
@@ -784,7 +785,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.approver,
               decoration: _inlineInputDecoration('Approver'),
               onChanged: (value) =>
@@ -793,7 +794,7 @@ class _TeamRolesResponsibilitiesScreenState
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextFormField(
+            child: VoiceTextFormField(
               initialValue: row.cadence,
               decoration: _inlineInputDecoration('Cadence'),
               onChanged: (value) =>
@@ -1280,7 +1281,7 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
+          VoiceTextFormField(
             initialValue: metric.value,
             decoration: const InputDecoration(
                 border: InputBorder.none, hintText: 'Value'),
@@ -1291,7 +1292,7 @@ class _MetricCard extends StatelessWidget {
             onChanged: (value) => onChanged(metric.copyWith(value: value)),
           ),
           const SizedBox(height: 6),
-          TextFormField(
+          VoiceTextFormField(
             initialValue: metric.label,
             decoration: const InputDecoration(
                 border: InputBorder.none, hintText: 'Label'),
@@ -1742,7 +1743,7 @@ class _WorkProgressEntryEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          TextFormField(
+          VoiceTextFormField(
             controller: draft.nameController,
             style:
                 theme.textTheme.bodyMedium?.copyWith(color: colors.onSurface),
@@ -2431,7 +2432,7 @@ class _DialogTextField extends StatelessWidget {
         theme.textTheme.bodyMedium?.copyWith(color: colors.outline);
     final inputBorderRadius = BorderRadius.circular(16);
 
-    return TextFormField(
+    return VoiceTextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,

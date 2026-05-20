@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanStakeholderIdentificationScreen extends StatelessWidget {
   const ExecutionPlanStakeholderIdentificationScreen({super.key});
 
@@ -173,36 +174,36 @@ class _StakeholderIdentificationSectionState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: stakeholderGroupController,
                 decoration:
                     const InputDecoration(labelText: 'Stakeholder Group *'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: categoryController,
                 decoration: const InputDecoration(labelText: 'Category'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: influenceController,
                 decoration: const InputDecoration(labelText: 'Influence'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: keyConcernsController,
                 decoration: const InputDecoration(labelText: 'Key Concerns'),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: engagementStrategyController,
                 decoration:
                     const InputDecoration(labelText: 'Engagement Strategy'),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: commentsController,
                 decoration: const InputDecoration(labelText: 'Comments'),
                 maxLines: 2,

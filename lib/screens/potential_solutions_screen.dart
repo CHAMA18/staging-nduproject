@@ -32,6 +32,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PotentialSolutionsScreen extends StatefulWidget {
   const PotentialSolutionsScreen({super.key});
 
@@ -677,7 +678,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
             ),
           ),
           const SizedBox(height: 4),
-          TextField(
+          VoiceTextField(
             controller: solution.titleController,
             onChanged: (_) => _saveSolutions(),
             decoration: InputDecoration(
@@ -707,7 +708,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           const SizedBox(height: 4),
           TextFormattingToolbar(controller: solution.descriptionController),
           const SizedBox(height: 6),
-          TextField(
+          VoiceTextField(
             controller: solution.descriptionController,
             minLines: 3,
             maxLines: 5,
@@ -1338,7 +1339,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: _notesController,
                         keyboardType: TextInputType.multiline,
                         style:
@@ -2168,7 +2169,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                 TextFormattingToolbar(controller: controller),
                 const SizedBox(height: 6),
                 if (isMobile)
-                  TextField(
+                  VoiceTextField(
                     controller: controller,
                     decoration: InputDecoration(
                       hintText: hintText,
@@ -2183,7 +2184,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                     },
                   )
                 else
-                  TextField(
+                  VoiceTextField(
                     controller: controller,
                     style: const TextStyle(
                       fontSize: 14,
@@ -2237,7 +2238,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
               ],
             )
           : isMobile
-              ? TextField(
+              ? VoiceTextField(
                   controller: controller,
                   decoration: InputDecoration(
                     hintText: hintText,
@@ -2250,7 +2251,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                   onChanged: (value) =>
                       _recordSolutionFieldEdit(solution, fieldName, value),
                 )
-              : TextField(
+              : VoiceTextField(
                   controller: controller,
                   style: const TextStyle(
                     fontSize: 14,

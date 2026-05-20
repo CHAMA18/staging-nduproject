@@ -7,6 +7,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/vendor_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProcurementAssignableMemberOption {
   const ProcurementAssignableMemberOption({
     required this.id,
@@ -657,7 +658,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
               ),
             ],
             const SizedBox(height: 12),
-            TextFormField(
+            VoiceTextFormField(
               controller: _nameCtrl,
               focusNode: _nameFocus,
               decoration: _dialogDecoration(
@@ -668,7 +669,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            VoiceTextFormField(
               controller: _descCtrl,
               maxLines: 2,
               decoration: _dialogDecoration(
@@ -800,7 +801,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _budgetCtrl,
                     keyboardType: TextInputType.number,
                     decoration: _dialogDecoration(
@@ -922,7 +923,7 @@ class _ResponsibleMemberPickerDialogState
         height: 420,
         child: Column(
           children: [
-            TextField(
+            VoiceTextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
@@ -1436,7 +1437,7 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
               ),
             ],
             const SizedBox(height: 12),
-            TextFormField(
+            VoiceTextFormField(
               controller: _nameCtrl,
               focusNode: _nameFocus,
               decoration: _dialogDecoration(
@@ -1505,7 +1506,7 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
             ),
             if (_usingOtherCategory || _category == 'Other') ...[
               const SizedBox(height: 12),
-              TextFormField(
+              VoiceTextFormField(
                 controller: _otherCategoryCtrl,
                 decoration: _dialogDecoration(
                   label: 'Other Category',
@@ -1764,7 +1765,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
               title: 'RFQ overview',
               subtitle: 'Define the category and owner.',
             ),
-            TextFormField(
+            VoiceTextFormField(
               controller: _titleCtrl,
               focusNode: _titleFocus,
               decoration: _dialogDecoration(
@@ -1793,7 +1794,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _ownerCtrl,
                     decoration: _dialogDecoration(
                         label: 'Owner', hint: 'e.g. J. Patel'),
@@ -1810,7 +1811,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _budgetCtrl,
                     keyboardType: TextInputType.number,
                     decoration: _dialogDecoration(
@@ -1872,7 +1873,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _invitedCtrl,
                     keyboardType: TextInputType.number,
                     decoration: _dialogDecoration(label: 'Invited', hint: '0'),
@@ -1880,7 +1881,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _responsesCtrl,
                     keyboardType: TextInputType.number,
                     decoration:
@@ -2263,7 +2264,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
               title: 'PO details',
               subtitle: 'Define vendor, owner, and category.',
             ),
-            TextFormField(
+            VoiceTextFormField(
               controller: _idCtrl,
               focusNode: _idFocus,
               decoration: _dialogDecoration(
@@ -2275,7 +2276,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
               readOnly: !isEditing && _selectedSourceItem != null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            VoiceTextFormField(
               controller: _vendorCtrl,
               decoration: _dialogDecoration(
                   label: 'Vendor', hint: 'e.g. GreenLeaf Office'),
@@ -2302,7 +2303,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _ownerCtrl,
                     decoration:
                         _dialogDecoration(label: 'Owner', hint: 'e.g. L. Chen'),
@@ -2316,7 +2317,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
               subtitle: 'Track financials and delivery.',
             ),
             const SizedBox(height: 8),
-            TextFormField(
+            VoiceTextFormField(
               controller: _amountCtrl,
               keyboardType: TextInputType.number,
               decoration: _dialogDecoration(
@@ -2573,7 +2574,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
               title: 'Contract basics',
               subtitle: 'Identify the agreement and parties.',
             ),
-            TextFormField(
+            VoiceTextFormField(
               controller: _titleCtrl,
               decoration: _dialogDecoration(
                   label: 'Contract item',
@@ -2586,7 +2587,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _contractorCtrl,
                     decoration: _dialogDecoration(
                         label: 'Contractor', hint: 'e.g. Acme Electric'),
@@ -2598,7 +2599,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: VoiceTextFormField(
                     controller: _ownerCtrl,
                     decoration: _dialogDecoration(
                         label: 'Contract Owner', hint: 'e.g. T. Ndlovu'),
@@ -2607,7 +2608,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
               ],
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            VoiceTextFormField(
               controller: _descCtrl,
               maxLines: 2,
               decoration: _dialogDecoration(
@@ -2620,7 +2621,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
               subtitle: 'Set the financial and timeline bounds.',
             ),
             const SizedBox(height: 8),
-            TextFormField(
+            VoiceTextFormField(
               controller: _costCtrl,
               keyboardType: TextInputType.number,
               decoration: _dialogDecoration(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PremiumEditDialog extends StatelessWidget {
   const PremiumEditDialog({
     super.key,
@@ -153,7 +154,7 @@ class PremiumEditDialog extends StatelessWidget {
         border: Border.all(color: const Color(0xFFD1D5DB)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,

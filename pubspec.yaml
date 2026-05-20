@@ -37,6 +37,7 @@ dependencies:
   flutter_native_splash: ^2.3.0
   smooth_page_indicator: ^1.1.0
 
+  speech_to_text: ^7.0.0
   vector_math: any
 dev_dependencies:
   flutter_test:

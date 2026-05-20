@@ -10,6 +10,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/services/contract_service.dart'
     as planning_contracts;
+import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/services/planning_contracting_service.dart';
 import 'package:ndu_project/services/procurement_seeding_service.dart';
 import 'package:ndu_project/services/procurement_service.dart';
@@ -878,7 +879,7 @@ class _PlanningProcurementV2ScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: nameController,
                 decoration: const InputDecoration(
                   labelText: 'Vendor or Contact Name (Optional)',
@@ -887,7 +888,7 @@ class _PlanningProcurementV2ScreenState
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email Address',
@@ -1770,7 +1771,7 @@ class _PlanningProcurementV2ScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Step name',
@@ -1781,7 +1782,7 @@ class _PlanningProcurementV2ScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: durationController,
                         keyboardType: TextInputType.number,
                         decoration:

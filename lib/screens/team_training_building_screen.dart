@@ -22,6 +22,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class TeamTrainingAndBuildingScreen extends StatefulWidget {
   const TeamTrainingAndBuildingScreen({super.key});
 
@@ -656,7 +657,7 @@ class _TeamTrainingAndBuildingScreenState
               ),
               const SizedBox(height: 16),
               PremiumEditDialog.fieldLabel('Template / Notes'),
-              TextField(
+              VoiceTextField(
                 controller: descriptionController,
                 maxLines: 8,
                 decoration: InputDecoration(
@@ -887,7 +888,7 @@ class _TeamTrainingAndBuildingScreenState
                 ),
               ],
               const SizedBox(height: 10),
-              TextField(
+              VoiceTextField(
                 controller: manualUrlController,
                 decoration: InputDecoration(
                   labelText: 'Or Paste Existing Download URL',
@@ -1001,7 +1002,7 @@ class _TeamTrainingAndBuildingScreenState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    VoiceTextField(
                       controller: titleController,
                       decoration: InputDecoration(
                         labelText: 'Activity Title',
@@ -1046,7 +1047,7 @@ class _TeamTrainingAndBuildingScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: templateController,
                       maxLines: 14,
                       decoration: InputDecoration(
@@ -1216,7 +1217,7 @@ class _TeamTrainingAndBuildingScreenState
                       ),
                     ],
                     const SizedBox(height: 10),
-                    TextField(
+                    VoiceTextField(
                       controller: manualUrlController,
                       decoration: InputDecoration(
                         labelText: 'Or Paste Existing Download URL',
@@ -1234,7 +1235,7 @@ class _TeamTrainingAndBuildingScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: VoiceTextField(
                             controller: dateController,
                             decoration: InputDecoration(
                               labelText: 'Date',
@@ -1250,7 +1251,7 @@ class _TeamTrainingAndBuildingScreenState
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: TextField(
+                          child: VoiceTextField(
                             controller: durationController,
                             decoration: InputDecoration(
                               labelText: 'Duration / Interval',

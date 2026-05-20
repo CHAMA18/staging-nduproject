@@ -21,6 +21,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class StartUpPlanningOperationsScreen extends StatelessWidget {
   const StartUpPlanningOperationsScreen({super.key});
 
@@ -1236,7 +1237,7 @@ class _SimpleField extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
         width: 280,
-        child: TextFormField(initialValue: initialValue, decoration: _fieldDecoration(label), onChanged: onChanged),
+        child: VoiceTextFormField(initialValue: initialValue, decoration: _fieldDecoration(label), onChanged: onChanged),
       );
 }
 
@@ -1250,7 +1251,7 @@ class _SimpleFieldBlock extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E7EB))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12), TextFormField(initialValue: initialValue, maxLines: null, decoration: _fieldDecoration(label), onChanged: onChanged)]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12), VoiceTextFormField(initialValue: initialValue, maxLines: null, decoration: _fieldDecoration(label), onChanged: onChanged)]),
       );
 }
 
@@ -1369,7 +1370,7 @@ class _ChecklistRow extends StatelessWidget {
               ),
               Expanded(
                 flex: 3,
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: entry.title,
                   decoration: _fieldDecoration('Item / deliverable'),
                   onChanged: (value) => onChanged(
@@ -1385,7 +1386,7 @@ class _ChecklistRow extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 flex: 2,
-                child: TextFormField(
+                child: VoiceTextFormField(
                   initialValue: entry.owner,
                   decoration: _fieldDecoration('Owner'),
                   onChanged: (value) => onChanged(
@@ -1406,7 +1407,7 @@ class _ChecklistRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          TextFormField(
+          VoiceTextFormField(
             initialValue: entry.notes,
             maxLines: 2,
             decoration: _fieldDecoration('Notes / evidence / link / trigger'),
@@ -1574,7 +1575,7 @@ class _RegisterRow extends StatelessWidget {
       );
 }
 
-Widget _registerField(String label, String initialValue, ValueChanged<String> onChanged) => SizedBox(width: 180, child: TextFormField(initialValue: initialValue, decoration: _fieldDecoration(label), onChanged: onChanged));
+Widget _registerField(String label, String initialValue, ValueChanged<String> onChanged) => SizedBox(width: 180, child: VoiceTextFormField(initialValue: initialValue, decoration: _fieldDecoration(label), onChanged: onChanged));
 InputDecoration _fieldDecoration(String hintText)=>InputDecoration(hintText:hintText,isDense:true,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:const BorderSide(color:Color(0xFFE5E7EB))),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:const BorderSide(color:Color(0xFFE5E7EB))));
 class _StatusChip extends StatelessWidget { const _StatusChip({required this.label,required this.color,this.background}); final String label; final Color color; final Color? background; @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),decoration:BoxDecoration(color:background??color.withOpacity(0.12),borderRadius:BorderRadius.circular(999)),child:Text(label,style:TextStyle(fontSize:11,fontWeight:FontWeight.w600,color:color))); }
 class _Debouncer { _Debouncer({Duration? delay}):delay=delay??const Duration(milliseconds:700); final Duration delay; Timer? _timer; void run(void Function() action){_timer?.cancel();_timer=Timer(delay,action);} void dispose(){_timer?.cancel();} }

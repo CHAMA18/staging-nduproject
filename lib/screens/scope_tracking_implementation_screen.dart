@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/scope_tracking_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ScopeTrackingImplementationScreen extends StatefulWidget {
   const ScopeTrackingImplementationScreen({super.key});
 
@@ -619,7 +620,7 @@ class _ScopeTrackingImplementationScreenState
                   ),
                   if (selectedScopeItem == null ||
                       selectedScopeItem == '__NEW__')
-                    TextField(
+                    VoiceTextField(
                       controller: scopeItemController,
                       decoration: const InputDecoration(
                         labelText: 'Scope Item/Deliverable',
@@ -673,7 +674,7 @@ class _ScopeTrackingImplementationScreenState
                       setDialogState(() => selectedVerificationMethod = value);
                     },
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: verificationStepsController,
                     decoration: const InputDecoration(
                       labelText: 'Verification Steps (use "." bullets)',
@@ -681,7 +682,7 @@ class _ScopeTrackingImplementationScreenState
                     ),
                     maxLines: 4,
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: trackingNotesController,
                     decoration: const InputDecoration(
                       labelText: 'Tracking Notes (prose, no bullets)',

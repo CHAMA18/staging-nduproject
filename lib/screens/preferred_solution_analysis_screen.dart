@@ -38,6 +38,7 @@ import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/solution_detail_section.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PreferredSolutionAnalysisScreen extends StatefulWidget {
   final String notes;
   final List<AiSolutionItem> solutions;
@@ -1801,7 +1802,7 @@ class _PreferredSolutionAnalysisScreenState
           onBeforeUndo: _saveAnalysisData,
         ),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: _notesController,
           keyboardType: TextInputType.multiline,
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
@@ -3942,7 +3943,7 @@ class _PreferredSolutionAnalysisScreenState
             ],
           ),
           const SizedBox(height: 16),
-          TextField(
+          VoiceTextField(
             controller: _projectNameController,
             onChanged: (_) {
               if (_projectNameError != null) {
@@ -4724,7 +4725,7 @@ class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
                 ),
               ),
               const SizedBox(height: 24),
-              TextField(
+              VoiceTextField(
                 controller: _nameController,
                 onChanged: (_) {
                   if (_suppressNameChange) return;

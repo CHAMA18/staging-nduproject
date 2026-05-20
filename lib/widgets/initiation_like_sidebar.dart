@@ -126,6 +126,7 @@ import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Sidebar styled to match InitiationPhaseScreen's sidebar.
 class InitiationLikeSidebar extends StatefulWidget {
   const InitiationLikeSidebar(
@@ -1940,7 +1941,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE4E7EC)),
                 ),
-                child: TextField(
+                child: VoiceTextField(
                   controller: _searchController,
                   onChanged: (value) => setState(() => _searchQuery = value),
                   style: const TextStyle(

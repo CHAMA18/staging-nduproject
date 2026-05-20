@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/inline_editable_text.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Custom Scope Tracking Table with inline editing, CRUD actions, and AI capabilities
 class ScopeTrackingTableWidget extends StatelessWidget {
   const ScopeTrackingTableWidget({
@@ -623,7 +624,7 @@ class _VerificationStepsCellState extends State<_VerificationStepsCell> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
+          VoiceTextField(
             controller: _controller,
             decoration: const InputDecoration(
               hintText: 'Enter verification steps (use "." bullets)',

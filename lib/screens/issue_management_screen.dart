@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class IssueManagementScreen extends StatefulWidget {
   const IssueManagementScreen({super.key});
 
@@ -676,7 +677,7 @@ class _ProjectIssuesLogCard extends StatelessWidget {
               const Spacer(),
               SizedBox(
                 width: 260,
-                child: TextField(
+                child: VoiceTextField(
                   onChanged: onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Search issues...',
@@ -1123,7 +1124,7 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextFormField(
+                VoiceTextFormField(
                   controller: _titleCtrl,
                   decoration:
                       _decoration('Title', hint: 'e.g. Data migration delay'),
@@ -1164,12 +1165,12 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
                   decoration: _decoration('Status'),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _assigneeCtrl,
                   decoration: _decoration('Assignee', hint: 'Owner'),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _dueDateCtrl,
                   readOnly: true,
                   onTap: _pickDate,
@@ -1179,13 +1180,13 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
                           const Icon(Icons.calendar_today_outlined, size: 18)),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _milestoneCtrl,
                   decoration:
                       _decoration('Milestone', hint: 'Related milestone'),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _descriptionCtrl,
                   minLines: 3,
                   maxLines: 5,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const double _defaultColumnWidth = 160;
 const double _tableHorizontalPadding = 20;
 const double _columnGap = 2;
@@ -459,7 +460,7 @@ class _LaunchEditableCellState extends State<LaunchEditableCell> {
   @override
   Widget build(BuildContext context) {
     final inTable = _TableLayoutInherited.of(context) != null;
-    final child = TextField(
+    final child = VoiceTextField(
       controller: _controller,
       onChanged: widget.onChanged,
       style: TextStyle(

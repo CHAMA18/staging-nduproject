@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/program_workspace_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class FrontEndPlanningPersonnelScreen extends StatefulWidget {
   const FrontEndPlanningPersonnelScreen({super.key});
 
@@ -114,7 +115,7 @@ class _FrontEndPlanningPersonnelScreenState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextField(
+                        VoiceTextField(
                           controller: roleController,
                           decoration: const InputDecoration(
                             labelText: 'Role',
@@ -125,7 +126,7 @@ class _FrontEndPlanningPersonnelScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: TextField(
+                              child: VoiceTextField(
                                 controller: quantityController,
                                 keyboardType: TextInputType.number,
                                 decoration: const InputDecoration(
@@ -136,7 +137,7 @@ class _FrontEndPlanningPersonnelScreenState
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextField(
+                              child: VoiceTextField(
                                 controller: durationController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -154,7 +155,7 @@ class _FrontEndPlanningPersonnelScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: TextField(
+                              child: VoiceTextField(
                                 controller: monthlyCostController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -168,7 +169,7 @@ class _FrontEndPlanningPersonnelScreenState
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextField(
+                              child: VoiceTextField(
                                 controller: startDateController,
                                 decoration: const InputDecoration(
                                   labelText: 'Start Date',
@@ -235,7 +236,7 @@ class _FrontEndPlanningPersonnelScreenState
                           ],
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: descriptionController,
                           minLines: 3,
                           maxLines: 5,
@@ -245,7 +246,7 @@ class _FrontEndPlanningPersonnelScreenState
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: skillsController,
                           minLines: 2,
                           maxLines: 4,
@@ -255,7 +256,7 @@ class _FrontEndPlanningPersonnelScreenState
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: notesController,
                           minLines: 2,
                           maxLines: 4,
@@ -816,7 +817,7 @@ Widget _roundedField({
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       minLines: minLines,
       maxLines: null,

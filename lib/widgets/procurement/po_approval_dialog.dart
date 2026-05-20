@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Dialog for approving or rejecting a Purchase Order
 class PoApprovalDialog extends StatefulWidget {
   const PoApprovalDialog({
@@ -85,7 +86,7 @@ class _PoApprovalDialogState extends State<PoApprovalDialog> {
               },
             ),
             const SizedBox(height: 16),
-            TextField(
+            VoiceTextField(
               controller: _commentsController,
               decoration: InputDecoration(
                 labelText: _selectedAction == 'reject'

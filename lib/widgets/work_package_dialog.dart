@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class WorkPackageDialog extends StatefulWidget {
   const WorkPackageDialog({
     super.key,
@@ -312,14 +313,14 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
+                VoiceTextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(labelText: 'Title *'),
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Title is required'
                       : null,
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(labelText: 'Description'),
                   maxLines: 3,
@@ -363,7 +364,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _sourceWbsLevel3IdController,
                         decoration: const InputDecoration(
                           labelText: 'WBS Source Node ID',
@@ -372,7 +373,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _sourceWbsLevel3TitleController,
                         decoration: const InputDecoration(
                           labelText: 'WBS Source Node',
@@ -381,14 +382,14 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     ),
                   ],
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _contractIdsController,
                   decoration: const InputDecoration(
                     labelText: 'Contract IDs',
                     helperText: 'Comma-separated contract references',
                   ),
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _vendorIdsController,
                   decoration: const InputDecoration(
                     labelText: 'Vendor IDs',
@@ -398,7 +399,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _packageCodeController,
                         decoration:
                             const InputDecoration(labelText: 'Package Code'),
@@ -529,14 +530,14 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _ownerController,
                         decoration: const InputDecoration(labelText: 'Owner'),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         controller: _disciplineController,
                         decoration:
                             const InputDecoration(labelText: 'Discipline'),
@@ -547,7 +548,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         readOnly: true,
                         decoration: InputDecoration(
                           labelText: 'Planned Start',
@@ -563,7 +564,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         readOnly: true,
                         decoration: InputDecoration(
                           labelText: 'Planned End',
@@ -579,14 +580,14 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     ),
                   ],
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _budgetController,
                   decoration:
                       const InputDecoration(labelText: 'Budgeted Cost (\$)'),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _acceptingCriteriaController,
                   decoration:
                       const InputDecoration(labelText: 'Accepting Criteria'),
@@ -603,7 +604,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: _estimateMethodController,
                             decoration: const InputDecoration(
                                 labelText: 'Estimation Method'),
@@ -611,7 +612,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: _estimateConfidenceController,
                             decoration: const InputDecoration(
                                 labelText: 'Confidence Level'),
@@ -619,12 +620,12 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                         ),
                       ],
                     ),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: _estimateSourceController,
                       decoration:
                           const InputDecoration(labelText: 'Source Data'),
                     ),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: _estimateAssumptionsController,
                       decoration: const InputDecoration(
                         labelText: 'Assumptions',
@@ -641,7 +642,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: _procurementCategoryController,
                             decoration: const InputDecoration(
                                 labelText: 'Procurement Category'),
@@ -649,7 +650,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: _procurementLeadTimeController,
                             decoration: const InputDecoration(
                                 labelText: 'Lead Time (days)'),
@@ -658,7 +659,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                         ),
                       ],
                     ),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: _procurementScopeController,
                       decoration: const InputDecoration(
                           labelText: 'Procurement Scope Definition'),
@@ -667,7 +668,7 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
                     ),
                   ],
                 ),
-                TextFormField(
+                VoiceTextFormField(
                   controller: _notesController,
                   decoration: const InputDecoration(labelText: 'Notes'),
                   maxLines: 2,

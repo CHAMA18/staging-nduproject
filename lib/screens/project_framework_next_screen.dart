@@ -11,6 +11,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/planning_requirements_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kAccentColor = Color(0xFFFFC107);
 const Color _kPrimaryText = Color(0xFF1E293B);
 const Color _kSecondaryText = Color(0xFF64748B);
@@ -550,7 +551,7 @@ class _ProjectFrameworkNextScreenState
               'Summarize planning goals, milestones, and delivery themes.',
               style: TextStyle(fontSize: 12, color: _kSecondaryText)),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: _notesController,
             minLines: 4,
             maxLines: 8,
@@ -1027,7 +1028,7 @@ class _GoalCardWidgetState extends State<_GoalCardWidget> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     controller: widget.titleController,
                     focusNode: widget.titleFocusNode,
                     decoration: InputDecoration(
@@ -1118,7 +1119,7 @@ class _GoalCardWidgetState extends State<_GoalCardWidget> {
                         fontWeight: FontWeight.w500,
                         color: _kSecondaryText)),
                 const SizedBox(height: 6),
-                TextField(
+                VoiceTextField(
                   controller: widget.descController,
                   focusNode: widget.descFocusNode,
                   decoration: InputDecoration(
@@ -1219,7 +1220,7 @@ class _GoalCardWidgetState extends State<_GoalCardWidget> {
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: TextField(
+                                child: VoiceTextField(
                                   controller: milestone.titleController,
                                   decoration: const InputDecoration(
                                     hintText: 'Milestone title',

@@ -40,6 +40,7 @@ import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class CostAnalysisScreen extends StatefulWidget {
   final String notes;
   final List<AiSolutionItem> solutions;
@@ -2769,7 +2770,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         Text('Estimated Project Benefit Value ($_currency)',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: _projectValueAmountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
@@ -3540,7 +3541,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: titleController,
                       readOnly: readOnly,
                       decoration: const InputDecoration(
@@ -3552,7 +3553,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: VoiceTextField(
                             controller: unitValueController,
                             readOnly: readOnly,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -3566,7 +3567,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: TextField(
+                          child: VoiceTextField(
                             controller: unitsController,
                             readOnly: readOnly,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -3632,7 +3633,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                     ],
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: notesController,
                       readOnly: readOnly,
                       minLines: 3,
@@ -4989,7 +4990,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           flex: 2,
           child: Align(
             alignment: Alignment.topRight,
-            child: TextField(
+            child: VoiceTextField(
               controller: entry.costController,
               textAlign: TextAlign.right,
               keyboardType:
@@ -5405,7 +5406,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             SizedBox(
               width: 200,
               height: 56,
-              child: TextField(
+              child: VoiceTextField(
                 controller: _savingsTargetController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
@@ -5420,7 +5421,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             SizedBox(
               width: 280,
               height: 56,
-              child: TextField(
+              child: VoiceTextField(
                 controller: _savingsNotesController,
                 maxLines: 1,
                 decoration: const InputDecoration(
@@ -5928,7 +5929,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
+                    VoiceTextField(
                       controller: itemController,
                       readOnly: readOnly,
                       decoration: const InputDecoration(
@@ -5937,7 +5938,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: descriptionController,
                       readOnly: readOnly,
                       minLines: 2,
@@ -5948,7 +5949,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: costController,
                       readOnly: readOnly,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -6007,7 +6008,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                     ],
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: assumptionsController,
                       readOnly: readOnly,
                       minLines: 3,
@@ -7955,7 +7956,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           flex: 2,
           child: Align(
             alignment: Alignment.topRight,
-            child: TextField(
+            child: VoiceTextField(
               controller: row.roiController,
               textAlign: TextAlign.right,
               readOnly: true,
@@ -7973,7 +7974,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           flex: 2,
           child: Align(
             alignment: Alignment.topRight,
-            child: TextField(
+            child: VoiceTextField(
               controller: row.npvController,
               textAlign: TextAlign.right,
               readOnly: true,
@@ -7991,7 +7992,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           flex: 2,
           child: Align(
             alignment: Alignment.topRight,
-            child: TextField(
+            child: VoiceTextField(
               controller: row.costController,
               textAlign: TextAlign.right,
               decoration: const InputDecoration(
@@ -8054,7 +8055,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         const Text('Return On Investment',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
             controller: row.roiController,
             readOnly: true,
             decoration: const InputDecoration(
@@ -8063,7 +8064,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         Text('Net Present Value ($horizonLabel)',
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
             controller: row.npvController,
             readOnly: true,
             decoration: const InputDecoration(
@@ -8072,7 +8073,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         const Text('Estimated Cost',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
             controller: row.costController,
             decoration: const InputDecoration(
                 border: OutlineInputBorder(), isDense: true, hintText: '0.00')),

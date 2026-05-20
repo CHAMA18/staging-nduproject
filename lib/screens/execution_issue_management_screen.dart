@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionIssueManagementScreen extends StatelessWidget {
   const ExecutionIssueManagementScreen({super.key});
 
@@ -225,33 +226,33 @@ class _IssuesManagementTable extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: topicController,
                     decoration:
                         const InputDecoration(labelText: 'Issue Topic *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: descriptionController,
                     decoration:
                         const InputDecoration(labelText: 'Description *'),
                     maxLines: 2),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: disciplineController,
                     decoration:
                         const InputDecoration(labelText: 'Discipline *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: raisedByController,
                     decoration:
                         const InputDecoration(labelText: 'Raised By *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: scheduleImpactController,
                     decoration:
                         const InputDecoration(labelText: 'Schedule Impact *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: costImpactController,
                     decoration:
                         const InputDecoration(labelText: 'Cost Impact *')),
@@ -263,7 +264,7 @@ class _IssuesManagementTable extends StatelessWidget {
                       setState(() => approved = value ?? false),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: commentsController,
                     decoration: const InputDecoration(labelText: 'Comments *'),
                     maxLines: 3),

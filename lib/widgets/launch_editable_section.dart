@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class LaunchEntry {
   const LaunchEntry({
     required this.title,
@@ -545,7 +546,7 @@ Future<LaunchEntry?> showLaunchEntryDialog(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextFormField(
+          VoiceTextFormField(
             controller: titleController,
             decoration: fieldDecoration.copyWith(labelText: titleLabel),
             validator: (value) {
@@ -556,7 +557,7 @@ Future<LaunchEntry?> showLaunchEntryDialog(
             },
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          VoiceTextFormField(
             controller: detailsController,
             decoration: fieldDecoration.copyWith(labelText: detailsLabel),
             minLines: 3,
@@ -564,7 +565,7 @@ Future<LaunchEntry?> showLaunchEntryDialog(
           ),
           if (includeStatus) ...[
             const SizedBox(height: 16),
-            TextFormField(
+            VoiceTextFormField(
               controller: statusController,
               decoration:
                   fieldDecoration.copyWith(labelText: 'Status (optional)'),

@@ -6,6 +6,7 @@ import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
   static void open(BuildContext context) =>
@@ -105,7 +106,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Add recommendation'),
-        content: TextField(controller: t, decoration: const InputDecoration(labelText: 'Recommendation')),
+        content: VoiceTextField(controller: t, decoration: const InputDecoration(labelText: 'Recommendation')),
         actions: [
           TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')),
           ElevatedButton(

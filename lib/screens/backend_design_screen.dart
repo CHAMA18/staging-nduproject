@@ -15,6 +15,7 @@ import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class BackendDesignScreen extends StatefulWidget {
   const BackendDesignScreen({super.key});
 
@@ -1360,7 +1361,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           minLines: minLines,
           maxLines: maxLines,
@@ -1736,7 +1737,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         builder: (context, setDialogState) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: nameController,
               decoration: const InputDecoration(
                 labelText: 'Component name',
@@ -1760,7 +1761,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: responsibilityController,
               minLines: 2,
               maxLines: 4,
@@ -1847,7 +1848,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         builder: (context, setDialogState) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: sourceController,
               decoration: const InputDecoration(
                 labelText: 'Source',
@@ -1855,7 +1856,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: destinationController,
               decoration: const InputDecoration(
                 labelText: 'Destination',
@@ -1879,7 +1880,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: notesController,
               minLines: 2,
               maxLines: 4,
@@ -1934,7 +1935,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         builder: (context, setDialogState) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: titleController,
               decoration: const InputDecoration(
                 labelText: 'Document title',
@@ -1942,7 +1943,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: descriptionController,
               minLines: 2,
               maxLines: 4,
@@ -1984,7 +1985,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: locationController,
               decoration: const InputDecoration(
                 labelText: 'Link or location',
@@ -2040,7 +2041,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         builder: (context, setDialogState) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            VoiceTextField(
               controller: nameController,
               decoration: const InputDecoration(
                 labelText: 'Entity / collection',
@@ -2048,7 +2049,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: primaryKeyController,
               decoration: const InputDecoration(
                 labelText: 'Primary key',
@@ -2072,7 +2073,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               controller: descriptionController,
               minLines: 2,
               maxLines: 4,
@@ -2122,7 +2123,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
+          VoiceTextField(
             controller: tableController,
             decoration: const InputDecoration(
               labelText: 'Entity / table',
@@ -2130,7 +2131,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: fieldController,
             decoration: const InputDecoration(
               labelText: 'Field name',
@@ -2138,7 +2139,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: typeController,
             decoration: const InputDecoration(
               labelText: 'Type',
@@ -2146,7 +2147,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: constraintsController,
             decoration: const InputDecoration(
               labelText: 'Constraints',
@@ -2154,7 +2155,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: notesController,
             minLines: 2,
             maxLines: 4,
@@ -3088,7 +3089,7 @@ class _LabeledTextArea extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF374151))),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           maxLines: 3,
           decoration: InputDecoration(
@@ -3247,7 +3248,7 @@ class _TextCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return VoiceTextFormField(
       key: ValueKey(fieldKey),
       initialValue: value,
       maxLines: maxLines,

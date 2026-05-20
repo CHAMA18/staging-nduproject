@@ -18,6 +18,7 @@ import 'initiation_phase_screen.dart';
 import 'program_dashboard_mobile_screen.dart';
 import 'portfolio_dashboard_screen.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Design tokens extracted from the HTML source (Material You / Tailwind config)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,7 +297,7 @@ class _ProjectDashboardMobileShellState
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(_Tokens.radiusXl),
       ),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         onChanged: onChanged,
         style: const TextStyle(fontSize: 14, color: _Tokens.onSurface),

@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class NewChangeRequestDialog extends StatefulWidget {
   const NewChangeRequestDialog({super.key, this.changeRequest, this.onSaved, this.projectId});
 
@@ -429,7 +430,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
         },
       );
     }
-    return TextFormField(
+    return VoiceTextFormField(
       controller: controller,
       validator: (v) {
         if (label == 'Description' || label == 'Justification / Reason') return null; // optional
@@ -441,7 +442,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
   }
 
   Widget _dateField(String label, {required TextEditingController controller, required VoidCallback onTap}) {
-    return TextFormField(
+    return VoiceTextFormField(
       controller: controller,
       readOnly: true,
       validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,

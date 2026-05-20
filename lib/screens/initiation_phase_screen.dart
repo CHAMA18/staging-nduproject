@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import '../widgets/content_text.dart';
 import '../services/auth_nav.dart';
 import '../openai/openai_config.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // Removed AppLogo from header per request
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/risk_identification_screen.dart';
@@ -849,7 +850,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
+                      VoiceTextField(
                         decoration: InputDecoration(
                             labelText: 'Project name',
                             errorText: nameError,
@@ -1626,7 +1627,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: _notesController,
             focusNode: _notesFocusNode,
             minLines: 3,
@@ -1669,7 +1670,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 color: _businessInvalid ? Colors.red : const Color(0xFFE2E8F0)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: _businessCaseController,
             focusNode: _businessFocusNode,
             minLines: 6,
@@ -1729,7 +1730,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 onBeforeUndo: _saveBeforeUndo,
               ),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: _businessCaseController,
                 focusNode: _businessFocusNode,
                 minLines: 6,
@@ -2030,7 +2031,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                         ? Colors.red
                         : Colors.grey.withOpacity(0.3)),
               ),
-              child: TextField(
+              child: VoiceTextField(
                 controller: _notesController,
                 focusNode: _notesFocusNode,
                 style: TextStyle(
@@ -2102,7 +2103,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                         ? Colors.red
                         : Colors.grey.withOpacity(0.3)),
               ),
-              child: TextField(
+              child: VoiceTextField(
                 controller: _businessCaseController,
                 focusNode: _businessFocusNode,
                 style: TextStyle(

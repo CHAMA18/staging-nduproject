@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class TeamManagementScreen extends StatefulWidget {
   const TeamManagementScreen({super.key});
 
@@ -674,7 +675,7 @@ class _DialogTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return VoiceTextFormField(
       controller: controller,
       validator: validator,
       maxLines: maxLines,

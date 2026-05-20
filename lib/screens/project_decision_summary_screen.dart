@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectDecisionSummaryScreen extends StatefulWidget {
   final String projectName;
   final AiSolutionItem selectedSolution;
@@ -587,7 +588,7 @@ class _ProjectDecisionSummaryScreenState
                   'Create a new project using "${solution.title.trim().isNotEmpty ? solution.title.trim() : 'Solution ${index + 1}'}" as the preferred solution.',
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: InputDecoration(
                     labelText: 'Project name',

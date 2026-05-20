@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class TechnologyInventoryScreen extends StatefulWidget {
   const TechnologyInventoryScreen({super.key});
 
@@ -130,9 +131,9 @@ class _TechnologyInventoryScreenState extends State<TechnologyInventoryScreen> {
       builder: (c) => AlertDialog(
         title: const Text('Add technology'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-          TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
-          TextField(controller: notes, decoration: const InputDecoration(labelText: 'Notes')),
+          VoiceTextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+          VoiceTextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
+          VoiceTextField(controller: notes, decoration: const InputDecoration(labelText: 'Notes')),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')),

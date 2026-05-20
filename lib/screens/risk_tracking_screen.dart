@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class RiskTrackingScreen extends StatefulWidget {
   const RiskTrackingScreen({super.key});
 
@@ -1526,14 +1527,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: idController,
                           decoration: const InputDecoration(
                               labelText: 'Escalation ID', hintText: 'e.g., ESC-005'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: eventController,
                           decoration: const InputDecoration(
                               labelText: 'Escalation event', hintText: 'e.g., Executive sync — critical unblock'),
@@ -1549,7 +1550,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           decoration: const InputDecoration(labelText: 'Escalation level'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: triggerController,
                           decoration: const InputDecoration(
                               labelText: 'Trigger condition', hintText: 'e.g., SLA breach or threshold exceeded'),
@@ -1557,12 +1558,12 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: responsibleController,
                           decoration: const InputDecoration(labelText: 'Responsible party'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: targetController,
                           decoration: const InputDecoration(
                               labelText: 'Escalation target', hintText: 'e.g., CTO / Steering Committee'),
@@ -1595,13 +1596,13 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: windowController,
                           decoration: const InputDecoration(
                               labelText: 'Response window', hintText: 'e.g., 4 hrs, 24 hrs'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: decisionController,
                           decoration: const InputDecoration(
                               labelText: 'Decision required', hintText: 'What decision is needed?'),
@@ -1680,7 +1681,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: eventController,
                           decoration: const InputDecoration(labelText: 'Escalation event'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
@@ -1695,19 +1696,19 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           decoration: const InputDecoration(labelText: 'Escalation level'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: triggerController,
                           decoration: const InputDecoration(labelText: 'Trigger condition'),
                           maxLines: 2,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: responsibleController,
                           decoration: const InputDecoration(labelText: 'Responsible party'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: targetController,
                           decoration: const InputDecoration(labelText: 'Escalation target'),
                         ),
@@ -1739,12 +1740,12 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: windowController,
                           decoration: const InputDecoration(labelText: 'Response window'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: decisionController,
                           decoration: const InputDecoration(labelText: 'Decision required'),
                           maxLines: 2,
@@ -1898,7 +1899,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: idController,
                         decoration: const InputDecoration(
                             labelText: 'Risk ID', hintText: 'e.g., R-050'),
@@ -1908,7 +1909,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                                 : null,
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: titleController,
                         decoration:
                             const InputDecoration(labelText: 'Risk title'),
@@ -1918,12 +1919,12 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                                 : null,
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: ownerController,
                         decoration: const InputDecoration(labelText: 'Owner'),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: probabilityController,
                         decoration: const InputDecoration(
                             labelText: 'Probability (e.g., 0.42)'),
@@ -1964,7 +1965,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                         decoration: const InputDecoration(labelText: 'Status'),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: nextReviewController,
                         decoration: const InputDecoration(
                             labelText: 'Next review (date or note)'),
@@ -2041,18 +2042,18 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: titleController,
                         decoration: const InputDecoration(labelText: 'Risk title'),
                         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: ownerController,
                         decoration: const InputDecoration(labelText: 'Owner'),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: probabilityController,
                         decoration: const InputDecoration(labelText: 'Probability'),
                         keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -2076,7 +2077,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                         decoration: const InputDecoration(labelText: 'Status'),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
+                      VoiceTextFormField(
                         controller: nextReviewController,
                         decoration: const InputDecoration(labelText: 'Next review'),
                       ),
@@ -2172,20 +2173,20 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: idController,
                           decoration: const InputDecoration(
                               labelText: 'Plan ID', hintText: 'e.g., MIT-006'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: riskIdController,
                           decoration: const InputDecoration(
                               labelText: 'Linked Risk ID', hintText: 'e.g., R-001'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: strategyController,
                           decoration: const InputDecoration(
                               labelText: 'Mitigation strategy', hintText: 'Describe the mitigation approach'),
@@ -2193,7 +2194,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: ownerController,
                           decoration: const InputDecoration(labelText: 'Responsible owner'),
                         ),
@@ -2234,7 +2235,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: targetDateController,
                           decoration: const InputDecoration(
                               labelText: 'Target date', hintText: 'e.g., 2026-06-15'),
@@ -2326,14 +2327,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: strategyController,
                           decoration: const InputDecoration(labelText: 'Mitigation strategy'),
                           maxLines: 2,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: ownerController,
                           decoration: const InputDecoration(labelText: 'Responsible owner'),
                         ),
@@ -2374,7 +2375,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: targetDateController,
                           decoration: const InputDecoration(labelText: 'Target date'),
                         ),
@@ -2489,14 +2490,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: idController,
                           decoration: const InputDecoration(
                               labelText: 'Signal ID', hintText: 'e.g., SIG-005'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Enter an ID' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: titleController,
                           decoration: const InputDecoration(labelText: 'Signal name'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
@@ -2529,14 +2530,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           decoration: const InputDecoration(labelText: 'Confidence level'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: descriptionController,
                           decoration: const InputDecoration(labelText: 'Description'),
                           maxLines: 3,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: linkedRiskController,
                           decoration: const InputDecoration(
                               labelText: 'Linked Risk ID', hintText: 'e.g., R-001'),
@@ -2616,7 +2617,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: titleController,
                           decoration: const InputDecoration(labelText: 'Signal name'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
@@ -2649,14 +2650,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           decoration: const InputDecoration(labelText: 'Confidence level'),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: descriptionController,
                           decoration: const InputDecoration(labelText: 'Description'),
                           maxLines: 3,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: linkedRiskController,
                           decoration: const InputDecoration(labelText: 'Linked Risk ID'),
                         ),

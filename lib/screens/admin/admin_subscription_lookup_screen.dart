@@ -8,6 +8,7 @@ import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/services/navigation_context_service.dart';
 import 'package:ndu_project/widgets/unified_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AdminSubscriptionLookupScreen extends StatefulWidget {
   const AdminSubscriptionLookupScreen({super.key});
 
@@ -101,7 +102,7 @@ class _AdminSubscriptionLookupScreenState extends State<AdminSubscriptionLookupS
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: VoiceTextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Enter email or name...',

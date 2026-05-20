@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/services/subscription_service.dart'; // Added
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -285,7 +286,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 54,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(fontSize: 15),
@@ -302,7 +303,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 54,
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: _passwordController,
                           obscureText: !_isPasswordVisible,
                           style: const TextStyle(fontSize: 15),

@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
@@ -376,7 +377,7 @@ Widget _buildEpicTile(int index, Epic epic) {
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: VoiceTextField(
                       decoration: const InputDecoration(
                         hintText: 'Epic title',
                         border: InputBorder.none,
@@ -469,7 +470,7 @@ Widget _buildEpicTile(int index, Epic epic) {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     decoration: const InputDecoration(
                       hintText: 'Feature title',
                       border: InputBorder.none,
@@ -579,7 +580,7 @@ Widget _buildEpicTile(int index, Epic epic) {
           Text('$label: ', style: TextStyle(fontSize: 11, color: _kMuted)),
           SizedBox(
             width: 80,
-            child: TextField(
+            child: VoiceTextField(
               decoration:
                   const InputDecoration(border: InputBorder.none, isDense: true),
               style: const TextStyle(fontSize: 11),

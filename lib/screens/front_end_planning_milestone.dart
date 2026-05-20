@@ -17,6 +17,7 @@ import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:intl/intl.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Milestone screen
 /// Allows users to define project start date, key milestones, and end date.
 class FrontEndPlanningMilestoneScreen extends StatefulWidget {
@@ -1237,7 +1238,7 @@ Consider typical project timelines and ensure end date is after start date.''';
                             ),
                           ),
                           _milestoneDataCell(
-                            TextFormField(
+                            VoiceTextFormField(
                               key: _milestoneNameKey(index),
                               controller: _milestoneNameControllers[index],
                               onChanged: (value) =>
@@ -1328,7 +1329,7 @@ Consider typical project timelines and ensure end date is after start date.''';
                             ),
                           ),
                           _milestoneDataCell(
-                            TextFormField(
+                            VoiceTextFormField(
                               controller:
                                   _milestoneDisciplineControllers[index],
                               onChanged: (value) => _updateMilestoneField(
@@ -1359,7 +1360,7 @@ Consider typical project timelines and ensure end date is after start date.''';
                                       _milestoneCommentControllers[index],
                                 ),
                                 const SizedBox(height: 8),
-                                TextFormField(
+                                VoiceTextFormField(
                                   controller:
                                       _milestoneCommentControllers[index],
                                   onChanged: (value) => _updateMilestoneField(

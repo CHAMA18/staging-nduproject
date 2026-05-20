@@ -28,6 +28,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
@@ -801,7 +802,7 @@ class _AgileProjectBaselineScreenState
               ),
               SizedBox(
                 width: 220,
-                child: TextField(
+                child: VoiceTextField(
                   controller: _releaseLabelController,
                   decoration: const InputDecoration(
                     labelText: 'Release Label',
@@ -812,7 +813,7 @@ class _AgileProjectBaselineScreenState
               ),
               SizedBox(
                 width: 220,
-                child: TextField(
+                child: VoiceTextField(
                   controller: _capacityController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
@@ -875,7 +876,7 @@ class _AgileProjectBaselineScreenState
           const SizedBox(height: 8),
           TextFormattingToolbar(controller: _approvalNotesController),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _approvalNotesController,
             minLines: 4,
             maxLines: 8,
@@ -1459,7 +1460,7 @@ class _RichTextCard extends StatelessWidget {
         children: [
           TextFormattingToolbar(controller: controller),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: controller,
             minLines: 8,
             maxLines: 12,
@@ -1706,7 +1707,7 @@ class _AssumptionEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          TextField(
+          VoiceTextField(
             controller: row.textController,
             minLines: 2,
             maxLines: 4,
@@ -1783,7 +1784,7 @@ class _ApproverAutocomplete extends StatelessWidget {
         }
       },
       fieldViewBuilder: (context, ctrl, fNode, onSubmitted) {
-        return TextFormField(
+        return VoiceTextFormField(
           controller: ctrl,
           focusNode: fNode,
           decoration: const InputDecoration(

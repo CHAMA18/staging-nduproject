@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/stakeholder_alignment_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class StakeholderAlignmentScreen extends StatefulWidget {
   const StakeholderAlignmentScreen({super.key});
 
@@ -512,13 +513,13 @@ class _StakeholderAlignmentScreenState
                   ),
                   if (selectedStakeholder == null ||
                       selectedStakeholder == '__NEW__') ...[
-                    TextField(
+                    VoiceTextField(
                       controller: nameController,
                       decoration: const InputDecoration(
                         labelText: 'Stakeholder Name',
                       ),
                     ),
-                    TextField(
+                    VoiceTextField(
                       controller: roleController,
                       decoration: const InputDecoration(
                         labelText: 'Stakeholder Role',
@@ -566,7 +567,7 @@ class _StakeholderAlignmentScreenState
                       setDialogState(() => selectedKeyInterest = value);
                     },
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: feedbackController,
                     decoration: const InputDecoration(
                       labelText: 'Feedback Summary (prose, no bullets)',

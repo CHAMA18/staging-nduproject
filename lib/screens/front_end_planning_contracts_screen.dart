@@ -16,6 +16,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const String _contractingCollection = 'contracting';
 const String _contractPlanNoteKey = 'planning_contract_plan';
 const String _contractPlanMarketKey = 'planning_contract_market';
@@ -2160,7 +2161,7 @@ class _ContractTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final int minLines = maxLines != null && maxLines! > 1 ? maxLines! : 1;
 
-    return TextFormField(
+    return VoiceTextFormField(
       controller: controller,
       minLines: minLines,
       maxLines: maxLines ?? 1,
@@ -2839,7 +2840,7 @@ class _CollapsibleAiTextCardState extends State<_CollapsibleAiTextCard> {
       onAiRegenerate: _handleRegenerate,
       isAiLoading: _isRegenerating,
       initiallyExpanded: widget.initiallyExpanded,
-      child: TextField(
+      child: VoiceTextField(
         controller: _controller,
         minLines: widget.minLines,
         maxLines: widget.maxLines,
@@ -3060,7 +3061,7 @@ class _NotesField extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.all(20),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         minLines: 5,
         maxLines: null,
@@ -3222,14 +3223,14 @@ class _TimelineSectionState extends State<_TimelineSection> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: minController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                       labelText: 'Minimum days', hintText: 'e.g. 1'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: maxController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
@@ -6748,7 +6749,7 @@ class _ContractorSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       decoration: InputDecoration(
         hintText: 'Search contractors...',
         hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
@@ -7638,7 +7639,7 @@ class _AdditionalInfoField extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: TextField(
+      child: VoiceTextField(
         controller: controller,
         maxLines: 4,
         onChanged: onChanged,

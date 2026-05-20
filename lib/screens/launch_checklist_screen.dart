@@ -14,6 +14,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class LaunchChecklistScreen extends StatefulWidget {
   const LaunchChecklistScreen({super.key});
 
@@ -1199,12 +1200,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
+                VoiceTextFormField(
                   controller: titleController,
                   decoration: _dialogDecoration('Title'),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                VoiceTextFormField(
                   controller: detailController,
                   decoration: _dialogDecoration('Details'),
                   maxLines: 2,
@@ -1212,12 +1213,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: TextFormField(
+                    Expanded(child: VoiceTextFormField(
                       controller: ownerController,
                       decoration: _dialogDecoration('Owner'),
                     )),
                     const SizedBox(width: 12),
-                    Expanded(child: TextFormField(
+                    Expanded(child: VoiceTextFormField(
                       controller: dueController,
                       decoration: _dialogDecoration('Due date'),
                     )),
@@ -1337,18 +1338,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: labelController,
                     decoration: _dialogDecoration('Approval name'),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: detailController,
                     decoration: _dialogDecoration('Details'),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: approverController,
                     decoration: _dialogDecoration('Approver'),
                   ),
@@ -1466,18 +1467,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: titleController,
                     decoration: _dialogDecoration('Milestone title'),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: detailController,
                     decoration: _dialogDecoration('Details'),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: dueController,
                     decoration: _dialogDecoration('Due date'),
                   ),
@@ -1595,18 +1596,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: labelController,
                     decoration: _dialogDecoration('Stage label'),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: detailController,
                     decoration: _dialogDecoration('Details'),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VoiceTextFormField(
                     controller: dateController,
                     decoration: _dialogDecoration('Date'),
                   ),

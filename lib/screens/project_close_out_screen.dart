@@ -18,6 +18,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectCloseOutScreen extends StatefulWidget {
   const ProjectCloseOutScreen({
     super.key,
@@ -440,7 +441,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       initiallyExpanded: true,
       headerIcon: Icons.auto_stories_outlined,
       headerIconColor: const Color(0xFFF59E0B),
-      child: TextFormField(
+      child: VoiceTextFormField(
         initialValue: _lessonsLearned.notes,
         maxLines: 8,
         style: const TextStyle(fontSize: 13, height: 1.6),

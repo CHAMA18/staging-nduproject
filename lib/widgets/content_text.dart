@@ -5,6 +5,7 @@ import 'package:ndu_project/services/app_content_service.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:provider/provider.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Widget that displays content from Firestore with real-time updates
 /// Usage:
 /// ```dart
@@ -234,7 +235,7 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
               ),
             ],
             const SizedBox(height: 16),
-            TextField(
+            VoiceTextField(
               controller: _controller,
               maxLines: 5,
               decoration: const InputDecoration(

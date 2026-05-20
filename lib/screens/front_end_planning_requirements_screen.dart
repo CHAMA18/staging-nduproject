@@ -24,6 +24,7 @@ import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning - Project Requirements page
 /// Implements the layout from the provided screenshot exactly:
 /// - Top notes field
@@ -1045,7 +1046,7 @@ class _FrontEndPlanningRequirementsScreenState
                           const SizedBox(height: 4),
                           TextFormattingToolbar(controller: _notesController),
                           const SizedBox(height: 8),
-                          TextField(
+                          VoiceTextField(
                             controller: _notesController,
                             minLines: 2,
                             maxLines: 4,
@@ -1396,7 +1397,7 @@ class _FrontEndPlanningRequirementsScreenState
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: descriptionController,
                     minLines: 2,
                     maxLines: 4,
@@ -1492,7 +1493,7 @@ class _FrontEndPlanningRequirementsScreenState
                     ),
                   ),
                   const SizedBox(height: 10),
-                  TextField(
+                  VoiceTextField(
                     controller: roleController,
                     decoration: const InputDecoration(
                       labelText: 'Role',
@@ -1510,7 +1511,7 @@ class _FrontEndPlanningRequirementsScreenState
                     },
                   ),
                   const SizedBox(height: 10),
-                  TextField(
+                  VoiceTextField(
                     controller: sourceController,
                     decoration: const InputDecoration(
                       labelText: 'Requirement Source',
@@ -1518,7 +1519,7 @@ class _FrontEndPlanningRequirementsScreenState
                     ),
                   ),
                   const SizedBox(height: 10),
-                  TextField(
+                  VoiceTextField(
                     controller: commentsController,
                     decoration: const InputDecoration(
                       labelText: 'Comments and Requirement Source Links',
@@ -2498,7 +2499,7 @@ class _RequirementRow {
                 ),
               ),
               // Text field
-              TextField(
+              VoiceTextField(
                 controller: descriptionController,
                 focusNode: descriptionFocusNode,
                 minLines: 2,
@@ -2537,7 +2538,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: roleController,
             maxLines: 1,
             onChanged: (_) => onChanged?.call(),
@@ -2574,7 +2575,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: sourceController,
             maxLines: 1,
             onChanged: (_) => onChanged?.call(),
@@ -2589,7 +2590,7 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
+          child: VoiceTextField(
             controller: commentsController,
             minLines: 2,
             maxLines: null,
@@ -2811,7 +2812,7 @@ class _RequirementCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: TextField(
+                    child: VoiceTextField(
                       controller: row.descriptionController,
                       focusNode: row.descriptionFocusNode,
                       minLines: 3,
@@ -3050,7 +3051,7 @@ class _RequirementTextFieldBlock extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             minLines: minLines,
             maxLines: minLines == 1 ? 1 : null,
@@ -3390,7 +3391,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
         height: 420,
         child: Column(
           children: [
-            TextField(
+            VoiceTextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
@@ -3488,7 +3489,7 @@ Widget _roundedField(
       children: [
         TextFormattingToolbar(controller: controller),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: controller,
           minLines: minLines,
           maxLines: null,

@@ -8,6 +8,7 @@ import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // Theme constants used via AppSemanticColors and LightModeColors are
 // imported transitively through project_data_provider.
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -1713,7 +1714,7 @@ class _TechnicalDevelopmentScreenState
               style:
                   TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _approachController,
             minLines: 2,
             maxLines: null,
@@ -1743,7 +1744,7 @@ class _TechnicalDevelopmentScreenState
               style:
                   TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: _notesController,
             minLines: 3,
             maxLines: null,
@@ -1942,7 +1943,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleCtl,
                   decoration: const InputDecoration(
                     labelText: 'Workstream title',
@@ -1951,7 +1952,7 @@ class _TechnicalDevelopmentScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: subtitleCtl,
                   minLines: 2,
                   maxLines: 4,
@@ -1986,7 +1987,7 @@ class _TechnicalDevelopmentScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: ownerCtl,
                         decoration: const InputDecoration(
                           labelText: 'Owner',
@@ -1998,7 +1999,7 @@ class _TechnicalDevelopmentScreenState
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 100,
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: TextEditingController(
                             text: progress.toString()),
                         keyboardType: TextInputType.number,
@@ -2131,7 +2132,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameCtl,
                   decoration: const InputDecoration(
                     labelText: 'Component name',
@@ -2140,7 +2141,7 @@ class _TechnicalDevelopmentScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ownerCtl,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -2307,7 +2308,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: labelCtl,
                   decoration: const InputDecoration(
                     labelText: 'Interface name',
@@ -2316,7 +2317,7 @@ class _TechnicalDevelopmentScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descCtl,
                   minLines: 2,
                   maxLines: 4,
@@ -2456,7 +2457,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleCtl,
                   decoration: const InputDecoration(
                     labelText: 'Issue title',
@@ -2486,7 +2487,7 @@ class _TechnicalDevelopmentScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: detailCtl,
                   minLines: 2,
                   maxLines: 4,
@@ -2608,7 +2609,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: signalCtl,
                   decoration: const InputDecoration(
                     labelText: 'Signal name',
@@ -2638,7 +2639,7 @@ class _TechnicalDevelopmentScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descCtl,
                   minLines: 2,
                   maxLines: 4,
@@ -2652,7 +2653,7 @@ class _TechnicalDevelopmentScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: categoryCtl,
                         decoration: const InputDecoration(
                           labelText: 'Category',
@@ -2663,7 +2664,7 @@ class _TechnicalDevelopmentScreenState
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: ownerCtl,
                         decoration: const InputDecoration(
                           labelText: 'Owner',
@@ -2761,7 +2762,7 @@ class _TechnicalDevelopmentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleCtl,
                   decoration: const InputDecoration(
                     labelText: 'Checklist item',
@@ -2919,7 +2920,7 @@ class _TechnicalDevelopmentScreenState
             : 'Edit quality standard'),
         content: SizedBox(
           width: 420,
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             decoration: const InputDecoration(
               labelText: 'Standard / quality code',

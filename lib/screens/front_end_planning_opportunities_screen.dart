@@ -22,6 +22,7 @@ import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Project Opportunities page
 /// Built to match the provided screenshot exactly:
 /// - Left ProgramWorkspaceSidebar
@@ -2039,7 +2040,7 @@ class _LabeledField extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             autofocus: autofocus,
             minLines: minLines,
@@ -2196,7 +2197,7 @@ Widget _roundedField(
       children: [
         TextFormattingToolbar(controller: controller),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: controller,
           minLines: minLines,
           maxLines: null,

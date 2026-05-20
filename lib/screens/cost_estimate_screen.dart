@@ -20,6 +20,7 @@ import 'package:ndu_project/widgets/s_curve_chart.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/forecast_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class CostEstimateScreen extends StatefulWidget {
   const CostEstimateScreen({super.key});
 
@@ -5954,7 +5955,7 @@ class _OverheadConfigCard extends StatelessWidget {
               SizedBox(
                 width: 80,
                 height: 36,
-                child: TextField(
+                child: VoiceTextField(
                   controller: TextEditingController(
                     text: ratePercent > 0 ? ratePercent.toStringAsFixed(1) : '',
                   )
@@ -6433,7 +6434,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         const SizedBox(height: 16),
                         _DialogLabel(label: 'Cost item'),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _titleController,
                           decoration: _inputDecoration(
                               'e.g., Vendor integration services'),
@@ -6502,7 +6503,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         const SizedBox(height: 16),
                         _DialogLabel(label: 'Estimated amount'),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _amountController,
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
@@ -6542,7 +6543,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         const SizedBox(height: 16),
                         _DialogLabel(label: 'Estimating basis'),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _estimatingBasisController,
                           minLines: 2,
                           maxLines: 3,
@@ -6553,14 +6554,14 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         const SizedBox(height: 16),
                         _DialogLabel(label: 'Scope / BOE (optional)'),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _scopeIncludedController,
                           minLines: 2,
                           maxLines: 3,
                           decoration: _inputDecoration('Scope included'),
                         ),
                         const SizedBox(height: 10),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _scopeExcludedController,
                           minLines: 2,
                           maxLines: 3,
@@ -6610,7 +6611,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _designMaturityNoteController,
                           decoration: _inputDecoration('Design maturity note (optional)'),
                         ),
@@ -6618,7 +6619,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _quantityController,
                                 keyboardType: TextInputType.number,
                                 decoration: _inputDecoration('Quantity'),
@@ -6626,7 +6627,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _unitRateController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -6637,7 +6638,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _unitOfMeasureController,
                                 decoration: _inputDecoration('Unit of measure'),
                               ),
@@ -6648,7 +6649,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _contingencyPercentController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -6658,7 +6659,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _contingencyAmountController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -6677,7 +6678,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _rangeLowController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -6690,7 +6691,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _rangeHighController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
@@ -6707,14 +6708,14 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _quoteReferenceController,
                                 decoration: _inputDecoration('Quote reference'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextFormField(
+                              child: VoiceTextFormField(
                                 controller: _contractReferenceController,
                                 decoration: _inputDecoration(
                                     'Contract / commercial reference'),
@@ -6725,7 +6726,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                         const SizedBox(height: 16),
                         _DialogLabel(label: 'Notes (optional)'),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: _notesController,
                           minLines: 2,
                           maxLines: 4,

@@ -12,6 +12,7 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectPlanScreen extends StatefulWidget {
   const ProjectPlanScreen({super.key});
 
@@ -3063,7 +3064,7 @@ class _ListEditor extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         key: ValueKey(item.id),
                         initialValue: item.text,
                         decoration: InputDecoration(
@@ -3203,7 +3204,7 @@ class _LabeledTextField extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF374151))),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           maxLines: maxLines,
           keyboardType: keyboardType,
@@ -3388,7 +3389,7 @@ class _TextCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return VoiceTextFormField(
       key: ValueKey(fieldKey),
       initialValue: value,
       decoration: InputDecoration(

@@ -20,6 +20,7 @@ import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class VendorTrackingScreen extends StatefulWidget {
   const VendorTrackingScreen({super.key});
 
@@ -879,18 +880,18 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: metricCtl, decoration: const InputDecoration(labelText: 'Metric name', isDense: true, border: OutlineInputBorder())),
+              VoiceTextField(controller: metricCtl, decoration: const InputDecoration(labelText: 'Metric name', isDense: true, border: OutlineInputBorder())),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextField(controller: valueCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
+                Expanded(child: VoiceTextField(controller: valueCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
                 const SizedBox(width: 12),
-                Expanded(child: TextField(controller: targetCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
+                Expanded(child: VoiceTextField(controller: targetCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
               ]),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
+                Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
                 const SizedBox(width: 12),
-                Expanded(child: TextField(controller: trendCtl, decoration: const InputDecoration(labelText: 'Trend note', isDense: true, border: OutlineInputBorder()))),
+                Expanded(child: VoiceTextField(controller: trendCtl, decoration: const InputDecoration(labelText: 'Trend note', isDense: true, border: OutlineInputBorder()))),
               ]),
             ],
           ),
@@ -1159,9 +1160,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: signalCtl, decoration: const InputDecoration(labelText: 'Signal name', isDense: true, border: OutlineInputBorder())),
+                VoiceTextField(controller: signalCtl, decoration: const InputDecoration(labelText: 'Signal name', isDense: true, border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descCtl, decoration: const InputDecoration(labelText: 'Description', isDense: true, border: OutlineInputBorder()), maxLines: 2),
+                VoiceTextField(controller: descCtl, decoration: const InputDecoration(labelText: 'Description', isDense: true, border: OutlineInputBorder()), maxLines: 2),
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
@@ -1180,9 +1181,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ]),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
+                  Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: catCtl, decoration: const InputDecoration(labelText: 'Category', isDense: true, border: OutlineInputBorder()))),
+                  Expanded(child: VoiceTextField(controller: catCtl, decoration: const InputDecoration(labelText: 'Category', isDense: true, border: OutlineInputBorder()))),
                 ]),
               ],
             ),
@@ -1373,7 +1374,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: titleCtl, decoration: const InputDecoration(labelText: 'Action item', isDense: true, border: OutlineInputBorder())),
+                VoiceTextField(controller: titleCtl, decoration: const InputDecoration(labelText: 'Action item', isDense: true, border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
@@ -1392,9 +1393,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ]),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: TextField(controller: dueCtl, decoration: const InputDecoration(labelText: 'Due date', isDense: true, border: OutlineInputBorder(), hintText: 'e.g. Nov 15'))),
+                  Expanded(child: VoiceTextField(controller: dueCtl, decoration: const InputDecoration(labelText: 'Due date', isDense: true, border: OutlineInputBorder(), hintText: 'e.g. Nov 15'))),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
+                  Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
                 ]),
               ],
             ),
@@ -1545,7 +1546,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: nameController,
                     decoration:
                         const InputDecoration(labelText: 'Vendor Name *')),
@@ -1603,23 +1604,23 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: slaController,
                     decoration: const InputDecoration(
                         labelText: 'SLA % *', hintText: 'e.g., 92%')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: slaPerformanceController,
                     decoration: const InputDecoration(
                         labelText: 'SLA Performance (0.0-1.0) *',
                         hintText: 'e.g., 0.85')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: leadTimeController,
                     decoration: const InputDecoration(
                         labelText: 'Lead Time *', hintText: 'e.g., 14 Days')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: requiredDeliverablesController,
                     decoration: const InputDecoration(
                         labelText: 'Required Deliverables (SLA Terms)',
@@ -1644,7 +1645,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                   onChanged: (v) => statusController.text = v ?? 'Active',
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: nextReviewController,
                     decoration: const InputDecoration(
                         labelText: 'Next Review *', hintText: 'e.g., Oct 28')),
@@ -1669,29 +1670,29 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: onTimeController,
                     decoration: const InputDecoration(
                         labelText: 'On-time Delivery (0.0-1.0) *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: incidentController,
                     decoration: const InputDecoration(
                         labelText: 'Incident Response (0.0-1.0) *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: qualityController,
                     decoration: const InputDecoration(
                         labelText: 'Quality Score (0.0-1.0) *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: costController,
                     decoration: const InputDecoration(
                         labelText: 'Cost Adherence (0.0-1.0) *')),
                 const SizedBox(height: 12),
                 TextFormattingToolbar(controller: notesController),
                 const SizedBox(height: 6),
-                TextField(
+                VoiceTextField(
                     controller: notesController,
                     decoration: const InputDecoration(
                         labelText: 'Vendor Notes',

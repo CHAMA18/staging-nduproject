@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF7F8FC);
 const Color _kAccent = Color(0xFFFFC812);
 const Color _kHeadline = Color(0xFF1A1D1F);
@@ -228,7 +229,7 @@ class _DeliverablesRoadmapDetailedScreenState
     return Row(
       children: [
         Expanded(
-          child: TextField(
+          child: VoiceTextField(
             decoration: InputDecoration(
               hintText: 'Search deliverables...',
               prefixIcon: const Icon(Icons.search),
@@ -868,7 +869,7 @@ class _AddDeliverableDialogState extends State<_AddDeliverableDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
+              VoiceTextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
                   labelText: 'Title *',
@@ -877,7 +878,7 @@ class _AddDeliverableDialogState extends State<_AddDeliverableDialog> {
                 validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              VoiceTextFormField(
                 controller: _descriptionController,
                 maxLines: 3,
                 decoration: const InputDecoration(
@@ -916,7 +917,7 @@ class _AddDeliverableDialogState extends State<_AddDeliverableDialog> {
                 onChanged: (v) => setState(() => _selectedPriority = v!),
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              VoiceTextFormField(
                 controller: _assigneeController,
                 decoration: const InputDecoration(
                   labelText: 'Assignee',
@@ -1059,7 +1060,7 @@ class _EditDeliverableDialogState extends State<_EditDeliverableDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+            VoiceTextField(
               controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Title',
@@ -1067,7 +1068,7 @@ class _EditDeliverableDialogState extends State<_EditDeliverableDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            VoiceTextField(
               controller: _descriptionController,
               maxLines: 3,
               decoration: const InputDecoration(

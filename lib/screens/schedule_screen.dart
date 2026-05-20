@@ -24,6 +24,7 @@ import 'package:ndu_project/widgets/schedule_gantt_enhanced.dart';
 import 'package:ndu_project/widgets/work_package_dialog.dart';
 import 'package:ndu_project/widgets/work_package_detail.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -882,12 +883,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             });
                           },
                         ),
-                      TextField(
+                      VoiceTextField(
                         controller: titleController,
                         decoration:
                             const InputDecoration(labelText: 'Task Name'),
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: durationController,
                         keyboardType: TextInputType.number,
                         decoration:
@@ -925,7 +926,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           });
                         },
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: dependencyIdsController,
                         decoration: const InputDecoration(
                           labelText: 'Dependency IDs',
@@ -982,12 +983,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                         ],
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: assigneeController,
                         decoration:
                             const InputDecoration(labelText: 'Assignee'),
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: disciplineController,
                         decoration:
                             const InputDecoration(labelText: 'Discipline'),
@@ -995,7 +996,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: progressController,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
@@ -1004,7 +1005,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: hoursController,
                               keyboardType: TextInputType.number,
                               decoration:
@@ -1016,7 +1017,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: startDateController,
                               decoration: const InputDecoration(
                                   labelText: 'Start Date (YYYY-MM-DD)'),
@@ -1024,7 +1025,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: TextField(
+                            child: VoiceTextField(
                               controller: dueDateController,
                               decoration: const InputDecoration(
                                   labelText: 'Due Date (YYYY-MM-DD)'),
@@ -1032,7 +1033,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                         ],
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: estimatingBasisController,
                         maxLines: 3,
                         decoration: const InputDecoration(
@@ -1041,7 +1042,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               'Assumptions, method, source data, or duration basis for this activity.',
                         ),
                       ),
-                      TextField(
+                      VoiceTextField(
                         controller: milestoneController,
                         decoration:
                             const InputDecoration(labelText: 'Milestone'),
@@ -2980,7 +2981,7 @@ class _TimelineWorkspaceCard extends StatelessWidget {
             SizedBox(
               width: 320,
               height: 38,
-              child: TextField(
+              child: VoiceTextField(
                 onChanged: onSearchChanged,
                 decoration: InputDecoration(
                   hintText: 'Search tasks...',
@@ -3223,7 +3224,7 @@ class _TimelineList extends StatelessWidget {
               return TableRow(
                 children: [
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.titleController,
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
@@ -3233,7 +3234,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextFormField(
+                    VoiceTextFormField(
                       initialValue: row.wbsId,
                       onChanged: (value) {
                         row.wbsId = value.trim();
@@ -3246,7 +3247,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.durationController,
                       onChanged: (_) => onChanged(),
                       keyboardType: TextInputType.number,
@@ -3344,7 +3345,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.assigneeController,
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
@@ -3354,7 +3355,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.disciplineController,
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
@@ -3367,7 +3368,7 @@ class _TimelineList extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: VoiceTextField(
                             controller: row.progressController,
                             onChanged: (_) => onChanged(),
                             keyboardType: TextInputType.number,
@@ -3406,7 +3407,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.hoursController,
                       onChanged: (_) => onChanged(),
                       keyboardType: TextInputType.number,
@@ -3417,7 +3418,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.estimatingBasisController,
                       onChanged: (_) => onChanged(),
                       minLines: 1,
@@ -3430,7 +3431,7 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
-                    TextField(
+                    VoiceTextField(
                       controller: row.milestoneController,
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
@@ -4819,7 +4820,7 @@ class _WorkPackagesTab extends StatelessWidget {
                 SizedBox(
                   width: 260,
                   height: 38,
-                  child: TextField(
+                  child: VoiceTextField(
                     onChanged: onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Search work packages...',
@@ -5829,7 +5830,7 @@ class _NotesCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: TextField(
+            child: VoiceTextField(
               controller: controller,
               maxLines: 6,
               decoration: const InputDecoration(

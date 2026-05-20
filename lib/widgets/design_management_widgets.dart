@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class DesignSpecificationsCard extends StatelessWidget {
   const DesignSpecificationsCard({super.key});
 
@@ -119,7 +120,7 @@ class DesignSpecificationsCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add Specification'),
-        content: TextField(
+        content: VoiceTextField(
           controller: controller,
           decoration:
               const InputDecoration(hintText: 'Enter specification details'),
@@ -334,12 +335,12 @@ class DesignDocumentsCard extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: titleController,
                 decoration: const InputDecoration(labelText: 'Document Title'),
               ),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: urlController,
                 decoration: const InputDecoration(labelText: 'URL (Optional)'),
               ),
@@ -569,12 +570,12 @@ class DesignToolsCard extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: nameController,
                 decoration: const InputDecoration(labelText: 'Tool Name'),
               ),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: urlController,
                 decoration: const InputDecoration(labelText: 'URL'),
               ),

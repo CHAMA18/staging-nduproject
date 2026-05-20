@@ -18,6 +18,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kSurfaceBackground = Color(0xFFFCFCFC);
 const Color _kAccentColor = Color(0xFFFFC107);
 const Color _kPrimaryText = Color(0xFF212529);
@@ -266,7 +267,7 @@ class _WorkBreakdownStructureBodyState
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: titleController,
                           decoration: const InputDecoration(labelText: 'Title'),
                           textCapitalization: TextCapitalization.sentences,
@@ -276,7 +277,7 @@ class _WorkBreakdownStructureBodyState
                                   : null,
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
+                        VoiceTextFormField(
                           controller: descriptionController,
                           decoration:
                               const InputDecoration(labelText: 'Description'),

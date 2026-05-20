@@ -17,6 +17,7 @@ import 'basic_plan_dashboard_screen.dart';
 import 'project_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PortfolioDashboardScreen extends StatelessWidget {
   const PortfolioDashboardScreen({super.key, this.portfolioId});
 
@@ -197,7 +198,7 @@ class _PortfolioRollUpContentState extends State<_PortfolioRollUpContent> {
                           fontSize: 13, color: Color(0xFF6B7280)),
                     ),
                     const SizedBox(height: 18),
-                    TextField(
+                    VoiceTextField(
                       controller: controller,
                       onChanged: (_) => setDialogState(() {}),
                       decoration: InputDecoration(

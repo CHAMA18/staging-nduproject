@@ -26,6 +26,7 @@ import 'portfolio_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
 import 'project_dashboard_mobile_shell.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectDashboardScreen extends StatefulWidget {
   const ProjectDashboardScreen({super.key, this.isBasicPlan = false});
 
@@ -159,7 +160,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: nameController,
                       autofocus: true,
                       decoration: InputDecoration(
@@ -275,7 +276,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                   style: TextStyle(color: Colors.grey[700], fontSize: 14),
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
+                VoiceTextFormField(
                   controller: nameController,
                   autofocus: true,
                   decoration: InputDecoration(
@@ -1235,7 +1236,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
             },
           ),
           const SizedBox(height: 20),
-          TextField(
+          VoiceTextField(
             controller: _searchController,
             style: const TextStyle(fontSize: 16),
             decoration: InputDecoration(
@@ -1663,7 +1664,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                   style: TextStyle(color: Colors.grey[700], fontSize: 14),
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
+                VoiceTextFormField(
                   controller: nameController,
                   autofocus: true,
                   decoration: InputDecoration(
@@ -1858,7 +1859,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
             },
           ),
           const SizedBox(height: 20),
-          TextField(
+          VoiceTextField(
             controller: _searchController,
             style: const TextStyle(fontSize: 16),
             decoration: InputDecoration(
@@ -2879,7 +2880,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                   style: TextStyle(color: Colors.grey[700], fontSize: 14),
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
+                VoiceTextFormField(
                   controller: nameController,
                   autofocus: true,
                   decoration: InputDecoration(

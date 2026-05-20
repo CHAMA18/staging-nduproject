@@ -15,6 +15,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // ─── Tab definitions ────────────────────────────────────────────────────────
 
 enum _ImTab {
@@ -553,7 +554,7 @@ class _InterfaceRegisterSectionState extends State<_InterfaceRegisterSection> {
         children: [
           SizedBox(
             width: 220,
-            child: TextField(
+            child: VoiceTextField(
               onChanged: (v) => setState(() => _searchQuery = v),
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)),
@@ -1120,7 +1121,7 @@ class _InterfaceEntryDialogState extends State<_InterfaceEntryDialog> {
   Widget _field(String label, TextEditingController ctrl, {int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
+      child: VoiceTextField(
         controller: ctrl,
         maxLines: maxLines,
         decoration: InputDecoration(

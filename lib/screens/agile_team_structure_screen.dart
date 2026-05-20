@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
 const Color _kMuted = Color(0xFF6B7280);
@@ -390,7 +391,7 @@ class _AgileTeamStructureScreenState
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: VoiceTextField(
                     decoration: const InputDecoration(
                       labelText: 'Squad / Team Name',
                       border: OutlineInputBorder(),
@@ -403,7 +404,7 @@ class _AgileTeamStructureScreenState
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 80,
-                  child: TextField(
+                  child: VoiceTextField(
                     decoration: const InputDecoration(
                       labelText: 'Count',
                       border: OutlineInputBorder(),
@@ -422,7 +423,7 @@ class _AgileTeamStructureScreenState
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               decoration: const InputDecoration(
                 labelText: 'Primary Role / Focus',
                 border: OutlineInputBorder(),
@@ -432,7 +433,7 @@ class _AgileTeamStructureScreenState
               onChanged: (_) => _scheduleAutoSave(),
             ),
             const SizedBox(height: 12),
-            TextField(
+            VoiceTextField(
               decoration: const InputDecoration(
                 labelText: 'Key Skills / Cross-functional coverage',
                 border: OutlineInputBorder(),
@@ -459,7 +460,7 @@ class _AgileTeamStructureScreenState
                 fontWeight: FontWeight.w600,
                 color: _kHeadline)),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: _noteControllers['notes'],
           decoration: const InputDecoration(
             hintText: 'Team location, timezone overlaps, RACI notes...',

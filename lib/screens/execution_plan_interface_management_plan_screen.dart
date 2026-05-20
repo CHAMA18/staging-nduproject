@@ -9,6 +9,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanInterfaceManagementPlanScreen extends StatelessWidget {
   const ExecutionPlanInterfaceManagementPlanScreen({super.key});
 
@@ -173,7 +174,7 @@ class _InterfaceManagementPlanFormState
           ),
         ),
         const SizedBox(height: 20),
-        TextField(
+        VoiceTextField(
           controller: _responsibilityMatrixController,
           decoration: const InputDecoration(
             labelText: 'Responsibility Matrix',
@@ -184,7 +185,7 @@ class _InterfaceManagementPlanFormState
           onChanged: (_) => _scheduleSave(),
         ),
         const SizedBox(height: 16),
-        TextField(
+        VoiceTextField(
           controller: _escalationProceduresController,
           decoration: const InputDecoration(
             labelText: 'Escalation Procedures',
@@ -195,7 +196,7 @@ class _InterfaceManagementPlanFormState
           onChanged: (_) => _scheduleSave(),
         ),
         const SizedBox(height: 16),
-        TextField(
+        VoiceTextField(
           controller: _coordinationMeetingsController,
           decoration: const InputDecoration(
             labelText: 'Coordination Meeting Schedule',

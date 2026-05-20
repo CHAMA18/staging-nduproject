@@ -21,6 +21,7 @@ import 'package:ndu_project/utils/web_utils.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/hint_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -3257,7 +3258,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: VoiceTextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: _fieldDecoration('Email address',
@@ -3266,7 +3267,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextField(
+                child: VoiceTextField(
                   controller: _nameController,
                   decoration:
                       _fieldDecoration('Full name', icon: Icons.badge_outlined),
@@ -3371,7 +3372,7 @@ class _AccessCollaboratorsPanelState extends State<_AccessCollaboratorsPanel> {
             ],
           ),
           const SizedBox(height: 14),
-          TextField(
+          VoiceTextField(
             controller: _messageController,
             minLines: 2,
             maxLines: 4,

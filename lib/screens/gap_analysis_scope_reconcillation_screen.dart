@@ -18,6 +18,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/app_strings.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
   const GapAnalysisScopeReconcillationScreen({
     super.key,
@@ -1215,7 +1216,7 @@ class _GapRegisterCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: idController,
                     decoration: const InputDecoration(
                       labelText: 'Gap ID *',
@@ -1223,7 +1224,7 @@ class _GapRegisterCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: titleController,
                     decoration: const InputDecoration(
                       labelText: 'Gap description *',
@@ -1284,7 +1285,7 @@ class _GapRegisterCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: ownerController,
                     decoration: const InputDecoration(
                       labelText: 'Owner *',
@@ -1295,7 +1296,7 @@ class _GapRegisterCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: targetDateController,
                           decoration: const InputDecoration(
                             labelText: 'Target closure date',
@@ -1307,7 +1308,7 @@ class _GapRegisterCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: nextStepController,
                     decoration: const InputDecoration(
                       labelText: 'Remediation / next step *',
@@ -1316,7 +1317,7 @@ class _GapRegisterCard extends StatelessWidget {
                     maxLines: 2,
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: impactAreaController,
                     decoration: const InputDecoration(
                       labelText: 'Impact area',
@@ -1325,7 +1326,7 @@ class _GapRegisterCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: evidenceController,
                     decoration: const InputDecoration(
                       labelText: 'Evidence / reference',
@@ -1714,7 +1715,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: textController,
                     decoration: const InputDecoration(
                       labelText: 'Description *',
@@ -1799,7 +1800,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: freqController,
                     decoration: const InputDecoration(
                       labelText: 'Occurrence frequency',
@@ -1808,7 +1809,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: recController,
                     decoration: const InputDecoration(
                       labelText: 'Recommendation',
@@ -2677,7 +2678,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: titleController,
                     decoration: const InputDecoration(
                       labelText: 'Action description *',
@@ -2733,7 +2734,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: ownerController,
                           decoration: const InputDecoration(
                             labelText: 'Owner *',
@@ -2743,7 +2744,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: dueController,
                           decoration: const InputDecoration(
                             labelText: 'Due date',
@@ -2758,7 +2759,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: gapRefController,
                           decoration: const InputDecoration(
                             labelText: 'Gap reference',
@@ -2790,7 +2791,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  TextField(
+                  VoiceTextField(
                     controller: depController,
                     decoration: const InputDecoration(
                       labelText: 'Dependency',
@@ -2799,7 +2800,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: notesController,
                     decoration: const InputDecoration(
                       labelText: 'Notes',
@@ -3079,7 +3080,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: areaController,
                     decoration: const InputDecoration(
                       labelText: 'Impact area *',
@@ -3087,7 +3088,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: detailController,
                     decoration: const InputDecoration(
                       labelText: 'Description *',
@@ -3164,7 +3165,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: ownerController,
                           decoration: const InputDecoration(
                             labelText: 'Owner',
@@ -3178,7 +3179,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: exposureController,
                           decoration: const InputDecoration(
                             labelText: 'Financial exposure',
@@ -3189,7 +3190,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
+                        child: VoiceTextField(
                           controller: deliverableController,
                           decoration: const InputDecoration(
                             labelText: 'Affected deliverable',
@@ -3200,7 +3201,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: mitigationController,
                     decoration: const InputDecoration(
                       labelText: 'Mitigation plan reference',
@@ -4033,15 +4034,15 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
         content: SingleChildScrollView(
           child: Column(
             children: [
-              TextField(
+              VoiceTextField(
                   controller: titleCtrl,
                   decoration: const InputDecoration(labelText: 'Title')),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                   controller: detailCtrl,
                   decoration: const InputDecoration(labelText: 'Detail')),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                   onChanged: (v) => owner = v,
                   controller: TextEditingController(text: owner),
                   decoration: const InputDecoration(labelText: 'Owner')),
@@ -4143,7 +4144,7 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
     return Row(
       children: [
         Expanded(
-          child: TextField(
+          child: VoiceTextField(
             controller: _searchController,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
@@ -4870,12 +4871,12 @@ class _ReconciliationWorkflowCardState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleController,
                   decoration: const InputDecoration(labelText: 'Title'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descController,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Description'),
@@ -5293,7 +5294,7 @@ class _LessonsLearnedCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             key: ValueKey('lesson-${entry.key}'),
                             initialValue: entry.value,
                             decoration: _inputDecoration('Lesson learned'),

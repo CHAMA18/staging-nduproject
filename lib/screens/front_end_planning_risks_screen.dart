@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Project Risks page
 /// Matches the provided screenshot with:
 /// - Top bar (back/forward, centered title, user chip)
@@ -1792,7 +1793,7 @@ class _FrontEndPlanningRisksScreenState
                 borderRadius: BorderRadius.circular(10),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: TextFormField(
+              child: VoiceTextFormField(
                 initialValue: row.mitigation,
                 minLines: 2,
                 maxLines: 3,
@@ -2542,7 +2543,7 @@ Widget _roundedField(
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       minLines: minLines,
       maxLines: maxLines,
@@ -2587,7 +2588,7 @@ class _LabeledField extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             autofocus: autofocus,
             enabled: enabled,

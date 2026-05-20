@@ -9,6 +9,7 @@ import '../widgets/responsive.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ContractDetailsDashboardScreen extends StatelessWidget {
   const ContractDetailsDashboardScreen({super.key});
 
@@ -499,7 +500,7 @@ class _SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       decoration: InputDecoration(
         hintText: 'Search contracts...',
         prefixIcon: const Icon(Icons.search),

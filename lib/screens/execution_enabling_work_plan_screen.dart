@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionEnablingWorkPlanScreen extends StatelessWidget {
   const ExecutionEnablingWorkPlanScreen({super.key});
 
@@ -218,24 +219,24 @@ class _EnablingWorksPlanTable extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                   controller: aspectController,
                   decoration: const InputDecoration(labelText: 'Aspect *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description *'),
                   maxLines: 2),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: durationController,
                   decoration: const InputDecoration(labelText: 'Duration *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: costController,
                   decoration: const InputDecoration(labelText: 'Cost *')),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                   controller: commentsController,
                   decoration: const InputDecoration(labelText: 'Comments *'),
                   maxLines: 3),

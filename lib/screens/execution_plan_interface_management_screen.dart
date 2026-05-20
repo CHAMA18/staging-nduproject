@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanInterfaceManagementScreen extends StatelessWidget {
   const ExecutionPlanInterfaceManagementScreen({super.key});
 
@@ -244,12 +245,12 @@ class _InterfaceRegisterTable extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: interfaceIdController,
                     decoration:
                         const InputDecoration(labelText: 'Interface ID *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: interfaceNameController,
                     decoration:
                         const InputDecoration(labelText: 'Interface Name *')),
@@ -264,11 +265,11 @@ class _InterfaceRegisterTable extends StatelessWidget {
                       setState(() => interfaceType = v ?? 'Physical'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: partyAController,
                     decoration: const InputDecoration(labelText: 'Party A *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: partyBController,
                     decoration: const InputDecoration(labelText: 'Party B *')),
                 const SizedBox(height: 12),
@@ -290,7 +291,7 @@ class _InterfaceRegisterTable extends StatelessWidget {
                   onChanged: (v) => setState(() => frequency = v ?? 'Daily'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: commentsController,
                     decoration: const InputDecoration(labelText: 'Comments'),
                     maxLines: 3),

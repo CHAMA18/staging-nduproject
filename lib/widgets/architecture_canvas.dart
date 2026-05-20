@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ArchitectureNode {
   ArchitectureNode({
     required this.id,
@@ -131,7 +132,7 @@ class _ArchitectureCanvasState extends State<ArchitectureCanvas> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: controller,
                 decoration: const InputDecoration(
                   labelText: 'Label',

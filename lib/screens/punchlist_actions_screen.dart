@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PunchlistActionsScreen extends StatefulWidget {
   const PunchlistActionsScreen({super.key});
 
@@ -1834,28 +1835,28 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: categoryCtrl, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),),
+                  VoiceTextField(controller: categoryCtrl, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: openItemsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Items', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: openItemsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Items', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: closedCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Closed', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: closedCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Closed', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: criticalCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Critical', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: criticalCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Critical', border: OutlineInputBorder()),)),
                     const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: highCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'High', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: highCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'High', border: OutlineInputBorder()),)),
                     const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: mediumCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Medium', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: mediumCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Medium', border: OutlineInputBorder()),)),
                     const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: lowCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Low', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: lowCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Low', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
@@ -1929,30 +1930,30 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: workstreamCtrl, decoration: const InputDecoration(labelText: 'Workstream', border: OutlineInputBorder()),),
+                  VoiceTextField(controller: workstreamCtrl, decoration: const InputDecoration(labelText: 'Workstream', border: OutlineInputBorder()),),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: openItemsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Items', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: openItemsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Open Items', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: closedThisSprintCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Closed Sprint', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: closedThisSprintCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Closed Sprint', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: velocityCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Velocity %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: velocityCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Velocity %', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: throughputCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Throughput (items/sp)', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: throughputCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Throughput (items/sp)', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: deltaCtrl, decoration: const InputDecoration(labelText: 'Delta (e.g. +8.2%)', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: deltaCtrl, decoration: const InputDecoration(labelText: 'Delta (e.g. +8.2%)', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: avgCycleTimeCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Avg Cycle Time (days)', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: avgCycleTimeCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Avg Cycle Time (days)', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: periodCtrl, decoration: const InputDecoration(labelText: 'Period', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: periodCtrl, decoration: const InputDecoration(labelText: 'Period', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
@@ -2084,48 +2085,48 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: teamCtrl, decoration: const InputDecoration(labelText: 'Team Name', border: OutlineInputBorder()),),
+                  VoiceTextField(controller: teamCtrl, decoration: const InputDecoration(labelText: 'Team Name', border: OutlineInputBorder()),),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: plannedFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Planned FTE', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: plannedFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Planned FTE', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: allocatedFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Allocated FTE', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: allocatedFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Allocated FTE', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: availableFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Available FTE', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: availableFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Available FTE', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: utilizationCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Utilization %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: utilizationCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Utilization %', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: overallocatedCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Overallocated FTE', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: overallocatedCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Overallocated FTE', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: fteVarianceCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'FTE Variance', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: fteVarianceCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'FTE Variance', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: burnRateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Burn Rate %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: burnRateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Burn Rate %', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: productivityIndexCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Productivity Index %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: productivityIndexCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Productivity Index %', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: absenteeismRateCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Absenteeism Rate %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: absenteeismRateCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Absenteeism Rate %', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: skillGapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Skill Gap Count', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: skillGapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Skill Gap Count', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: backlogWeeksCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Backlog Weeks', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: backlogWeeksCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Backlog Weeks', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: costVarianceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cost Variance %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: costVarianceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cost Variance %', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
@@ -2252,40 +2253,40 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: shiftCtrl, decoration: const InputDecoration(labelText: 'Shift Name', border: OutlineInputBorder()),),
+                  VoiceTextField(controller: shiftCtrl, decoration: const InputDecoration(labelText: 'Shift Name', border: OutlineInputBorder()),),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: requiredHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Required Headcount', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: requiredHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Required Headcount', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: actualHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual Headcount', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: actualHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual Headcount', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: coveragePercentCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Coverage %', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: coveragePercentCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Coverage %', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: gapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Gap', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: gapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Gap', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: shiftPatternCtrl, decoration: const InputDecoration(labelText: 'Shift Pattern', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: shiftPatternCtrl, decoration: const InputDecoration(labelText: 'Shift Pattern', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: contractorFillCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Contractor Fill', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: contractorFillCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Contractor Fill', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: agencyStaffCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Agency Staff', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: agencyStaffCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Agency Staff', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: absenceCountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Absence Count', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: absenceCountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Absence Count', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: nextRotationCtrl, decoration: const InputDecoration(labelText: 'Next Rotation', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: nextRotationCtrl, decoration: const InputDecoration(labelText: 'Next Rotation', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    Expanded(child: TextField(controller: supervisorCtrl, decoration: const InputDecoration(labelText: 'Supervisor', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: supervisorCtrl, decoration: const InputDecoration(labelText: 'Supervisor', border: OutlineInputBorder()),)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
+                    Expanded(child: VoiceTextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [

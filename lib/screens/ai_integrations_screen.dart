@@ -6,6 +6,7 @@ import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AiIntegrationsScreen extends StatefulWidget {
   const AiIntegrationsScreen({super.key});
   static void open(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AiIntegrationsScreen()));
@@ -111,7 +112,7 @@ class _AiIntegrationsScreenState extends State<AiIntegrationsScreen> {
     final nav = Navigator.of(context);
     showDialog(context: context, builder: (c) => AlertDialog(
       title: const Text('Add integration'),
-      content: TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+      content: VoiceTextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
       actions: [
         TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')),
         ElevatedButton(

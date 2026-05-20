@@ -3,6 +3,7 @@ import 'package:ndu_project/models/user_role.dart';
 import 'package:ndu_project/services/permission_service.dart';
 import 'package:ndu_project/widgets/permission_aware_widgets.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// World-class User Management Screen for admins and owners
 /// Comprehensive user and role management interface
 class UserManagementScreen extends StatefulWidget {
@@ -149,7 +150,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
+            child: VoiceTextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
               decoration: InputDecoration(
@@ -643,7 +644,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  TextField(
+                  VoiceTextField(
                     controller: emailController,
                     decoration: const InputDecoration(
                       labelText: 'Email Address',
@@ -653,7 +654,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 16),
-                  TextField(
+                  VoiceTextField(
                     controller: nameController,
                     decoration: const InputDecoration(
                       labelText: 'Full Name',
@@ -776,7 +777,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Display Name',
@@ -788,7 +789,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: titleController,
                         decoration: const InputDecoration(
                           labelText: 'Job Title',
@@ -799,7 +800,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: departmentController,
                         decoration: const InputDecoration(
                           labelText: 'Department',
@@ -814,7 +815,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: phoneController,
                         decoration: const InputDecoration(
                           labelText: 'Phone Number',
@@ -826,7 +827,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: organizationController,
                         decoration: const InputDecoration(
                           labelText: 'Organization',

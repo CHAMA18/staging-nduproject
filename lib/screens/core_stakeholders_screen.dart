@@ -35,6 +35,7 @@ import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _MissingStakeholderAction { manual, autoFill, skip }
 
 class _StakeholderAutoFillPreviewRow {
@@ -864,7 +865,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(color: gray200),
                               ),
-                              child: TextField(
+                              child: VoiceTextField(
                                 controller: _notesController,
                                 keyboardType: TextInputType.multiline,
                                 style: TextStyle(
@@ -1748,7 +1749,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             TextFormattingToolbar(controller: controller),
             const SizedBox(height: 8),
             // Build bullet list with yellow dots from controller text
-            TextField(
+            VoiceTextField(
               controller: controller,
               minLines: 2,
               maxLines: null,

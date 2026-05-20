@@ -1,6 +1,7 @@
 import 'package:ndu_project/widgets/expanding_text_field.dart';
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class SsherItemInput {
   final String department;
   final String teamMember;
@@ -230,7 +231,7 @@ class _AddSsherItemDialogState extends State<AddSsherItemDialog> {
       ),
       const SizedBox(width: 12),
       Expanded(
-        child: TextFormField(
+        child: VoiceTextFormField(
           controller: _memberCtrl,
           decoration: _inputDecoration(widget.teamMemberLabel, theme, colorScheme),
           style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),

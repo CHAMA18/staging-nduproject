@@ -10,6 +10,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanInfrastructurePlanScreen extends StatelessWidget {
   const ExecutionPlanInfrastructurePlanScreen({super.key});
 
@@ -206,7 +207,7 @@ class _PlanningInfrastructureCostSectionState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Item name',
@@ -214,7 +215,7 @@ class _PlanningInfrastructureCostSectionState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: summaryController,
                   decoration: const InputDecoration(
                     labelText: 'Summary',
@@ -222,7 +223,7 @@ class _PlanningInfrastructureCostSectionState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: detailsController,
                   minLines: 2,
                   maxLines: 4,
@@ -232,7 +233,7 @@ class _PlanningInfrastructureCostSectionState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: costController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
@@ -242,7 +243,7 @@ class _PlanningInfrastructureCostSectionState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ownerController,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -250,7 +251,7 @@ class _PlanningInfrastructureCostSectionState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: statusController,
                   decoration: const InputDecoration(
                     labelText: 'Status',

@@ -7,6 +7,7 @@ import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'dart:async';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Specialized Resource Grid widget for Team Meetings page
 /// Features: Summary cards, meeting planner table with role integration, AI agenda generation
 class TeamMeetingsResourceGrid extends StatefulWidget {
@@ -567,7 +568,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   ),
                   const SizedBox(height: 12),
                   // Duration
-                  TextField(
+                  VoiceTextField(
                     controller: durationController,
                     decoration: const InputDecoration(
                       labelText: 'Duration (Hours) *',
@@ -577,7 +578,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   ),
                   const SizedBox(height: 12),
                   // Next Scheduled Date
-                  TextField(
+                  VoiceTextField(
                     controller: nextDateController,
                     decoration: const InputDecoration(
                       labelText: 'Next Scheduled Date (YYYY-MM-DD)',
@@ -589,7 +590,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   // Meeting Objective
                   TextFormattingToolbar(controller: objectiveController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: objectiveController,
                     decoration: const InputDecoration(
                       labelText: 'Meeting Objective *',
@@ -602,7 +603,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   // Action Items
                   TextFormattingToolbar(controller: actionItemsController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: actionItemsController,
                     decoration: const InputDecoration(
                       labelText: 'Action Items',
@@ -616,7 +617,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   // Notes
                   TextFormattingToolbar(controller: notesController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: notesController,
                     decoration: const InputDecoration(
                       labelText: 'Notes',
@@ -1013,7 +1014,7 @@ class _EditableCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return VoiceTextField(
       controller: TextEditingController(text: value)
         ..selection = TextSelection.collapsed(offset: value.length),
       onChanged: onChanged,
@@ -1070,7 +1071,7 @@ class _ObjectiveCell extends StatelessWidget {
           ),
         ),
         // Text field
-        TextField(
+        VoiceTextField(
           controller: TextEditingController(text: value)
             ..selection = TextSelection.collapsed(offset: value.length),
           onChanged: onChanged,

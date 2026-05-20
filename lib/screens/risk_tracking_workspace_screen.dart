@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class RiskTrackingWorkspaceScreen extends StatefulWidget {
   const RiskTrackingWorkspaceScreen({super.key});
 
@@ -1980,7 +1981,7 @@ class _RiskTrackingWorkspaceScreenState
                       ],
                     ),
                     const SizedBox(height: 20),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: titleController,
                       decoration: _inputDecoration(
                           'Risk Title *', Icons.warning_amber_outlined),
@@ -1991,7 +1992,7 @@ class _RiskTrackingWorkspaceScreenState
                               : null,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: descriptionController,
                       maxLines: 2,
                       decoration: _inputDecoration(
@@ -2002,7 +2003,7 @@ class _RiskTrackingWorkspaceScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: categoryController,
                             decoration: _inputDecoration(
                                 'Category', Icons.category_outlined),
@@ -2011,7 +2012,7 @@ class _RiskTrackingWorkspaceScreenState
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: ownerController,
                             decoration:
                                 _inputDecoration('Owner', Icons.person_outline),
@@ -2246,14 +2247,14 @@ class _RiskTrackingWorkspaceScreenState
                       ],
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: reviewController,
                       decoration: _inputDecoration(
                           'Next Review Date', Icons.calendar_today),
                       keyboardType: TextInputType.datetime,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: triggerController,
                       maxLines: 2,
                       decoration: _inputDecoration('Trigger Events',
@@ -2261,7 +2262,7 @@ class _RiskTrackingWorkspaceScreenState
                       textCapitalization: TextCapitalization.sentences,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: mitigationStrategyController,
                       maxLines: 2,
                       decoration: _inputDecoration(
@@ -2269,7 +2270,7 @@ class _RiskTrackingWorkspaceScreenState
                       textCapitalization: TextCapitalization.sentences,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: associatedMitigationController,
                       decoration:
                           _inputDecoration('Associated Mitigation', Icons.link),
@@ -2439,7 +2440,7 @@ class _RiskTrackingWorkspaceScreenState
                       ],
                     ),
                     const SizedBox(height: 20),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: titleController,
                       decoration:
                           _inputDecoration('Signal Title *', Icons.sensors),
@@ -2450,7 +2451,7 @@ class _RiskTrackingWorkspaceScreenState
                               : null,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: detailController,
                       maxLines: 3,
                       decoration: _inputDecoration(
@@ -2461,7 +2462,7 @@ class _RiskTrackingWorkspaceScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: sourceController,
                             decoration: _inputDecoration(
                                 'Source', Icons.source_outlined),
@@ -2470,7 +2471,7 @@ class _RiskTrackingWorkspaceScreenState
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: dateDetectedController,
                             decoration: _inputDecoration(
                                 'Date Detected', Icons.calendar_today),
@@ -2680,7 +2681,7 @@ class _RiskTrackingWorkspaceScreenState
                       ],
                     ),
                     const SizedBox(height: 20),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: titleController,
                       decoration:
                           _inputDecoration('Plan Title *', Icons.shield),
@@ -2691,7 +2692,7 @@ class _RiskTrackingWorkspaceScreenState
                               : null,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: descriptionController,
                       maxLines: 2,
                       decoration: _inputDecoration(
@@ -2702,7 +2703,7 @@ class _RiskTrackingWorkspaceScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: ownerController,
                             decoration:
                                 _inputDecoration('Owner', Icons.person_outline),
@@ -2711,7 +2712,7 @@ class _RiskTrackingWorkspaceScreenState
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: dueController,
                             decoration: _inputDecoration(
                                 'Due Date', Icons.calendar_today),
@@ -2724,7 +2725,7 @@ class _RiskTrackingWorkspaceScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: VoiceTextFormField(
                             controller: estimatedCostController,
                             decoration: _inputDecoration(
                                 'Est. Cost (\$)', Icons.payments_outlined),
@@ -2784,7 +2785,7 @@ class _RiskTrackingWorkspaceScreenState
                       ],
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
+                    VoiceTextFormField(
                       controller: statusNotesController,
                       maxLines: 2,
                       decoration:

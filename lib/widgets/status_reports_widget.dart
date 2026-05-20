@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/inline_editable_text.dart';
 import 'package:ndu_project/widgets/progress_quick_actions.dart';
 import 'package:intl/intl.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Status Reports & Asks Tracking sub-page
 class StatusReportsWidget extends StatefulWidget {
   const StatusReportsWidget({
@@ -310,7 +311,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextField(
+                        VoiceTextField(
                           controller: reportTypeController,
                           decoration: const InputDecoration(
                             labelText: 'Report Type',
@@ -318,7 +319,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: stakeholderController,
                           decoration: const InputDecoration(
                             labelText: 'Stakeholder',
@@ -374,7 +375,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: summaryController,
                           minLines: 2,
                           maxLines: 4,
@@ -384,7 +385,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: keyWinsController,
                           minLines: 2,
                           maxLines: 3,
@@ -394,7 +395,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: blockersController,
                           minLines: 2,
                           maxLines: 3,
@@ -404,7 +405,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: asksController,
                           minLines: 2,
                           maxLines: 3,
@@ -414,7 +415,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: followUpsController,
                           minLines: 2,
                           maxLines: 3,
@@ -424,7 +425,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
+                        VoiceTextField(
                           controller: notesController,
                           minLines: 2,
                           maxLines: 4,

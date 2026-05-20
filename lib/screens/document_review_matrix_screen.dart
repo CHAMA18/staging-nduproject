@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kBackground = Color(0xFFF7F8FC);
 const Color _kAccent = Color(0xFFFFC812);
 const Color _kHeadline = Color(0xFF1A1D1F);
@@ -279,7 +280,7 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
     return Row(
       children: [
         Expanded(
-          child: TextField(
+          child: VoiceTextField(
             decoration: InputDecoration(
               hintText: 'Search documents...',
               prefixIcon: const Icon(Icons.search),
@@ -878,7 +879,7 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
           children: [
             Text('Document: ${doc.documentName}'),
             const SizedBox(height: 16),
-            TextField(
+            VoiceTextField(
               controller: controller,
               maxLines: 4,
               decoration: InputDecoration(

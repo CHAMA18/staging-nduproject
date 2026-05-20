@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _SecurityTab { dashboard, roles, permissions, settings, accessLogs }
 
 class SecurityManagementScreen extends StatefulWidget {
@@ -124,17 +125,17 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Role name'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: tierController,
                   decoration: const InputDecoration(labelText: 'Tier label'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
@@ -185,22 +186,22 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Permission name'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: resourceController,
                   decoration: const InputDecoration(labelText: 'Resource'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: actionController,
                   decoration: const InputDecoration(labelText: 'Action'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
@@ -245,17 +246,17 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Setting name'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: valueController,
                   decoration: const InputDecoration(labelText: 'Value'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
@@ -525,7 +526,7 @@ class _SecurityNotesCardState extends State<_SecurityNotesCard> {
             style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
           ),
           const SizedBox(height: 16),
-          TextField(
+          VoiceTextField(
             controller: _controller,
             onChanged: _handleChanged,
             maxLines: 6,
@@ -1537,7 +1538,7 @@ class _SettingInputRow extends StatelessWidget {
         const SizedBox(width: 20),
         SizedBox(
           width: 120,
-          child: TextField(
+          child: VoiceTextField(
             controller: controller,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
@@ -1576,7 +1577,7 @@ class _LogsSearchField extends StatelessWidget {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
-        return TextField(
+        return VoiceTextField(
           controller: controller,
           decoration: InputDecoration(
             hintText: 'Search logs.',

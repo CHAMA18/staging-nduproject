@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanCommunicationPlanScreen extends StatelessWidget {
   const ExecutionPlanCommunicationPlanScreen({super.key});
 
@@ -244,12 +245,12 @@ class _CommunicationPlanTable extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: stakeholderController,
                     decoration:
                         const InputDecoration(labelText: 'Stakeholder *')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: infoTypeController,
                     decoration:
                         const InputDecoration(labelText: 'Info Type *')),
@@ -272,7 +273,7 @@ class _CommunicationPlanTable extends StatelessWidget {
                   onChanged: (v) => setState(() => channel = v ?? 'Email'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: ownerController,
                     decoration: const InputDecoration(labelText: 'Owner *')),
                 const SizedBox(height: 12),
@@ -285,7 +286,7 @@ class _CommunicationPlanTable extends StatelessWidget {
                   onChanged: (v) => setState(() => status = v ?? 'Planned'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: commentsController,
                     decoration: const InputDecoration(labelText: 'Comments'),
                     maxLines: 3),

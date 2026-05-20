@@ -17,6 +17,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class ToolsIntegrationScreen extends StatefulWidget {
   const ToolsIntegrationScreen({super.key});
 
@@ -1664,9 +1665,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     decoration: const InputDecoration(labelText: 'Provider', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Tool name', border: OutlineInputBorder())),
+                  VoiceTextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Tool name', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(controller: subtitleCtl, decoration: const InputDecoration(labelText: 'Subtitle', border: OutlineInputBorder())),
+                  VoiceTextField(controller: subtitleCtl, decoration: const InputDecoration(labelText: 'Subtitle', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: status,
@@ -1680,11 +1681,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: scopesCtl, decoration: const InputDecoration(labelText: 'Scopes (comma-separated)', border: OutlineInputBorder())),
+                  VoiceTextField(controller: scopesCtl, decoration: const InputDecoration(labelText: 'Scopes (comma-separated)', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(controller: mapsToCtl, decoration: const InputDecoration(labelText: 'Maps to', border: OutlineInputBorder())),
+                  VoiceTextField(controller: mapsToCtl, decoration: const InputDecoration(labelText: 'Maps to', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(controller: featuresCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Features / notes', border: OutlineInputBorder())),
+                  VoiceTextField(controller: featuresCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Features / notes', border: OutlineInputBorder())),
                 ],
               ),
             ),
@@ -1778,18 +1779,18 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: metricCtl, decoration: const InputDecoration(labelText: 'Metric name', isDense: true, border: OutlineInputBorder())),
+              VoiceTextField(controller: metricCtl, decoration: const InputDecoration(labelText: 'Metric name', isDense: true, border: OutlineInputBorder())),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextField(controller: valueCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
+                Expanded(child: VoiceTextField(controller: valueCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
                 const SizedBox(width: 12),
-                Expanded(child: TextField(controller: targetCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
+                Expanded(child: VoiceTextField(controller: targetCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target %', isDense: true, border: OutlineInputBorder(), suffixText: '%'))),
               ]),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
+                Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', isDense: true, border: OutlineInputBorder()))),
                 const SizedBox(width: 12),
-                Expanded(child: TextField(controller: trendCtl, decoration: const InputDecoration(labelText: 'Trend note', isDense: true, border: OutlineInputBorder()))),
+                Expanded(child: VoiceTextField(controller: trendCtl, decoration: const InputDecoration(labelText: 'Trend note', isDense: true, border: OutlineInputBorder()))),
               ]),
             ],
           ),
@@ -1859,9 +1860,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: signalCtl, decoration: const InputDecoration(labelText: 'Signal name', border: OutlineInputBorder())),
+                  VoiceTextField(controller: signalCtl, decoration: const InputDecoration(labelText: 'Signal name', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(controller: descCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                  VoiceTextField(controller: descCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
                   Row(children: [
                     Expanded(
@@ -1884,7 +1885,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   ]),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -1963,7 +1964,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: titleCtl, decoration: const InputDecoration(labelText: 'Action title', border: OutlineInputBorder())),
+                  VoiceTextField(controller: titleCtl, decoration: const InputDecoration(labelText: 'Action title', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
                   Row(children: [
                     Expanded(
@@ -1975,11 +1976,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: dueDateCtl, decoration: const InputDecoration(labelText: 'Due date', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: dueDateCtl, decoration: const InputDecoration(labelText: 'Due date', border: OutlineInputBorder()))),
                   ]),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: TextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: ownerCtl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -2314,12 +2315,12 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: gateCtl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
+                  VoiceTextField(controller: gateCtl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
-                  TextField(controller: descCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                  VoiceTextField(controller: descCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: TextField(controller: approverCtl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: approverCtl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -2352,7 +2353,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     ),
                   ]),
                   const SizedBox(height: 12),
-                  TextField(controller: targetDateCtl, decoration: const InputDecoration(labelText: 'Target date', border: OutlineInputBorder())),
+                  VoiceTextField(controller: targetDateCtl, decoration: const InputDecoration(labelText: 'Target date', border: OutlineInputBorder())),
                 ],
               ),
             ),
@@ -2445,13 +2446,13 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(children: [
-                    Expanded(child: TextField(controller: sourceCtl, decoration: const InputDecoration(labelText: 'Source', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: sourceCtl, decoration: const InputDecoration(labelText: 'Source', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: targetCtl, decoration: const InputDecoration(labelText: 'Target', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: targetCtl, decoration: const InputDecoration(labelText: 'Target', border: OutlineInputBorder()))),
                   ]),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: TextField(controller: dataTypeCtl, decoration: const InputDecoration(labelText: 'Data type', border: OutlineInputBorder()))),
+                    Expanded(child: VoiceTextField(controller: dataTypeCtl, decoration: const InputDecoration(labelText: 'Data type', border: OutlineInputBorder()))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -2484,7 +2485,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     ),
                   ]),
                   const SizedBox(height: 12),
-                  TextField(controller: transformCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Transformation rule', border: OutlineInputBorder())),
+                  VoiceTextField(controller: transformCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Transformation rule', border: OutlineInputBorder())),
                 ],
               ),
             ),

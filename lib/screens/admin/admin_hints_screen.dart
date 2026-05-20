@@ -4,6 +4,7 @@ import 'package:ndu_project/services/hint_content_service.dart';
 import 'package:ndu_project/services/hint_service.dart';
 import 'package:ndu_project/widgets/unified_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AdminHintsScreen extends StatefulWidget {
   const AdminHintsScreen({super.key});
 
@@ -683,7 +684,7 @@ class _AdminHintsScreenState extends State<AdminHintsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          VoiceTextField(
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Search by screen, page id, category, or hint copy…',
@@ -1776,7 +1777,7 @@ class _DialogField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: controller,
           maxLines: maxLines,
           onChanged: onChanged,

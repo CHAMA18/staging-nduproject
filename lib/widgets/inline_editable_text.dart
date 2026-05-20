@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/services/voice_input_service.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 
 /// Inline editable text widget - clicking text turns it into an input field
+/// with optional voice-to-text support.
 class InlineEditableText extends StatefulWidget {
   const InlineEditableText({
     super.key,
@@ -19,6 +22,8 @@ class InlineEditableText extends StatefulWidget {
     this.showUndo = false,
     this.onUndo,
     this.canUndo = false,
+    this.enableVoice = true,
+    this.voiceIconColor,
   });
 
   final String value;
@@ -36,6 +41,12 @@ class InlineEditableText extends StatefulWidget {
   final VoidCallback? onUndo;
   final bool canUndo;
 
+  /// Whether to show the voice input mic button. Defaults to true.
+  final bool enableVoice;
+
+  /// Color of the mic icon. Defaults to brand yellow.
+  final Color? voiceIconColor;
+
   @override
   State<InlineEditableText> createState() => _InlineEditableTextState();
 }
@@ -44,6 +55,11 @@ class _InlineEditableTextState extends State<InlineEditableText> {
   bool _isEditing = false;
   late TextEditingController _controller;
   final FocusNode _focusNode = FocusNode();
+  final VoiceInputService _voiceService = VoiceInputService.instance;
+  StreamSubscription<VoiceResult>? _voiceResultSub;
+  StreamSubscription<VoiceStatus>? _voiceStatusSub;
+  bool _isListening = false;
+  bool _voiceAvailable = true;
 
   @override
   void initState() {
@@ -57,6 +73,56 @@ class _InlineEditableTextState extends State<InlineEditableText> {
       _controller = TextEditingController(text: widget.value);
     }
     _focusNode.addListener(_handleFocusChange);
+    _initVoice();
+  }
+
+  Future<void> _initVoice() async {
+    final available = await _voiceService.initialize();
+    if (mounted && available != _voiceAvailable) {
+      setState(() => _voiceAvailable = available);
+    }
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      _cleanupVoiceSubs();
+      if (mounted) setState(() => _isListening = false);
+    } else {
+      final started = await _voiceService.startListening(
+        existingText: _controller.text,
+      );
+      if (!started) return;
+
+      _voiceResultSub = _voiceService.onResult.listen((result) {
+        if (!mounted) return;
+        _controller.text = result.text;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: result.text.length),
+        );
+        widget.onChanged(result.text);
+        if (result.isFinal) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupVoiceSubs();
+        }
+      });
+
+      _voiceStatusSub = _voiceService.onStatusChanged.listen((status) {
+        if (status == VoiceStatus.stopped || status == VoiceStatus.error) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupVoiceSubs();
+        }
+      });
+
+      if (mounted) setState(() => _isListening = true);
+    }
+  }
+
+  void _cleanupVoiceSubs() {
+    _voiceResultSub?.cancel();
+    _voiceResultSub = null;
+    _voiceStatusSub?.cancel();
+    _voiceStatusSub = null;
   }
 
   @override
@@ -84,6 +150,7 @@ class _InlineEditableTextState extends State<InlineEditableText> {
 
   @override
   void dispose() {
+    _cleanupVoiceSubs();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -91,54 +158,53 @@ class _InlineEditableTextState extends State<InlineEditableText> {
 
   @override
   Widget build(BuildContext context) {
+    final voiceEnabled = widget.enableVoice && _voiceAvailable;
+
     if (_isEditing) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
           // Action icons above field
-          if (widget.showRegenerate || widget.showUndo)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.showRegenerate)
-                    IconButton(
-                      icon: widget.isRegenerating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Color(0xFFD97706)),
-                            )
-                          : const Icon(Icons.auto_awesome,
-                              size: 16, color: Color(0xFF64748B)),
-                      onPressed:
-                          widget.isRegenerating ? null : widget.onRegenerate,
-                      tooltip: 'Regenerate',
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                  if (widget.showUndo)
-                    IconButton(
-                      icon: Icon(
-                        Icons.undo,
-                        size: 16,
-                        color: widget.canUndo
-                            ? const Color(0xFF64748B)
-                            : const Color(0xFFD1D5DB),
-                      ),
-                      onPressed: widget.canUndo ? widget.onUndo : null,
-                      tooltip: 'Undo',
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                ],
-              ),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.showRegenerate)
+                IconButton(
+                  icon: widget.isRegenerating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Color(0xFFD97706)),
+                        )
+                      : const Icon(Icons.auto_awesome,
+                          size: 16, color: Color(0xFF64748B)),
+                  onPressed:
+                      widget.isRegenerating ? null : widget.onRegenerate,
+                  tooltip: 'Regenerate',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              if (widget.showUndo)
+                IconButton(
+                  icon: Icon(
+                    Icons.undo,
+                    size: 16,
+                    color: widget.canUndo
+                        ? const Color(0xFF64748B)
+                        : const Color(0xFFD1D5DB),
+                  ),
+                  onPressed: widget.canUndo ? widget.onUndo : null,
+                  tooltip: 'Undo',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              if (voiceEnabled) _buildMicIcon(),
+            ],
+          ),
           // Text field
           TextField(
             controller: _controller,
@@ -198,11 +264,47 @@ class _InlineEditableTextState extends State<InlineEditableText> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (voiceEnabled && !_isListening)
+              Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Icon(Icons.mic_none_outlined,
+                    size: 12, color: Colors.grey.shade400),
+              ),
             const SizedBox(width: 4),
             Icon(Icons.edit_outlined, size: 14, color: Colors.grey.shade400),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMicIcon() {
+    final iconColor = widget.voiceIconColor ?? const Color(0xFFFFB800);
+
+    if (_isListening) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: IconButton(
+          icon: Icon(Icons.mic, color: iconColor, size: 14),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          onPressed: _toggleVoiceInput,
+          tooltip: 'Stop voice input',
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: Icon(Icons.mic_none_outlined, color: iconColor, size: 14),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+      onPressed: _toggleVoiceInput,
+      tooltip: 'Voice input',
     );
   }
 }

@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
 import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // Removed AppLogo from the top header for this screen per request
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/initiation_phase_screen.dart';
@@ -404,7 +405,7 @@ class _InfrastructureConsiderationsScreenState
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFDCE3EE)),
                       ),
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: _notesController,
                         minLines: 3,
                         maxLines: 6,
@@ -618,7 +619,7 @@ class _InfrastructureConsiderationsScreenState
                     ),
                   ],
                 ),
-                TextField(
+                VoiceTextField(
                   controller: _infraControllers[index],
                   minLines: 4,
                   maxLines: null,
@@ -1141,7 +1142,7 @@ class _InfrastructureConsiderationsScreenState
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.withOpacity(0.3))),
-          child: TextField(
+          child: VoiceTextField(
             controller: _notesController,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             decoration: InputDecoration(
@@ -1785,7 +1786,7 @@ class _InfrastructureConsiderationsScreenState
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Colors.grey.withOpacity(0.25))),
-            child: TextField(
+            child: VoiceTextField(
               controller: controller,
               minLines: 2,
               maxLines: null,

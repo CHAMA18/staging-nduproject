@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Details (Scope, Assumptions, Constraints)
 ///
 /// TODO: These sections NEED to be auto-generated using AI based on initial
@@ -662,7 +663,7 @@ class _FrontEndPlanningWorkspaceScreenState
         children: [
           TextFormattingToolbar(controller: controller),
           const SizedBox(height: 8),
-          TextField(
+          VoiceTextField(
             controller: controller,
             minLines: minLines,
             maxLines: null,
@@ -868,7 +869,7 @@ class _ListEditorCard extends StatelessWidget {
             children: [
               TextFormattingToolbar(controller: controller),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: controller,
                 autofocus: true,
                 minLines: 3,
@@ -914,7 +915,7 @@ class _ListEditorCard extends StatelessWidget {
             children: [
               TextFormattingToolbar(controller: controller),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: controller,
                 autofocus: true,
                 minLines: 3,

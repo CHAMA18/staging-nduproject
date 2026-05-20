@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'dart:math' as math;
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
 
@@ -816,7 +817,7 @@ class _RiskNotesCard extends StatelessWidget {
           // Body: transparent textarea
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: TextField(
+            child: VoiceTextField(
               controller: controller,
               onChanged: onChanged,
               maxLines: 6,
@@ -1521,7 +1522,7 @@ class _MitigationPlanCard extends StatelessWidget {
             ),
           ],
         ),
-        TextField(
+        VoiceTextField(
           controller: controller,
           onChanged: (value) => onChanged(entry.docId, value),
           minLines: 3,
@@ -1588,7 +1589,7 @@ class _RiskRegister extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: VoiceTextField(
                 controller: searchController,
                 decoration: InputDecoration(
                   hintText: 'Search...',
@@ -2011,7 +2012,7 @@ Widget _dialogField({
 }) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
+    child: VoiceTextField(
       controller: controller,
       readOnly: readOnly,
       maxLines: maxLines,

@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Front End Planning – Security screen
 /// Mirrors the provided layout with shared workspace chrome,
 /// large notes area, security text panel, and AI hint + Next controls.
@@ -349,12 +350,12 @@ Security Training:
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: nameController,
                     decoration: const InputDecoration(labelText: 'Role Name'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: descController,
                     decoration:
                         const InputDecoration(labelText: 'Description'),
@@ -404,13 +405,13 @@ Security Training:
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: resourceController,
                     decoration:
                         const InputDecoration(labelText: 'Resource'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: scopeController,
                     decoration: const InputDecoration(labelText: 'Scope'),
                   ),
@@ -454,13 +455,13 @@ Security Training:
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: keyController,
                     decoration:
                         const InputDecoration(labelText: 'Setting Key'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: valueController,
                     decoration:
                         const InputDecoration(labelText: 'Value'),
@@ -509,17 +510,17 @@ Security Training:
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: userController,
                     decoration: const InputDecoration(labelText: 'User'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: actionController,
                     decoration: const InputDecoration(labelText: 'Action'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  VoiceTextField(
                     controller: timestampController,
                     decoration:
                         const InputDecoration(labelText: 'Timestamp'),
@@ -1108,7 +1109,7 @@ class _SecurityPanel extends StatelessWidget {
             children: [
               TextFormattingToolbar(controller: controller),
               const SizedBox(height: 8),
-              TextField(
+              VoiceTextField(
                 controller: controller,
                 minLines: 12,
                 maxLines: null,
@@ -1233,7 +1234,7 @@ Widget _roundedField(
       children: [
         TextFormattingToolbar(controller: controller),
         const SizedBox(height: 8),
-        TextField(
+        VoiceTextField(
           controller: controller,
           minLines: minLines,
           maxLines: null,

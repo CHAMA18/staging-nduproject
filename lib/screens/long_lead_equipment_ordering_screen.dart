@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class LongLeadEquipmentOrderingScreen extends StatefulWidget {
   const LongLeadEquipmentOrderingScreen({super.key});
 
@@ -383,7 +384,7 @@ class _LongLeadEquipmentOrderingScreenState
     return _SectionCard(
       title: 'Notes',
       subtitle: 'Capture lead times, vendor constraints, and critical dates.',
-      child: TextField(
+      child: VoiceTextField(
         controller: _notesController,
         maxLines: 3,
         decoration: InputDecoration(
@@ -468,7 +469,7 @@ class _LongLeadEquipmentOrderingScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleController,
                   decoration: const InputDecoration(
                     labelText: 'Category',
@@ -476,7 +477,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: descriptionController,
                   minLines: 2,
                   maxLines: 4,
@@ -504,7 +505,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: thresholdController,
                   decoration: const InputDecoration(
                     labelText: 'Lead time threshold',
@@ -512,7 +513,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ownerController,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -570,7 +571,7 @@ class _LongLeadEquipmentOrderingScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Item',
@@ -578,7 +579,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: categoryController,
                   decoration: const InputDecoration(
                     labelText: 'Category',
@@ -586,7 +587,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: vendorController,
                   decoration: const InputDecoration(
                     labelText: 'Vendor',
@@ -594,7 +595,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: leadTimeController,
                   decoration: const InputDecoration(
                     labelText: 'Lead time',
@@ -602,7 +603,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: deliveryController,
                   decoration: const InputDecoration(
                     labelText: 'Expected delivery',
@@ -628,7 +629,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ownerController,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -686,7 +687,7 @@ class _LongLeadEquipmentOrderingScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleController,
                   decoration: const InputDecoration(
                     labelText: 'Action',
@@ -694,7 +695,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: ownerController,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -702,7 +703,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: dueDateController,
                   decoration: const InputDecoration(
                     labelText: 'Due date',
@@ -728,7 +729,7 @@ class _LongLeadEquipmentOrderingScreenState
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: notesController,
                   minLines: 2,
                   maxLines: 4,
@@ -1155,7 +1156,7 @@ class _TextCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return VoiceTextFormField(
       key: ValueKey(fieldKey),
       initialValue: value,
       maxLines: maxLines,

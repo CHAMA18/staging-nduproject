@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/voice_input_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
@@ -82,6 +83,11 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   bool _isReplaceMode = false;
   bool _isHovering = false;
   bool _showFormattingToolbar = false;
+  bool _isListening = false;
+  bool _voiceAvailable = true;
+  final VoiceInputService _voiceService = VoiceInputService.instance;
+  StreamSubscription<VoiceResult>? _voiceResultSub;
+  StreamSubscription<VoiceStatus>? _voiceStatusSub;
 
   String get _aiUsageKey {
     final section = (widget.autoGenerateSection?.trim().isNotEmpty ?? false)
@@ -176,9 +182,59 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
     }
     _controller.addListener(_onTextChanged);
     _focusNode.addListener(_handleFocusChanged);
+    _initVoice();
     if (_aiEnabled && _autoGenerateEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoGenerate());
     }
+  }
+
+  Future<void> _initVoice() async {
+    final available = await _voiceService.initialize();
+    if (mounted && available != _voiceAvailable) {
+      setState(() => _voiceAvailable = available);
+    }
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      _cleanupVoiceSubs();
+      if (mounted) setState(() => _isListening = false);
+    } else {
+      final started = await _voiceService.startListening(
+        existingText: _controller.text,
+      );
+      if (!started) return;
+
+      _voiceResultSub = _voiceService.onResult.listen((result) {
+        if (!mounted) return;
+        _controller.text = result.text;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: result.text.length),
+        );
+        widget.onChanged?.call(result.text);
+        if (result.isFinal) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupVoiceSubs();
+        }
+      });
+
+      _voiceStatusSub = _voiceService.onStatusChanged.listen((status) {
+        if (status == VoiceStatus.stopped || status == VoiceStatus.error) {
+          if (mounted) setState(() => _isListening = false);
+          _cleanupVoiceSubs();
+        }
+      });
+
+      if (mounted) setState(() => _isListening = true);
+    }
+  }
+
+  void _cleanupVoiceSubs() {
+    _voiceResultSub?.cancel();
+    _voiceResultSub = null;
+    _voiceStatusSub?.cancel();
+    _voiceStatusSub = null;
   }
 
   @override
@@ -212,6 +268,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
 
   @override
   void dispose() {
+    _cleanupVoiceSubs();
     _controller.removeListener(_onTextChanged);
     _focusNode.removeListener(_handleFocusChanged);
     _controller.dispose();
@@ -596,9 +653,59 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
                                       ? null
                                       : _fetchSuggestions,
                                 ),
+                                if (_voiceAvailable) ...[
+                                  if (_isListening)
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFB800).withOpacity(0.15),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.mic, color: Color(0xFFFFB800), size: 16),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                        onPressed: _toggleVoiceInput,
+                                        tooltip: 'Stop voice input',
+                                      ),
+                                    )
+                                  else
+                                    IconButton(
+                                      icon: const Icon(Icons.mic_none_outlined, color: Color(0xFFFFB800), size: 16),
+                                      padding: const EdgeInsets.only(right: 4),
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      onPressed: _toggleVoiceInput,
+                                      tooltip: 'Voice input',
+                                    ),
+                                ],
                               ],
                             ))
-                      : null,
+                      : _voiceAvailable
+                          ? (_isListening
+                              ? Container(
+                                  width: 36,
+                                  height: 36,
+                                  margin: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFB800).withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.mic, color: Color(0xFFFFB800), size: 18),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                    onPressed: _toggleVoiceInput,
+                                    tooltip: 'Stop voice input',
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.mic_none_outlined, color: Color(0xFFFFB800), size: 18),
+                                  onPressed: _toggleVoiceInput,
+                                  tooltip: 'Voice input',
+                                ))
+                          : null,
                 ),
                 style: const TextStyle(
                     fontSize: 14, color: Color(0xFF111827), height: 1.5),

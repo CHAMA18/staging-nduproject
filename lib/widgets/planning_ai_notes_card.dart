@@ -9,6 +9,7 @@ import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class PlanningAiNotesCard extends StatefulWidget {
   const PlanningAiNotesCard({
     super.key,
@@ -269,7 +270,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             },
           ),
           const SizedBox(height: 10),
-          TextField(
+          VoiceTextField(
             controller: _controller,
             onChanged: _handleChanged,
             maxLines: 6,

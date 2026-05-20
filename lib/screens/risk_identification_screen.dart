@@ -21,6 +21,7 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
 import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // Removed AppLogo from header per request
 import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -621,7 +622,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                 color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: TextField(
+              child: VoiceTextField(
                 controller: _riskControllers[index][r],
                 minLines: 1,
                 maxLines: 2,
@@ -1155,7 +1156,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
               children: [
                 TextFormattingToolbar(controller: _notesController),
                 const SizedBox(height: 8),
-                TextField(
+                VoiceTextField(
                   controller: _notesController,
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   decoration: InputDecoration(
@@ -1514,7 +1515,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                 children: [
                   TextFormattingToolbar(controller: controller),
                   const SizedBox(height: 8),
-                  TextField(
+                  VoiceTextField(
                     controller: controller,
                     minLines: 2,
                     maxLines: null,

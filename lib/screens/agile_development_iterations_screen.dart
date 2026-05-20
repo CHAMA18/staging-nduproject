@@ -21,6 +21,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 class AgileDevelopmentIterationsScreen extends StatefulWidget {
   const AgileDevelopmentIterationsScreen({super.key});
 
@@ -568,7 +569,7 @@ class _AgileDevelopmentIterationsScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     key: userStoryFieldKey,
                     controller: userStoryController,
                     onChanged: (_) {
@@ -660,7 +661,7 @@ class _AgileDevelopmentIterationsScreenState
                   const SizedBox(height: 12),
                   TextFormattingToolbar(controller: taskDescriptionController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: taskDescriptionController,
                     decoration:
                         const InputDecoration(labelText: 'Task Description'),
@@ -670,7 +671,7 @@ class _AgileDevelopmentIterationsScreenState
                   TextFormattingToolbar(
                       controller: acceptanceCriteriaController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: acceptanceCriteriaController,
                     decoration: const InputDecoration(
                         labelText: 'Acceptance Criteria (use "." bullets)'),
@@ -679,7 +680,7 @@ class _AgileDevelopmentIterationsScreenState
                   const SizedBox(height: 12),
                   TextFormattingToolbar(controller: iterationNotesController),
                   const SizedBox(height: 6),
-                  TextField(
+                  VoiceTextField(
                     controller: iterationNotesController,
                     decoration: const InputDecoration(
                         labelText: 'Iteration Notes (manual input only)'),

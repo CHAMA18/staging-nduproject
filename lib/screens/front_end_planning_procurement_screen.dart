@@ -31,6 +31,7 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/widgets/procurement/procurement_items_list_view.dart';
 import 'package:ndu_project/widgets/procurement/procurement_vendor_management.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum ProcurementScreenMode { fep, planning }
 
 enum _MissingProcurementAction {
@@ -537,7 +538,7 @@ class _FrontEndPlanningProcurementScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Step name',
@@ -548,7 +549,7 @@ class _FrontEndPlanningProcurementScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: VoiceTextField(
                         controller: durationController,
                         keyboardType: TextInputType.number,
                         decoration:
@@ -2165,7 +2166,7 @@ class _FrontEndPlanningProcurementScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: nameController,
                 decoration: const InputDecoration(
                   labelText: 'Vendor or Contact Name (Optional)',
@@ -2174,7 +2175,7 @@ class _FrontEndPlanningProcurementScreenState
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 12),
-              TextField(
+              VoiceTextField(
                 controller: emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email Address',
@@ -4078,7 +4079,7 @@ class _FrontEndPlanningProcurementScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                   controller: titleController,
                   decoration: const InputDecoration(
                     labelText: 'Strategy Name',
@@ -4087,7 +4088,7 @@ class _FrontEndPlanningProcurementScreenState
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: categoryController,
                   decoration: const InputDecoration(
                     labelText: 'Category',
@@ -4113,7 +4114,7 @@ class _FrontEndPlanningProcurementScreenState
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                   controller: itemCountController,
                   decoration: const InputDecoration(
                     labelText: 'Number of Items (Optional)',
@@ -6456,7 +6457,7 @@ class _SearchField extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: const TextField(
+      child: const VoiceTextField(
         decoration: InputDecoration(
           border: InputBorder.none,
           icon: Icon(Icons.search, color: Color(0xFF94A3B8)),

@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 /// Custom Contracts Table with inline editing, CRUD actions, and AI capabilities
 class ContractsTableWidget extends StatelessWidget {
   const ContractsTableWidget({
@@ -449,7 +450,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
+                    VoiceTextField(
                       controller: nameController,
                       decoration: const InputDecoration(
                         labelText: 'Vendor/Party Name *',
@@ -528,7 +529,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: estimatedValueController,
                       decoration: const InputDecoration(
                         labelText: 'Total Value *',
@@ -538,7 +539,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                       controller: keyTermsController,
                       decoration: const InputDecoration(
                         labelText: 'Key Terms',
@@ -550,7 +551,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                     const SizedBox(height: 12),
                     TextFormattingToolbar(controller: notesController),
                     const SizedBox(height: 6),
-                    TextField(
+                    VoiceTextField(
                       controller: notesController,
                       decoration: const InputDecoration(
                         labelText: 'Contract Notes',

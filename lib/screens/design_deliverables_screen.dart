@@ -15,6 +15,7 @@ import 'package:ndu_project/models/user_role.dart';
 import 'package:ndu_project/providers/user_role_provider.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // firebase_auth removed - unused
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1267,7 +1268,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                         size: 8, color: Color(0xFF9CA3AF)),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: TextFormField(
+                      child: VoiceTextFormField(
                         key: ValueKey('dep-${entry.key}'),
                         initialValue: entry.value,
                         enabled: _canEditDeliverables,
@@ -1339,7 +1340,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                       controller: nameCtl,
                       decoration:
                           const InputDecoration(labelText: 'Deliverable name'),
@@ -1371,7 +1372,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                       decoration: const InputDecoration(labelText: 'Status'),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    VoiceTextField(
                       controller: dueCtl,
                       decoration:
                           const InputDecoration(labelText: 'Due / Gate'),
@@ -1475,24 +1476,24 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                VoiceTextField(
                     controller: areaCtl,
                     decoration: const InputDecoration(labelText: 'Evidence Area')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: whatCtl,
                     decoration: const InputDecoration(labelText: 'What Must Be Captured'),
                     maxLines: 2),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: verCtl,
                     decoration: const InputDecoration(labelText: 'Verification Method')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: ownCtl,
                     decoration: const InputDecoration(labelText: 'Approval Owner')),
                 const SizedBox(height: 12),
-                TextField(
+                VoiceTextField(
                     controller: riskCtl,
                     decoration: const InputDecoration(labelText: 'Risk If Missing'),
                     maxLines: 2),
@@ -1583,22 +1584,22 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                         controller: ctrlCtl,
                         decoration: const InputDecoration(labelText: 'Control')),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: pracCtl,
                         decoration: const InputDecoration(
                             labelText: 'Industry Standard Practice'),
                         maxLines: 2),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: wfCtl,
                         decoration: const InputDecoration(
                             labelText: 'Waterfall Evidence')),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: agileCtl,
                         decoration: const InputDecoration(
                             labelText: 'Agile/Hybrid Evidence')),
@@ -1701,16 +1702,16 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                         controller: gateCtl,
                         decoration: const InputDecoration(labelText: 'Gate')),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: descCtl,
                         decoration: const InputDecoration(labelText: 'Description'),
                         maxLines: 2),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: apprCtl,
                         decoration: const InputDecoration(labelText: 'Approver')),
                     const SizedBox(height: 12),
@@ -1741,7 +1742,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                       decoration: const InputDecoration(labelText: 'Status'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    VoiceTextField(
                         controller: dateCtl,
                         decoration: const InputDecoration(labelText: 'Target Date')),
                   ],
@@ -1831,7 +1832,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                         controller: labelCtl,
                         decoration: const InputDecoration(
                             labelText: 'Stage or deliverable')),
@@ -1894,7 +1895,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    VoiceTextField(
                         controller: labelCtl,
                         decoration: const InputDecoration(
                             labelText: 'Stage or deliverable')),

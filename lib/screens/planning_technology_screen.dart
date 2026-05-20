@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
+import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _TechnologyTab {
   inventory('Technology Inventory'),
   aiIntegrations('AI Integrations'),
@@ -299,15 +300,15 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: name,
                     decoration: const InputDecoration(labelText: 'Name'),
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: category,
                     decoration: const InputDecoration(labelText: 'Category'),
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: cost,
                     decoration: const InputDecoration(labelText: 'Cost'),
                   ),
@@ -325,7 +326,7 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
                       setLocalState(() => status = value);
                     },
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: vendor,
                     decoration: const InputDecoration(labelText: 'Vendor'),
                   ),
@@ -432,11 +433,11 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  VoiceTextField(
                     controller: name,
                     decoration: const InputDecoration(labelText: 'Name'),
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: description,
                     decoration: const InputDecoration(labelText: 'Description'),
                   ),
@@ -454,7 +455,7 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
                       setLocalState(() => status = value);
                     },
                   ),
-                  TextField(
+                  VoiceTextField(
                     controller: cost,
                     decoration: InputDecoration(
                       labelText: isExternal
@@ -525,11 +526,11 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: term,
                 decoration: const InputDecoration(labelText: 'Term'),
               ),
-              TextField(
+              VoiceTextField(
                 controller: definition,
                 maxLines: 5,
                 decoration: const InputDecoration(labelText: 'Definition'),
@@ -593,19 +594,19 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              VoiceTextField(
                 controller: recommendation,
                 decoration: const InputDecoration(labelText: 'Recommendation'),
               ),
-              TextField(
+              VoiceTextField(
                 controller: description,
                 decoration: const InputDecoration(labelText: 'Description'),
               ),
-              TextField(
+              VoiceTextField(
                 controller: cost,
                 decoration: const InputDecoration(labelText: 'Estimated Cost'),
               ),
-              TextField(
+              VoiceTextField(
                 controller: vendor,
                 decoration:
                     const InputDecoration(labelText: 'Suggested Vendor'),
@@ -1131,7 +1132,7 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: VoiceTextField(
                 onChanged: (value) => setState(() => _inventorySearch = value),
                 decoration: const InputDecoration(
                   hintText: 'Search technology...',

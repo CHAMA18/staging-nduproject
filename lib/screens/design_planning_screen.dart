@@ -17,6 +17,7 @@ import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/voice_text_field.dart';
 // import 'package:ndu_project/widgets/launch_phase_navigation.dart'; // removed: UI redesign
 // import 'package:ndu_project/widgets/planning_phase_header.dart'; // removed: UI redesign
 import 'package:ndu_project/widgets/responsive.dart';
@@ -763,7 +764,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                         children: [
                           _FourColumnGrid(
                             children: [
-                              TextField(
+                              VoiceTextField(
                                 controller: searchController,
                                 decoration:
                                     _inputDecoration('Search specifications'),
@@ -3120,7 +3121,7 @@ class _TextField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           onChanged: onChanged,
           decoration: _inputDecoration(hintText),
@@ -3160,7 +3161,7 @@ class _TextAreaField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
+        VoiceTextField(
           controller: controller,
           minLines: minLines,
           maxLines: minLines + 2,
@@ -3281,7 +3282,7 @@ class _MappingCard extends StatelessWidget {
               },
             ),
           if (specificationOptions.isNotEmpty) const SizedBox(height: 12),
-          TextFormField(
+          VoiceTextFormField(
             initialValue: data.requirementText,
             minLines: 2,
             maxLines: 4,
@@ -3292,7 +3293,7 @@ class _MappingCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          VoiceTextFormField(
             initialValue: data.designResponse,
             minLines: 2,
             maxLines: 4,
@@ -3789,7 +3790,7 @@ class _SpecificationDeviationCard extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 12),
-          TextFormField(
+          VoiceTextFormField(
             initialValue: data.description,
             minLines: 2,
             maxLines: 4,
@@ -4509,7 +4510,7 @@ class _FilterableCreatableDropdownFieldState
             widget.onChanged(value);
           },
           fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-            return TextFormField(
+            return VoiceTextFormField(
               controller: controller,
               focusNode: focusNode,
               decoration: _inputDecoration(
@@ -4711,7 +4712,7 @@ class _RequirementMultiSelectField extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    TextField(
+                    VoiceTextField(
                       controller: searchController,
                       decoration: _inputDecoration(
                         'Filter requirements by text',
@@ -4881,7 +4882,7 @@ class _TextFormField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextFormField(
+        VoiceTextFormField(
           initialValue: initialValue,
           maxLines: maxLines,
           decoration: _inputDecoration(

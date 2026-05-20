@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
+import '../widgets/dashboard_bottom_nav_bar.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 import 'package:go_router/go_router.dart';
 import '../routing/app_router.dart';
@@ -16,6 +17,7 @@ import '../models/portfolio_model.dart';
 import 'basic_plan_dashboard_screen.dart';
 import 'project_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
+import 'program_dashboard_mobile_screen.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class PortfolioDashboardScreen extends StatelessWidget {
@@ -59,47 +61,25 @@ class PortfolioDashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Bottom Action Bar
+          // Bottom Navigation Bar
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0084FF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 4,
-                    shadowColor: const Color(0xFF0084FF).withOpacity(0.3),
-                  ),
-                  child: const Text(
-                    'Confirm & Roll up to portfolio',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
+            child: DashboardBottomNavBar(
+              currentIndex: 2,
+              onNavigate: (index) {
+                if (index == 0) {
+                  Navigator.pop(context);
+                } else if (index == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProgramDashboardMobileScreen()),
+                  );
+                } else if (index == 3) {
+                  context.go('/${AppRoutes.settings}?from=${AppRoutes.dashboard}');
+                }
+              },
             ),
           ),
         ],

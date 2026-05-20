@@ -3,15 +3,10 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
-import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'dart:math' as math;
 
@@ -363,84 +358,153 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = AppBreakpoints.isMobile(context);
-    final double horizontalPadding = isMobile ? 20 : 36;
     final entries = _filteredEntries();
     final stats = _RiskStats.fromEntries(entries);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(
-                  activeItemLabel: 'Risk Assessment'),
-            ),
-            Expanded(
-              child: Stack(
+      backgroundColor: const Color(0xFFF7F9FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: Column(
+        children: [
+          _buildMobileHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _TopUtilityBar(
-                          onBack: () => PlanningPhaseNavigation.goToPrevious(
-                              context, 'risk_assessment'),
-                          onForward: () => PlanningPhaseNavigation.goToNext(
-                              context, 'risk_assessment'),
-                        ),
-                        const SizedBox(height: 24),
-                        const _PageHeading(),
-                        const SizedBox(height: 20),
-                        _RiskNotesCard(
-                          controller: _notesController,
-                          saving: _notesSaving,
-                          savedAt: _notesSavedAt,
-                          onChanged: _handleNotesChanged,
-                        ),
-                        const SizedBox(height: 24),
-                        _MetricsWrap(isMobile: isMobile, stats: stats),
-                        const SizedBox(height: 28),
-                        _RiskMatrixCard(stats: stats),
-                        const SizedBox(height: 28),
-                        _MitigationPlanCard(
-                          entries: entries,
-                          controllers: _mitigationControllers,
-                          onChanged: _handleMitigationChanged,
-                          onRegenerate: _regenerateMitigationForEntry,
-                          loadingSuggestions: _loadingMitigationSuggestions,
-                          suggestionError: _mitigationSuggestionError,
-                          saving: _mitigationSaving,
-                          savedAt: _mitigationSavedAt,
-                          regeneratingIds: _regeneratingMitigationIds,
-                        ),
-                        const SizedBox(height: 28),
-                        _RiskRegister(
-                          entries: entries,
-                          isMobile: isMobile,
-                          loading: _loadingEntries,
-                          searchController: _searchController,
-                          onAdd: () => _openEntryDialog(),
-                          onFilter: _openFilterDialog,
-                          onView: (entry) =>
-                              _openEntryDialog(entry: entry, readOnly: true),
-                          onEdit: (entry) => _openEntryDialog(entry: entry),
-                        ),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                  // Page Title
+                  const Text('Risk Planning',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF111827))),
+                  const SizedBox(height: 4),
+                  const Text(
+                      'Identify, analyze and mitigate project risks.',
+                      style: TextStyle(
+                          fontSize: 14, color: Color(0xFF6B7280))),
+                  const SizedBox(height: 24),
+                  // Notes
+                  _RiskNotesCard(
+                      controller: _notesController,
+                      saving: _notesSaving,
+                      savedAt: _notesSavedAt,
+                      onChanged: _handleNotesChanged),
+                  const SizedBox(height: 16),
+                  // Metrics
+                  _MetricsWrap(stats: stats),
+                  const SizedBox(height: 16),
+                  // Risk Matrix
+                  _RiskMatrixCard(stats: stats),
+                  const SizedBox(height: 16),
+                  // Mitigation Plan
+                  _MitigationPlanCard(
+                      entries: entries,
+                      controllers: _mitigationControllers,
+                      onChanged: _handleMitigationChanged,
+                      onRegenerate: _regenerateMitigationForEntry,
+                      loadingSuggestions: _loadingMitigationSuggestions,
+                      suggestionError: _mitigationSuggestionError,
+                      saving: _mitigationSaving,
+                      savedAt: _mitigationSavedAt,
+                      regeneratingIds: _regeneratingMitigationIds),
+                  const SizedBox(height: 16),
+                  // Risk Register
+                  _RiskRegister(
+                    entries: entries,
+                    loading: _loadingEntries,
+                    searchController: _searchController,
+                    onAdd: () => _openEntryDialog(),
+                    onFilter: _openFilterDialog,
+                    onView: (entry) =>
+                        _openEntryDialog(entry: entry, readOnly: true),
+                    onEdit: (entry) => _openEntryDialog(entry: entry),
                   ),
-                  const KazAiChatBubble(),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            // Hamburger menu button
+            InkWell(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.menu, size: 24, color: Color(0xFF1F2937)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Back/Forward chevrons + title
+            _circleIcon(
+              icon: Icons.chevron_left_rounded,
+              onTap: () =>
+                  PlanningPhaseNavigation.goToPrevious(context, 'risk_assessment'),
+            ),
+            const SizedBox(width: 8),
+            _circleIcon(
+              icon: Icons.chevron_right_rounded,
+              onTap: () =>
+                  PlanningPhaseNavigation.goToNext(context, 'risk_assessment'),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Risk Mitigation',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827)),
+              ),
+            ),
+            // Avatar
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFFE5E7EB),
+              backgroundImage:
+                  photoUrl != null ? NetworkImage(photoUrl) : null,
+              child: photoUrl == null
+                  ? const Icon(Icons.person, size: 18, color: Color(0xFF374151))
+                  : null,
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _circleIcon({required IconData icon, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Icon(icon, size: 20, color: const Color(0xFF6B7280)),
       ),
     );
   }
@@ -664,72 +728,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   }
 }
 
-class _TopUtilityBar extends StatelessWidget {
-  const _TopUtilityBar({required this.onBack, required this.onForward});
-
-  final VoidCallback onBack;
-  final VoidCallback onForward;
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final displayName =
-        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
-    final email = user?.email ?? '';
-    final primaryText = email.isNotEmpty ? email : displayName;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        children: [
-          _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
-          const SizedBox(width: 12),
-          _circleButton(
-              icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
-          const SizedBox(width: 20),
-          const Text(
-            'Risk Mitigation',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827)),
-          ),
-          const Spacer(),
-          StreamBuilder<bool>(
-            stream: UserService.watchAdminStatus(),
-            builder: (context, snapshot) {
-              final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
-              final role = isAdmin ? 'Admin' : 'Member';
-              return _UserChip(name: primaryText, role: role);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _circleButton({required IconData icon, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Icon(icon, size: 18, color: const Color(0xFF6B7280)),
-      ),
-    );
-  }
-}
+// ─── UI Widgets ─────────────────────────────────────────────────────────────
 
 class _RiskNotesCard extends StatelessWidget {
   const _RiskNotesCard({
@@ -747,71 +746,88 @@ class _RiskNotesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.note_outlined,
-                    color: Color(0xFF475569), size: 18),
+          // Header with border-bottom, bg-gray-50/50
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Notes',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
-                ),
-              ),
-              if (saving)
-                const _StatusChip(label: 'Saving...', color: Color(0xFF64748B))
-              else if (savedAt != null)
-                _StatusChip(
-                  label:
-                      'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
-                  color: const Color(0xFF16A34A),
-                  background: const Color(0xFFECFDF3),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Summarize key risks, probability/impact themes, and mitigation focus.',
-            style:
-                TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller,
-            onChanged: onChanged,
-            maxLines: 6,
-            decoration: InputDecoration(
-              hintText: 'Capture risk assessment notes here...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    BorderSide(color: Colors.grey.withOpacity(0.2)),
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.all(12),
+              border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
             ),
-            style: const TextStyle(fontSize: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.description_outlined,
+                      color: Color(0xFF475569), size: 16),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Notes',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111827)),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Summarize key risks, probability/impact themes, and mitigation focus.',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF6B7280), height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+                if (saving)
+                  const _StatusChip(label: 'Saving...', color: Color(0xFF64748B))
+                else if (savedAt != null)
+                  _StatusChip(
+                    label:
+                        'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
+                    color: const Color(0xFF16A34A),
+                    background: const Color(0xFFECFDF3),
+                  ),
+              ],
+            ),
+          ),
+          // Body: transparent textarea
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                hintText: 'Capture risk assessment notes here...',
+                border: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+            ),
           ),
         ],
       ),
@@ -832,59 +848,13 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: background ?? color.withOpacity(0.1),
+        color: background ?? color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style:
             TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
-      ),
-    );
-  }
-}
-
-class _UserChip extends StatelessWidget {
-  const _UserChip({required this.name, required this.role});
-
-  final String name;
-  final String role;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFE5E7EB),
-            child: Icon(Icons.person, size: 18, color: Color(0xFF374151)),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827)),
-              ),
-              Text(
-                role,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -903,10 +873,10 @@ class _OutlinedButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         backgroundColor: Colors.white,
         side: const BorderSide(color: Color(0xFFE5E7EB)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         foregroundColor: const Color(0xFF111827),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
       ),
       child: Text(label),
     );
@@ -924,39 +894,14 @@ class _YellowButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFD54F),
+        backgroundColor: const Color(0xFFFFB800),
         foregroundColor: const Color(0xFF111827),
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
       ),
       child: Text(label),
-    );
-  }
-}
-
-class _PageHeading extends StatelessWidget {
-  const _PageHeading();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Risk Planning',
-          style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF111827)),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'Identify, analyze and mitigate project risks.',
-          style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
-        ),
-      ],
     );
   }
 }
@@ -1066,71 +1011,48 @@ class _RiskStats {
 }
 
 class _MetricsWrap extends StatelessWidget {
-  const _MetricsWrap({required this.isMobile, required this.stats});
+  const _MetricsWrap({required this.stats});
 
-  final bool isMobile;
   final _RiskStats stats;
 
   @override
   Widget build(BuildContext context) {
     final totalRisks = stats.total;
     final String statusSubtitle = stats.statusSubtitle;
-    final double? progress = stats.progress;
     final String topRiskArea = stats.topRiskArea;
     final String unaddressed = totalRisks == 0 ? '0' : '${stats.openCount}';
 
-    const double cardHeight =
-        148; // Uniform height to prevent visual jumps/overflow
     final cards = [
       _MetricCard(
-        height: cardHeight,
         title: 'Total Risks',
-        subtitle: '$totalRisks',
+        value: '$totalRisks',
       ),
       _MetricCard(
-        height: cardHeight,
-        width: 320,
         title: 'Risk Status',
-        subtitle: statusSubtitle,
-        progress: progress,
+        value: statusSubtitle,
       ),
       _MetricCard(
-        height: cardHeight,
-        width: 320,
         title: 'Top Risk Area',
-        subtitle: topRiskArea,
+        value: topRiskArea,
         footer: totalRisks == 0 ? 'No risks yet' : null,
-        footerIcon: totalRisks == 0 ? Icons.info_outline : null,
+        footerIcon: totalRisks == 0 ? Icons.warning_amber_rounded : null,
       ),
       _MetricCard(
-        height: cardHeight,
         title: 'Unaddressed',
-        subtitle: unaddressed,
+        value: unaddressed,
         footer: totalRisks == 0 ? 'Add risks to begin tracking' : null,
-        footerIcon: totalRisks == 0 ? Icons.info_outline : null,
+        footerIcon: totalRisks == 0 ? Icons.warning_amber_rounded : null,
       ),
     ];
 
-    if (isMobile) {
-      return Column(
-        children: [
-          for (int i = 0; i < cards.length; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: i == cards.length - 1 ? 0 : 16),
-              child: SizedBox(width: double.infinity, child: cards[i]),
-            ),
-        ],
-      );
-    }
-
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: cards
-          .map(
-            (card) => SizedBox(width: card.width ?? 260, child: card),
-          )
-          .toList(),
+    return GridView.count(
+      crossAxisCount: 2,
+      childAspectRatio: 1.35,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      children: cards,
     );
   }
 }
@@ -1138,125 +1060,74 @@ class _MetricsWrap extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.title,
-    required this.subtitle,
-    this.height,
-    this.width,
-    List<_Badge>? badges,
-    this.progress,
+    required this.value,
     this.footer,
     this.footerIcon,
-  }) : badges = badges ?? const [];
+  });
 
   final String title;
-  final String subtitle;
-  final double? height;
-  final double? width;
-  final List<_Badge> badges;
-  final double? progress;
+  final String value;
   final String? footer;
   final IconData? footerIcon;
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      constraints: const BoxConstraints(minWidth: 220),
-      padding: const EdgeInsets.all(22),
+    return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Small label
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          // Large value
           Text(
-            subtitle,
+            value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
                 fontSize: 24,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.bold,
                 color: Color(0xFF111827)),
           ),
-          if (badges.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: badges,
-            ),
-          ],
-          if (progress != null) ...[
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: const Color(0xFFF3F4F6),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFFFFD54F)),
-              ),
-            ),
-          ],
+          // Optional footer
           if (footer != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (footerIcon != null)
-                  Icon(footerIcon, size: 16, color: const Color(0xFF6B7280)),
-                if (footerIcon != null) const SizedBox(width: 6),
+                  Icon(footerIcon, size: 14, color: const Color(0xFF9CA3AF)),
+                if (footerIcon != null) const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     footer!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF9CA3AF)),
                   ),
                 ),
               ],
             ),
           ],
         ],
-      ),
-    );
-
-    Widget sized = content;
-    if (height != null || width != null) {
-      sized = SizedBox(height: height, width: width, child: content);
-    }
-    return sized;
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF374151)),
       ),
     );
   }
@@ -1268,89 +1139,150 @@ class _RiskMatrixCard extends StatelessWidget {
   final _RiskStats stats;
 
   static const Color _high = Color(0xFFFEE2E2);
-  static const Color _medium = Color(0xFFFEF3C7);
+  static const Color _medium = Color(0xFFFEF08A);
   static const Color _low = Color(0xFFDCFCE7);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title + legend
           Row(
             children: [
               const Text(
                 'Risk Matrix',
                 style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF111827)),
               ),
               const Spacer(),
-              _LegendDot(color: _high, label: 'High Risk'),
-              const SizedBox(width: 16),
-              _LegendDot(color: _medium, label: 'Medium Risk'),
-              const SizedBox(width: 16),
-              _LegendDot(color: _low, label: 'Low Risk'),
+              _LegendDot(color: _high, label: 'High'),
+              const SizedBox(width: 12),
+              _LegendDot(color: _medium, label: 'Medium'),
+              const SizedBox(width: 12),
+              _LegendDot(color: _low, label: 'Low'),
             ],
           ),
-          const SizedBox(height: 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double cellHeight = constraints.maxWidth < 540 ? 64 : 80;
-              final maxCount = stats.maxCellCount;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      SizedBox(width: 90),
-                      Expanded(
-                        child:
-                            _MatrixHeaderRow(labels: ['Low', 'Medium', 'High']),
-                      ),
-                    ],
+          const SizedBox(height: 16),
+          // "Impact" label above grid
+          const Center(
+            child: Text(
+              'Impact',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Grid with "Likelihood" on left
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Rotated "Likelihood" label
+              SizedBox(
+                width: 28,
+                child: RotatedBox(
+                  quarterTurns: 3,
+                  child: Center(
+                    child: Text(
+                      'Likelihood',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6B7280)),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Likelihood',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280)),
-                  ),
-                  const SizedBox(height: 12),
-                  Column(
-                    children: _RiskStats._levels
-                        .map(
-                          (likelihood) => _MatrixRow(
-                            label: likelihood,
-                            height: cellHeight,
-                            cells: _RiskStats._levels
-                                .map(
-                                  (impact) => _MatrixCellData(
-                                    color: _cellColor(likelihood, impact),
-                                    count: stats.countFor(likelihood, impact),
-                                    highlight: maxCount > 0 &&
-                                        stats.countFor(likelihood, impact) ==
-                                            maxCount,
+                ),
+              ),
+              // The matrix grid
+              Expanded(
+                child: Column(
+                  children: [
+                    // X-axis headers
+                    Row(
+                      children: const [
+                        SizedBox(width: 40),
+                        Expanded(child: Center(child: Text('Low', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280))))),
+                        Expanded(child: Center(child: Text('Medium', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280))))),
+                        Expanded(child: Center(child: Text('High', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280))))),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Rows: High (top), Medium, Low (bottom)
+                    ...['High', 'Medium', 'Low'].map((likelihood) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            // Y-axis label
+                            SizedBox(
+                              width: 40,
+                              child: Text(
+                                likelihood,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF6B7280)),
+                              ),
+                            ),
+                            // Cells
+                            ...['Low', 'Medium', 'High'].map((impact) {
+                              final count = stats.countFor(likelihood, impact);
+                              final color = _cellColor(likelihood, impact);
+                              return Expanded(
+                                child: Container(
+                                  height: 56,
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                )
-                                .toList(),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              );
-            },
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          count > 0 ? '$count' : '0',
+                                          style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1F2937)),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'risks',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: Color(0xFF6B7280)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1382,134 +1314,24 @@ class _LegendDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
         ),
       ],
     );
   }
 }
 
-class _MatrixHeaderRow extends StatelessWidget {
-  const _MatrixHeaderRow({required this.labels});
 
-  final List<String> labels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: labels
-          .map(
-            (label) => Expanded(
-              child: Center(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF111827)),
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _MatrixRow extends StatelessWidget {
-  const _MatrixRow(
-      {required this.label, required this.height, required this.cells});
-
-  final String label;
-  final double height;
-  final List<_MatrixCellData> cells;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF111827)),
-            ),
-          ),
-          Expanded(
-            child: Row(
-              children: cells
-                  .map(
-                    (cell) => Expanded(
-                      child: Container(
-                        height: height,
-                        margin: const EdgeInsets.only(left: 10),
-                        decoration: BoxDecoration(
-                          color: cell.color,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: cell.highlight
-                                ? const Color(0xFF111827)
-                                : const Color(0xFFE5E7EB),
-                            width: cell.highlight ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                cell.count > 0 ? '${cell.count}' : '—',
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF111827)),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'risks',
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MatrixCellData {
-  const _MatrixCellData({
-    required this.color,
-    required this.count,
-    required this.highlight,
-  });
-
-  final Color color;
-  final int count;
-  final bool highlight;
-}
 
 class _MitigationPlanCard extends StatelessWidget {
   const _MitigationPlanCard({
@@ -1537,84 +1359,118 @@ class _MitigationPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.shield_rounded, color: Color(0xFF111827)),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Mitigation plan',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827)),
-                ),
-              ),
-              if (saving)
-                const _StatusChip(label: 'Saving...', color: Color(0xFF64748B))
-              else if (savedAt != null)
-                _StatusChip(
-                  label:
-                      'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
-                  color: const Color(0xFF16A34A),
-                  background: const Color(0xFFECFDF3),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Auto-filled with AI suggestions from initiation-phase risks. Update owners, steps, and cadence below.',
-            style:
-                TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
-          ),
-          if (loadingSuggestions) ...[
-            const SizedBox(height: 16),
-            const LinearProgressIndicator(minHeight: 4),
-          ],
-          if (suggestionError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              suggestionError!,
-              style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 16),
-          if (entries.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: const Center(
-                child: Text(
-                  'Risk register is empty. Add risks to capture mitigation plans.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-              ),
-            )
-          else ...[
-            for (int i = 0; i < entries.length; i++) ...[
-              _buildMitigationRow(context, entries[i]),
-              if (i < entries.length - 1)
-                const Divider(
-                    height: 28, thickness: 1, color: Color(0xFFF3F4F6)),
-            ],
-          ],
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with border-bottom, bg-gray-50/50
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFAFAFA),
+                border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_rounded,
+                      color: Color(0xFF475569), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Mitigation plan',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF111827)),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Auto-filled with AI suggestions from initiation-phase risks.',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                              height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (saving)
+                    const _StatusChip(
+                        label: 'Saving...', color: Color(0xFF64748B))
+                  else if (savedAt != null)
+                    _StatusChip(
+                      label:
+                          'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
+                      color: const Color(0xFF16A34A),
+                      background: const Color(0xFFECFDF3),
+                    ),
+                ],
+              ),
+            ),
+            if (loadingSuggestions) ...[
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: LinearProgressIndicator(minHeight: 4),
+              ),
+            ],
+            if (suggestionError != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(
+                  suggestionError!,
+                  style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
+                ),
+              ),
+            ],
+            if (entries.isEmpty)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Risk register is empty. Add risks to capture mitigation plans.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                  ),
+                ),
+              )
+            else ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (int i = 0; i < entries.length; i++) ...[
+                      _buildMitigationRow(context, entries[i]),
+                      if (i < entries.length - 1)
+                        const Divider(
+                            height: 24,
+                            thickness: 1,
+                            color: Color(0xFFF3F4F6)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -1673,7 +1529,7 @@ class _MitigationPlanCard extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'Capture mitigation steps, owner, and cadence...',
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             filled: true,
@@ -1690,7 +1546,6 @@ class _MitigationPlanCard extends StatelessWidget {
 class _RiskRegister extends StatelessWidget {
   const _RiskRegister({
     required this.entries,
-    required this.isMobile,
     required this.loading,
     required this.searchController,
     required this.onAdd,
@@ -1700,7 +1555,6 @@ class _RiskRegister extends StatelessWidget {
   });
 
   final List<_RiskEntry> entries;
-  final bool isMobile;
   final bool loading;
   final TextEditingController searchController;
   final VoidCallback onAdd;
@@ -1713,151 +1567,145 @@ class _RiskRegister extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Risk Register',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Monitor risk exposure and mitigation status across the project',
-            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: TextField(
-                  controller: searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search...',
-                    prefixIcon: const Icon(Icons.search, size: 18),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFFFD54F)),
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title area outside card
+        const Text(
+          'Risk Register',
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF111827)),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Monitor risk exposure and mitigation status across the project',
+          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 16),
+        // Controls row: search + filter + add risk
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search,
+                      size: 18, color: Color(0xFF9CA3AF)),
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF0084FF), width: 1.5),
                   ),
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _OutlinedButton(label: 'Filter', onPressed: onFilter),
-                  const SizedBox(width: 10),
-                  _YellowButton(label: 'Add Risk', onPressed: onAdd),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          if (loading) ...[
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: CircularProgressIndicator(),
+                style: const TextStyle(fontSize: 14),
               ),
             ),
-          ] else if (entries.isEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Column(
-                children: const [
-                  Icon(Icons.inbox_outlined,
-                      size: 28, color: Color(0xFF9CA3AF)),
-                  SizedBox(height: 10),
-                  Text(
-                    'No risks yet',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF111827)),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Add risks from Risk Identification or Preferred Solution Analysis.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final viewportWidth = MediaQuery.of(context).size.width -
-                    72; // account for padding
-                final tableWidth = math.max(1080.0, viewportWidth);
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: tableWidth,
-                    child: Column(
-                      children: [
-                        _RegisterHeader(columnFlex: _columnFlex),
-                        const SizedBox(height: 12),
-                        ...List.generate(entries.length, (index) {
-                          final entry = entries[index];
-                          final bool isLast = index == entries.length - 1;
-                          return Column(
-                            children: [
-                              _RegisterRow(
-                                entry: entry,
-                                columnFlex: _columnFlex,
-                                actionsColumnWidth: _actionsColumnWidth,
-                                onView: () => onView(entry),
-                                onEdit: () => onEdit(entry),
-                              ),
-                              if (!isLast)
-                                const Divider(
-                                    height: 26,
-                                    thickness: 1,
-                                    color: Color(0xFFF3F4F6)),
-                            ],
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            const SizedBox(width: 8),
+            _OutlinedButton(label: 'Filter', onPressed: onFilter),
+            const SizedBox(width: 8),
+            _YellowButton(label: 'Add Risk', onPressed: onAdd),
           ],
+        ),
+        const SizedBox(height: 16),
+        if (loading) ...[
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ] else if (entries.isEmpty) ...[
+          // Empty state: white rounded card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+              ],
+            ),
+            child: Column(
+              children: const [
+                Icon(Icons.description_outlined,
+                    size: 32, color: Color(0xFF9CA3AF)),
+                SizedBox(height: 12),
+                Text(
+                  'No risks yet',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Add risks from Risk Identification or Preferred Solution Analysis.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final viewportWidth = MediaQuery.of(context).size.width -
+                  72; // account for padding
+              final tableWidth = math.max(1080.0, viewportWidth);
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableWidth,
+                  child: Column(
+                    children: [
+                      _RegisterHeader(columnFlex: _columnFlex),
+                      const SizedBox(height: 12),
+                      ...List.generate(entries.length, (index) {
+                        final entry = entries[index];
+                        final bool isLast = index == entries.length - 1;
+                        return Column(
+                          children: [
+                            _RegisterRow(
+                              entry: entry,
+                              columnFlex: _columnFlex,
+                              actionsColumnWidth: _actionsColumnWidth,
+                              onView: () => onView(entry),
+                              onEdit: () => onEdit(entry),
+                            ),
+                            if (!isLast)
+                              const Divider(
+                                  height: 26,
+                                  thickness: 1,
+                                  color: Color(0xFFF3F4F6)),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ],
-      ),
+      ],
     );
   }
 }

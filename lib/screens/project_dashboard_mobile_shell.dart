@@ -19,6 +19,7 @@ import 'program_dashboard_mobile_screen.dart';
 import 'portfolio_dashboard_screen.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import '../widgets/dashboard_bottom_nav_bar.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Design tokens extracted from the HTML source (Material You / Tailwind config)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1090,64 +1091,19 @@ class _ProjectDashboardMobileShellState
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _Tokens.surfaceContainerLowest,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              topRight: Radius.circular(12),
-                            ),
-                            border: Border(
-                              top: BorderSide(
-                                color: _Tokens.outlineVariant,
-                                width: 1,
-                              ),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 12,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            top: false,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  _bottomNavItem(
-                                    icon: Icons.folder,
-                                    label: 'Projects',
-                                    index: 0,
-                                  ),
-                                  _bottomNavItem(
-                                    icon: Icons.layers,
-                                    label: 'Programs',
-                                    index: 1,
-                                    onTap: _navigateToProgram,
-                                  ),
-                                  _bottomNavItem(
-                                    icon: Icons.account_tree,
-                                    label: 'Portfolios',
-                                    index: 2,
-                                    onTap: _navigateToPortfolio,
-                                  ),
-                                  _bottomNavItem(
-                                    icon: Icons.settings,
-                                    label: 'Settings',
-                                    index: 3,
-                                    onTap: () => context.go(
-                                        '/${AppRoutes.settings}?from=${AppRoutes.dashboard}'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        child: DashboardBottomNavBar(
+                          currentIndex: _bottomNavIndex,
+                          onNavigate: (index) {
+                            setState(() => _bottomNavIndex = index);
+                            switch (index) {
+                              case 1:
+                                _navigateToProgram();
+                                break;
+                              case 2:
+                                _navigateToPortfolio();
+                                break;
+                            }
+                          },
                         ),
                       ),
                     ],
@@ -1158,50 +1114,6 @@ class _ProjectDashboardMobileShellState
           },
         );
       },
-    );
-  }
-
-  Widget _bottomNavItem({
-    required IconData icon,
-    required String label,
-    required int index,
-    VoidCallback? onTap,
-  }) {
-    final isActive = _bottomNavIndex == index;
-    final color =
-        isActive ? _Tokens.primary : const Color(0xFF5F5E5E);
-    return GestureDetector(
-      onTap: () {
-        if (onTap != null) {
-          onTap();
-        }
-        setState(() => _bottomNavIndex = index);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: isActive
-            ? BoxDecoration(
-                color: _Tokens.primaryContainer.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              )
-            : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.05,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

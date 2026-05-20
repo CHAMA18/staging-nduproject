@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/program_model.dart';
 import '../models/portfolio_model.dart';
-import '../services/navigation_context_service.dart';
+import '../widgets/dashboard_bottom_nav_bar.dart';
 import '../services/portfolio_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
@@ -593,6 +593,39 @@ class _ProgramDashboardMobileScreenState
                               const SizedBox(height: 20),
                               // Rolled up estimates
                               const _RollupSection(),
+                              const SizedBox(height: 20),
+                              // ── Roll-up CTA (moved inline) ──
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const PortfolioDashboardScreen()),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFFFC800),
+                                      foregroundColor: const Color(0xFF111827),
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                      elevation: 4,
+                                      shadowColor: const Color(0xFFFFC800).withValues(alpha: 0.4),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.arrow_upward, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('ROLL UP TO PORTFOLIO'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 32),
                             ],
                           ),
@@ -601,20 +634,27 @@ class _ProgramDashboardMobileScreenState
               ],
             ),
           ),
-          // ── Fixed bottom CTA ──
-          if (!showEmptyState)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomCTA(onRollUp: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const PortfolioDashboardScreen()),
-                );
-              }),
+          // ── Fixed bottom navbar ──
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DashboardBottomNavBar(
+              currentIndex: 1,
+              onNavigate: (index) {
+                if (index == 0) {
+                  Navigator.pop(context);
+                } else if (index == 2) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PortfolioDashboardScreen()),
+                  );
+                } else if (index == 3) {
+                  context.go('/${AppRoutes.settings}?from=${AppRoutes.dashboard}');
+                }
+              },
             ),
+          ),
         ],
       ),
     );
@@ -2001,54 +2041,3 @@ class _EmptyStateView extends StatelessWidget {
 // ===========================================================================
 // BOTTOM CTA
 // ===========================================================================
-
-class _BottomCTA extends StatelessWidget {
-  const _BottomCTA({required this.onRollUp});
-
-  final VoidCallback onRollUp;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: onRollUp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFC800),
-              foregroundColor: const Color(0xFF111827),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              textStyle: const TextStyle(
-                  fontWeight: FontWeight.w800, fontSize: 14),
-              elevation: 4,
-              shadowColor: const Color(0xFFFFC800).withOpacity(0.4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.arrow_upward, size: 18),
-                SizedBox(width: 8),
-                Text('ROLL UP TO PORTFOLIO'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

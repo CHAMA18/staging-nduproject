@@ -21,9 +21,8 @@ import 'package:ndu_project/widgets/voice_text_field.dart';
 // import 'package:ndu_project/widgets/launch_phase_navigation.dart'; // removed: UI redesign
 // import 'package:ndu_project/widgets/planning_phase_header.dart'; // removed: UI redesign
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/unified_phase_header.dart';
-// import 'package:ndu_project/widgets/responsive_scaffold.dart'; // removed: UI redesign
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -1678,42 +1677,28 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     final owners = _ownerOptions(projectData);
     final isMobile = AppBreakpoints.isMobile(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      drawer: isMobile
-          ? Drawer(
-              width: AppBreakpoints.sidebarWidth(context),
-              child: SafeArea(
-                child: InitiationLikeSidebar(
-                  activeItemLabel: 'Design Planning',
-                  showHeader: true,
-                ),
-              ),
-            )
-          : null,
+    return ResponsiveScaffold(
+      activeItemLabel: 'Design Planning',
       floatingActionButton: const KazAiChatBubble(positioned: false),
-      body: SafeArea(
-        top: true,
-        child: Column(
-          children: [
-            UnifiedPhaseHeader(
-              title: 'Design Planning',
-              breadcrumbPhase: 'Design Phase',
-              breadcrumbTitle: 'Design Planning',
-              onBackPressed: () => Navigator.maybePop(context),
+      body: Column(
+        children: [
+          UnifiedPhaseHeader(
+            title: 'Design Planning',
+            breadcrumbPhase: 'Design Phase',
+            breadcrumbTitle: 'Design Planning',
+            onBackPressed: () => Navigator.maybePop(context),
+          ),
+          _buildPageContext(projectData),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.only(top: 8, bottom: 100),
+              child: _buildMainColumn(projectData, owners),
             ),
-            _buildPageContext(projectData),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(top: 8, bottom: 100),
-                child: _buildMainColumn(projectData, owners),
-              ),
-            ),
-          ],
-        ),
+          ),
+          _buildBottomBar(),
+        ],
       ),
-      bottomNavigationBar: _buildBottomBar(),
     );
   }
 

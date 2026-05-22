@@ -10,11 +10,15 @@ class DesignPhaseStableShell extends StatelessWidget {
     required this.activeLabel,
     required this.child,
     required this.onItemSelected,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   final String activeLabel;
   final Widget child;
   final ValueChanged<String> onItemSelected;
+  final String? breadcrumbPhase;
+  final String? breadcrumbTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,8 @@ class DesignPhaseStableShell extends StatelessWidget {
             children: [
               UnifiedPhaseHeader(
                 title: activeLabel,
+                breadcrumbPhase: breadcrumbPhase,
+                breadcrumbTitle: breadcrumbTitle,
                 showDrawerButton: true,
                 showActivityLogAction: true,
               ),
@@ -73,6 +79,8 @@ class DesignPhaseStableShell extends StatelessWidget {
                 children: [
                   UnifiedPhaseHeader(
                     title: activeLabel,
+                    breadcrumbPhase: breadcrumbPhase,
+                    breadcrumbTitle: breadcrumbTitle,
                     showDrawerButton: false,
                     showActivityLogAction: true,
                   ),

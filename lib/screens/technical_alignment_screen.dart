@@ -578,6 +578,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }) {
     return DesignPhaseStableShell(
       activeLabel: 'Technical Alignment',
+      breadcrumbPhase: 'Design Phase',
+      breadcrumbTitle: 'Technical Alignment',
       onItemSelected: _openStableDesignItem,
       child: ListView(
         padding: EdgeInsets.all(padding),

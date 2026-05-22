@@ -1082,6 +1082,8 @@ class _RequirementsImplementationScreenState
 
     return DesignPhaseStableShell(
       activeLabel: 'Design Specifications',
+      breadcrumbPhase: 'Design Phase',
+      breadcrumbTitle: 'Design Specifications',
       onItemSelected: _openStableDesignItem,
       child: ListView(
         padding: EdgeInsets.fromLTRB(

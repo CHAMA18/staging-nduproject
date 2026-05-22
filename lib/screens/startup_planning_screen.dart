@@ -50,6 +50,8 @@ class StartUpPlanningScreen extends StatelessWidget {
                           children: [
                             UnifiedPhaseHeader(
                               title: 'Start-Up Planning',
+                              breadcrumbPhase: 'Planning Phase',
+                              breadcrumbTitle: 'Startup Planning',
                               onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
                                 context,
                                 'startup_planning',

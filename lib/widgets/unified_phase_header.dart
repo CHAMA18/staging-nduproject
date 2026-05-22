@@ -6,7 +6,23 @@ import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand design tokens (matching the HTML source / Material You spec)
+// ─────────────────────────────────────────────────────────────────────────────
+class _Tokens {
+  static const background = Color(0xFFF7F9FB);
+  static const surface = Color(0xFFFFFFFF);
+  static const onSurface = Color(0xFF191C1E);
+  static const onSurfaceVariant = Color(0xFF414754);
+  static const outline = Color(0xFF717786);
+  static const outlineVariant = Color(0xFFC0C6D6);
+  static const primary = Color(0xFF005BB3);
+  static const tertiaryFixedDim = Color(0xFFFABD00);
+  static const tertiary = Color(0xFF755700);
+}
 
 class UnifiedPhaseHeader extends StatelessWidget {
   const UnifiedPhaseHeader({
@@ -20,6 +36,8 @@ class UnifiedPhaseHeader extends StatelessWidget {
     this.onOpenActivityLog,
     this.backgroundColor = Colors.white,
     this.showDrawerButton = true,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   final String title;
@@ -31,6 +49,14 @@ class UnifiedPhaseHeader extends StatelessWidget {
   final VoidCallback? onOpenActivityLog;
   final Color backgroundColor;
   final bool showDrawerButton;
+
+  /// Optional phase label for the breadcrumb bar (e.g. "Planning Phase").
+  /// Falls back to "Phase" if not provided.
+  final String? breadcrumbPhase;
+
+  /// Optional page title for the breadcrumb bar (e.g. "Risk Assessment").
+  /// Falls back to [title] if not provided.
+  final String? breadcrumbTitle;
 
   void _openDrawer(BuildContext context) {
     HapticFeedback.selectionClick();
@@ -44,79 +70,208 @@ class UnifiedPhaseHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    final headerHeight = isMobile ? 56.0 : 72.0;
 
+    if (isMobile) {
+      return _buildMobileHeader(context);
+    }
+    return _buildDesktopHeader(context);
+  }
+
+  // ─── Mobile: Top bar + breadcrumb bar (matching the screenshot) ─────────
+  Widget _buildMobileHeader(BuildContext context) {
+    final phaseLabel = breadcrumbPhase ?? 'Phase';
+    final pageLabel = breadcrumbTitle ?? title;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Top app bar: hamburger | NDUPROJECT | bell + chat ────────────
+        Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: _Tokens.surface,
+            border: Border(
+              bottom: BorderSide(color: _Tokens.outlineVariant.withOpacity(0.5)),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                // Left: Hamburger menu
+                if (showDrawerButton)
+                  IconButton(
+                    icon: const Icon(Icons.menu, color: _Tokens.onSurface, size: 24),
+                    tooltip: 'Open menu',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    onPressed: () => _openDrawer(context),
+                  ),
+                const Spacer(),
+                // Center: NDUPROJECT brand
+                const Text(
+                  'NDUPROJECT',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _Tokens.onSurface,
+                    letterSpacing: -0.01,
+                  ),
+                ),
+                const Spacer(),
+                // Right: Notification bell
+                IconButton(
+                  icon: const Icon(Icons.notifications_none_rounded,
+                      color: _Tokens.onSurface, size: 22),
+                  tooltip: 'Notifications',
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    // Placeholder for notification action
+                  },
+                ),
+                const SizedBox(width: 4),
+                // Right: Yellow chat "C" button
+                GestureDetector(
+                  onTap: () => KazAiChatBubble.openChat(context),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: _Tokens.tertiaryFixedDim,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'C',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Breadcrumb bar: back | Phase > Page | forward ─────────────────
+        Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: _Tokens.surface,
+            border: Border(
+              bottom: BorderSide(color: _Tokens.outlineVariant.withOpacity(0.5)),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              // Back navigation
+              _BreadcrumbNavButton(
+                icon: Icons.chevron_left_rounded,
+                onTap: onBackPressed ?? () => Navigator.maybePop(context),
+              ),
+              const SizedBox(width: 4),
+              // Breadcrumb text
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        phaseLabel,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _Tokens.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: _Tokens.outline,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        pageLabel,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _Tokens.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Forward navigation
+              _BreadcrumbNavButton(
+                icon: Icons.chevron_right_rounded,
+                onTap: onForwardPressed,
+                enabled: onForwardPressed != null,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Desktop: original layout (back/forward | title | activity log + profile) ─
+  Widget _buildDesktopHeader(BuildContext context) {
     return Container(
-      height: headerHeight,
+      height: 72,
       decoration: BoxDecoration(
         color: backgroundColor,
         border: const Border(
           bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          if (isMobile) ...[
-            if (showDrawerButton)
-              IconButton(
-                icon: const Icon(Icons.menu, color: Color(0xFF374151)),
-                tooltip: 'Open menu',
-                padding: const EdgeInsets.all(8),
-                constraints:
-                    const BoxConstraints(minWidth: 40, minHeight: 40),
-                onPressed: () => _openDrawer(context),
-              ),
-            _CircleNavButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              iconSize: 14,
-              onTap: onBackPressed ?? () => Navigator.maybePop(context),
-            ),
-            const SizedBox(width: 8),
-            _CircleNavButton(
-              icon: Icons.arrow_forward_ios_rounded,
-              iconSize: 14,
-              onTap: onForwardPressed,
-              enabled: onForwardPressed != null,
-            ),
-          ] else ...[
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 16),
+            tooltip: 'Back',
+            onPressed: onBackPressed ?? () => Navigator.pop(context),
+          ),
+          if (onForwardPressed != null)
             IconButton(
-              icon: const Icon(Icons.arrow_back_ios, size: 16),
-              tooltip: 'Back',
-              onPressed: onBackPressed ?? () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: 'Forward',
+              onPressed: onForwardPressed,
             ),
-            if (onForwardPressed != null)
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Forward',
-                onPressed: onForwardPressed,
-              ),
-          ],
           const Spacer(),
           Flexible(
             child: Text(
               title,
-              style: TextStyle(
-                fontSize: isMobile ? 18 : 20,
+              style: const TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF2D3748),
+                color: Color(0xFF2D3748),
               ),
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),
           ),
           const Spacer(),
-          if (!isMobile) ...[
-            if (showActivityLogAction)
-              _ActivityLogAction(
-                compact: false,
-                onTap: onOpenActivityLog ??
-                    () => ProjectActivitiesLogScreen.open(context),
-              ),
-            if (showActivityLogAction) const SizedBox(width: 12),
-            ...trailingActions,
-            if (trailingActions.isNotEmpty) const SizedBox(width: 12),
-          ],
+          if (showActivityLogAction)
+            _ActivityLogAction(
+              compact: false,
+              onTap: onOpenActivityLog ??
+                  () => ProjectActivitiesLogScreen.open(context),
+            ),
+          if (showActivityLogAction) const SizedBox(width: 12),
+          ...trailingActions,
+          if (trailingActions.isNotEmpty) const SizedBox(width: 12),
           const UnifiedProfileMenu(compact: true),
         ],
       ),
@@ -124,6 +279,48 @@ class UnifiedPhaseHeader extends StatelessWidget {
   }
 }
 
+// ─── Breadcrumb nav button (back/forward chevron) ─────────────────────────
+class _BreadcrumbNavButton extends StatelessWidget {
+  const _BreadcrumbNavButton({
+    required this.icon,
+    this.onTap,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: _Tokens.surface,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: enabled
+                ? _Tokens.outlineVariant
+                : _Tokens.outlineVariant.withOpacity(0.3),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled
+              ? _Tokens.onSurfaceVariant
+              : _Tokens.outlineVariant.withOpacity(0.4),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Legacy circle nav button (kept for backward compatibility) ───────────
 class _CircleNavButton extends StatelessWidget {
   const _CircleNavButton({
     required this.icon,
@@ -162,6 +359,7 @@ class _CircleNavButton extends StatelessWidget {
   }
 }
 
+// ─── UnifiedScaffoldAppBar — AppBar wrapper for screens needing Scaffold.appBar ─
 class UnifiedScaffoldAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   const UnifiedScaffoldAppBar({
@@ -228,6 +426,7 @@ class UnifiedScaffoldAppBar extends StatelessWidget
   }
 }
 
+// ─── Unified profile menu (avatar + popup) ────────────────────────────────
 class UnifiedProfileMenu extends StatelessWidget {
   const UnifiedProfileMenu({super.key, this.compact = false});
 
@@ -294,8 +493,6 @@ class UnifiedProfileMenu extends StatelessWidget {
                     final isAdmin =
                         snapshot.data ?? UserService.isAdminEmail(email);
                     final role = isAdmin ? 'Admin' : 'Member';
-                    // Avoid showing email twice when displayName is already
-                    // the email address (no proper display name set).
                     final emailIsDuplicate =
                         email.isNotEmpty && displayName == email;
                     return ConstrainedBox(
@@ -376,6 +573,7 @@ class UnifiedProfileMenu extends StatelessWidget {
   }
 }
 
+// ─── Activity log action button ───────────────────────────────────────────
 class _ActivityLogAction extends StatelessWidget {
   const _ActivityLogAction({
     required this.compact,

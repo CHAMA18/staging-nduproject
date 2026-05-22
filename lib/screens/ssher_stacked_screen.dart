@@ -620,6 +620,8 @@ class _SsherStackedScreenState extends State<SsherStackedScreen>
       children: [
         UnifiedPhaseHeader(
           title: 'SSHE Planning',
+          breadcrumbPhase: 'Planning Phase',
+          breadcrumbTitle: 'SSHE Planning',
           onBackPressed: () => PlanningPhaseNavigation.goToPrevious(context, 'ssher'),
           onForwardPressed: () => PlanningPhaseNavigation.goToNext(context, 'ssher'),
         ),

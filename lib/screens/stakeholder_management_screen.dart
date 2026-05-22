@@ -77,6 +77,8 @@ class _StakeholderManagementScreenState
 
     final header = UnifiedPhaseHeader(
       title: 'Stakeholder Management',
+      breadcrumbPhase: 'Planning Phase',
+      breadcrumbTitle: 'Stakeholder Management',
       onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
           context, 'stakeholder_management'),
       onForwardPressed: () =>

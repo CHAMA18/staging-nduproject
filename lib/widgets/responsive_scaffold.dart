@@ -23,6 +23,8 @@ class ResponsiveScaffold extends StatelessWidget {
     this.appBarTitle,
     this.onBackPressed,
     this.onForwardPressed,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   /// The main content of the screen
@@ -52,6 +54,12 @@ class ResponsiveScaffold extends StatelessWidget {
   /// Optional forward-navigation callback passed through to [UnifiedPhaseHeader].
   final VoidCallback? onForwardPressed;
 
+  /// Optional breadcrumb phase label passed through to [UnifiedPhaseHeader].
+  final String? breadcrumbPhase;
+
+  /// Optional breadcrumb page title passed through to [UnifiedPhaseHeader].
+  final String? breadcrumbTitle;
+
   /// Build the body, optionally wrapping it with a navigation header on mobile.
   Widget _wrapBody(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -61,6 +69,8 @@ class ResponsiveScaffold extends StatelessWidget {
       children: [
         UnifiedPhaseHeader(
           title: appBarTitle!,
+          breadcrumbPhase: breadcrumbPhase,
+          breadcrumbTitle: breadcrumbTitle,
           onBackPressed: onBackPressed,
           onForwardPressed: onForwardPressed,
         ),

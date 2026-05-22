@@ -13,6 +13,8 @@ class PlanningPhaseHeader extends StatelessWidget {
     this.showContentButton = true,
     this.onImportPressed,
     this.onContentPressed,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   final String title;
@@ -23,6 +25,8 @@ class PlanningPhaseHeader extends StatelessWidget {
   final bool showContentButton;
   final VoidCallback? onImportPressed;
   final VoidCallback? onContentPressed;
+  final String? breadcrumbPhase;
+  final String? breadcrumbTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +37,8 @@ class PlanningPhaseHeader extends StatelessWidget {
       children: [
         UnifiedPhaseHeader(
           title: title,
+          breadcrumbPhase: breadcrumbPhase,
+          breadcrumbTitle: breadcrumbTitle,
           showDrawerButton: true,
           onBackPressed: showNavigationButtons
               ? onBack ?? () => Navigator.maybePop(context)

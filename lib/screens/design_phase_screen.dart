@@ -426,6 +426,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   Widget _buildStableManagementScreen(double padding) {
     return DesignPhaseStableShell(
       activeLabel: 'Design Management',
+      breadcrumbPhase: 'Design Phase',
+      breadcrumbTitle: 'Design Management',
       onItemSelected: _openStableDesignItem,
       child: ListView(
         padding: EdgeInsets.all(padding),

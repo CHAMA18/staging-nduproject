@@ -466,6 +466,8 @@ class _StartUpPlanningDetailScreenState
                       children: [
                         UnifiedPhaseHeader(
                           title: widget.config.title,
+                          breadcrumbPhase: 'Planning Phase',
+                          breadcrumbTitle: 'Startup Planning',
                           onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
                             context,
                             widget.config.checkpoint,

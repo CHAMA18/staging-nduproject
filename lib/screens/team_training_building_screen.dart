@@ -110,6 +110,8 @@ class _TeamTrainingAndBuildingScreenState
 
     final header = UnifiedPhaseHeader(
       title: 'Team Training and Team Building',
+      breadcrumbPhase: 'Planning Phase',
+      breadcrumbTitle: 'Team Training',
       onBackPressed: () =>
           PlanningPhaseNavigation.goToPrevious(context, 'team_training'),
       onForwardPressed: () =>

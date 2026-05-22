@@ -21,6 +21,7 @@ import 'portfolio_dashboard_screen.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import '../widgets/dashboard_bottom_nav_bar.dart';
+import '../widgets/kaz_ai_chat_bubble.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design tokens extracted from the HTML source (Material You / Tailwind config)
@@ -534,59 +535,88 @@ class _ProjectDashboardMobileShellState
                     top: true,
                     child: Stack(
                       children: [
-                        // ── Top App Bar ─────────────────────────────────────
+                        // ── Top App Bar (unified with sidebar pages) ────────────
                         Positioned(
                           top: 0,
                           left: 0,
                           right: 0,
                           child: Container(
-                            height: 64,
+                            height: 56,
                             decoration: BoxDecoration(
-                              color: _Tokens.onSecondaryFixed,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              color: _Tokens.surfaceContainerLowest,
+                              border: Border(
+                                bottom: BorderSide(
+                                    color: _Tokens.outlineVariant.withOpacity(0.5)),
+                              ),
                             ),
                             child: Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
+                                  const EdgeInsets.symmetric(horizontal: 12),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          if (context.canPop()) {
-                                            context.pop();
-                                          } else {
-                                            context.go('/');
-                                          }
-                                        },
-                                        child: const Icon(Icons.menu,
-                                            color: Color(0xFFD6E3FF)),
+                                  // Hamburger menu
+                                  IconButton(
+                                    icon: const Icon(Icons.menu,
+                                        color: _Tokens.onSurface, size: 24),
+                                    tooltip: 'Open menu',
+                                    padding: const EdgeInsets.all(8),
+                                    constraints: const BoxConstraints(
+                                        minWidth: 40, minHeight: 40),
+                                    onPressed: () {
+                                      if (context.canPop()) {
+                                        context.pop();
+                                      } else {
+                                        context.go('/');
+                                      }
+                                    },
+                                  ),
+                                  const Spacer(),
+                                  // Center: NDUPROJECT brand
+                                  const Text(
+                                    'NDUPROJECT',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: _Tokens.onSurface,
+                                      letterSpacing: -0.01,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // Right: Notification bell
+                                  IconButton(
+                                    icon: const Icon(
+                                        Icons.notifications_none_rounded,
+                                        color: _Tokens.onSurface,
+                                        size: 22),
+                                    tooltip: 'Notifications',
+                                    padding: const EdgeInsets.all(8),
+                                    constraints: const BoxConstraints(
+                                        minWidth: 40, minHeight: 40),
+                                    onPressed: () {
+                                      // Placeholder for notification action
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Right: Yellow chat "C" button
+                                  GestureDetector(
+                                    onTap: () => KazAiChatBubble.openChat(context),
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        color: _Tokens.tertiaryFixedDim,
+                                        shape: BoxShape.circle,
                                       ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        'NDUPROJECT',
+                                      alignment: Alignment.center,
+                                      child: const Text(
+                                        'C',
                                         style: TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w800,
-                                          color: _Tokens.tertiaryFixedDim,
-                                          letterSpacing: -0.01,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  GestureDetector(
-                                    onTap: user != null ? _handleLogout : null,
-                                    child: const Icon(Icons.account_circle,
-                                        color: Color(0xFFD6E3FF)),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -594,9 +624,57 @@ class _ProjectDashboardMobileShellState
                           ),
                         ),
 
+                        // ── Breadcrumb bar ────────────────────────────────────
+                        Positioned(
+                          top: 56,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _Tokens.surfaceContainerLowest,
+                              border: Border(
+                                bottom: BorderSide(
+                                    color:
+                                        _Tokens.outlineVariant.withOpacity(0.5)),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: _Tokens.surfaceContainerLowest,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: _Tokens.outlineVariant
+                                            .withOpacity(0.3)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(Icons.chevron_left_rounded,
+                                      size: 18,
+                                      color: _Tokens.onSurfaceVariant
+                                          .withOpacity(0.4)),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Dashboard',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: _Tokens.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
                         // ── Main Scrollable Content ──────────────────────────
                         Positioned.fill(
-                          top: 64,
+                          top: 96,
                           bottom: 72,
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(

@@ -33,6 +33,8 @@ class SsherScreen1 extends StatelessWidget {
             children: [
               UnifiedPhaseHeader(
                 title: 'SSHER',
+                breadcrumbPhase: 'Planning Phase',
+                breadcrumbTitle: 'SSHE Planning',
                 onBackPressed: () => Navigator.maybePop(context),
               ),
               Expanded(
@@ -211,6 +213,8 @@ class SsherScreen1 extends StatelessWidget {
           children: [
             UnifiedPhaseHeader(
               title: 'SSHER',
+              breadcrumbPhase: 'Planning Phase',
+              breadcrumbTitle: 'SSHE Planning',
               onBackPressed: () => Navigator.maybePop(context),
             ),
             Expanded(

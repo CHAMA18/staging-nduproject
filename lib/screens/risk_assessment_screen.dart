@@ -387,6 +387,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
           children: [
             UnifiedPhaseHeader(
               title: 'Risk Mitigation',
+              breadcrumbPhase: 'Planning Phase',
+              breadcrumbTitle: 'Risk Assessment',
               onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
                   context, 'risk_assessment'),
               onForwardPressed: () =>

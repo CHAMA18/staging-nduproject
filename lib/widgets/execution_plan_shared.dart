@@ -37,15 +37,19 @@ String resolveExecutionCheckpoint(String key) {
 }
 
 class ExecutionPlanHeader extends StatelessWidget {
-  const ExecutionPlanHeader({super.key, required this.onBack, this.onNext});
+  const ExecutionPlanHeader({super.key, required this.onBack, this.onNext, this.breadcrumbPhase, this.breadcrumbTitle});
 
   final VoidCallback onBack;
   final VoidCallback? onNext;
+  final String? breadcrumbPhase;
+  final String? breadcrumbTitle;
 
   @override
   Widget build(BuildContext context) {
     return UnifiedPhaseHeader(
       title: 'Execution Plan',
+      breadcrumbPhase: breadcrumbPhase,
+      breadcrumbTitle: breadcrumbTitle,
       showDrawerButton: true,
       onBackPressed: onBack,
       onForwardPressed: onNext,

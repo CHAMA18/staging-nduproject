@@ -24,12 +24,40 @@ class KazAiChatBubble extends StatelessWidget {
 
   final bool positioned;
 
+  /// Public static method to open the KAZ AI chat dialog from anywhere.
+  static void openChat(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.15),
+      barrierDismissible: true,
+      barrierLabel: 'Close chat',
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const _KazAiChatPopup(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.15, 0.15),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bubble = Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _openKazAiChat(context),
+        onTap: () => openChat(context),
         borderRadius: BorderRadius.circular(32),
         child: Container(
           width: 64,

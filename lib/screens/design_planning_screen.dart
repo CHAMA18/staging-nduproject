@@ -1698,6 +1698,8 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
           children: [
             UnifiedPhaseHeader(
               title: 'Design Planning',
+              breadcrumbPhase: 'Design Phase',
+              breadcrumbTitle: 'Design Planning',
               onBackPressed: () => Navigator.maybePop(context),
             ),
             _buildPageContext(projectData),

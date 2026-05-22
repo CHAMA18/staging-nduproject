@@ -378,6 +378,8 @@ class _ProjectFrameworkNextScreenState
                 children: [
                   UnifiedPhaseHeader(
                     title: 'Project Goals & Milestones',
+                    breadcrumbPhase: 'Planning Phase',
+                    breadcrumbTitle: 'Project Framework',
                     onBackPressed: () => PlanningPhaseNavigation.goToPrevious(
                         context, 'project_goals_milestones'),
                     onForwardPressed: () => PlanningPhaseNavigation.goToNext(

@@ -11,6 +11,8 @@ class FrontEndPlanningHeader extends StatelessWidget {
     this.scaffoldKey,
     this.showActivityLogAction = true,
     this.onOpenActivityLog,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   final String title;
@@ -18,11 +20,15 @@ class FrontEndPlanningHeader extends StatelessWidget {
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final bool showActivityLogAction;
   final VoidCallback? onOpenActivityLog;
+  final String? breadcrumbPhase;
+  final String? breadcrumbTitle;
 
   @override
   Widget build(BuildContext context) {
     return UnifiedPhaseHeader(
       title: title,
+      breadcrumbPhase: breadcrumbPhase,
+      breadcrumbTitle: breadcrumbTitle,
       scaffoldKey: scaffoldKey,
       onBackPressed: onBackPressed,
       showActivityLogAction: showActivityLogAction,

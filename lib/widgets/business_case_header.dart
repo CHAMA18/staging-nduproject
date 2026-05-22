@@ -8,15 +8,21 @@ class BusinessCaseHeader extends StatelessWidget {
     super.key,
     this.onBackPressed,
     this.scaffoldKey,
+    this.breadcrumbPhase,
+    this.breadcrumbTitle,
   });
 
   final VoidCallback? onBackPressed;
   final GlobalKey<ScaffoldState>? scaffoldKey;
+  final String? breadcrumbPhase;
+  final String? breadcrumbTitle;
 
   @override
   Widget build(BuildContext context) {
     return UnifiedPhaseHeader(
       title: 'Initiation Phase',
+      breadcrumbPhase: breadcrumbPhase,
+      breadcrumbTitle: breadcrumbTitle,
       scaffoldKey: scaffoldKey,
       onBackPressed: onBackPressed,
     );

@@ -1803,18 +1803,24 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         children: [
           Row(
             children: [
-              Text(
-                data.projectName.trim().isEmpty
-                    ? 'Unnamed Project'
-                    : data.projectName.trim(),
-                style: const TextStyle(fontSize: 12, color: _kGray500),
+              Flexible(
+                child: Text(
+                  data.projectName.trim().isEmpty
+                      ? 'Unnamed Project'
+                      : data.projectName.trim(),
+                  style: const TextStyle(fontSize: 12, color: _kGray500),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 6),
               const Icon(Icons.chevron_right, size: 14, color: _kGray400),
               const SizedBox(width: 6),
-              const Text(
-                'Planning Phase',
-                style: TextStyle(fontSize: 12, color: _kGray500),
+              const Flexible(
+                child: Text(
+                  'Planning Phase',
+                  style: TextStyle(fontSize: 12, color: _kGray500),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -1862,6 +1868,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
 
   Widget _buildBottomBar() {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final isMobile = AppBreakpoints.isMobile(context);
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1882,16 +1889,25 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
               onPressed: () =>
                   PlanningPhaseNavigation.goToPrevious(context, 'design'),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: isMobile ? 8 : 16,
+                ),
                 side: const BorderSide(color: _kBorder),
                 foregroundColor: _kGray700,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.arrow_back, size: 16),
                   const SizedBox(width: 6),
-                  Text(PlanningPhaseNavigation.backLabel('design')),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(PlanningPhaseNavigation.backLabel('design')),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1905,12 +1921,21 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: _kBrandYellow,
                 foregroundColor: _kBrandDark,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: isMobile ? 8 : 16,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(PlanningPhaseNavigation.nextLabel('design')),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(PlanningPhaseNavigation.nextLabel('design')),
+                    ),
+                  ),
                   const SizedBox(width: 6),
                   const Icon(Icons.arrow_forward, size: 16),
                 ],

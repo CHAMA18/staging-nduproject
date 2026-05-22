@@ -490,34 +490,55 @@ class _NavigationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        ElevatedButton.icon(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back, size: 16),
-          label: Text(PlanningPhaseNavigation.backLabel('quality_management')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF374151),
-            elevation: 0,
-            side: const BorderSide(color: Color(0xFFD1D5DB)),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                    PlanningPhaseNavigation.backLabel('quality_management')),
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF374151),
+              side: const BorderSide(color: Color(0xFFD1D5DB)),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 8 : 20,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
           ),
         ),
-        ElevatedButton.icon(
-          onPressed: onNext,
-          icon: const Icon(Icons.arrow_forward, size: 16),
-          label: Text(PlanningPhaseNavigation.nextLabel('quality_management')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFC044),
-            foregroundColor: const Color(0xFF111827),
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: FilledButton.icon(
+            onPressed: onNext,
+            icon: const Icon(Icons.arrow_forward, size: 16),
+            label: Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                    PlanningPhaseNavigation.nextLabel('quality_management')),
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFFC044),
+              foregroundColor: const Color(0xFF111827),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 8 : 20,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
           ),
         ),
       ],

@@ -3,12 +3,44 @@ import 'package:intl/intl.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/expandable_text.dart';
+import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
 
-// --- Shared Styles ---
+// ─── Brand Color Tokens ───
+class BrandColors {
+  static const background = Color(0xFFF7F9FB);
+  static const primary = Color(0xFF005BB3);
+  static const primaryContainer = Color(0xFF0073DF);
+  static const onPrimary = Color(0xFFFFFFFF);
+  static const onPrimaryContainer = Color(0xFFFEFCFF);
+  static const surface = Color(0xFFF7F9FB);
+  static const surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const surfaceContainer = Color(0xFFECEEF0);
+  static const inverseSurface = Color(0xFF2D3133);
+  static const onSurface = Color(0xFF191C1E);
+  static const onSurfaceVariant = Color(0xFF414754);
+  static const outline = Color(0xFF717786);
+  static const outlineVariant = Color(0xFFC0C6D6);
+  static const error = Color(0xFFBA1A1A);
+  static const tertiaryFixedDim = Color(0xFFFABD00);
+  static const tertiary = Color(0xFF755700);
+  static const secondaryContainer = Color(0xFFE2DFDE);
+  static const secondary = Color(0xFF5F5E5E);
+  static const primaryFixed = Color(0xFFD6E3FF);
+  static const onPrimaryFixedVariant = Color(0xFF00468C);
+  static const tertiaryFixed = Color(0xFFFFDF9E);
+  static const onTertiaryFixedVariant = Color(0xFF5B4300);
+  static const errorContainer = Color(0xFFFFDAD6);
+  static const onErrorContainer = Color(0xFF93000A);
+  static const onTertiary = Color(0xFFFFFFFF);
+  static const onError = Color(0xFFFFFFFF);
+}
+
+// ─── Shared Styles (backward compatibility) ───
 const kSectionTitleStyle = TextStyle(
   fontSize: 14,
   fontWeight: FontWeight.w700,
-  color: Color(0xFF111827), // Gray 900
+  color: Color(0xFF111827),
   letterSpacing: 0.5,
 );
 
@@ -24,95 +56,232 @@ const kCardDecoration = BoxDecoration(
   ],
 );
 
-// --- 1. Executive Snapshot Header (New) ---
+const kCardBorderDecoration = BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.all(Radius.circular(12)),
+  border: Border.fromBorderSide(
+    BorderSide(color: BrandColors.outlineVariant, width: 1),
+  ),
+  boxShadow: [
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.04),
+      offset: Offset(0, 1),
+      blurRadius: 3,
+    )
+  ],
+);
 
-class CharterExecutiveSnapshot extends StatelessWidget {
+Widget sectionTitleWithIcon(IconData icon, String title) {
+  return Row(
+    children: [
+      Icon(icon, size: 20, color: BrandColors.primary),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: BrandColors.onSurface,
+        ),
+      ),
+    ],
+  );
+}
+
+Widget labelStyle(String text) {
+  return Text(
+    text.toUpperCase(),
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: BrandColors.onSurfaceVariant,
+      letterSpacing: 0.8,
+    ),
+  );
+}
+
+// ─── 1. Hero Header ───
+
+class CharterHeroHeader extends StatelessWidget {
+  final ProjectDataModel? data;
+  final VoidCallback? onRegenerateAll;
+  final bool isLoading;
+
+  const CharterHeroHeader({
+    super.key,
+    required this.data,
+    this.onRegenerateAll,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final projectName = data?.projectName.isNotEmpty == true
+        ? data!.projectName
+        : 'Untitled Project';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top row: Label + Regenerate button
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'PROJECT CHARTER',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: BrandColors.primary,
+                letterSpacing: 1.2,
+              ),
+            ),
+            if (onRegenerateAll != null)
+              PageRegenerateAllButton(
+                onRegenerateAll: onRegenerateAll!,
+                isLoading: isLoading,
+                tooltip: 'Regenerate all charter content',
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Project name + Active badge
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                projectName,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: BrandColors.onSurface,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: BrandColors.primaryContainer.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Active',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: BrandColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─── 2. Dashboard Stats Grid ───
+
+class CharterDashboardStats extends StatelessWidget {
   final ProjectDataModel? data;
 
-  const CharterExecutiveSnapshot({super.key, required this.data});
+  const CharterDashboardStats({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
 
-    // Calculate metrics
     final totalCost = _calculateTotalCost(data!);
+    final opportunities = _countOpportunities(data!);
     final duration = _calculateDuration(data!);
     final riskLevel = _calculateRiskLevel(data!);
     final projectManager = _determineProjectManager(data!);
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 768;
+    final mobileItemWidth = (screenWidth - 96) / 2;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+      padding: EdgeInsets.symmetric(
+        vertical: 24,
+        horizontal: isMobile ? 16 : 32,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B), // Slate 800 - Executive Dark Theme
-        borderRadius: BorderRadius.circular(16),
+        color: BrandColors.inverseSurface,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.2),
+            color: Color.fromRGBO(0, 0, 0, 0.15),
             offset: Offset(0, 4),
             blurRadius: 12,
           )
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        spacing: isMobile ? 12 : 0,
+        runSpacing: isMobile ? 16 : 0,
+        alignment: isMobile ? WrapAlignment.start : WrapAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: _buildSnapshotItem(
-                'TOTAL ESTIMATED COST', totalCost, Colors.white),
-          ),
-          _buildDivider(),
-          Expanded(
-            child: _buildSnapshotItem('NUMBER OF OPPORTUNITIES',
-                _countExpectedOpportunities(data!), Colors.greenAccent),
-          ),
-          _buildDivider(),
-          Expanded(
-            child: _buildSnapshotItem(
-                'ESTIMATED DURATION', duration, Colors.blueAccent),
-          ),
-          _buildDivider(),
-          Expanded(
-            child: _buildSnapshotItem(
-                'RISK LEVEL', riskLevel, _getRiskColor(riskLevel)),
-          ),
-          _buildDivider(),
-          Expanded(
-            child: _buildSnapshotItem(
-                'PROJECT MANAGER', projectManager, Colors.amberAccent),
-          ),
+          _buildStatItem('TOTAL COST', totalCost, Colors.white, isMobile, mobileWidth: mobileItemWidth),
+          if (!isMobile) _buildDivider(),
+          _buildStatItem('OPPORTUNITIES', opportunities, const Color(0xFF4ADE80),
+              isMobile, mobileWidth: mobileItemWidth),
+          if (!isMobile) _buildDivider(),
+          _buildStatItem('DURATION', duration, const Color(0xFF60A5FA), isMobile, mobileWidth: mobileItemWidth),
+          if (!isMobile) _buildDivider(),
+          _buildStatItem(
+              'RISK',
+              riskLevel,
+              riskLevel.toLowerCase() == 'high'
+                  ? const Color(0xFFF87171)
+                  : riskLevel.toLowerCase() == 'medium'
+                      ? BrandColors.tertiaryFixedDim
+                      : const Color(0xFF4ADE80),
+              isMobile, mobileWidth: mobileItemWidth),
+          if (!isMobile) _buildDivider(),
+          _buildStatItem('PROJECT MANAGER', projectManager,
+              const Color(0xFFFBBF24), isMobile, mobileWidth: mobileItemWidth),
         ],
       ),
     );
   }
 
-  Widget _buildSnapshotItem(String label, String value, Color valueColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.0,
+  Widget _buildStatItem(
+      String label, String value, Color valueColor, bool isMobile, {double? mobileWidth}) {
+    return SizedBox(
+      width: isMobile && mobileWidth != null ? mobileWidth : null,
+      child: Column(
+        crossAxisAlignment: isMobile
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            textAlign: isMobile ? TextAlign.left : TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: valueColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+          const SizedBox(height: 8),
+          Text(
+            value,
+            textAlign: isMobile ? TextAlign.left : TextAlign.center,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -130,18 +299,14 @@ class CharterExecutiveSnapshot extends StatelessWidget {
         .format(total);
   }
 
-  String _countExpectedOpportunities(ProjectDataModel data) {
+  String _countOpportunities(ProjectDataModel data) {
     return ProjectDataHelper.getExpectedOpportunitiesCount(data).toString();
   }
 
-  // Removed _calculateOpportunitiesCount - replaced with duration display
-
   String _calculateDuration(ProjectDataModel data) {
     if (data.keyMilestones.isEmpty) return 'TBD';
-
     DateTime? start;
     DateTime? end;
-
     for (var m in data.keyMilestones) {
       final date = DateTime.tryParse(m.dueDate);
       if (date != null) {
@@ -149,34 +314,25 @@ class CharterExecutiveSnapshot extends StatelessWidget {
         if (end == null || date.isAfter(end)) end = date;
       }
     }
-
     if (start != null && end != null) {
       final days = end.difference(start).inDays;
-      // Ensure positive duration
-      final displayDays = days < 0 ? 0 : days;
-      return '$displayDays Days';
+      return '${days < 0 ? 0 : days} Days';
     }
-
     return 'TBD';
   }
 
   String _calculateRiskLevel(ProjectDataModel data) {
-    // Logic: Check Risk Register for severity
     final register = data.frontEndPlanning.riskRegisterItems;
     if (register.isNotEmpty) {
-      bool hasHigh = register.any((r) => r.impactLevel.toLowerCase() == 'high');
-      if (hasHigh) return 'High';
-      bool hasMedium =
-          register.any((r) => r.impactLevel.toLowerCase() == 'medium');
-      if (hasMedium) return 'Medium';
+      if (register.any((r) => r.impactLevel.toLowerCase() == 'high')) {
+        return 'High';
+      }
+      if (register.any((r) => r.impactLevel.toLowerCase() == 'medium')) {
+        return 'Medium';
+      }
       return 'Low';
     }
-
-    // Fallback if register empty but risks exist in solution risks
-    if (data.solutionRisks.isNotEmpty) {
-      return 'Medium'; // Default safe assumption if risks exist but undefined severity
-    }
-
+    if (data.solutionRisks.isNotEmpty) return 'Medium';
     return 'Low';
   }
 
@@ -189,219 +345,54 @@ class CharterExecutiveSnapshot extends StatelessWidget {
     }
     return 'Not Assigned';
   }
-
-  Color _getRiskColor(String level) {
-    switch (level.toLowerCase()) {
-      case 'high':
-        return Colors.redAccent;
-      case 'medium':
-        return Colors.orangeAccent;
-      case 'low':
-        return Colors.greenAccent;
-      default:
-        return Colors.grey;
-    }
-  }
 }
 
-// --- 2. General Information Header ---
+// ─── 3. Meta Info Horizontal Scroll ───
 
-class CharterExecutiveSummary extends StatelessWidget {
+class CharterMetaInfoScroll extends StatelessWidget {
   final ProjectDataModel? data;
 
-  const CharterExecutiveSummary({super.key, required this.data});
+  const CharterMetaInfoScroll({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
 
-    final status = data!.currentCheckpoint.isNotEmpty
-        ? data!.currentCheckpoint.toUpperCase().replaceAll('_', ' ')
-        : 'INITIATION';
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration.copyWith(
-        border:
-            Border(left: BorderSide(color: Colors.amber.shade400, width: 4)),
+    final items = [
+      _MetaInfoItem(
+        icon: Icons.person_outline,
+        label: 'Project Manager',
+        value: data!.charterProjectManagerName.isNotEmpty
+            ? data!.charterProjectManagerName
+            : 'Assign Manager',
+        iconBgColor: BrandColors.secondaryContainer,
+        iconFgColor: const Color(0xFF636262), // on-secondary-container
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data!.projectName.isNotEmpty
-                          ? data!.projectName
-                          : 'Untitled Project',
-                      style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      data!.businessCase.isNotEmpty
-                          ? _getShortSummary(data!.businessCase)
-                          : 'Strategic Objective: Define project value proposition.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              // Financial & Status Badges
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Text(
-                      status,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade800),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Financial Justification Badges
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildMiniBadge('ROI', _getROI(data!)),
-                      const SizedBox(width: 8),
-                      _buildMiniBadge('NPV', _getNPV(data!)),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildKpiItem('Ref ID', data!.projectId ?? 'Draft', Icons.tag),
-              _buildKpiItem('Project Manager', data!.charterProjectManagerName,
-                  Icons.person_outline),
-              _buildKpiItem('Start Date', _formatDate(data!.createdAt),
-                  Icons.calendar_today_outlined),
-            ],
-          ),
-        ],
+      _MetaInfoItem(
+        icon: Icons.badge_outlined,
+        label: 'Ref ID',
+        value: data!.projectId ?? 'Draft',
+        iconBgColor: BrandColors.primaryFixed,
+        iconFgColor: BrandColors.onPrimaryFixedVariant,
       ),
-    );
-  }
-
-  String _getShortSummary(String text) {
-    if (text.length > 150) {
-      return '${text.substring(0, 150)}...';
-    }
-    return text;
-  }
-
-  String _getROI(ProjectDataModel data) {
-    // Try to get ROI from preferred solution analysis
-    final analysis = data.preferredSolutionAnalysis;
-    if (analysis != null) {
-      // Access via cost items if stored there, simplified lookup
-      // Assuming logic exists or using placeholder for now as logic is complex
-      return 'TBD';
-    }
-    return 'TBD';
-  }
-
-  String _getNPV(ProjectDataModel data) {
-    return 'TBD';
-  }
-
-  Widget _buildMiniBadge(String label, String value) {
-    if (value == 'TBD') return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.green.shade100),
+      _MetaInfoItem(
+        icon: Icons.calendar_today_outlined,
+        label: 'Start Date',
+        value: _formatDate(data!.createdAt),
+        iconBgColor: BrandColors.tertiaryFixed,
+        iconFgColor: BrandColors.onTertiaryFixedVariant,
       ),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$label: ',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade800)),
-          Text(value,
-              style: TextStyle(fontSize: 11, color: Colors.green.shade900)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKpiItem(String label, String value, IconData icon) {
-    return Expanded(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: Colors.grey[500]),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500)),
-                Text(
-                  value.isNotEmpty ? value : 'Assign',
-                  style: value.isNotEmpty
-                      ? const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)
-                      : TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.amber.shade700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (value.isEmpty && label == 'Project Manager')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      '(Click to assign)',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+        children: items.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _MetaInfoCard(item: item),
+          );
+        }).toList(),
       ),
     );
   }
@@ -412,140 +403,79 @@ class CharterExecutiveSummary extends StatelessWidget {
   }
 }
 
-// --- 3. Financial Snapshot ---
+class _MetaInfoItem {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconBgColor;
+  final Color iconFgColor;
 
-class CharterFinancialSnapshot extends StatelessWidget {
-  final ProjectDataModel? data;
+  const _MetaInfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.iconBgColor,
+    required this.iconFgColor,
+  });
+}
 
-  const CharterFinancialSnapshot({super.key, required this.data});
+class _MetaInfoCard extends StatelessWidget {
+  final _MetaInfoItem item;
+
+  const _MetaInfoCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-
-    final cost = _extractTotalCost(data!);
-    final savings = _extractTotalBenefits(data!);
-    final duration = _calculateDuration(data!);
-
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      width: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: kCardBorderDecoration,
+      child: Row(
         children: [
-          const Text('FINANCIAL SNAPSHOT', style: kSectionTitleStyle),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildMetric(
-                  'Est. Cost of Business Case', cost, Colors.red.shade700),
-              _buildMetric('Est. Savings', savings, Colors.green.shade700),
-              _buildMetric('Duration', duration, Colors.blue.shade700),
-            ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: item.iconBgColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(item.icon, size: 20, color: item.iconFgColor),
           ),
-          const SizedBox(height: 24),
-          // Visual Breakdown Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                    flex: 7, child: Container(height: 8, color: Colors.blue)),
-                Expanded(
-                    flex: 3,
-                    child: Container(height: 8, color: Colors.greenAccent)),
+                Text(
+                  item.label.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Cost Breakdown',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-              Text('Savings Potential',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-            ],
-          ),
         ],
       ),
     );
-  }
-
-  Widget _buildMetric(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: color),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _extractTotalCost(ProjectDataModel data) {
-    final total = ProjectDataHelper.getTotalEstimatedCostValue(data);
-
-    if (total == 0) return 'TBD';
-
-    return NumberFormat.simpleCurrency(name: data.costBenefitCurrency)
-        .format(total);
-  }
-
-  String _extractTotalBenefits(ProjectDataModel data) {
-    double total = 0.0;
-    for (var item in data.frontEndPlanning.opportunityItems) {
-      // Clean string and parse
-      String clean =
-          item.potentialCostSavings.replaceAll(RegExp(r'[^\d.]'), '');
-      if (clean.isNotEmpty) {
-        total += double.tryParse(clean) ?? 0.0;
-      }
-    }
-
-    if (total == 0) return 'TBD';
-
-    return NumberFormat.simpleCurrency(name: data.costBenefitCurrency)
-        .format(total);
-  }
-
-  String _calculateDuration(ProjectDataModel data) {
-    if (data.keyMilestones.isEmpty) return 'TBD';
-
-    DateTime? start;
-    DateTime? end;
-
-    // Scan all milestones for min start and max end
-    for (var m in data.keyMilestones) {
-      final date = DateTime.tryParse(m.dueDate);
-      if (date != null) {
-        if (date.isBefore(start ?? date)) start = date;
-        if (date.isAfter(end ?? date)) end = date;
-      }
-    }
-
-    // Also check creation date as a fallback start
-    if (start == null && data.createdAt != null) {
-      start = data.createdAt;
-    }
-
-    if (start != null && end != null) {
-      final days = end.difference(start).inDays;
-      // Ensure at least 1 day if start == end
-      return '${days > 0 ? days : 1} Days';
-    }
-
-    return 'TBD';
   }
 }
 
-// --- 4. Project Definition ---
+// ─── 4a. Project Definition Card ───
 
 class CharterProjectDefinition extends StatelessWidget {
   final ProjectDataModel? data;
@@ -557,6 +487,7 @@ class CharterProjectDefinition extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
+
     final projectPurposeText = data!.projectObjective.trim().isNotEmpty
         ? data!.projectObjective
         : data!.solutionDescription.trim().isNotEmpty
@@ -564,15 +495,15 @@ class CharterProjectDefinition extends StatelessWidget {
             : data!.businessCase;
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration,
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('PROJECT DEFINITION', style: kSectionTitleStyle),
+              sectionTitleWithIcon(Icons.description_outlined, 'Project Purpose'),
               if (onGenerate != null)
                 TextButton.icon(
                   onPressed: onGenerate,
@@ -588,222 +519,55 @@ class CharterProjectDefinition extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 24),
-          // 1. Project Purpose (overall aim and intended delivery)
-          _buildDefinitionBlock('Project Purpose', projectPurposeText,
-              'Summarize the overall aim of the project and what it will deliver.'),
-          const Divider(height: 32),
-          // 2. Business Case (financial rationale)
-          _buildDefinitionBlock('Business Case', data!.businessCase,
-              'Provide the financial and strategic rationale (ROI/NPV context) for this project.'),
-
-          const Divider(height: 32),
-
-          // 3. Success Criteria
-          _buildSuccessCriteriaSection(
-              data!.frontEndPlanning.successCriteriaItems),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccessCriteriaSection(List<PlanningDashboardItem> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('SUCCESS CRITERIA',
-                style: kSectionTitleStyle.copyWith(fontSize: 12)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (items.isEmpty)
-          const Text(
-            'No success criteria defined.',
-            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-          )
-        else
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 4, right: 12),
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFECFDF5), // Green 50
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check,
-                          size: 14, color: Color(0xFF059669)),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title.isNotEmpty
-                                ? item.title
-                                : item.description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2937),
-                            ),
-                          ),
-                          if (item.title.isNotEmpty &&
-                              item.description.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                item.description,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF6B7280),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-      ],
-    );
-  }
-
-  Widget _buildDefinitionBlock(
-      String label, String content, String placeholder) {
-    final text = content.trim().isEmpty ? placeholder : content;
-    final isPlaceholder = content.trim().isEmpty;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
+          const SizedBox(height: 16),
+          // Project Purpose text
+          ExpandableText(
+            text: projectPurposeText.trim().isEmpty
+                ? 'Summarize the overall aim of the project and what it will deliver.'
+                : projectPurposeText,
             style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700])),
-        const SizedBox(height: 8),
-        ExpandableText(
-          text: text,
-          style: TextStyle(
               fontSize: 14,
               height: 1.5,
-              color: isPlaceholder ? Colors.grey : Colors.black87),
-          maxLines: 4,
-        ),
-      ],
-    );
-  }
-}
-
-// --- 5. Scope ---
-
-class CharterScope extends StatelessWidget {
-  final ProjectDataModel? data;
-  final VoidCallback? onGenerate;
-
-  const CharterScope({super.key, required this.data, this.onGenerate});
-
-  @override
-  Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('PROJECT SCOPE', style: kSectionTitleStyle),
-              if (onGenerate != null)
-                TextButton.icon(
-                  onPressed: onGenerate,
-                  icon: const Icon(Icons.auto_awesome, size: 16),
-                  label:
-                      const Text('AI Generate', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-            ],
+              color: projectPurposeText.trim().isEmpty
+                  ? BrandColors.onSurfaceVariant
+                  : BrandColors.onSurface,
+            ),
+            maxLines: 4,
           ),
           const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                  child: _buildScopeList('Within Scope',
-                      data!.withinScope.join('\n'), Colors.green)),
-              const SizedBox(width: 24),
-              Expanded(
-                  child: _buildScopeList(
-                      'Out of Scope', data!.outOfScope.join('\n'), Colors.red)),
-            ],
+          const Divider(color: BrandColors.outlineVariant),
+          const SizedBox(height: 16),
+          // Business Case subsection
+          Text(
+            'BUSINESS CASE',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: BrandColors.primary,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ExpandableText(
+            text: data!.businessCase.trim().isEmpty
+                ? 'Provide the financial and strategic rationale (ROI/NPV context) for this project.'
+                : data!.businessCase,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: data!.businessCase.trim().isEmpty
+                  ? BrandColors.onSurfaceVariant
+                  : BrandColors.onSurface,
+            ),
+            maxLines: 4,
           ),
         ],
       ),
     );
   }
-
-  Widget _buildScopeList(String title, String content, Color accentColor) {
-    final List<String> items =
-        content.split('\n').where((s) => s.trim().isNotEmpty).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: accentColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(title,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: accentColor)),
-        ),
-        const SizedBox(height: 12),
-        if (items.isEmpty)
-          const Text('Not specified',
-              style:
-                  TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: accentColor.withOpacity(0.1),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(item,
-                          style: const TextStyle(fontSize: 13, height: 1.4))),
-                ],
-              ),
-            )),
-      ],
-    );
-  }
 }
 
-// --- 6. Risks (Table View) ---
+// ─── 4b. Financial Overview Card ───
 
 class CharterFinancialOverview extends StatelessWidget {
   final ProjectDataModel? data;
@@ -817,103 +581,107 @@ class CharterFinancialOverview extends StatelessWidget {
     final cost = ProjectDataHelper.getTotalEstimatedCostValue(data!);
     final costStr = NumberFormat.simpleCurrency(name: data!.costBenefitCurrency)
         .format(cost);
-
     final opportunitiesCount =
         ProjectDataHelper.getExpectedOpportunitiesCount(data!);
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration,
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('FINANCIAL OVERVIEW', style: kSectionTitleStyle),
+              sectionTitleWithIcon(
+                  Icons.payments_outlined, 'Financial Overview'),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: BrandColors.primaryFixed,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   'ROI Analysis',
                   style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.green.shade800,
-                      fontWeight: FontWeight.bold),
+                    fontSize: 10,
+                    color: BrandColors.onPrimaryFixedVariant,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Top Metrics Row
+          // Metrics row
           Row(
             children: [
               Expanded(
-                child: _buildBigMetric(
-                    'Total Estimated Cost', costStr, Colors.red.shade700),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    labelStyle('Total Cost'),
+                    const SizedBox(height: 4),
+                    Text(
+                      costStr,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: BrandColors.error,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Container(width: 1, height: 40, color: Colors.grey.shade300),
+              Container(
+                  width: 1, height: 40, color: BrandColors.outlineVariant),
+              const SizedBox(width: 20),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 24.0),
-                  child: _buildBigMetric('Number of Opportunities',
-                      opportunitiesCount.toString(), Colors.green.shade700),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    labelStyle('Opportunities'),
+                    const SizedBox(height: 4),
+                    Text(
+                      opportunitiesCount.toString(),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: BrandColors.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-
-          // Cost Breakdown Chart (Embedded)
-          const Text('Estimated Cost Breakdown',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey)),
+          const SizedBox(height: 20),
+          const Divider(color: BrandColors.outlineVariant),
           const SizedBox(height: 16),
-          _buildEmbeddedCostChart(data!),
+
+          // Cost breakdown bar
+          labelStyle('Estimated Cost Breakdown'),
+          const SizedBox(height: 12),
+          _buildCostChart(data!),
         ],
       ),
     );
   }
 
-  Widget _buildBigMetric(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-              letterSpacing: -0.5),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmbeddedCostChart(ProjectDataModel data) {
+  Widget _buildCostChart(ProjectDataModel data) {
     final segments = _buildCostBreakdownSegments(data);
     if (segments.isEmpty) {
-      return const Center(
-          child: Padding(
+      return const Padding(
         padding: EdgeInsets.all(16.0),
         child: Text('No cost estimates to display.',
-            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-      ));
+            style: TextStyle(
+                color: BrandColors.onSurfaceVariant,
+                fontStyle: FontStyle.italic)),
+      );
     }
 
     final total =
@@ -924,8 +692,9 @@ class CharterFinancialOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Stacked progress bar
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           child: Row(
             children: [
               for (final segment in segments)
@@ -944,10 +713,11 @@ class CharterFinancialOverview extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        // Legend
         ...segments.map((segment) {
           final pct = total > 0 ? (segment.amount / total) * 100 : 0.0;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
                 Container(
@@ -958,7 +728,7 @@ class CharterFinancialOverview extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     segment.label,
@@ -968,16 +738,17 @@ class CharterFinancialOverview extends StatelessWidget {
                   ),
                 ),
                 SizedBox(
-                  width: 56,
+                  width: 50,
                   child: Text(
                     '${pct.toStringAsFixed(1)}%',
                     textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(
+                        fontSize: 12, color: BrandColors.onSurfaceVariant),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 SizedBox(
-                  width: 110,
+                  width: 100,
                   child: Text(
                     currency.format(segment.amount),
                     textAlign: TextAlign.right,
@@ -1002,6 +773,7 @@ class CharterFinancialOverview extends StatelessWidget {
       costState: 'forecast',
     ).where((item) => item.amount > 0).toList()
       ..sort((a, b) => b.amount.compareTo(a.amount));
+
     if (estimateItems.isNotEmpty) {
       for (var i = 0; i < estimateItems.length && i < 6; i++) {
         final item = estimateItems[i];
@@ -1060,11 +832,11 @@ class CharterFinancialOverview extends StatelessWidget {
 
   Color _getColor(int index) {
     const table = [
-      Color(0xFF3B82F6), // Blue 500
-      Color(0xFFEF4444), // Red 500
-      Color(0xFF10B981), // Emerald 500
-      Color(0xFFF59E0B), // Amber 500
-      Color(0xFF8B5CF6), // Violet 500
+      BrandColors.primary,
+      BrandColors.error,
+      Color(0xFF10B981),
+      BrandColors.tertiaryFixedDim,
+      Color(0xFF8B5CF6),
     ];
     return table[index % table.length];
   }
@@ -1082,7 +854,230 @@ class _CostBreakdownSegment {
   });
 }
 
-// --- 6. Risks (Table View + Summary) ---
+// ─── 4c. Success Criteria Card ───
+
+class CharterSuccessCriteria extends StatelessWidget {
+  final ProjectDataModel? data;
+
+  const CharterSuccessCriteria({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) return const SizedBox();
+
+    final items = data!.frontEndPlanning.successCriteriaItems;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          sectionTitleWithIcon(Icons.task_alt_outlined, 'Success Criteria'),
+          const SizedBox(height: 16),
+          if (items.isEmpty)
+            const Text(
+              'No success criteria defined.',
+              style: TextStyle(
+                  color: BrandColors.onSurfaceVariant,
+                  fontStyle: FontStyle.italic),
+            )
+          else
+            ...items.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.check_circle,
+                          size: 20, color: BrandColors.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title.isNotEmpty
+                                  ? item.title
+                                  : item.description,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: BrandColors.onSurface,
+                              ),
+                            ),
+                            if (item.title.isNotEmpty &&
+                                item.description.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  item.description,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: BrandColors.onSurfaceVariant,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── 4d. Project Scope Card ───
+
+class CharterScope extends StatelessWidget {
+  final ProjectDataModel? data;
+  final VoidCallback? onGenerate;
+
+  const CharterScope({super.key, required this.data, this.onGenerate});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) return const SizedBox();
+
+    final inScopeItems = data!.withinScope
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+    final outOfScopeItems = data!.outOfScope
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              sectionTitleWithIcon(Icons.zoom_in_outlined, 'Project Scope'),
+              if (onGenerate != null)
+                TextButton.icon(
+                  onPressed: onGenerate,
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label:
+                      const Text('AI Generate', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Within Scope - tag pills
+          Text(
+            'WITHIN SCOPE',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: BrandColors.primary,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (inScopeItems.isEmpty)
+            const Text('Not specified',
+                style: TextStyle(
+                    color: BrandColors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: inScopeItems.map((item) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: BrandColors.primaryFixed,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: BrandColors.primary.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    item.trim(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: BrandColors.onPrimaryFixedVariant,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+          const SizedBox(height: 20),
+
+          // Out of Scope - bullet list with error-colored label
+          Text(
+            'OUT OF SCOPE',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: BrandColors.error,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (outOfScopeItems.isEmpty)
+            const Text('Not specified',
+                style: TextStyle(
+                    color: BrandColors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13))
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: outOfScopeItems.map((item) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(top: 6, right: 10),
+                        decoration: const BoxDecoration(
+                          color: BrandColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          item.trim(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: BrandColors.onSurface,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── 5. Key Risks Section ───
 
 class CharterRisks extends StatelessWidget {
   final ProjectDataModel? data;
@@ -1094,23 +1089,20 @@ class CharterRisks extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
 
-    // 1. Get Risks (Prioritize Risk Register)
     final riskRegister = data!.frontEndPlanning.riskRegisterItems;
     List<Map<String, dynamic>> allRisks = [];
 
-    // Add risks to list
     if (riskRegister.isNotEmpty) {
       for (var risk in riskRegister) {
         allRisks.add({
           'type': 'Risk',
           'description': risk.riskName,
           'impact': risk.impactLevel,
-          'likelihood': 'Medium', // Default for now
+          'likelihood': 'Medium',
           'mitigation': risk.mitigationStrategy,
         });
       }
     } else {
-      // Fallback to solution risks
       for (var solutionRisk in data!.solutionRisks) {
         for (var riskStr in solutionRisk.risks) {
           allRisks.add({
@@ -1124,269 +1116,195 @@ class CharterRisks extends StatelessWidget {
       }
     }
 
-    // Sort: High -> Medium -> Low
     allRisks.sort((a, b) {
       final scoreA = _impactScore(a['impact']);
       final scoreB = _impactScore(b['impact']);
-      return scoreB.compareTo(scoreA); // Descending
+      return scoreB.compareTo(scoreA);
     });
 
-    // Filter Logic for Display: Max 5 items
-    // If High risks < 5, fill with others. (Sorting already handles prioritization)
     final displayRisks = allRisks.take(5).toList();
-
-    // Stats
     final totalRisksCount = allRisks.length;
-    final highRisksCount = allRisks
-        .where((i) => i['impact'].toString().toLowerCase() == 'high')
-        .length;
-    final mitigationCount = allRisks
-        .where((i) =>
-            i['mitigation'].toString().isNotEmpty &&
-            i['mitigation'].toString() != 'TBD')
-        .length;
-
-    // Constraints Data (New Structure + Legacy Fallback)
-    final constraints = <String>[];
-    // New structured items
-    for (var item in data!.constraintItems) {
-      if (item.title.isNotEmpty) constraints.add(item.title);
-    }
-    // Legacy strings (if new list empty, or merge? Let's merge unique)
-    for (var c in data!.constraints) {
-      if (c.trim().isNotEmpty && !constraints.contains(c)) {
-        constraints.add(c);
-      }
-    }
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration,
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text('KEY RISKS', style: kSectionTitleStyle),
-                  if (onGenerate != null) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: onGenerate,
-                      icon: const Icon(Icons.auto_awesome, size: 16),
-                      tooltip: 'AI Generate Risks',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ],
+              const Icon(Icons.warning_amber_rounded,
+                  size: 20, color: BrandColors.error),
+              const SizedBox(width: 8),
+              const Text(
+                'Key Risks',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: BrandColors.onSurface,
+                ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: BrandColors.errorContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '$totalRisksCount Total',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.onErrorContainer,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (onGenerate != null)
+                TextButton.icon(
+                  onPressed: onGenerate,
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label:
+                      const Text('AI Generate', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Metrics Row
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red.shade100),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMetricColumn(totalRisksCount.toString(), 'Total Risks',
-                    Colors.red.shade900),
-                _buildVerticalDivider(),
-                _buildMetricColumn(highRisksCount.toString(), 'High Impact',
-                    Colors.red.shade900),
-                _buildVerticalDivider(),
-                _buildMetricColumn(
-                    (totalRisksCount - mitigationCount).toString(),
-                    'Needs Mitigation',
-                    Colors.red.shade900),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Risks Table
+          // Risk items with border-left severity
           if (allRisks.isEmpty)
             const Text('No risks identified.',
-                style:
-                    TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-          if (allRisks.isNotEmpty)
-            Column(
-              children: [
-                _buildRiskTableHeader(),
-                const SizedBox(height: 8),
-                ...displayRisks.map((item) => _buildRiskRow(item)),
-              ],
-            ),
-
-          const SizedBox(height: 32),
-
-          // Constraints Section
-          const Text('Project Constraints',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87)),
-          const SizedBox(height: 8),
-          if (constraints.isEmpty)
-            const Text('No constraints identified.',
                 style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic)),
-          if (constraints.isNotEmpty)
+                    color: BrandColors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic))
+          else
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: constraints
-                  .take(5)
-                  .map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
+              children: displayRisks.map((item) {
+                final impact = item['impact'].toString();
+                final Color borderColor;
+                final Color badgeBg;
+                final Color badgeText;
+                if (impact.toLowerCase() == 'high') {
+                  borderColor = BrandColors.error;
+                  badgeBg = BrandColors.errorContainer;
+                  badgeText = BrandColors.onErrorContainer;
+                } else if (impact.toLowerCase() == 'medium') {
+                  borderColor = BrandColors.tertiaryFixedDim;
+                  badgeBg = BrandColors.tertiaryFixed;
+                  badgeText = BrandColors.onTertiaryFixedVariant;
+                } else {
+                  borderColor = const Color(0xFF4ADE80);
+                  badgeBg = const Color(0xFFDCFCE7);
+                  badgeText = const Color(0xFF166534);
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(
+                      left: BorderSide(color: borderColor, width: 4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        offset: const Offset(0, 1),
+                        blurRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('• ',
-                                style: TextStyle(
-                                    color: Colors.grey, fontSize: 13)),
-                            Expanded(
-                                child: Text(c,
-                                    style: const TextStyle(
-                                        fontSize: 13, color: Colors.black87))),
+                            Text(
+                              item['description'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: BrandColors.onSurface,
+                              ),
+                            ),
+                            if (item['mitigation'] != null &&
+                                item['mitigation'].toString().isNotEmpty &&
+                                item['mitigation'].toString() != 'TBD')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Mitigation: ${item['mitigation']}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: BrandColors.onSurfaceVariant,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      ))
-                  .toList(),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          impact,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: badgeText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildMetricColumn(String value, String label, Color color) {
-    return Column(
-      children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-        const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: color.withOpacity(0.8),
-                fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
-  Widget _buildVerticalDivider() {
-    return Container(
-      height: 24,
-      width: 1,
-      color: Colors.red.shade200,
-    );
-  }
-
-  Widget _buildRiskTableHeader() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 4, right: 4),
-      child: Row(
-        children: const [
-          Expanded(
-              flex: 3,
-              child: Text('Risk Description',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87))),
-          Expanded(
-              flex: 1,
-              child: Text('Impact',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87))),
-          Expanded(
-              flex: 1,
-              child: Text('Likelihood',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87))),
-          Expanded(
-              flex: 1,
-              child: Text('Mitigation',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRiskRow(Map<String, dynamic> item) {
-    final impact = item['impact'].toString();
-    Color badgeColor = Colors.grey;
-    Color badgeText = Colors.black;
-    if (impact.toLowerCase() == 'high') {
-      badgeColor = Colors.red.shade50;
-      badgeText = Colors.red.shade700;
-    } else if (impact.toLowerCase() == 'medium') {
-      badgeColor = Colors.orange.shade50;
-      badgeText = Colors.orange.shade800;
-    } else {
-      badgeColor = Colors.green.shade50;
-      badgeText = Colors.green.shade800;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Text(item['description'],
-                style: const TextStyle(
-                    fontSize: 12, color: Colors.black54, height: 1.4)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(impact,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: badgeText)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 1,
-            child: Text(item['likelihood'],
-                style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 1,
-            child: Text(item['mitigation'],
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-          ),
+          // Constraints
+          if (data!.constraints.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Divider(color: BrandColors.outlineVariant),
+            const SizedBox(height: 16),
+            labelStyle('Project Constraints'),
+            const SizedBox(height: 8),
+            ...data!.constraints.take(5).map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• ',
+                          style: TextStyle(
+                              color: BrandColors.onSurfaceVariant,
+                              fontSize: 13)),
+                      Expanded(
+                          child: Text(c,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: BrandColors.onSurface))),
+                    ],
+                  ),
+                )),
+          ],
         ],
       ),
     );
@@ -1406,79 +1324,260 @@ class CharterRisks extends StatelessWidget {
   }
 }
 
-// --- 8. Resources ---
+// ─── 6. Technical & Procurement Bento ───
 
-class CharterResources extends StatelessWidget {
+class CharterTechnicalProcurementBento extends StatelessWidget {
   final ProjectDataModel? data;
+  final VoidCallback? onGenerate;
 
-  const CharterResources({super.key, required this.data});
+  const CharterTechnicalProcurementBento(
+      {super.key, required this.data, this.onGenerate});
 
   @override
   Widget build(BuildContext context) {
     if (data == null) return const SizedBox();
 
+    final it = data!.itConsiderationsData;
+    final infra = data!.infrastructureConsiderationsData;
+    final vendorCount = data!.vendors.length;
+    final contractCount = data!.contractors.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            sectionTitleWithIcon(
+                Icons.precision_manufacturing_outlined, 'Technical & Procurement'),
+            if (onGenerate != null)
+              TextButton.icon(
+                onPressed: onGenerate,
+                icon: const Icon(Icons.auto_awesome, size: 16),
+                label:
+                    const Text('AI Generate', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 768;
+            return isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // IT + Infrastructure card
+                      Expanded(
+                        child: _buildTechCard(it, infra),
+                      ),
+                      const SizedBox(width: 12),
+                      // Contracts + Procurement side by side
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildStatCard(
+                              'Contracts',
+                              contractCount,
+                              'Contracts Pending',
+                              Icons.description_outlined,
+                              BrandColors.primary,
+                              BrandColors.primaryFixed,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildStatCard(
+                              'Procurement',
+                              vendorCount,
+                              'Items Identified',
+                              Icons.inventory_2_outlined,
+                              BrandColors.tertiary,
+                              BrandColors.tertiaryFixed,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _buildTechCard(it, infra),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              'Contracts',
+                              contractCount,
+                              'Contracts Pending',
+                              Icons.description_outlined,
+                              BrandColors.primary,
+                              BrandColors.primaryFixed,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              'Procurement',
+                              vendorCount,
+                              'Items Identified',
+                              Icons.inventory_2_outlined,
+                              BrandColors.tertiary,
+                              BrandColors.tertiaryFixed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTechCard(
+      ITConsiderationsData? it, InfrastructureConsiderationsData? infra) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('RESOURCES & TECHNOLOGY', style: kSectionTitleStyle),
-          const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                  child: _buildResourceColumn(
-                      'Project Team',
-                      data!.teamMembers
-                          .map((m) => '${m.name} (${m.role})')
-                          .toList())),
-              const SizedBox(width: 24),
-              Expanded(
-                  child: _buildResourceColumn(
-                      'Tech Stack',
-                      data!.technologyInventory
-                          .map((t) => t['name']?.toString() ?? '')
-                          .toList())),
-            ],
+          labelStyle('IT Considerations'),
+          const SizedBox(height: 8),
+          if (it == null ||
+              (it.hardwareRequirements.isEmpty &&
+                  it.softwareRequirements.isEmpty &&
+                  it.networkRequirements.isEmpty))
+            const Text('No specific requirements defined.',
+                style: TextStyle(
+                    color: BrandColors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13))
+          else ...[
+            if (it.hardwareRequirements.isNotEmpty)
+              _buildReqRow('Hardware', it.hardwareRequirements),
+            if (it.softwareRequirements.isNotEmpty)
+              _buildReqRow('Software', it.softwareRequirements),
+            if (it.networkRequirements.isNotEmpty)
+              _buildReqRow('Network', it.networkRequirements),
+          ],
+          const SizedBox(height: 16),
+          const Divider(color: BrandColors.outlineVariant),
+          const SizedBox(height: 12),
+          labelStyle('Infrastructure'),
+          const SizedBox(height: 8),
+          if (infra == null ||
+              (infra.physicalSpaceRequirements.isEmpty &&
+                  infra.powerCoolingRequirements.isEmpty &&
+                  infra.connectivityRequirements.isEmpty))
+            const Text('No specific requirements defined.',
+                style: TextStyle(
+                    color: BrandColors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13))
+          else ...[
+            if (infra.physicalSpaceRequirements.isNotEmpty)
+              _buildReqRow('Space', infra.physicalSpaceRequirements),
+            if (infra.powerCoolingRequirements.isNotEmpty)
+              _buildReqRow('Power/Cooling', infra.powerCoolingRequirements),
+            if (infra.connectivityRequirements.isNotEmpty)
+              _buildReqRow('Connectivity', infra.connectivityRequirements),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReqRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.onSurfaceVariant)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13, height: 1.4),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResourceColumn(String title, List<String> items) {
-    final validItems = items.where((s) => s.isNotEmpty).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700])),
-        const SizedBox(height: 8),
-        if (validItems.isEmpty)
-          const Text('None listed',
-              style: TextStyle(color: Colors.grey, fontSize: 13)),
-        ...validItems.take(6).map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text('• $item', style: const TextStyle(fontSize: 13)),
-            )),
-      ],
+  Widget _buildStatCard(String title, int count, String subtitle,
+      IconData icon, Color accentColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: accentColor),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                      letterSpacing: 0.5)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: accentColor.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$count',
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: accentColor.withOpacity(0.8))),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// --- 9. Visual Charts ---
+// ─── 7. Tentative Schedule Timeline ───
 
-// --- 9. Visual Charts ---
-
-class CharterMilestoneVisualizer extends StatelessWidget {
+class CharterScheduleTimeline extends StatelessWidget {
   final ProjectDataModel? data;
 
-  const CharterMilestoneVisualizer({super.key, required this.data});
+  const CharterScheduleTimeline({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -1495,376 +1594,402 @@ class CharterMilestoneVisualizer extends StatelessWidget {
       return da.compareTo(db);
     });
 
-    final start = DateTime.tryParse(data!.createdAt.toString()) ??
-        DateTime.now().subtract(const Duration(days: 1));
-    var end = DateTime.tryParse(milestones.last.dueDate) ??
-        DateTime.now().add(const Duration(days: 30));
-
-    // Add buffer to end
-    if (end.isBefore(start)) end = start.add(const Duration(days: 30));
-    final totalDuration = end.difference(start).inDays.clamp(1, 10000);
-
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration,
-      height: 220,
+      padding: const EdgeInsets.all(20),
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('TIMELINE OVERVIEW', style: kSectionTitleStyle),
-          const SizedBox(height: 32),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Stack(
-                  alignment: Alignment.centerLeft,
-                  children: [
-                    // Base Line
-                    Container(
-                      height: 4,
-                      width: constraints.maxWidth,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    // Active Progress Line (Mocking current date relative to timeline)
-                    _buildProgressLine(
-                        start, totalDuration, constraints.maxWidth),
+          sectionTitleWithIcon(
+              Icons.schedule_outlined, 'Tentative Schedule'),
+          const SizedBox(height: 24),
+          // Timeline
+          ...milestones.asMap().entries.map((entry) {
+            final index = entry.key;
+            final m = entry.value;
+            final mDate = DateTime.tryParse(m.dueDate);
+            final isCompleted =
+                mDate != null && mDate.isBefore(DateTime.now());
+            final isLast = index == milestones.length - 1;
 
-                    // Milestones
-                    ...milestones.map((m) {
-                      final mDate = DateTime.tryParse(m.dueDate);
-                      if (mDate == null) return const SizedBox();
-
-                      // Calculate position 0.0 to 1.0
-                      double normalizedPos =
-                          mDate.difference(start).inDays / totalDuration;
-                      // Clamp to keep within bounds visually (0.05 to 0.95 to avoid edge clipping)
-                      normalizedPos = normalizedPos.clamp(0.0, 1.0);
-
-                      // Determine status based on date vs now
-                      final isCompleted = mDate.isBefore(DateTime.now());
-                      final isFuture = !isCompleted;
-
-                      return Positioned(
-                        left: normalizedPos * constraints.maxWidth -
-                            12, // Center the 24px icon
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: isCompleted
-                                    ? Colors.blue.shade600
-                                    : Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isCompleted
-                                      ? Colors.blue.shade600
-                                      : Colors.grey.shade400,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  if (isFuture)
-                                    BoxShadow(
-                                        color:
-                                            Colors.grey.withOpacity(0.1),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2))
-                                ],
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  isCompleted
-                                      ? Icons.check
-                                      : Icons.calendar_today,
-                                  size: 12,
-                                  color: isCompleted
-                                      ? Colors.white
-                                      : Colors.grey.shade600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: 80,
-                              child: Text(
-                                m.name,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _formatShortDate(mDate),
-                              style: TextStyle(
-                                  fontSize: 9, color: Colors.grey.shade500),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Legend or Start/End Labels
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(_formatLongDate(start),
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade400)),
-              Text(_formatLongDate(end),
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade400)),
-            ],
-          ),
+            return _TimelineItem(
+              name: m.name,
+              description: m.discipline.isNotEmpty ? m.discipline : '',
+              date: mDate != null ? DateFormat('MMM d, yyyy').format(mDate) : 'TBD',
+              isCompleted: isCompleted,
+              isLast: isLast,
+            );
+          }),
         ],
       ),
     );
-  }
-
-  Widget _buildProgressLine(
-      DateTime start, int totalDuration, double maxWidth) {
-    final now = DateTime.now();
-    if (now.isBefore(start)) return const SizedBox();
-
-    final elapsed = now.difference(start).inDays;
-    double progress = elapsed / totalDuration;
-    progress = progress.clamp(0.0, 1.0);
-
-    return Container(
-      height: 4,
-      width: maxWidth * progress,
-      decoration: BoxDecoration(
-        color: Colors.blue.shade400,
-        borderRadius: BorderRadius.circular(2),
-      ),
-    );
-  }
-
-  String _formatShortDate(DateTime d) {
-    return DateFormat('MMM d').format(d);
-  }
-
-  String _formatLongDate(DateTime d) {
-    return DateFormat('MMM d, yyyy').format(d);
   }
 }
 
-class CharterCostChart extends StatelessWidget {
-  final ProjectDataModel? data;
+class _TimelineItem extends StatelessWidget {
+  final String name;
+  final String description;
+  final String date;
+  final bool isCompleted;
+  final bool isLast;
 
-  const CharterCostChart({super.key, required this.data});
+  const _TimelineItem({
+    required this.name,
+    required this.description,
+    required this.date,
+    required this.isCompleted,
+    required this.isLast,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-
-    final items = ProjectDataHelper.getActiveCostEstimateItems(
-      data!,
-      costState: 'forecast',
-    );
-    if (items.isEmpty) {
-      return Container(
-        height: 200,
-        padding: const EdgeInsets.all(20),
-        decoration: kCardDecoration,
-        child: const Center(
-            child: Text('No cost estimates available.',
-                style: TextStyle(color: Colors.grey))),
-      );
-    }
-
-    final total = items.fold(0.0, (sum, item) => sum + item.amount);
-    final sorted = List<CostEstimateItem>.from(items)
-      ..sort((a, b) => b.amount.compareTo(a.amount));
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
-      child: Column(
+    return IntrinsicHeight(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('COST DISTRIBUTION', style: kSectionTitleStyle),
-          const SizedBox(height: 16),
-          Expanded(
-            child: sorted.isEmpty
-                ? const SizedBox()
-                : Row(
-                    children: [
-                      // Pie/Donut (simplified as stacked bar or just legend list for reliability without external charting libs)
-                      // Using a simple visual list with bars
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: sorted.take(5).map((item) {
-                            final pct = total > 0 ? item.amount / total : 0.0;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      child: Text(item.title,
-                                          style: const TextStyle(fontSize: 11),
-                                          overflow: TextOverflow.ellipsis)),
-                                  SizedBox(
-                                    width: 100,
-                                    child: LinearProgressIndicator(
-                                        value: pct,
-                                        backgroundColor: Colors.grey[100],
-                                        color: _getColor(sorted.indexOf(item))),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text('${(pct * 100).toInt()}%',
-                                      style: const TextStyle(fontSize: 11)),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      )
-                    ],
+          // Timeline line + dot
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                // Dot
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: isCompleted ? BrandColors.primary : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isCompleted
+                          ? BrandColors.primary
+                          : BrandColors.outline,
+                      width: 2,
+                    ),
                   ),
-          )
+                  child: isCompleted
+                      ? const Icon(Icons.check, size: 10, color: Colors.white)
+                      : null,
+                ),
+                // Line
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: BrandColors.outlineVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isCompleted
+                          ? BrandColors.onSurface
+                          : BrandColors.onSurfaceVariant,
+                    ),
+                  ),
+                  if (description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: BrandColors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    date,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: BrandColors.outline,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Color _getColor(int index) {
-    const table = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.orange,
-      Colors.purple
-    ];
-    return table[index % table.length];
+// ─── 8. Floating Approval Action Bar ───
+
+class CharterFloatingApprovalBar extends StatelessWidget {
+  final ProjectDataModel? data;
+
+  const CharterFloatingApprovalBar({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    // Determine signer info
+    String signerName = data?.charterProjectSponsorName ?? '';
+    String signerRole = 'Project Sponsor';
+    if (signerName.isEmpty) {
+      signerName = data?.charterProjectManagerName ?? '';
+      signerRole = 'Project Owner';
+    }
+    if (signerName.isEmpty) {
+      signerName = 'Pending Assignment';
+    }
+    final isApproved = data?.charterApprovalDate != null;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: BrandColors.inverseSurface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            offset: const Offset(0, -4),
+            blurRadius: 12,
+          )
+        ],
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            if (isMobile) {
+              return Column(
+                children: [
+                  _buildApprovalInfo(signerName, signerRole, isApproved),
+                  const SizedBox(height: 12),
+                  _buildApproveButton(context, signerName, isApproved),
+                ],
+              );
+            }
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildApprovalInfo(signerName, signerRole, isApproved),
+                _buildApproveButton(context, signerName, isApproved),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalInfo(
+      String signerName, String signerRole, bool isApproved) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.gavel_outlined, size: 18, color: Colors.white70),
+        const SizedBox(width: 8),
+        Text(
+          'Approval Authority: $signerName',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (isApproved) ...[
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.shade600,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text('APPROVED',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildApproveButton(
+      BuildContext context, String signerName, bool isApproved) {
+    if (isApproved) return const SizedBox();
+
+    return InkWell(
+      onTap: () async {
+        if (signerName == 'Pending Assignment') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Assign a sponsor or project owner before approval.'),
+            ),
+          );
+          return;
+        }
+
+        final provider = ProjectDataInherited.maybeOf(context);
+        if (provider == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to find project context.'),
+            ),
+          );
+          return;
+        }
+
+        provider.updateField(
+          (data) => data.copyWith(
+            charterApprovalDate: DateTime.now(),
+          ),
+        );
+        final success = await provider.saveToFirebase(
+            checkpoint: 'project_charter');
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Project charter approved.'
+                  : 'Approval saved locally, but cloud sync failed.',
+            ),
+            backgroundColor: success ? Colors.green : Colors.orange,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [BrandColors.primary, BrandColors.primaryContainer],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: BrandColors.primary.withOpacity(0.3),
+              offset: const Offset(0, 2),
+              blurRadius: 8,
+            )
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle_outline, size: 18, color: Colors.white),
+            SizedBox(width: 8),
+            Text(
+              'Click to Approve',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Legacy/Kept widgets for compatibility ───
+
+class CharterExecutiveSnapshot extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterExecutiveSnapshot({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return CharterDashboardStats(data: data);
+  }
+}
+
+class CharterExecutiveSummary extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterExecutiveSummary({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        CharterHeroHeader(data: data),
+        const SizedBox(height: 16),
+        CharterMetaInfoScroll(data: data),
+      ],
+    );
+  }
+}
+
+class CharterFinancialSnapshot extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterFinancialSnapshot({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return CharterFinancialOverview(data: data);
+  }
+}
+
+class CharterMilestoneVisualizer extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterMilestoneVisualizer({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return CharterScheduleTimeline(data: data);
   }
 }
 
 class CharterScheduleTable extends StatelessWidget {
   final ProjectDataModel? data;
-
   const CharterScheduleTable({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-    final milestones = _extractMilestones(data!);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('TENTATIVE SCHEDULE', style: kSectionTitleStyle),
-          const SizedBox(height: 16),
-          Table(
-            border: TableBorder(
-              horizontalInside:
-                  BorderSide(color: Colors.grey.shade200, width: 1),
-            ),
-            columnWidths: const {
-              0: FlexColumnWidth(3),
-              1: FlexColumnWidth(1.5),
-              2: FlexColumnWidth(1.5),
-            },
-            children: [
-              // Header
-              TableRow(
-                decoration: BoxDecoration(color: Colors.grey.shade50),
-                children: const [
-                  Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text('KEY MILESTONE',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold))),
-                  Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text('START',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold))),
-                  Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text('FINISH',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold))),
-                ],
-              ),
-              // Items
-              ...milestones.map((m) => TableRow(
-                    children: [
-                      Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 8),
-                          child: Text(m['name']!,
-                              style: const TextStyle(fontSize: 12))),
-                      Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 8),
-                          child: Text(m['start']!,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey))),
-                      Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 8),
-                          child: Text(m['finish']!,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey))),
-                    ],
-                  )),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Map<String, String>> _extractMilestones(ProjectDataModel data) {
-    final milestones = <Map<String, String>>[];
-    for (final m in data.keyMilestones) {
-      if (m.name.isNotEmpty) {
-        milestones.add({
-          'name': m.name,
-          'start': m.dueDate.isNotEmpty ? m.dueDate : '—',
-          'finish': m.dueDate.isNotEmpty ? m.dueDate : '—',
-        });
-      }
-    }
-    if (milestones.isEmpty) {
-      return [
-        {'name': 'Project Initiation', 'start': 'TBD', 'finish': 'TBD'},
-        {'name': 'Planning Phase', 'start': 'TBD', 'finish': 'TBD'},
-        {'name': 'Implementation', 'start': 'TBD', 'finish': 'TBD'},
-        {'name': 'Project Close Out', 'start': 'TBD', 'finish': 'TBD'},
-      ];
-    }
-    return milestones;
+    return CharterScheduleTimeline(data: data);
   }
 }
 
-// --- 14. IT Considerations ---
-// --- 14. Technical Environment (Combines IT + Infra + Security) ---
+class CharterCostChart extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterCostChart({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox();
+  }
+}
+
+class CharterResources extends StatelessWidget {
+  final ProjectDataModel? data;
+  const CharterResources({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox();
+  }
+}
 
 class CharterTechnicalEnvironment extends StatelessWidget {
   final ProjectDataModel? data;
@@ -1875,418 +2000,126 @@ class CharterTechnicalEnvironment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-
-    final it = data!.itConsiderationsData;
-    final infra = data!.infrastructureConsiderationsData;
-
-    // Procurement Data
-    final vendorCount = data!.vendors.length;
-    final contractCount = data!.contractors.length;
-    // Basic heuristics for "Major Equipment" from potential procurement
-    // For now, we'll use the 'Equipment' category from vendors or allowance items if available
-    // But aligning with "Potential Procurement" placeholder:
-    final procurementItems = data!.frontEndPlanning.allowanceItems
-        .where((i) => i.type == 'Tech' || i.type == 'Other')
-        .toList();
-    final procurementCount = procurementItems.length;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: kCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('TECHNICAL ENVIRONMENT & PROCUREMENT',
-                  style: kSectionTitleStyle),
-              if (onGenerate != null)
-                TextButton.icon(
-                  onPressed: onGenerate,
-                  icon: const Icon(Icons.auto_awesome, size: 16),
-                  label:
-                      const Text('AI Generate', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const spacing = 16.0;
-              final columnCount = _columnCountForWidth(constraints.maxWidth);
-              final tileWidth = columnCount == 1
-                  ? constraints.maxWidth
-                  : (constraints.maxWidth - (spacing * (columnCount - 1))) /
-                      columnCount;
-
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: [
-                  SizedBox(
-                    width: tileWidth,
-                    child: _buildPanelCard(
-                      title: 'IT CONSIDERATIONS',
-                      child: _buildScrollableCardBody([
-                        if (it == null) _buildEmptyState(),
-                        if (it != null && it.hardwareRequirements.isNotEmpty)
-                          _buildSimpleReq('Hardware', it.hardwareRequirements),
-                        if (it != null && it.softwareRequirements.isNotEmpty)
-                          _buildSimpleReq('Software', it.softwareRequirements),
-                        if (it != null && it.networkRequirements.isNotEmpty)
-                          _buildSimpleReq('Network', it.networkRequirements),
-                        if (it != null &&
-                            it.hardwareRequirements.isEmpty &&
-                            it.softwareRequirements.isEmpty &&
-                            it.networkRequirements.isEmpty)
-                          _buildEmptyState(),
-                      ]),
-                    ),
-                  ),
-                  SizedBox(
-                    width: tileWidth,
-                    child: _buildPanelCard(
-                      title: 'INFRASTRUCTURE',
-                      child: _buildScrollableCardBody([
-                        if (infra == null) _buildEmptyState(),
-                        if (infra != null &&
-                            infra.physicalSpaceRequirements.isNotEmpty)
-                          _buildSimpleReq(
-                              'Space', infra.physicalSpaceRequirements),
-                        if (infra != null &&
-                            infra.powerCoolingRequirements.isNotEmpty)
-                          _buildSimpleReq(
-                              'Power/Cooling', infra.powerCoolingRequirements),
-                        if (infra != null &&
-                            infra.connectivityRequirements.isNotEmpty)
-                          _buildSimpleReq(
-                              'Connectivity', infra.connectivityRequirements),
-                        if (infra != null &&
-                            infra.physicalSpaceRequirements.isEmpty &&
-                            infra.powerCoolingRequirements.isEmpty &&
-                            infra.connectivityRequirements.isEmpty)
-                          _buildEmptyState(),
-                      ]),
-                    ),
-                  ),
-                  SizedBox(
-                    width: tileWidth,
-                    child: _buildProcurementColumn(
-                        'POTENTIAL CONTRACTS',
-                        contractCount,
-                        'Identify and review',
-                        'Contracts Pending',
-                        Colors.blue.shade700,
-                        Colors.blue.shade50),
-                  ),
-                  SizedBox(
-                    width: tileWidth,
-                    child: _buildProcurementColumn(
-                        'POTENTIAL PROCUREMENT',
-                        vendorCount + procurementCount,
-                        'Major equipment details',
-                        'Items Identified',
-                        Colors.teal.shade700,
-                        Colors.teal.shade50),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _columnCountForWidth(double width) {
-    if (width >= 1260) return 4;
-    if (width >= 760) return 2;
-    return 1;
-  }
-
-  Widget _buildPanelCard({
-    required String title,
-    required Widget child,
-  }) {
-    return Container(
-      height: 248,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSubHeader(title),
-          const SizedBox(height: 12),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScrollableCardBody(List<Widget> children) {
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-
-  Widget _buildSimpleReq(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: const TextStyle(fontSize: 12.5),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProcurementColumn(String title, int count, String subtitle,
-      String statusLabel, Color color, Color bg) {
-    return Container(
-      height: 248,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSubHeader(title),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: color.withOpacity(0.2))),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$count',
-                      style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: color)),
-                  const SizedBox(height: 4),
-                  Text(statusLabel,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: color.withOpacity(0.82))),
-                  const SizedBox(height: 10),
-                  Text(subtitle,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubHeader(String title) {
-    return Text(title,
-        style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
-            letterSpacing: 0.5));
-  }
-
-  Widget _buildEmptyState() {
-    return const Text('No specific requirements defined.',
-        style: TextStyle(
-            color: Colors.grey, fontStyle: FontStyle.italic, fontSize: 13));
+    return CharterTechnicalProcurementBento(
+        data: data, onGenerate: onGenerate);
   }
 }
 
-// --- 16. Stakeholders ---
 class CharterStakeholders extends StatelessWidget {
   final ProjectDataModel? data;
-
   const CharterStakeholders({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
-
-    // Combining core stakeholders and general stakeholder entries if relevant
-    // For now, let's look at coreStakeholdersData and implicit stakeholders like Sponsor/Manager
-
-    final items = <Map<String, String>>[];
-
-    // Add Sponsor/Manager if not duplicate
-    if (data!.charterProjectSponsorName.isNotEmpty) {
-      items.add({
-        'name': data!.charterProjectSponsorName,
-        'role': 'Project Sponsor',
-        'interest': 'High'
-      });
-    }
-    if (data!.charterProjectManagerName.isNotEmpty) {
-      items.add({
-        'name': data!.charterProjectManagerName,
-        'role': 'Project Manager',
-        'interest': 'High'
-      });
-    }
-
-    // Add from team members
-    for (var m in data!.teamMembers) {
-      if (m.name.isNotEmpty && !items.any((i) => i['name'] == m.name)) {
-        items.add({'name': m.name, 'role': m.role, 'interest': 'Team'});
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('KEY STAKEHOLDERS', style: kSectionTitleStyle),
-          const SizedBox(height: 20),
-          if (items.isEmpty)
-            const Text('No stakeholders listed.',
-                style: TextStyle(color: Colors.grey)),
-          if (items.isNotEmpty)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowHeight: 40,
-                columnSpacing: 24,
-                columns: const [
-                  DataColumn(
-                      label: Text('Name',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12))),
-                  DataColumn(
-                      label: Text('Role',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12))),
-                  DataColumn(
-                      label: Text('Interest Level',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12))),
-                ],
-                rows: items
-                    .map((item) => DataRow(cells: [
-                          DataCell(Text(item['name']!,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w500))),
-                          DataCell(Text(item['role']!)),
-                          DataCell(Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(item['interest']!,
-                                style: TextStyle(
-                                    fontSize: 10, color: Colors.blue.shade800)),
-                          )),
-                        ]))
-                    .toList(),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const SizedBox();
   }
 }
 
-// --- 10. Assumptions (Summarized) ---
+// ─── Assumptions (Collapsible) ───
 
-class CharterAssumptions extends StatelessWidget {
+class CharterAssumptions extends StatefulWidget {
   final ProjectDataModel? data;
-
   const CharterAssumptions({super.key, required this.data});
 
   @override
+  State<CharterAssumptions> createState() => _CharterAssumptionsState();
+}
+
+class _CharterAssumptionsState extends State<CharterAssumptions> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (data == null) return const SizedBox();
+    if (widget.data == null) return const SizedBox();
+
+    final assumptions = widget.data!.assumptions
+        .where((a) => a.trim().isNotEmpty)
+        .toList();
+    final constraints = widget.data!.constraints
+        .where((c) => c.trim().isNotEmpty)
+        .toList();
+
+    if (assumptions.isEmpty && constraints.isEmpty) return const SizedBox();
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: kCardDecoration,
+      decoration: kCardBorderDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('PROJECT ASSUMPTIONS (Summarized)',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey)),
-          const SizedBox(height: 16),
-          _buildSummaryList(data!.assumptions.join('\n')),
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                const Icon(Icons.lightbulb_outline,
+                    size: 20, color: BrandColors.tertiaryFixedDim),
+                const SizedBox(width: 8),
+                const Text(
+                  'Assumptions & Constraints',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: BrandColors.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  _expanded
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                  color: BrandColors.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 16),
+            if (assumptions.isNotEmpty) ...[
+              labelStyle('Assumptions'),
+              const SizedBox(height: 8),
+              ...assumptions.take(5).map((a) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• ',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: BrandColors.onSurfaceVariant)),
+                        Expanded(
+                            child: Text(a,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: BrandColors.onSurface))),
+                      ],
+                    ),
+                  )),
+            ],
+            if (constraints.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              labelStyle('Constraints'),
+              const SizedBox(height: 8),
+              ...constraints.take(5).map((c) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• ',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: BrandColors.onSurfaceVariant)),
+                        Expanded(
+                            child: Text(c,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: BrandColors.onSurface))),
+                      ],
+                    ),
+                  )),
+            ],
+          ],
         ],
       ),
-    );
-  }
-
-  Widget _buildSummaryList(String text) {
-    if (text.isEmpty) {
-      return const Text('None identified',
-          style: TextStyle(
-              fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey));
-    }
-    // Take first 3 lines/bullets
-    final lines = text
-        .split('\n')
-        .where((l) => l.trim().length > 3)
-        .take(3)
-        .map((l) =>
-            l.trim().replaceAll(RegExp(r'^[-•*]\s*'), '')); // Remove bullets
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: lines
-          .map((l) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('• ',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    Expanded(
-                        child: Text(l, style: const TextStyle(fontSize: 12))),
-                  ],
-                ),
-              ))
-          .toList(),
     );
   }
 }

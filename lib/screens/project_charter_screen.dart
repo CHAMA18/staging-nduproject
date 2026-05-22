@@ -263,7 +263,7 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Project Charter',
       appBarTitle: 'Project Charter',
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF7F9FB),
       body: _isGenerating
           ? Center(
               child: Column(
@@ -278,178 +278,161 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 ],
               ),
             )
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(pagePadding).copyWith(
-                top: pagePadding + (isMobile ? 16 : 24),
-                bottom: 48,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header with title and regenerate button
-                  if (!isMobile)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Project Charter',
-                          style: TextStyle(
-                            fontSize: isMobile ? 22 : 28,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
-                      PageRegenerateAllButton(
-                        onRegenerateAll: () async {
-                          final confirmed =
-                              await showRegenerateAllConfirmation(context);
-                          if (confirmed && mounted) {
-                            await _regenerateAllCharter();
-                          }
-                        },
-                        isLoading: _isGenerating,
-                        tooltip: 'Regenerate all charter content',
-                      ),
-                    ],
-                  ),
-                  if (isMobile)
-                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    PageRegenerateAllButton(
-                      onRegenerateAll: () async {
-                        final confirmed =
-                            await showRegenerateAllConfirmation(context);
-                        if (confirmed && mounted) {
-                          await _regenerateAllCharter();
-                        }
-                      },
-                      isLoading: _isGenerating,
-                      tooltip: 'Regenerate all charter content',
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-                  // Main Charter Content - Two Column Layout
-                  _buildCharterContent(isMobile),
-                  const SizedBox(height: 32),
-                  LaunchPhaseNavigation(
-                    backLabel: 'Back',
-                    nextLabel: 'Next',
-                    onBack: () => FrontEndPlanningNavigation.goToPrevious(
-                      context,
-                      'project_charter',
-                    ),
-                    onNext: () => ProjectFrameworkScreen.open(context),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildCharterContent(bool isMobile) {
-    if (isMobile) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.desktop_mac_outlined,
-                size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              'Desktop View Required',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'The Project Charter is a comprehensive document\nbest viewed on a larger screen.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Go Back'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // New Refactored Layout with width constraint
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1400),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 0. Executive Snapshot (New Upgrade)
-            CharterExecutiveSnapshot(data: _projectData),
-
-            // 1. Executive Summary (General Info Header)
-            CharterExecutiveSummary(data: _projectData),
-            const SizedBox(height: 24),
-
-            // Main Content Grid
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          : Stack(
               children: [
-                // LEFT COLUMN (Narrative & Technical - 60%)
-                Expanded(
-                  flex: 6,
-                  child: Column(
-                    children: [
-                      CharterProjectDefinition(
-                        data: _projectData,
-                        onGenerate: () => _generateSection('definition'),
+                // Main scrollable content
+                SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: pagePadding,
+                    right: pagePadding,
+                    top: pagePadding + (isMobile ? 16 : 24),
+                    bottom: 120, // Space for floating approval bar
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1400),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // ─── 1. Hero Header ───
+                          CharterHeroHeader(
+                            data: _projectData,
+                            onRegenerateAll: () async {
+                              final confirmed =
+                                  await showRegenerateAllConfirmation(context);
+                              if (confirmed && mounted) {
+                                await _regenerateAllCharter();
+                              }
+                            },
+                            isLoading: _isGenerating,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ─── 2. Dashboard Stats Grid ───
+                          CharterDashboardStats(data: _projectData),
+                          const SizedBox(height: 24),
+
+                          // ─── 3. Meta Info Horizontal Scroll ───
+                          CharterMetaInfoScroll(data: _projectData),
+                          const SizedBox(height: 24),
+
+                          // ─── 4. Project Definition Bento (2-col grid) ───
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 768;
+                              if (isWide) {
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Left column
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CharterProjectDefinition(
+                                            data: _projectData,
+                                            onGenerate: () =>
+                                                _generateSection('definition'),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          CharterSuccessCriteria(
+                                              data: _projectData),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Right column
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CharterFinancialOverview(
+                                              data: _projectData),
+                                          const SizedBox(height: 12),
+                                          CharterScope(
+                                            data: _projectData,
+                                            onGenerate: () =>
+                                                _generateSection('scope'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+                              // Mobile: single column
+                              return Column(
+                                children: [
+                                  CharterProjectDefinition(
+                                    data: _projectData,
+                                    onGenerate: () =>
+                                        _generateSection('definition'),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  CharterFinancialOverview(data: _projectData),
+                                  const SizedBox(height: 12),
+                                  CharterSuccessCriteria(data: _projectData),
+                                  const SizedBox(height: 12),
+                                  CharterScope(
+                                    data: _projectData,
+                                    onGenerate: () =>
+                                        _generateSection('scope'),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ─── 5. Key Risks Section ───
+                          CharterRisks(
+                            data: _projectData,
+                            onGenerate: () => _generateSection('risks'),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ─── 6. Technical & Procurement Bento ───
+                          CharterTechnicalProcurementBento(
+                            data: _projectData,
+                            onGenerate: () => _generateSection('tech'),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ─── 7. Tentative Schedule Timeline ───
+                          CharterScheduleTimeline(data: _projectData),
+                          const SizedBox(height: 24),
+
+                          // ─── 8. Governance Section ───
+                          CharterGovernanceSection(data: _projectData),
+                          const SizedBox(height: 24),
+
+                          // ─── 9. Assumptions (Collapsible) ───
+                          CharterAssumptions(data: _projectData),
+                          const SizedBox(height: 32),
+
+                          // ─── 10. Launch Phase Navigation ───
+                          LaunchPhaseNavigation(
+                            backLabel: 'Back',
+                            nextLabel: 'Next',
+                            onBack: () => FrontEndPlanningNavigation.goToPrevious(
+                              context,
+                              'project_charter',
+                            ),
+                            onNext: () => ProjectFrameworkScreen.open(context),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      CharterScope(
-                        data: _projectData,
-                        onGenerate: () => _generateSection('scope'),
-                      ),
-                      const SizedBox(height: 24),
-                      // Key Risks & Constraints - Enhanced Left Panel
-                      CharterRisks(
-                        data: _projectData,
-                        onGenerate: () => _generateSection('risks'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 24),
 
-                // RIGHT COLUMN (Analysis, Governance & Timeline - 40%)
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    children: [
-                      // NEW Financial Overview Panel (Replaces Snapshot + Cost Chart)
-                      CharterFinancialOverview(data: _projectData),
-                      const SizedBox(height: 24),
-                      // Timeline & Schedule
-                      CharterScheduleTable(data: _projectData),
-                      const SizedBox(height: 16),
-                      CharterMilestoneVisualizer(data: _projectData),
-                      const SizedBox(height: 16),
-                      CharterAssumptions(data: _projectData),
-                    ],
-                  ),
+                // ─── Floating Approval Action Bar ───
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: CharterFloatingApprovalBar(data: _projectData),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            CharterTechnicalEnvironment(
-              data: _projectData,
-              onGenerate: () => _generateSection('tech'),
-            ),
-            const SizedBox(height: 24),
-            // NEW GOVERNANCE SECTION (Full Width)
-            CharterGovernanceSection(data: _projectData),
-            const SizedBox(height: 48),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -18,45 +18,29 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Ndu Project">
+  <meta name="description" content="NDU Project - Navigate. Deliver. Upgrade.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Ndu Project">
+  <meta name="apple-mobile-web-app-title" content="NDU Project">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Ndu Project</title>
+  <title>NDU Project</title>
   <link rel="manifest" href="manifest.json">
-
-  <!-- Firebase SDK Configuration managed by FlutterFire -->
-  <script>
-    window.flutterfire_web_sdk_version = '12.7.0';
-  </script>
-  <style>
-    /* System font fallback to avoid Google Fonts CDN dependency */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    }
-  </style>
-  <script>
-    // Flutter web uses hash routes in local/dev builds. Normalize accidental
-    // mixed URLs such as /contracts-tracking#/dashboard to /#/contracts-tracking
-    // so deep links open the intended workspace instead of reflecting dashboard.
-    (function normalizeFlutterHashRoute() {
-      var path = window.location.pathname.replace(/\/+$/, '');
-      var hash = window.location.hash || '';
-      if (!path || path === '/') return;
-      if (path.indexOf('.') !== -1) return;
-      if (hash && hash !== '#/' && hash !== '#/dashboard') return;
-      window.history.replaceState(null, '', '/#' + path);
-    })();
-  </script>
 </head>
 <body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

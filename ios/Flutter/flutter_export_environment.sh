@@ -1,6 +1,6 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/tmp/flutter"
+export "FLUTTER_ROOT=/home/z/flutter"
 export "FLUTTER_APPLICATION_PATH=/home/z/my-project/Ndu_Project"
 export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=/home/z/my-project/Ndu_Project/ios/Flutter/ephemeral/Packages/.packages/FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"

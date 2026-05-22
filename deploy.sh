@@ -33,7 +33,7 @@ flutter pub get
 
 echo ""
 echo -e "${BLUE}Step 2:${NC} Building user app..."
-flutter build web --target=lib/main.dart --release --pwa-strategy=none
+flutter build web --target=lib/main.dart --no-tree-shake-icons --release --pwa-strategy=none
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ User app built successfully${NC}"
 else
@@ -42,8 +42,16 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 3:${NC} Building admin app..."
-flutter build web --target=lib/main_admin.dart --release --output=build/admin_web/ --pwa-strategy=none
+echo -e "${BLUE}Step 3:${NC} Copying build to docs/ for staging deployment..."
+# Copy the web build to docs/ (Firebase hosting public directory)
+rm -rf docs/assets docs/canvaskit docs/icons docs/flutter*.js docs/main.dart.js docs/index.html docs/version.json docs/manifest.json docs/favicon.png docs/CNAME 2>/dev/null || true
+cp -r build/web/* docs/
+echo "staging.nduproject.com" > docs/CNAME
+echo -e "${GREEN}✓ Staging build copied to docs/${NC}"
+
+echo ""
+echo -e "${BLUE}Step 4:${NC} Building admin app..."
+flutter build web --target=lib/main_admin.dart --no-tree-shake-icons --release --output=build/admin_web/ --pwa-strategy=none
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Admin app built successfully${NC}"
 else
@@ -52,7 +60,7 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 4:${NC} Deploying to Firebase Hosting..."
+echo -e "${BLUE}Step 5:${NC} Deploying to Firebase Hosting..."
 firebase deploy --only hosting
 
 if [ $? -eq 0 ]; then
@@ -62,7 +70,7 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}=================================${NC}"
     echo ""
     echo -e "${YELLOW}Your apps are now live:${NC}"
-    echo "  User App:  https://nduproject.com"
+    echo "  User App:  https://staging.nduproject.com"
     echo "  Admin App: https://admin.nduproject.com"
     echo ""
 else

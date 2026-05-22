@@ -229,15 +229,29 @@ class DesignPhaseService {
     required List<ConstraintRow> constraints,
     required List<RequirementMappingRow> mappings,
     required List<DependencyDecisionRow> dependencies,
+    List<Map<String, dynamic>> methodologyStandards = const [],
+    List<Map<String, dynamic>> readinessGateItems = const [],
+    List<Map<String, dynamic>> traceabilityItems = const [],
   }) async {
     try {
-      await _sectionDoc(projectId, 'technical_alignment').set({
+      final data = <String, dynamic>{
         'notes': notes,
         'constraints': constraints.map((e) => e.toMap()).toList(),
         'mappings': mappings.map((e) => e.toMap()).toList(),
         'dependencies': dependencies.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      };
+      if (methodologyStandards.isNotEmpty) {
+        data['methodologyStandards'] = methodologyStandards;
+      }
+      if (readinessGateItems.isNotEmpty) {
+        data['readinessGateItems'] = readinessGateItems;
+      }
+      if (traceabilityItems.isNotEmpty) {
+        data['traceabilityItems'] = traceabilityItems;
+      }
+      await _sectionDoc(projectId, 'technical_alignment')
+          .set(data, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Error saving technical alignment: $e');
       rethrow;

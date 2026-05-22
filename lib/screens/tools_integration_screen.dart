@@ -467,11 +467,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     _buildLoadErrorCard(),
                     const SizedBox(height: 16),
                   ],
-                  _buildHeader(isNarrow),
-                  const SizedBox(height: 16),
-                  _buildFilterChips(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(isNarrow),
+                  _buildHeader(),
                   const SizedBox(height: 20),
                   _buildFrameworkGuide(),
                   const SizedBox(height: 24),
@@ -542,7 +538,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   // Header
   // ---------------------------------------------------------------------------
 
-  Widget _buildHeader(bool isNarrow) {
+  Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -558,46 +554,16 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = isNarrow || constraints.maxWidth < 1040;
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Tools Integration',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Govern integration lifecycle, API scopes, and data flow health across your design and delivery toolchain. '
-                  'Aligned with ITIL Service Integration, PMI PMBOK 4.3 (Direct & Manage Project Work), '
-                  'and ISO 27001 Annex A.12 (Operations Security) for tool chain management and access control.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                ),
-              ],
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleBlock,
-                  const SizedBox(height: 12),
-                  _buildHeaderActions(),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: titleBlock),
-                const SizedBox(width: 20),
-                Flexible(child: _buildHeaderActions()),
-              ],
-            );
-          },
+        const Text(
+          'Tools Integration',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Govern integration lifecycle, API scopes, and data flow health across your design and delivery toolchain. '
+          'Aligned with ITIL Service Integration, PMI PMBOK 4.3 (Direct & Manage Project Work), '
+          'and ISO 27001 Annex A.12 (Operations Security) for tool chain management and access control.',
+          style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
       ],
     );

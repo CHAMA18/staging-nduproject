@@ -145,6 +145,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     ),
   ];
 
+  List<_MethodologyStandard> _methodologyStandards = [];
+  List<_ReadinessGateItem> _readinessGateItems = [];
+  List<_TraceabilityItem> _traceabilityItems = [];
+
   final List<String> _statusOptions = const [
     'Approved',
     'Aligned',
@@ -197,9 +201,51 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return deduped;
   }
 
+  List<_MethodologyStandard> _dedupeMethodologyStandards(
+      Iterable<_MethodologyStandard> rows) {
+    final seen = <String>{};
+    final deduped = <_MethodologyStandard>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.model)}|${_normalize(row.bestFit)}|${_normalize(row.evidence)}|${_normalize(row.controls)}|${_normalize(row.exitStandard)}';
+      if (key == '||||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<_ReadinessGateItem> _dedupeReadinessGateItems(
+      Iterable<_ReadinessGateItem> rows) {
+    final seen = <String>{};
+    final deduped = <_ReadinessGateItem>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.domain)}|${_normalize(row.standard)}|${_normalize(row.evidence)}|${_normalize(row.owner)}|${_normalize(row.decision)}';
+      if (key == '||||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<_TraceabilityItem> _dedupeTraceabilityItems(
+      Iterable<_TraceabilityItem> rows) {
+    final seen = <String>{};
+    final deduped = <_TraceabilityItem>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.object)}|${_normalize(row.question)}|${_normalize(row.verification)}|${_normalize(row.waterfallEvidence)}|${_normalize(row.agileEvidence)}';
+      if (key == '||||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
   @override
   void initState() {
     super.initState();
+    _methodologyStandards = _defaultMethodologyStandards();
+    _readinessGateItems = _defaultReadinessGateItems();
+    _traceabilityItems = _defaultTraceabilityItems();
     _notesController.addListener(_onNotesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = ProjectDataInherited.maybeOf(context);
@@ -267,6 +313,30 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               ..clear()
               ..addAll(_dedupeDependencies(parsed));
           }
+
+          if (data['methodologyStandards'] != null) {
+            final parsed = (data['methodologyStandards'] as List)
+                .map((e) => _MethodologyStandard.fromMap(e as Map<String, dynamic>));
+            _methodologyStandards
+              ..clear()
+              ..addAll(_dedupeMethodologyStandards(parsed));
+          }
+
+          if (data['readinessGateItems'] != null) {
+            final parsed = (data['readinessGateItems'] as List)
+                .map((e) => _ReadinessGateItem.fromMap(e as Map<String, dynamic>));
+            _readinessGateItems
+              ..clear()
+              ..addAll(_dedupeReadinessGateItems(parsed));
+          }
+
+          if (data['traceabilityItems'] != null) {
+            final parsed = (data['traceabilityItems'] as List)
+                .map((e) => _TraceabilityItem.fromMap(e as Map<String, dynamic>));
+            _traceabilityItems
+              ..clear()
+              ..addAll(_dedupeTraceabilityItems(parsed));
+          }
         });
       }
     } catch (e) {
@@ -297,6 +367,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         constraints: _constraints,
         mappings: _mappings,
         dependencies: _dependencies,
+        methodologyStandards: _methodologyStandards.map((e) => e.toMap()).toList(),
+        readinessGateItems: _readinessGateItems.map((e) => e.toMap()).toList(),
+        traceabilityItems: _traceabilityItems.map((e) => e.toMap()).toList(),
       );
     } catch (e) {
       debugPrint('Error saving technical alignment: $e');
@@ -835,79 +908,652 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Widget _buildStableMethodologyMatrix() {
-    return _buildStableSectionCard(
-      title: 'Delivery Model Alignment Standard',
-      child: _buildStableDataTable(
-        columns: const [
-          _StableTableColumn('Model', 190),
-          _StableTableColumn('Best-fit Use', 250),
-          _StableTableColumn('Required Alignment Evidence', 360),
-          _StableTableColumn('Technical Control Focus', 320),
-          _StableTableColumn('Exit Standard', 260),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
-        rows: _methodologyStandards
-            .map(
-              (item) => [
-                item.model,
-                item.bestFit,
-                item.evidence,
-                item.controls,
-                item.exitStandard,
-              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.delivery_dining_outlined,
+            color: const Color(0xFF7C3AED),
+            title: 'Delivery Model Alignment Standard',
+            subtitle:
+                'Define and manage delivery models, alignment evidence, technical controls, and exit standards.',
+            actionLabel: 'Add model',
+            onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add delivery models');
+                return;
+              }
+              setState(() {
+                _methodologyStandards.add(
+                  _MethodologyStandard(
+                    model: '',
+                    bestFit: '',
+                    evidence: '',
+                    controls: '',
+                    exitStandard: '',
+                  ),
+                );
+                _scheduleSave();
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildTableHeaderRow(
+            columns: const [
+              _TableColumn(label: 'Model', flex: 2),
+              _TableColumn(label: 'Best-fit Use', flex: 3),
+              _TableColumn(label: 'Required Alignment Evidence', flex: 3),
+              _TableColumn(label: 'Technical Control Focus', flex: 3),
+              _TableColumn(label: 'Exit Standard', flex: 3),
+              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_methodologyStandards.isEmpty)
+            _buildEmptyTableState(
+              message: 'No delivery models yet. Add the first alignment standard.',
+              actionLabel: 'Add model',
+              onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add delivery models');
+                  return;
+                }
+                setState(() {
+                  _methodologyStandards.add(
+                    _MethodologyStandard(
+                      model: '',
+                      bestFit: '',
+                      evidence: '',
+                      controls: '',
+                      exitStandard: '',
+                    ),
+                  );
+                  _scheduleSave();
+                });
+              },
             )
-            .toList(),
+          else
+            for (int i = 0; i < _methodologyStandards.length; i++) ...[
+              _buildMethodologyRow(
+                _methodologyStandards[i],
+                index: i,
+                isStriped: i.isOdd,
+              ),
+              if (i != _methodologyStandards.length - 1) const SizedBox(height: 8),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMethodologyRow(
+    _MethodologyStandard row, {
+    required int index,
+    required bool isStriped,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.model,
+              hintText: 'Model',
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.model = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.bestFit,
+              hintText: 'Best-fit Use',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.bestFit = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.evidence,
+              hintText: 'Required Alignment Evidence',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.evidence = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.controls,
+              hintText: 'Technical Control Focus',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.controls = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.exitStandard,
+              hintText: 'Exit Standard',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.exitStandard = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.center,
+              child: _buildDeleteAction(() async {
+                final confirmed = await _confirmDelete('delivery model');
+                if (!confirmed) return;
+                setState(() {
+                  _methodologyStandards.removeAt(index);
+                  _scheduleSave();
+                });
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStableReadinessGateTable() {
-    return _buildStableSectionCard(
-      title: 'Technical Readiness Gate',
-      child: _buildStableDataTable(
-        columns: const [
-          _StableTableColumn('Control Domain', 220),
-          _StableTableColumn('What Must Be True', 380),
-          _StableTableColumn('Evidence To Attach', 330),
-          _StableTableColumn('Owner', 160),
-          _StableTableColumn('Decision', 160),
+    final decisionOptions = const ['Go', 'Conditional', 'No-go', 'Pending'];
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
-        rows: _readinessGateItems
-            .map(
-              (item) => [
-                item.domain,
-                item.standard,
-                item.evidence,
-                item.owner,
-                item.decision,
-              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.fact_check_outlined,
+            color: const Color(0xFFD97706),
+            title: 'Technical Readiness Gate',
+            subtitle:
+                'Track control domains, readiness criteria, required evidence, ownership, and gate decisions.',
+            actionLabel: 'Add gate item',
+            onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add readiness gate items');
+                return;
+              }
+              setState(() {
+                _readinessGateItems.add(
+                  _ReadinessGateItem(
+                    domain: '',
+                    standard: '',
+                    evidence: '',
+                    owner: '',
+                    decision: 'Pending',
+                  ),
+                );
+                _scheduleSave();
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildTableHeaderRow(
+            columns: const [
+              _TableColumn(label: 'Control Domain', flex: 2),
+              _TableColumn(label: 'What Must Be True', flex: 3),
+              _TableColumn(label: 'Evidence To Attach', flex: 3),
+              _TableColumn(label: 'Owner', flex: 2),
+              _TableColumn(label: 'Decision', flex: 2),
+              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_readinessGateItems.isEmpty)
+            _buildEmptyTableState(
+              message: 'No readiness gate items yet. Add the first control domain.',
+              actionLabel: 'Add gate item',
+              onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add readiness gate items');
+                  return;
+                }
+                setState(() {
+                  _readinessGateItems.add(
+                    _ReadinessGateItem(
+                      domain: '',
+                      standard: '',
+                      evidence: '',
+                      owner: '',
+                      decision: 'Pending',
+                    ),
+                  );
+                  _scheduleSave();
+                });
+              },
             )
-            .toList(),
+          else
+            for (int i = 0; i < _readinessGateItems.length; i++) ...[
+              _buildReadinessGateRow(
+                _readinessGateItems[i],
+                index: i,
+                isStriped: i.isOdd,
+                decisionOptions: decisionOptions,
+              ),
+              if (i != _readinessGateItems.length - 1) const SizedBox(height: 8),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadinessGateRow(
+    _ReadinessGateItem row, {
+    required int index,
+    required bool isStriped,
+    required List<String> decisionOptions,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.domain,
+              hintText: 'Control Domain',
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.domain = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.standard,
+              hintText: 'What Must Be True',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.standard = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.evidence,
+              hintText: 'Evidence To Attach',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.evidence = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.owner,
+              hintText: 'Owner',
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.owner = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildDecisionDropdown(
+              value: row.decision,
+              options: decisionOptions,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                setState(() => _readinessGateItems[index].decision = value);
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.center,
+              child: _buildDeleteAction(() async {
+                final confirmed = await _confirmDelete('readiness gate item');
+                if (!confirmed) return;
+                setState(() {
+                  _readinessGateItems.removeAt(index);
+                  _scheduleSave();
+                });
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDecisionDropdown({
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+    bool enabled = true,
+  }) {
+    final normalized = value.trim();
+    final items = normalized.isEmpty || options.contains(normalized)
+        ? options
+        : [normalized, ...options];
+    return DropdownButtonFormField<String>(
+      initialValue: normalized.isEmpty ? items.first : normalized,
+      alignment: Alignment.center,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => items
+          .map((opt) => Align(
+                alignment: Alignment.center,
+                child: Text(opt, textAlign: TextAlign.center),
+              ))
+          .toList(),
+      items: items
+          .map((opt) => DropdownMenuItem(
+                value: opt,
+                child: Center(child: Text(opt, textAlign: TextAlign.center)),
+              ))
+          .toList(),
+      onChanged: enabled
+          ? (newValue) {
+              if (newValue == null) return;
+              onChanged(newValue);
+            }
+          : null,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD97706), width: 2),
+        ),
       ),
     );
   }
 
   Widget _buildStableTraceabilityTable() {
-    return _buildStableSectionCard(
-      title: 'Traceability And Verification Matrix',
-      child: _buildStableDataTable(
-        columns: const [
-          _StableTableColumn('Trace Object', 210),
-          _StableTableColumn('Technical Alignment Question', 360),
-          _StableTableColumn('Verification Method', 280),
-          _StableTableColumn('Waterfall Evidence', 260),
-          _StableTableColumn('Agile / Hybrid Evidence', 280),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
-        rows: _traceabilityItems
-            .map(
-              (item) => [
-                item.object,
-                item.question,
-                item.verification,
-                item.waterfallEvidence,
-                item.agileEvidence,
-              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.link_outlined,
+            color: const Color(0xFF0F766E),
+            title: 'Traceability And Verification Matrix',
+            subtitle:
+                'Map traceability objects to verification methods and evidence for waterfall and agile/hybrid delivery.',
+            actionLabel: 'Add trace item',
+            onAction: () {
+              if (!_canCreateAlignment) {
+                _showPermissionSnackBar('add traceability items');
+                return;
+              }
+              setState(() {
+                _traceabilityItems.add(
+                  _TraceabilityItem(
+                    object: '',
+                    question: '',
+                    verification: '',
+                    waterfallEvidence: '',
+                    agileEvidence: '',
+                  ),
+                );
+                _scheduleSave();
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildTableHeaderRow(
+            columns: const [
+              _TableColumn(label: 'Trace Object', flex: 2),
+              _TableColumn(label: 'Technical Alignment Question', flex: 3),
+              _TableColumn(label: 'Verification Method', flex: 2),
+              _TableColumn(label: 'Waterfall Evidence', flex: 2),
+              _TableColumn(label: 'Agile / Hybrid Evidence', flex: 2),
+              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_traceabilityItems.isEmpty)
+            _buildEmptyTableState(
+              message: 'No traceability items yet. Add the first trace object.',
+              actionLabel: 'Add trace item',
+              onAction: () {
+                if (!_canCreateAlignment) {
+                  _showPermissionSnackBar('add traceability items');
+                  return;
+                }
+                setState(() {
+                  _traceabilityItems.add(
+                    _TraceabilityItem(
+                      object: '',
+                      question: '',
+                      verification: '',
+                      waterfallEvidence: '',
+                      agileEvidence: '',
+                    ),
+                  );
+                  _scheduleSave();
+                });
+              },
             )
-            .toList(),
+          else
+            for (int i = 0; i < _traceabilityItems.length; i++) ...[
+              _buildTraceabilityRow(
+                _traceabilityItems[i],
+                index: i,
+                isStriped: i.isOdd,
+              ),
+              if (i != _traceabilityItems.length - 1) const SizedBox(height: 8),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTraceabilityRow(
+    _TraceabilityItem row, {
+    required int index,
+    required bool isStriped,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.object,
+              hintText: 'Trace Object',
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.object = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.question,
+              hintText: 'Technical Alignment Question',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.question = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.verification,
+              hintText: 'Verification Method',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.verification = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.waterfallEvidence,
+              hintText: 'Waterfall Evidence',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.waterfallEvidence = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.agileEvidence,
+              hintText: 'Agile / Hybrid Evidence',
+              maxLines: null,
+              minLines: 1,
+              enabled: _canEditAlignment,
+              onChanged: (value) {
+                row.agileEvidence = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.center,
+              child: _buildDeleteAction(() async {
+                final confirmed = await _confirmDelete('traceability item');
+                if (!confirmed) return;
+                setState(() {
+                  _traceabilityItems.removeAt(index);
+                  _scheduleSave();
+                });
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4131,7 +4777,7 @@ class _StableTableColumn {
 }
 
 class _MethodologyStandard {
-  const _MethodologyStandard({
+  _MethodologyStandard({
     required this.model,
     required this.bestFit,
     required this.evidence,
@@ -4139,15 +4785,32 @@ class _MethodologyStandard {
     required this.exitStandard,
   });
 
-  final String model;
-  final String bestFit;
-  final String evidence;
-  final String controls;
-  final String exitStandard;
+  String model;
+  String bestFit;
+  String evidence;
+  String controls;
+  String exitStandard;
+
+  factory _MethodologyStandard.fromMap(Map<String, dynamic> m) =>
+      _MethodologyStandard(
+        model: m['model'] ?? '',
+        bestFit: m['bestFit'] ?? '',
+        evidence: m['evidence'] ?? '',
+        controls: m['controls'] ?? '',
+        exitStandard: m['exitStandard'] ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'model': model,
+        'bestFit': bestFit,
+        'evidence': evidence,
+        'controls': controls,
+        'exitStandard': exitStandard,
+      };
 }
 
 class _ReadinessGateItem {
-  const _ReadinessGateItem({
+  _ReadinessGateItem({
     required this.domain,
     required this.standard,
     required this.evidence,
@@ -4155,15 +4818,32 @@ class _ReadinessGateItem {
     required this.decision,
   });
 
-  final String domain;
-  final String standard;
-  final String evidence;
-  final String owner;
-  final String decision;
+  String domain;
+  String standard;
+  String evidence;
+  String owner;
+  String decision;
+
+  factory _ReadinessGateItem.fromMap(Map<String, dynamic> m) =>
+      _ReadinessGateItem(
+        domain: m['domain'] ?? '',
+        standard: m['standard'] ?? '',
+        evidence: m['evidence'] ?? '',
+        owner: m['owner'] ?? '',
+        decision: m['decision'] ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'domain': domain,
+        'standard': standard,
+        'evidence': evidence,
+        'owner': owner,
+        'decision': decision,
+      };
 }
 
 class _TraceabilityItem {
-  const _TraceabilityItem({
+  _TraceabilityItem({
     required this.object,
     required this.question,
     required this.verification,
@@ -4171,14 +4851,31 @@ class _TraceabilityItem {
     required this.agileEvidence,
   });
 
-  final String object;
-  final String question;
-  final String verification;
-  final String waterfallEvidence;
-  final String agileEvidence;
+  String object;
+  String question;
+  String verification;
+  String waterfallEvidence;
+  String agileEvidence;
+
+  factory _TraceabilityItem.fromMap(Map<String, dynamic> m) =>
+      _TraceabilityItem(
+        object: m['object'] ?? '',
+        question: m['question'] ?? '',
+        verification: m['verification'] ?? '',
+        waterfallEvidence: m['waterfallEvidence'] ?? '',
+        agileEvidence: m['agileEvidence'] ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'object': object,
+        'question': question,
+        'verification': verification,
+        'waterfallEvidence': waterfallEvidence,
+        'agileEvidence': agileEvidence,
+      };
 }
 
-const List<_MethodologyStandard> _methodologyStandards = [
+List<_MethodologyStandard> _defaultMethodologyStandards() => [
   _MethodologyStandard(
     model: 'Waterfall / Predictive',
     bestFit:
@@ -4236,7 +4933,7 @@ const List<_MethodologyStandard> _methodologyStandards = [
   ),
 ];
 
-const List<_ReadinessGateItem> _readinessGateItems = [
+List<_ReadinessGateItem> _defaultReadinessGateItems() => [
   _ReadinessGateItem(
     domain: 'Architecture Baseline',
     standard:
@@ -4284,7 +4981,7 @@ const List<_ReadinessGateItem> _readinessGateItems = [
   ),
 ];
 
-const List<_TraceabilityItem> _traceabilityItems = [
+List<_TraceabilityItem> _defaultTraceabilityItems() => [
   _TraceabilityItem(
     object: 'Business Requirement',
     question:

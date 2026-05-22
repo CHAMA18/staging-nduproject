@@ -296,11 +296,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                 children: [
                   if (_isLoading) const LinearProgressIndicator(minHeight: 2),
                   if (_isLoading) const SizedBox(height: 16),
-                  _buildHeader(isNarrow),
-                  const SizedBox(height: 16),
-                  _buildFilterChips(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(isNarrow),
+                  _buildHeader(),
                   const SizedBox(height: 20),
                   _buildFrameworkGuide(),
                   const SizedBox(height: 24),
@@ -337,7 +333,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
 
   // ─── Header ────────────────────────────────────────────────────────
 
-  Widget _buildHeader(bool isNarrow) {
+  Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -353,27 +349,13 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = isNarrow || constraints.maxWidth < 1040;
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Specialized Design', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
-                SizedBox(height: 6),
-                Text(
-                  'Manage security patterns, performance engineering, integration contracts, and compliance requirements for the project. '
-                  'Aligned with NIST Cybersecurity Framework, ISO 27001, SOC 2 Type II, and PCI DSS standards. '
-                  'This register ensures specialized design decisions remain traceable, validated, and reviewable throughout the design phase.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                ),
-              ],
-            );
-            if (compact) {
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [titleBlock, const SizedBox(height: 12), _buildHeaderActions()]);
-            }
-            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: titleBlock), const SizedBox(width: 20), Flexible(child: _buildHeaderActions())]);
-          },
+        const Text('Specialized Design', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+        const SizedBox(height: 6),
+        const Text(
+          'Manage security patterns, performance engineering, integration contracts, and compliance requirements for the project. '
+          'Aligned with NIST Cybersecurity Framework, ISO 27001, SOC 2 Type II, and PCI DSS standards. '
+          'This register ensures specialized design decisions remain traceable, validated, and reviewable throughout the design phase.',
+          style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
       ],
     );

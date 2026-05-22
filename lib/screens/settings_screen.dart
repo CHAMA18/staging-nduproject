@@ -32,7 +32,7 @@ class SettingsScreen extends StatefulWidget {
       // Prefer URL-aware navigation when available
       // ignore: invalid_use_of_visible_for_testing_member
       context.pushNamed(AppRoutes.settings);
-    } catch (_) {
+    } catch (e) {
       Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
     }

@@ -928,7 +928,7 @@ class _GoalCardWidgetState extends State<_GoalCardWidget> {
       } else {
         try {
           _targetCompletionDate = DateTime.parse(text);
-        } catch (_) {}
+        } catch (e) { debugPrint('Error: $e'); }
       }
     }
   }

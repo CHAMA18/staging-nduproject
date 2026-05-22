@@ -342,7 +342,12 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                           return IconButton(
                             icon: const Icon(Icons.menu,
                                 color: Color(0xFF374151)),
-                            onPressed: () => Scaffold.of(ctx).openDrawer(),
+                            onPressed: () {
+                              final scaffold = Scaffold.maybeOf(ctx);
+                              if (scaffold != null && scaffold.hasDrawer) {
+                                scaffold.openDrawer();
+                              }
+                            },
                             tooltip: 'Open menu',
                           );
                         }),
@@ -774,6 +779,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
 
   Future<void> _generateFromContext() async {
     if (_isGenerating) return;
+    if (!mounted) return;
     setState(() => _isGenerating = true);
 
     try {

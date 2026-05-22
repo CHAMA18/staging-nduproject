@@ -85,7 +85,7 @@ class _AgileSprintCalendarScreenState
         _sprints = sprints;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
   }

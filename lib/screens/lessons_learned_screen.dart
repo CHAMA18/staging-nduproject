@@ -173,7 +173,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           int.parse(parts[2]),
         );
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
     return null;
   }
 
@@ -1095,7 +1095,7 @@ class _LessonDialogState extends State<_LessonDialog> {
             int.parse(parts[1]),
             int.parse(parts[2]),
           );
-        } catch (_) {}
+        } catch (e) { debugPrint('Error: $e'); }
       }
     }
   }

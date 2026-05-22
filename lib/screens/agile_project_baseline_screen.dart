@@ -93,7 +93,7 @@ class _AgileProjectBaselineScreenState
   String? get _projectId {
     try {
       return ProjectDataInherited.maybeOf(context)?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -274,7 +274,7 @@ class _AgileProjectBaselineScreenState
           source: 'Company Members',
         );
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
 
     options.sort((a, b) =>
         a.displayLabel.toLowerCase().compareTo(b.displayLabel.toLowerCase()));
@@ -304,7 +304,7 @@ class _AgileProjectBaselineScreenState
         }
       }
       return _RiskSummary(totalCount: total, highCount: high);
-    } catch (_) {
+    } catch (e) {
       return const _RiskSummary(totalCount: 0, highCount: 0);
     }
   }
@@ -370,7 +370,7 @@ class _AgileProjectBaselineScreenState
         _isSaving = false;
         _lastSavedAt = DateTime.now();
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
     }

@@ -58,7 +58,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           .doc('initialization_flags')
           .get();
       return doc.data()?[flagKey] == true;
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }
@@ -73,7 +73,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           .collection('planning_meta')
           .doc('initialization_flags')
           .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   _CostView _activeView = _CostView.indirect;

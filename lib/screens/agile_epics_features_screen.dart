@@ -67,7 +67,7 @@ class _AgileEpicsFeaturesScreenState
         }
       });
       if (_selectedEpicId != null) _loadFeatures();
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -199,7 +199,7 @@ class _AgileEpicsFeaturesScreenState
         }
         return Epic(title: 'Generated Epic');
       }).toList();
-    } catch (_) {
+    } catch (e) {
       return [];
     }
   }
@@ -210,7 +210,7 @@ class _AgileEpicsFeaturesScreenState
     if (start == -1 || end == -1) return null;
     try {
       return _parseJson(text.substring(start, end + 1));
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -220,7 +220,7 @@ class _AgileEpicsFeaturesScreenState
       final result = jsonDecode(json);
       if (result is List) return result;
       return null;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }

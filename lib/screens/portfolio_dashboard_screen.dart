@@ -284,7 +284,7 @@ class _PortfolioRollUpContentState extends State<_PortfolioRollUpContent> {
           content: Text('Portfolio "$name" created successfully.'),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to create portfolio.')),

@@ -59,7 +59,7 @@ class _RecurringDeliverablesScreenState
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }

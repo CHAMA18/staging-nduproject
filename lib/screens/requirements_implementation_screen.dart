@@ -228,6 +228,7 @@ class _RequirementsImplementationScreenState
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
     if (projectId == null || projectId.isEmpty) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
     try {

@@ -4922,7 +4922,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       if (trimmed.isNotEmpty) {
         try {
           decoded = jsonDecode(trimmed);
-        } catch (_) {
+        } catch (e) {
           decoded = null;
         }
       }

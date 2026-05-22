@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
       router.namedLocation(AppRoutes.onboarding);
       router.namedLocation(AppRoutes.signIn);
       router.namedLocation(AppRoutes.dashboard);
-    } catch (_) {
+    } catch (e) {
       // Router prewarm is best-effort.
     }
     return Future.value();
@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _safePrecacheAsset(String assetPath) async {
     try {
       await precacheImage(AssetImage(assetPath), context);
-    } catch (_) {
+    } catch (e) {
       // Prewarming is best-effort; never block startup on missing assets.
     }
   }

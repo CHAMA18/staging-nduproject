@@ -41,7 +41,7 @@ class _RiskTrackingWorkspaceScreenState
   String? get _projectId {
     try {
       return ProjectDataInherited.maybeOf(context)?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -49,7 +49,7 @@ class _RiskTrackingWorkspaceScreenState
   String? get _userId {
     try {
       return FirebaseAuth.instance.currentUser?.uid;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -1770,7 +1770,7 @@ class _RiskTrackingWorkspaceScreenState
       if (parts.length == 3) {
         return '${parts[1]}/${parts[2]}';
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
     return dateStr;
   }
 

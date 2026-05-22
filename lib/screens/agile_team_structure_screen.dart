@@ -119,7 +119,7 @@ class _AgileTeamStructureScreenState
         _teams = rows;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -140,7 +140,7 @@ class _AgileTeamStructureScreenState
           const SnackBar(content: Text('Saved'), duration: Duration(seconds: 1)),
         );
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
     if (mounted) setState(() => _isSaving = false);
   }
 
@@ -234,7 +234,7 @@ class _AgileTeamStructureScreenState
           skills: (m['skills'] ?? '').toString(),
         );
       }).toList();
-    } catch (_) {
+    } catch (e) {
       return [];
     }
   }

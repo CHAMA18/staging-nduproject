@@ -220,7 +220,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           .doc('initialization_flags')
           .get();
       return doc.data()?[flagKey] == true;
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }
@@ -235,7 +235,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           .collection('planning_meta')
           .doc('initialization_flags')
           .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   void _loadScheduleActivities(ProjectDataModel data) {
@@ -1334,7 +1334,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           }
         }
       }
-    } catch (_) {
+    } catch (e) {
       // Design planning document may not exist yet — not a warning condition.
     }
     return warnings;

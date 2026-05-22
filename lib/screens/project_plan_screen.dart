@@ -722,7 +722,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           .doc('initialization_flags')
           .get();
       return doc.data()?[flagKey] == true;
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }
@@ -738,7 +738,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           .doc('initialization_flags')
           .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()},
               SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   void _importOverview() {
@@ -936,7 +936,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
               notes: (d['notes'] ?? '').toString().trim(),
             ));
           }
-        } catch (_) {}
+        } catch (e) { debugPrint('Error: $e'); }
 
         try {
           final vendorSnap = await FirebaseFirestore.instance
@@ -957,7 +957,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
               notes: (d['notes'] ?? '').toString().trim(),
             ));
           }
-        } catch (_) {}
+        } catch (e) { debugPrint('Error: $e'); }
       }
 
       setState(() => _vendors.addAll(entries));

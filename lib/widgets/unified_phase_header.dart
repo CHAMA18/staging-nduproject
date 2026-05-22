@@ -63,7 +63,10 @@ class UnifiedPhaseHeader extends StatelessWidget {
     if (scaffoldKey?.currentState != null) {
       scaffoldKey!.currentState!.openDrawer();
     } else {
-      Scaffold.of(context).openDrawer();
+      final scaffold = Scaffold.maybeOf(context);
+      if (scaffold != null && scaffold.hasDrawer) {
+        scaffold.openDrawer();
+      }
     }
   }
 
@@ -392,7 +395,12 @@ class UnifiedScaffoldAppBar extends StatelessWidget
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu, color: Color(0xFF374151)),
           tooltip: 'Open menu',
-          onPressed: onMenuTap ?? () => Scaffold.of(context).openDrawer(),
+          onPressed: onMenuTap ?? () {
+            final scaffold = Scaffold.maybeOf(context);
+            if (scaffold != null && scaffold.hasDrawer) {
+              scaffold.openDrawer();
+            }
+          },
         ),
       ),
       title: title == null

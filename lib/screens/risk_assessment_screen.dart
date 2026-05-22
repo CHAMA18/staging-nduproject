@@ -61,7 +61,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadEntries());
   }
 
@@ -90,6 +92,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   Future<void> _loadEntries() async {
     final projectId = ProjectDataHelper.getData(context).projectId;
     if (projectId == null || projectId.isEmpty) return;
+    if (!mounted) return;
     setState(() => _loadingEntries = true);
     try {
       final snapshot = await FirebaseFirestore.instance
@@ -116,7 +119,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       });
       _ensureMitigationControllers(mergedEntries);
       await _maybeSeedMitigationPlans(mergedEntries, projectData);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unable to load risk register data')),
@@ -473,7 +476,12 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
           children: [
             // Hamburger menu button
             InkWell(
-              onTap: () => Scaffold.of(context).openDrawer(),
+              onTap: () {
+                final scaffold = Scaffold.maybeOf(context);
+                if (scaffold != null && scaffold.hasDrawer) {
+                  scaffold.openDrawer();
+                }
+              },
               borderRadius: BorderRadius.circular(8),
               child: const Padding(
                 padding: EdgeInsets.all(4),

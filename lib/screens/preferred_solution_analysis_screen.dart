@@ -4867,7 +4867,7 @@ class _PreferredSolutionAnalysisScreenState
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       // If uniqueness check fails, do not block project creation.
     }
 

@@ -7700,6 +7700,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Future<void> _populateCategoriesFromAi({int? targetSolution}) async {
     if (_isGenerating) return;
+    if (!mounted) return;
     setState(() {
       _isGenerating = true;
       _error = null;
@@ -8207,6 +8208,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     final targetPercent = parsePercent(_savingsTargetController.text.trim());
 
+    if (!mounted) return;
     setState(() {
       _isSavingsGenerating = true;
       _savingsError = null;
@@ -8266,6 +8268,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     final scopedSolutions = scopedSolution == null
         ? widget.solutions
         : <AiSolutionItem>[scopedSolution];
+    if (!mounted) return;
     setState(() {
       _isGeneratingValue = true;
       _projectValueError = null;
@@ -8532,6 +8535,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }) async {
     final solution = _solutionAt(index);
     if (solution == null || _solutionLoading.contains(index)) return;
+    if (!mounted) return;
     setState(() {
       _solutionLoading.add(index);
       _error = null;
@@ -8577,6 +8581,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Future<void> _generateCostBreakdown() async {
     if (_isGenerating) return;
+    if (!mounted) return;
     setState(() {
       _isGenerating = true;
       _error = null;

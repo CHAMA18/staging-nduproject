@@ -232,7 +232,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             .map((v) => _BaselineVersion.fromJson(v as Map<String, dynamic>))
             .toList();
         _baselineVersions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      } catch (_) {}
+      } catch (e) { debugPrint('Error: $e'); }
     }
 
     _activeVersionId =
@@ -498,7 +498,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
 
       await _persistBaselineVersion(version);
       setState(() {});
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

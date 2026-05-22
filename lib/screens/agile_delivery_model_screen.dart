@@ -113,7 +113,7 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
       for (final f in _fields) {
         _controllers[f.key]?.text = data[f.key] as String? ?? '';
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -139,7 +139,7 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
           const SnackBar(content: Text('Saved'), duration: Duration(seconds: _savingIndicatorDuration)),
         );
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
     if (mounted) setState(() => _isSaving = false);
   }
 
@@ -200,7 +200,7 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
       final Map<String, dynamic> parsed =
           Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
       return parsed.map((k, v) => MapEntry(k, v.toString()));
-    } catch (_) {
+    } catch (e) {
       return {};
     }
   }

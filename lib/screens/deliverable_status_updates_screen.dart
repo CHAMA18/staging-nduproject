@@ -57,7 +57,7 @@ class _DeliverableStatusUpdatesScreenState
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }

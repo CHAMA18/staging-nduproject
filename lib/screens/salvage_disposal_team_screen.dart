@@ -4129,7 +4129,7 @@ Execution snapshot:
       final parsed = DateTime.tryParse(dueDate);
       if (parsed == null) return false;
       return parsed.isBefore(DateTime.now());
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }

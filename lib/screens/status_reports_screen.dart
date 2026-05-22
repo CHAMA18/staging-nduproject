@@ -62,7 +62,7 @@ class _StatusReportsScreenState extends State<StatusReportsScreen> {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }

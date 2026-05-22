@@ -178,7 +178,7 @@ class _ProjectCard extends StatelessWidget {
     if (date is String) {
       try {
         return DateTime.parse(date);
-      } catch (_) {
+      } catch (e) {
         return null;
       }
     }

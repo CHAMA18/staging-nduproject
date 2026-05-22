@@ -317,7 +317,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
             progress[key] = _parseProgressState(value?.toString());
           });
         }
-      } catch (_) {
+      } catch (e) {
         // Keep defaults if progress payload is malformed.
       }
     }

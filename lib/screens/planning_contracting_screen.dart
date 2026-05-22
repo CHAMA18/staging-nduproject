@@ -547,7 +547,7 @@ class _OverviewTabState extends State<_OverviewTab> {
           _contractType = (d['contractType'] ?? _contractType).toString();
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   Future<void> _persistStrategy() async {
@@ -565,7 +565,7 @@ class _OverviewTabState extends State<_OverviewTab> {
         'contractType': _contractType,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   @override

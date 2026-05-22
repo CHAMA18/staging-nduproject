@@ -359,7 +359,7 @@ class _AgileDevelopmentIterationsScreenState
             designComponents: componentNames,
           );
           updated.add(task.copyWith(taskDescription: breakdown));
-        } catch (_) {
+        } catch (e) {
           updated.add(task);
         }
       }

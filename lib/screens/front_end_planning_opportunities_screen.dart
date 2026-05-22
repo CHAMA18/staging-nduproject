@@ -335,7 +335,7 @@ class _FrontEndPlanningOpportunitiesScreenState
           .doc('initialization_flags')
           .get();
       return doc.data()?[flagKey] == true;
-    } catch (_) {
+    } catch (e) {
       return false;
     }
   }
@@ -350,7 +350,7 @@ class _FrontEndPlanningOpportunitiesScreenState
           .collection('planning_meta')
           .doc('initialization_flags')
           .set({flagKey: true, '${flagKey}_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) { debugPrint('Error: $e'); }
   }
 
   void _syncOpportunitiesToProvider() {

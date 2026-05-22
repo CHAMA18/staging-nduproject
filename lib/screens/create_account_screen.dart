@@ -127,7 +127,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     if (mounted) {
                       _showSuccessSnackBar('Verification email resent');
                     }
-                  } catch (_) {}
+                  } catch (e) { debugPrint('Error: $e'); }
                 },
                 child: const Text('Resend'),
               ),

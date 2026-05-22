@@ -77,7 +77,7 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
           ..addAll(logs);
         _systemSettings = systemSettings;
       });
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unable to load security data from Firestore')),

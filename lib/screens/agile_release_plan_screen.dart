@@ -59,7 +59,7 @@ class _AgileReleasePlanScreenState extends State<AgileReleasePlanScreen> {
         _isLoading = false;
       });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -393,7 +393,9 @@ class _ReleasePlanEditDialogState extends State<_ReleasePlanEditDialog> {
     try {
       final epics = await EpicFeatureService.loadEpics(widget.projectId);
       if (mounted) setState(() => _epics = epics);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error loading epics: $e');
+    }
   }
 
   @override

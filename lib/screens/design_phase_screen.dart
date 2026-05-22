@@ -130,6 +130,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
+        if (!mounted) return;
         setState(() => _projectId = pid);
         _loadPersisted(pid);
         _loadProgress(pid);
@@ -170,6 +171,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   Future<void> _loadPersisted(String projectId) async {
     final data = await ArchitectureService.load(projectId);
     if (data == null) return;
+    if (!mounted) return;
     try {
       final docs = (data['outputDocs'] as List?) ?? const [];
       final nodes = (data['nodes'] as List?) ?? const [];
@@ -284,7 +286,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       buffer.write(value);
       final intColor = int.parse(buffer.toString(), radix: 16);
       return Color(intColor);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Color parse error: $e');
       return null;
     }
   }

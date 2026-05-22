@@ -1964,7 +1964,7 @@ class _FrontEndPlanningProcurementScreenState
           if (parsedIso != null) return parsedIso;
           try {
             return DateFormat('yyyy-MM-dd').parseStrict(trimmed);
-          } catch (_) {
+          } catch (e) {
             return fallback;
           }
         }
@@ -10735,7 +10735,7 @@ class _TrackingAlertsCard extends StatelessWidget {
     if (parsedIso != null) return parsedIso;
     try {
       return DateFormat('MMM d, yyyy').parseLoose(raw);
-    } catch (_) {
+    } catch (e) {
       return DateTime.now();
     }
   }

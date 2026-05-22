@@ -78,7 +78,9 @@ class _SignInScreenState extends State<SignInScreen> {
         // Keep user on sign-in; optionally sign out to prevent accidental access
         try {
           await FirebaseAuthService.signOut();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Sign out after unverified email failed: $e');
+        }
       }
     } catch (e) {
       _showSnack('Sign in failed: $e', Colors.red);
@@ -130,7 +132,8 @@ class _SignInScreenState extends State<SignInScreen> {
       final path = GoRouterState.of(context).uri.path;
       return path.startsWith('/${AppRoutes.adminPortal}') ||
           path.startsWith('/admin-');
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Router state check failed: $e');
       return false;
     }
   }

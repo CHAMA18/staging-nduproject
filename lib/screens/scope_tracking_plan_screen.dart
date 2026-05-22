@@ -57,7 +57,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -77,6 +77,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
   Future<void> _loadData() async {
     final projectId = _projectId;
     if (projectId == null) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
     try {
@@ -148,6 +149,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
   Future<void> _regenerateAllFromAi() async {
     final projectId = _projectId;
     if (projectId == null) return;
+    if (!mounted) return;
 
     setState(() => _isAutoGenerating = true);
     try {

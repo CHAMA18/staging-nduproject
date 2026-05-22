@@ -546,7 +546,7 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
     Color getSafeAccent() {
       try {
         return metric.accent;
-      } catch (_) {
+      } catch (e) {
         return const Color(0xFF0EA5E9);
       }
     }
@@ -1694,7 +1694,7 @@ class _SnapshotMetric {
         if (map['accent'] is int && map['accent'] != null) {
           try {
             return Color(map['accent'] as int);
-          } catch (_) {
+          } catch (e) {
             // Invalid color value, use default
           }
         }

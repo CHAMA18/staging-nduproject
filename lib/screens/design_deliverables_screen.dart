@@ -44,6 +44,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   String? _error;
   final _saveDebouncer = _Debouncer();
   bool _saving = false;
+  bool _frameworkGuideExpanded = false;
 
   // CRUD state for acceptance evidence
   List<_AcceptanceEvidenceRow> _acceptanceEvidence = [];
@@ -842,7 +843,6 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
 
   Widget _buildFrameworkGuide() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -858,64 +858,93 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Deliverable control framework',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF111827)),
+          // Clickable header row
+          InkWell(
+            onTap: () => setState(() => _frameworkGuideExpanded = !_frameworkGuideExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Deliverable control framework',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827)),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _frameworkGuideExpanded ? 0.5 : 0,
+                    child: Icon(Icons.expand_more, size: 22, color: const Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Grounded in PMI PMBOK 7th Ed. Deliverables (4.3) and Quality (4.4) performance domains, '
-            'ISO/IEC/IEEE 15288:2023 design output verification, and PRINCE2 Managing Product Delivery. '
-            'Effective deliverable tracking ensures that scope, acceptance, version control, and handoff '
-            'evidence remain visible and actionable throughout the design lifecycle.',
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF6B7280),
-                height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          Column(
-            children: [
-              _buildGuideCard(
-                Icons.account_tree_outlined,
-                'Deliverable Lifecycle',
-                'Draft \u2192 Review \u2192 Approved \u2192 Baselined \u2192 Handed Off. '
-                'Track every deliverable from authoring through acceptance with version control at each transition. '
-                'Set review milestones at 90/60/30-day intervals aligned to phase gates.',
-                const Color(0xFF2563EB),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Grounded in PMI PMBOK 7th Ed. Deliverables (4.3) and Quality (4.4) performance domains, '
+                    'ISO/IEC/IEEE 15288:2023 design output verification, and PRINCE2 Managing Product Delivery. '
+                    'Effective deliverable tracking ensures that scope, acceptance, version control, and handoff '
+                    'evidence remain visible and actionable throughout the design lifecycle.',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildGuideCard(
+                    Icons.account_tree_outlined,
+                    'Deliverable Lifecycle',
+                    'Draft \u2192 Review \u2192 Approved \u2192 Baselined \u2192 Handed Off. '
+                    'Track every deliverable from authoring through acceptance with version control at each transition. '
+                    'Set review milestones at 90/60/30-day intervals aligned to phase gates.',
+                    const Color(0xFF2563EB),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.fact_check_outlined,
+                    'Acceptance & Verification',
+                    'Every deliverable needs explicit acceptance criteria, verification method, and evidence of compliance '
+                    'before approval is granted. Map each artefact to its source requirement and maintain a traceability '
+                    'matrix that survives design iterations.',
+                    const Color(0xFF10B981),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.swap_horiz_outlined,
+                    'Handoff & Transition',
+                    'Deliverables must be build-ready, supportable, and consumable by receiving teams without '
+                    'undocumented assumptions or gaps. Use handoff checklists, build-readiness reviews, and operational '
+                    'acceptance tests to ensure clean transitions.',
+                    const Color(0xFFF59E0B),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.verified_user_outlined,
+                    'Quality & Compliance',
+                    'Design standards, accessibility, security, privacy, safety, and regulatory conformance must be '
+                    'evidenced and reviewed before handoff. Non-compliance at this stage propagates defects into build, '
+                    'test, and production environments at exponentially higher remediation cost.',
+                    const Color(0xFFEF4444),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.fact_check_outlined,
-                'Acceptance & Verification',
-                'Every deliverable needs explicit acceptance criteria, verification method, and evidence of compliance '
-                'before approval is granted. Map each artefact to its source requirement and maintain a traceability '
-                'matrix that survives design iterations.',
-                const Color(0xFF10B981),
-              ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.swap_horiz_outlined,
-                'Handoff & Transition',
-                'Deliverables must be build-ready, supportable, and consumable by receiving teams without '
-                'undocumented assumptions or gaps. Use handoff checklists, build-readiness reviews, and operational '
-                'acceptance tests to ensure clean transitions.',
-                const Color(0xFFF59E0B),
-              ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.verified_user_outlined,
-                'Quality & Compliance',
-                'Design standards, accessibility, security, privacy, safety, and regulatory conformance must be '
-                'evidenced and reviewed before handoff. Non-compliance at this stage propagates defects into build, '
-                'test, and production environments at exponentially higher remediation cost.',
-                const Color(0xFFEF4444),
-              ),
-            ],
+            ),
+            crossFadeState: _frameworkGuideExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
           ),
         ],
       ),

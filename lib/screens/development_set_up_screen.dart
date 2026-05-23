@@ -50,6 +50,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
   final _Debouncer _saveDebounce = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
+  bool _frameworkGuideExpanded = false;
 
   @override
   void initState() {
@@ -1012,7 +1013,6 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
 
   Widget _buildFrameworkGuidePanel() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1022,22 +1022,55 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Development setup best practices', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
-          const SizedBox(height: 6),
-          const Text(
-            'Grounded in PMI PMBOK Resource Management (9), Quality Management (8), and SAFe 6.0 CALMR approach. '
-            'Effective development setup ensures that environments, pipelines, tooling, quality gates, and security baselines '
-            'are provisioned and validated before development execution begins.',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+          // Clickable header row
+          InkWell(
+            onTap: () => setState(() => _frameworkGuideExpanded = !_frameworkGuideExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Development setup best practices', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                  ),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _frameworkGuideExpanded ? 0.5 : 0,
+                    child: Icon(Icons.expand_more, size: 22, color: const Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 18),
-          _buildGuideCard(Icons.dns_outlined, 'Environment First', 'Provision and validate all environments before onboarding the team. Each environment should mirror its target configuration to prevent late-stage surprises.', const Color(0xFF0EA5E9)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.play_circle_outline, 'Pipeline Automation', 'Automate build, test, and deployment from day one. Fast feedback loops catch issues early and reduce manual coordination overhead.', const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.handyman_outlined, 'License Governance', 'Track tool licenses, assigned users, and expiry dates. Expired licenses block the team and create compliance risk.', const Color(0xFFF59E0B)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.shield_outlined, 'Shift-Left Security', 'Integrate security scanning (SAST/DAST) in the CI pipeline from the start. Security debt compounds rapidly if deferred to later phases.', const Color(0xFFEF4444)),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Grounded in PMI PMBOK Resource Management (9), Quality Management (8), and SAFe 6.0 CALMR approach. '
+                    'Effective development setup ensures that environments, pipelines, tooling, quality gates, and security baselines '
+                    'are provisioned and validated before development execution begins.',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildGuideCard(Icons.dns_outlined, 'Environment First', 'Provision and validate all environments before onboarding the team. Each environment should mirror its target configuration to prevent late-stage surprises.', const Color(0xFF0EA5E9)),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(Icons.play_circle_outline, 'Pipeline Automation', 'Automate build, test, and deployment from day one. Fast feedback loops catch issues early and reduce manual coordination overhead.', const Color(0xFF10B981)),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(Icons.handyman_outlined, 'License Governance', 'Track tool licenses, assigned users, and expiry dates. Expired licenses block the team and create compliance risk.', const Color(0xFFF59E0B)),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(Icons.shield_outlined, 'Shift-Left Security', 'Integrate security scanning (SAST/DAST) in the CI pipeline from the start. Security debt compounds rapidly if deferred to later phases.', const Color(0xFFEF4444)),
+                ],
+              ),
+            ),
+            crossFadeState: _frameworkGuideExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
+          ),
         ],
       ),
     );

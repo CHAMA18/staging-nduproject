@@ -44,6 +44,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   List<IntegrationFlowRow> _integrationRows = [];
   List<_ComplianceRow> _complianceRows = [];
   List<_ReviewGateRow> _reviewGates = [];
+  bool _frameworkGuideExpanded = false;
 
   static const List<String> _statusOptions = [
     'Ready',
@@ -475,29 +476,56 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
 
   Widget _buildFrameworkGuide() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Specialized design framework', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
-        const SizedBox(height: 6),
-        const Text(
-          'Grounded in NIST Cybersecurity Framework (CSF), ISO/IEC 27001:2022 Annex A controls, '
-          'SOC 2 Type II trust service criteria, and PCI DSS v4.0 requirements. Effective specialized '
-          'design ensures that security controls, performance targets, integration contracts, and regulatory '
-          'compliance obligations remain validated, testable, and auditable throughout the project lifecycle.',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+        // Clickable header row
+        InkWell(
+          onTap: () => setState(() => _frameworkGuideExpanded = !_frameworkGuideExpanded),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text('Specialized design framework', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                ),
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 200),
+                  turns: _frameworkGuideExpanded ? 0.5 : 0,
+                  child: Icon(Icons.expand_more, size: 22, color: const Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 18),
-        Column(children: [
-          _buildGuideCard(Icons.shield_outlined, 'Security & Access Control', 'Implement defense-in-depth with Zero Trust architecture, encryption at rest and in transit, MFA enforcement, and continuous audit logging. Align with NIST SP 800-207 and CIS Controls v8.', const Color(0xFF2563EB)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.speed_outlined, 'Performance & Scalability', 'Define SLA targets, implement caching strategies, optimize database queries, and establish auto-scaling thresholds. Validate under load testing with p95/p99 latency benchmarks.', const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.hub_outlined, 'Integration Contracts', 'Formalize API contracts, authentication flows, error handling patterns, and data schemas for all external system integrations before development begins. Use OpenAPI 3.1 specifications.', const Color(0xFFF59E0B)),
-          const SizedBox(height: 12),
-          _buildGuideCard(Icons.verified_user_outlined, 'Compliance & Certification', 'Map design decisions to regulatory requirements (SOC 2, GDPR, PCI DSS, ISO 27001). Maintain evidence trails, conduct gap assessments, and schedule certification audits.', const Color(0xFFEF4444)),
-        ]),
+        // Collapsible content
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text(
+                'Grounded in NIST Cybersecurity Framework (CSF), ISO/IEC 27001:2022 Annex A controls, '
+                'SOC 2 Type II trust service criteria, and PCI DSS v4.0 requirements. Effective specialized '
+                'design ensures that security controls, performance targets, integration contracts, and regulatory '
+                'compliance obligations remain validated, testable, and auditable throughout the project lifecycle.',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+              ),
+              const SizedBox(height: 18),
+              _buildGuideCard(Icons.shield_outlined, 'Security & Access Control', 'Implement defense-in-depth with Zero Trust architecture, encryption at rest and in transit, MFA enforcement, and continuous audit logging. Align with NIST SP 800-207 and CIS Controls v8.', const Color(0xFF2563EB)),
+              const SizedBox(height: 12),
+              _buildGuideCard(Icons.speed_outlined, 'Performance & Scalability', 'Define SLA targets, implement caching strategies, optimize database queries, and establish auto-scaling thresholds. Validate under load testing with p95/p99 latency benchmarks.', const Color(0xFF10B981)),
+              const SizedBox(height: 12),
+              _buildGuideCard(Icons.hub_outlined, 'Integration Contracts', 'Formalize API contracts, authentication flows, error handling patterns, and data schemas for all external system integrations before development begins. Use OpenAPI 3.1 specifications.', const Color(0xFFF59E0B)),
+              const SizedBox(height: 12),
+              _buildGuideCard(Icons.verified_user_outlined, 'Compliance & Certification', 'Map design decisions to regulatory requirements (SOC 2, GDPR, PCI DSS, ISO 27001). Maintain evidence trails, conduct gap assessments, and schedule certification audits.', const Color(0xFFEF4444)),
+            ]),
+          ),
+          crossFadeState: _frameworkGuideExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+          sizeCurve: Curves.easeInOut,
+        ),
       ]),
     );
   }

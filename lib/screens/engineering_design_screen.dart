@@ -529,6 +529,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   bool _isLoading = false;
   bool _suspendSave = false;
   bool _didSeedDefaults = false;
+  bool _frameworkGuideExpanded = false;
 
   // Register data lists
   List<_StructuralItem> _structuralItems = [];
@@ -2317,7 +2318,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
 
   Widget _buildFrameworkGuide() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -2333,65 +2333,94 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Engineering standards & best practices',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF111827)),
+          // Clickable header row
+          InkWell(
+            onTap: () => setState(() => _frameworkGuideExpanded = !_frameworkGuideExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Engineering standards & best practices',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827)),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _frameworkGuideExpanded ? 0.5 : 0,
+                    child: Icon(Icons.expand_more, size: 22, color: const Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Grounded in ISO 9001 Quality Management, AISC 360 Structural Steel, '
-            'ASCE 7 Minimum Design Loads, and PMI PMBOK Design processes. '
-            'Effective engineering control ensures that structural integrity, '
-            'interface compatibility, calculation accuracy, and code compliance '
-            'remain visible and verifiable throughout the project lifecycle.',
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF6B7280),
-                height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          Column(
-            children: [
-              _buildGuideCard(
-                Icons.architecture_outlined,
-                'Architecture & Layering',
-                'Define system layers and their responsibilities before detailing '
-                    'interfaces. Each layer must have a clear specification standard '
-                    'and designated owner. Verify layer completeness before integration.',
-                const Color(0xFF0EA5E9),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Grounded in ISO 9001 Quality Management, AISC 360 Structural Steel, '
+                    'ASCE 7 Minimum Design Loads, and PMI PMBOK Design processes. '
+                    'Effective engineering control ensures that structural integrity, '
+                    'interface compatibility, calculation accuracy, and code compliance '
+                    'remain visible and verifiable throughout the project lifecycle.',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildGuideCard(
+                    Icons.architecture_outlined,
+                    'Architecture & Layering',
+                    'Define system layers and their responsibilities before detailing '
+                        'interfaces. Each layer must have a clear specification standard '
+                        'and designated owner. Verify layer completeness before integration.',
+                    const Color(0xFF0EA5E9),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.calculate_outlined,
+                    'Calculations & Analysis',
+                    'All structural, geotechnical, and performance calculations must '
+                        'reference a governing standard. PE-stamped calculations require '
+                        'independent reviewer sign-off before approval.',
+                    const Color(0xFF10B981),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.verified_outlined,
+                    'Compliance & Evidence',
+                    'Map each applicable standard to project deliverables. Maintain '
+                        'audit-ready evidence artifacts. Track partial compliance '
+                        'with clear remediation actions and owners.',
+                    const Color(0xFFF59E0B),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideCard(
+                    Icons.sync_alt_outlined,
+                    'Change Control (ECN)',
+                    'Engineering changes must follow the ECN process: identify impact, '
+                        'assess priority, route to approver, and update affected '
+                        'calculations and compliance evidence before implementation.',
+                    const Color(0xFFEF4444),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.calculate_outlined,
-                'Calculations & Analysis',
-                'All structural, geotechnical, and performance calculations must '
-                    'reference a governing standard. PE-stamped calculations require '
-                    'independent reviewer sign-off before approval.',
-                const Color(0xFF10B981),
-              ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.verified_outlined,
-                'Compliance & Evidence',
-                'Map each applicable standard to project deliverables. Maintain '
-                    'audit-ready evidence artifacts. Track partial compliance '
-                    'with clear remediation actions and owners.',
-                const Color(0xFFF59E0B),
-              ),
-              const SizedBox(height: 12),
-              _buildGuideCard(
-                Icons.sync_alt_outlined,
-                'Change Control (ECN)',
-                'Engineering changes must follow the ECN process: identify impact, '
-                    'assess priority, route to approver, and update affected '
-                    'calculations and compliance evidence before implementation.',
-                const Color(0xFFEF4444),
-              ),
-            ],
+            ),
+            crossFadeState: _frameworkGuideExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
           ),
         ],
       ),

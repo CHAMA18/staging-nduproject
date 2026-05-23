@@ -36,6 +36,7 @@ class _TechnicalDevelopmentScreenState
   bool _isLoading = false;
   bool _suspendSave = false;
   bool _didSeedDefaults = false;
+  bool _frameworkGuideExpanded = false;
   Map<String, dynamic>? _engineeringContext;
   Map<String, dynamic>? _backendDesignContext;
 
@@ -878,23 +879,70 @@ class _TechnicalDevelopmentScreenState
   // ─── Technical Development Framework Guide ─────────────────────────────
 
   Widget _buildFrameworkGuide(bool isNarrow) {
-    return _PanelShell(
-      title: 'Technical development framework',
-      subtitle:
-          'Aligned with PMI PMBOK 4.3 (Direct & Manage Project Work), IEEE 1220 Systems Engineering, '
-          'Agile Scrum/Kanban sprint execution, and ISO 9001 quality management principles.',
-      child: isNarrow
-          ? Column(
-              children: _frameworkCards(),
-            )
-          : Row(
-              children: _frameworkCards()
-                  .map((card) => Expanded(child: Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: card,
-                      )))
-                  .toList(),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Clickable header row
+          InkWell(
+            onTap: () => setState(() => _frameworkGuideExpanded = !_frameworkGuideExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Technical development framework',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                  ),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _frameworkGuideExpanded ? 0.5 : 0,
+                    child: Icon(Icons.expand_more, size: 22, color: const Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
             ),
+          ),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Aligned with PMI PMBOK 4.3 (Direct & Manage Project Work), IEEE 1220 Systems Engineering, '
+                    'Agile Scrum/Kanban sprint execution, and ISO 9001 quality management principles.',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+                  ),
+                  const SizedBox(height: 18),
+                  isNarrow
+                      ? Column(children: _frameworkCards())
+                      : Row(
+                          children: _frameworkCards()
+                              .map((card) => Expanded(child: Padding(
+                                    padding: const EdgeInsets.only(right: 12),
+                                    child: card,
+                                  )))
+                              .toList(),
+                        ),
+                ],
+              ),
+            ),
+            crossFadeState: _frameworkGuideExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
     );
   }
 

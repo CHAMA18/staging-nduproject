@@ -99,8 +99,7 @@ class OpenAiConfig {
       }
     }
 
-    if (!_isProxyEndpoint) return result;
-    return {...result, 'workflow_id': 'none'};
+    return result;
   }
 
   /// Helpful diagnostic used by UI to provide actionable error messages

@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/status_reports_widget.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 /// Dedicated screen for managing stakeholder status reports during the
 /// execution phase. Status reports are the primary communication vehicle
@@ -243,6 +244,7 @@ class _StatusReportsScreenState extends State<StatusReportsScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Status Reports',
       backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,

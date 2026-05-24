@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/recurring_deliverables_widget.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 /// Dedicated screen for managing recurring deliverables during the execution
 /// phase. Recurring deliverables are periodic outputs that the project team
@@ -249,6 +250,7 @@ class _RecurringDeliverablesScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'Recurring Deliverables',
       backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,

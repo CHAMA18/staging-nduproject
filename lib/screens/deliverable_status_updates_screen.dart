@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 /// Dedicated screen for tracking deliverable status updates across the
 /// execution phase. Follows project management conventions from PMI's PMBOK
@@ -174,6 +175,7 @@ class _DeliverableStatusUpdatesScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'Deliverable Status Updates',
       backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,

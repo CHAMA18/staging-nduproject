@@ -86,8 +86,8 @@ class BusinessCaseNavigationButtons extends StatelessWidget {
                   isForward: false,
                 )
               else
-                const SizedBox(width: 120),
-              Row(
+                const Spacer(),
+              Flexible(child: Row(
                 children: [
                   if (hasSkip)
                     _NavigationButton(
@@ -111,9 +111,9 @@ class BusinessCaseNavigationButtons extends StatelessWidget {
                       minWidth: 120,
                     )
                   else
-                    const SizedBox(width: 120),
+                    const Spacer(),
                 ],
-              ),
+              )),
             ],
           ),
         ],

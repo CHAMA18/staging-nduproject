@@ -64,7 +64,7 @@ class ResponsiveScaffoldLayout extends StatelessWidget {
       backgroundColor: backgroundColor,
       drawer: SizedBox(
         width: AppBreakpoints.sidebarWidth(context),
-        child: sidebar,
+        child: SafeArea(child: sidebar),
       ),
       body: SafeArea(
         child: Stack(
@@ -73,7 +73,8 @@ class ResponsiveScaffoldLayout extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: mobilePadding),
               child: body,
             ),
-            if (floatingWidget != null) floatingWidget!,
+            if (floatingWidget != null)
+              Positioned(bottom: 24, right: 24, child: floatingWidget!),
           ],
         ),
       ),
@@ -100,7 +101,8 @@ class ResponsiveScaffoldLayout extends StatelessWidget {
                         horizontal: desktopPadding, vertical: 28),
                     child: body,
                   ),
-                  if (floatingWidget != null) floatingWidget!,
+                  if (floatingWidget != null)
+                    Positioned(bottom: 24, right: 24, child: floatingWidget!),
                 ],
               ),
             ),
@@ -129,9 +131,8 @@ class _DesktopSidebarWrapper extends StatelessWidget {
   }
 
   Widget _buildDraggableSidebar() {
-    // We need to import DraggableSidebar properly
-    // Instead, we'll just return the child with a fixed width
+    // Use SizedBox to enforce the correct sidebar width
     // The actual DraggableSidebar is used directly by screens
-    return child;
+    return SizedBox(width: openWidth, child: child);
   }
 }

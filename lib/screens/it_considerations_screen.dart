@@ -306,7 +306,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         child: Stack(
           children: [
             Column(children: [
-              BusinessCaseHeader(scaffoldKey: _scaffoldKey),
+              Flexible(child: BusinessCaseHeader(scaffoldKey: _scaffoldKey)),
               Expanded(
                   child: Row(children: [
                 DraggableSidebar(

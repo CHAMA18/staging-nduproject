@@ -843,12 +843,16 @@ class _IssueLogRow extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111827)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   entry.description,
                   style:
                       const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

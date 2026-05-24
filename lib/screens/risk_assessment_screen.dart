@@ -14,6 +14,8 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'dart:math' as math;
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
@@ -42,10 +44,10 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   String? _statusFilter;
   bool _loadingEntries = false;
 
-  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _notesController = RichTextEditingController();
   final _Debouncer _notesDebounce = _Debouncer();
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
-  final Map<String, TextEditingController> _mitigationControllers = {};
+  final Map<String, RichTextEditingController> _mitigationControllers = {};
   final Map<String, String> _mitigationPlans = {};
   final _Debouncer _mitigationDebounce = _Debouncer();
   bool _notesSaving = false;
@@ -598,7 +600,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       final stored = _mitigationPlans[entry.docId] ?? '';
       if (controller == null) {
         _mitigationControllers[entry.docId] =
-            TextEditingController(text: stored);
+            RichTextEditingController(text: stored);
       } else if (controller.text != stored) {
         controller.text = stored;
       }
@@ -841,6 +843,11 @@ class _RiskNotesCard extends StatelessWidget {
                   ),
               ],
             ),
+          ),
+          // Formatting toolbar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: TextFormattingToolbar(controller: controller),
           ),
           // Body: transparent textarea
           Padding(
@@ -1395,7 +1402,7 @@ class _MitigationPlanCard extends StatelessWidget {
   });
 
   final List<_RiskEntry> entries;
-  final Map<String, TextEditingController> controllers;
+  final Map<String, RichTextEditingController> controllers;
   final void Function(String docId, String value) onChanged;
   final Future<void> Function(_RiskEntry entry) onRegenerate;
   final bool loadingSuggestions;
@@ -1569,6 +1576,8 @@ class _MitigationPlanCard extends StatelessWidget {
             ),
           ],
         ),
+        TextFormattingToolbar(controller: controller),
+        const SizedBox(height: 4),
         VoiceTextField(
           controller: controller,
           onChanged: (value) => onChanged(entry.docId, value),

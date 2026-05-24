@@ -7424,8 +7424,10 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
     });
 
     try {
+      final projectData = ProjectDataHelper.getData(context);
       final items = await _service.generateCostEstimateSuggestions(
-          context: widget.projectContext);
+          context: widget.projectContext,
+          currency: projectData.costBenefitCurrency);
       if (mounted) {
         setState(() {
           _suggestions = items;

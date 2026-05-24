@@ -29,6 +29,23 @@ class PortfolioDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     NavigationContextService.instance
         .setLastClientDashboard(AppRoutes.portfolioDashboard);
+
+    // ── Desktop layout (width >= 700) ──
+    if (MediaQuery.sizeOf(context).width >= 700) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F9FB),
+        body: Stack(
+          children: [
+            SafeArea(
+              child: _PortfolioDesktopContent(portfolioId: portfolioId),
+            ),
+            const KazAiChatBubble(),
+          ],
+        ),
+      );
+    }
+
+    // ── Mobile layout (width < 700) ──
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FB),
       body: Stack(
@@ -83,6 +100,475 @@ class PortfolioDashboardScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PortfolioDesktopContent extends StatefulWidget {
+  const _PortfolioDesktopContent({this.portfolioId});
+
+  final String? portfolioId;
+
+  @override
+  State<_PortfolioDesktopContent> createState() =>
+      _PortfolioDesktopContentState();
+}
+
+class _PortfolioDesktopContentState extends State<_PortfolioDesktopContent> {
+  final Set<String> _selectedProjectIds = {};
+  _ProjectSort _singleProjectsSort = _ProjectSort.newest;
+  final _ProjectSort _groupProjectsSort = _ProjectSort.newest;
+  bool _gateApprovals = true;
+  bool _sharedRiskRegister = true;
+  bool _executiveSummary = true;
+
+  void _openProjectDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProjectDashboardScreen()),
+    );
+  }
+
+  void _openBasicProjectDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const BasicPlanDashboardScreen()),
+    );
+  }
+
+  void _openProgramDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProgramDashboardScreen()),
+    );
+  }
+
+  List<ProjectRecord> _sortedProjects(
+      List<ProjectRecord> projects, _ProjectSort sort) {
+    final sorted = [...projects];
+    sorted.sort((a, b) {
+      final compare = a.createdAt.compareTo(b.createdAt);
+      return sort == _ProjectSort.oldest ? compare : -compare;
+    });
+    return sorted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final projectStream = user == null
+        ? Stream.value(const <ProjectRecord>[])
+        : ProjectService.streamProjects(ownerId: user.uid);
+    final programStream = user == null
+        ? Stream.value(const <ProgramModel>[])
+        : ProgramService.streamPrograms(ownerId: user.uid);
+    final portfolioStream = user == null
+        ? Stream.value(const <PortfolioModel>[])
+        : PortfolioService.streamPortfolios(ownerId: user.uid);
+
+    return StreamBuilder<List<ProjectRecord>>(
+      stream: projectStream,
+      builder: (context, snapshot) {
+        final projects = snapshot.data ?? const <ProjectRecord>[];
+        return StreamBuilder<List<ProgramModel>>(
+          stream: programStream,
+          builder: (context, programSnapshot) {
+            final programs = programSnapshot.data ?? const <ProgramModel>[];
+            return StreamBuilder<List<PortfolioModel>>(
+              stream: portfolioStream,
+              builder: (context, portfolioSnapshot) {
+                final portfolios =
+                    portfolioSnapshot.data ?? const <PortfolioModel>[];
+                final metrics = _PortfolioMetrics.fromData(
+                  projects: projects,
+                  programs: programs,
+                  portfolios: portfolios,
+                );
+
+                final independentProjects = metrics.independentProjects;
+                final singleSource = independentProjects.isEmpty
+                    ? metrics.projects
+                    : independentProjects;
+                final sortedSingles =
+                    _sortedProjects(singleSource, _singleProjectsSort)
+                        .take(10)
+                        .toList(growable: false);
+
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 1180;
+                    final horizontalPadding =
+                        constraints.maxWidth < 900 ? 20.0 : 40.0;
+
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: 28,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Desktop Header ──
+                          _DesktopHeader(metrics: metrics),
+                          const SizedBox(height: 24),
+                          // ── Desktop Stats ──
+                          _DesktopStatsRow(
+                            metrics: metrics,
+                            onBasicTap: _openBasicProjectDashboard,
+                            onSingleTap: _openProjectDashboard,
+                            onProgramTap: _openProgramDashboard,
+                            onPortfolioTap: () {},
+                            isStacked: constraints.maxWidth < 920,
+                          ),
+                          const SizedBox(height: 28),
+                          // ── Content columns ──
+                          if (isWide)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 7,
+                                  child: Column(
+                                    children: [
+                                      _SingleProjectsSection(
+                                        projects: sortedSingles,
+                                        sort: _singleProjectsSort,
+                                        onSortChanged: (sort) => setState(
+                                            () => _singleProjectsSort = sort),
+                                        onSeeAll: _openProjectDashboard,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _ProgramRollupSection(metrics: metrics),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  flex: 5,
+                                  child: Column(
+                                    children: [
+                                      _GovernanceSection(
+                                        gateApprovals: _gateApprovals,
+                                        sharedRiskRegister: _sharedRiskRegister,
+                                        executiveSummary: _executiveSummary,
+                                        onGateChanged: (v) =>
+                                            setState(() => _gateApprovals = v),
+                                        onSharedRiskChanged: (v) => setState(
+                                            () => _sharedRiskRegister = v),
+                                        onExecutiveChanged: (v) => setState(
+                                            () => _executiveSummary = v),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _IndependentProjectsSection(
+                                          metrics: metrics),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                _SingleProjectsSection(
+                                  projects: sortedSingles,
+                                  sort: _singleProjectsSort,
+                                  onSortChanged: (sort) => setState(
+                                      () => _singleProjectsSort = sort),
+                                  onSeeAll: _openProjectDashboard,
+                                ),
+                                const SizedBox(height: 24),
+                                _ProgramRollupSection(metrics: metrics),
+                                const SizedBox(height: 24),
+                                _GovernanceSection(
+                                  gateApprovals: _gateApprovals,
+                                  sharedRiskRegister: _sharedRiskRegister,
+                                  executiveSummary: _executiveSummary,
+                                  onGateChanged: (v) =>
+                                      setState(() => _gateApprovals = v),
+                                  onSharedRiskChanged: (v) =>
+                                      setState(() => _sharedRiskRegister = v),
+                                  onExecutiveChanged: (v) =>
+                                      setState(() => _executiveSummary = v),
+                                ),
+                                const SizedBox(height: 24),
+                                _IndependentProjectsSection(metrics: metrics),
+                              ],
+                            ),
+                          const SizedBox(height: 96),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DESKTOP HEADER
+// ═══════════════════════════════════════════════════════════
+class _DesktopHeader extends StatelessWidget {
+  const _DesktopHeader({required this.metrics});
+  final _PortfolioMetrics metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF5D7),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFFFE7A8)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.account_tree_outlined,
+                      size: 18, color: Color(0xFF8A5800)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Portfolio workspace overview',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF8A5800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/');
+                }
+              },
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF343741)),
+              label: const Text(
+                'Back',
+                style: TextStyle(
+                    color: Color(0xFF343741), fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Confirm portfolio roll-up',
+          style: textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0E1017),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Review which programs, projects, governance rules, and risks will be rolled up into this portfolio view.',
+          style: textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF4D5060),
+            height: 1.55,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 6,
+          children: [
+            _HeaderChip(
+              label: '${metrics.programCount} programs',
+              dotColor: const Color(0xFFCBD5E1),
+            ),
+            _HeaderChip(
+              label: '${metrics.projectCount} projects',
+              dotColor: const Color(0xFFCBD5E1),
+            ),
+            _HeaderChip(
+              label: metrics.formattedTotalValue,
+              dotColor: const Color(0xFFCBD5E1),
+            ),
+            _HeaderChip(
+              label: 'Risk: ${metrics.riskPostureLabel}',
+              dotColor: metrics.riskPostureColor,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DESKTOP STATS ROW
+// ═══════════════════════════════════════════════════════════
+class _DesktopStatsRow extends StatelessWidget {
+  const _DesktopStatsRow({
+    required this.metrics,
+    required this.onBasicTap,
+    required this.onSingleTap,
+    required this.onProgramTap,
+    required this.onPortfolioTap,
+    required this.isStacked,
+  });
+
+  final _PortfolioMetrics metrics;
+  final VoidCallback onBasicTap;
+  final VoidCallback onSingleTap;
+  final VoidCallback onProgramTap;
+  final VoidCallback onPortfolioTap;
+  final bool isStacked;
+
+  @override
+  Widget build(BuildContext context) {
+    final basicProjectCount =
+        metrics.projects.where((p) => p.isBasicPlanProject).length;
+
+    final cards = [
+      _StatCardData(
+        value: '$basicProjectCount',
+        label: 'Basic Projects',
+        icon: Icons.description_outlined,
+        iconBg: const Color(0xFFE6F7F1),
+        iconColor: const Color(0xFF0D9488),
+        onTap: onBasicTap,
+      ),
+      _StatCardData(
+        value: '${metrics.projectCount}',
+        label: 'Single Projects',
+        icon: Icons.folder_outlined,
+        iconBg: const Color(0xFFE8F0FE),
+        iconColor: const Color(0xFF2563EB),
+        onTap: onSingleTap,
+      ),
+      _StatCardData(
+        value: '${metrics.programCount}',
+        label: 'Programs',
+        icon: Icons.layers_outlined,
+        iconBg: const Color(0xFFEDE9FE),
+        iconColor: const Color(0xFF7C3AED),
+        onTap: onProgramTap,
+      ),
+      _StatCardData(
+        value: '${metrics.portfolioCount}',
+        label: 'Portfolios',
+        icon: Icons.bar_chart_rounded,
+        iconBg: const Color(0xFFDCFCE7),
+        iconColor: const Color(0xFF16A34A),
+        onTap: onPortfolioTap,
+      ),
+    ];
+
+    if (isStacked) {
+      return Column(
+        children: [
+          for (int i = 0; i < cards.length; i += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Expanded(child: _DesktopStatCard(data: cards[i])),
+                  const SizedBox(width: 12),
+                  if (i + 1 < cards.length)
+                    Expanded(child: _DesktopStatCard(data: cards[i + 1])),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        for (int i = 0; i < cards.length; i++) ...[
+          Expanded(child: _DesktopStatCard(data: cards[i])),
+          if (i != cards.length - 1) const SizedBox(width: 16),
+        ],
+      ],
+    );
+  }
+}
+
+class _DesktopStatCard extends StatelessWidget {
+  const _DesktopStatCard({required this.data});
+  final _StatCardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: data.iconBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(data.icon, color: data.iconColor, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data.value,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                data.label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (data.onTap == null) return card;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: data.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: card,
       ),
     );
   }

@@ -289,6 +289,18 @@ class AppRouter {
       final blocked = _adminHostGuard(user);
       if (blocked != null) return blocked;
 
+      // ── Auth guard: redirect unauthenticated users to sign-in for protected routes ──
+      final publicRoutes = [
+        '/', '/${AppRoutes.signIn}', '/${AppRoutes.createAccount}',
+        '/${AppRoutes.splash}', '/${AppRoutes.onboarding}',
+        '/${AppRoutes.mobilePricing}', '/${AppRoutes.privacyPolicy}',
+        '/${AppRoutes.termsConditions}',
+      ];
+      final isPublicRoute = publicRoutes.contains(state.matchedLocation);
+      if (user == null && !isPublicRoute) {
+        return '/${AppRoutes.signIn}';
+      }
+
       // On admin host: authenticated users on root or sign-in go to dashboard
       if (AccessPolicy.isRestrictedAdminHost() && user != null) {
         final loc = state.matchedLocation;

@@ -279,7 +279,8 @@ class _PreferredSolutionAnalysisScreenState
         _openAi.generateInfrastructureForSolutions(_solutions,
             contextNotes: combinedContext),
         _openAi.generateCostBreakdownForSolutions(_solutions,
-            contextNotes: combinedContext),
+            contextNotes: combinedContext,
+            currency: projectData.costBenefitCurrency),
       ]);
 
       // Stakeholders API returns Map<String, Map<String, List<String>>> with 'internal' / 'external'

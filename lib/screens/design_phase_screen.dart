@@ -887,7 +887,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<T>(
-          initialValue: value,
+          value: value,
           decoration: InputDecoration(
             isDense: true,
             contentPadding:
@@ -1949,7 +1949,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<T>(
-          initialValue: value,
+          value: value,
           decoration: InputDecoration(
             isDense: true,
             contentPadding:
@@ -2596,7 +2596,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ProjectMethodology>(
-                      initialValue: methodology,
+                      value: methodology,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
@@ -2633,7 +2633,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ProjectIndustry>(
-                      initialValue: industry,
+                      value: industry,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
@@ -2667,7 +2667,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ExecutionStrategy>(
-                      initialValue: strategy,
+                      value: strategy,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(

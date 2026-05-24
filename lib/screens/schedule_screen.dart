@@ -820,7 +820,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       if (wbsItems.isNotEmpty)
                         DropdownButtonFormField<String>(
-                          initialValue: selectedWbsRawId,
+                          value: selectedWbsRawId,
                           decoration: const InputDecoration(
                             labelText: 'WBS Item (optional)',
                           ),
@@ -895,7 +895,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             const InputDecoration(labelText: 'Duration (days)'),
                       ),
                       DropdownButtonFormField<String?>(
-                        initialValue: predecessorId,
+                        value: predecessorId,
                         decoration:
                             const InputDecoration(labelText: 'Predecessor'),
                         items: [
@@ -938,7 +938,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: status,
+                              value: status,
                               decoration:
                                   const InputDecoration(labelText: 'Status'),
                               items: const [
@@ -962,7 +962,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: priority,
+                              value: priority,
                               decoration:
                                   const InputDecoration(labelText: 'Priority'),
                               items: const [

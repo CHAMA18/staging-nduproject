@@ -761,6 +761,8 @@ class _ChangeTableTextCell extends StatelessWidget {
         text,
         textAlign: textAlign,
         softWrap: true,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 13,
           height: 1.4,

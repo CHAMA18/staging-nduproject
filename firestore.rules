@@ -20,7 +20,7 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && request.auth.uid == userId;
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAuthenticated() && isAdmin();
@@ -69,7 +69,7 @@ service cloud.firestore {
       
       // Vendor subcollection - STRICT GOVERNANCE
       match /vendors/{vendorId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
 
       // Team management subcollection
@@ -79,26 +79,26 @@ service cloud.firestore {
       
       // Contract subcollection - STRICT GOVERNANCE
       match /contracts/{contractId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
       // Procurement subcollections - STRICT GOVERNANCE
       match /procurement_items/{itemId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /procurement_strategies/{strategyId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /rfqs/{rfqId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /purchase_orders/{poId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
 
       // Procurement workflow configuration
       match /procurement_workflows/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
       // Contracting dashboard subcollection
@@ -108,10 +108,10 @@ service cloud.firestore {
 
       // Contracting workflow + scope commencement state
       match /contracting_workflows/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /contracting_scope_management/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
 
       // Cost estimate subcollection
@@ -253,18 +253,18 @@ service cloud.firestore {
     
     // Change requests collection
     match /change_requests/{requestId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
     }
     
     // Contracts collection
     match /contracts/{contractId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
     }
 
     // Subscriptions collection - users can only read their own subscriptions
@@ -274,12 +274,7 @@ service cloud.firestore {
       // Allow users to create trial subscriptions for themselves
       allow create: if isAuthenticated() && (
         (request.resource.data.userId == request.auth.uid
-          && (
-            // Trial subscriptions
-            (request.resource.data.isTrial == true && request.resource.data.status == 'trial')
-            // OR Coupon subscriptions (bypass for SAVE200)
-            || (request.resource.data.externalSubscriptionId == 'coupon_SAVE200' && request.resource.data.status == 'active')
-          )
+          && request.resource.data.isTrial == true && request.resource.data.status == 'trial'
         )
         || isAdmin()
       );

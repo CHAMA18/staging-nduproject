@@ -11,6 +11,73 @@ import 'package:ndu_project/models/meeting_row.dart';
 // Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
 String _stripAsterisks(String s) => s.replaceAll('*', '');
 
+/// Approximate USD-to-target exchange rates for AI prompt hints.
+/// These are rough mid-2025 rates used ONLY to instruct the AI model to
+/// convert values — they are NOT used for client-side conversion.
+const Map<String, double> _usdToCurrencyRates = {
+  'USD': 1.0,
+  'EUR': 0.92,
+  'GBP': 0.79,
+  'JPY': 155.0,
+  'CNY': 7.25,
+  'CAD': 1.37,
+  'AUD': 1.53,
+  'CHF': 0.89,
+  'INR': 83.5,
+  'KRW': 1360.0,
+  'BRL': 5.05,
+  'MXN': 17.2,
+  'ZAR': 18.5,
+  'SGD': 1.35,
+  'HKD': 7.82,
+  'NOK': 10.8,
+  'SEK': 10.6,
+  'DKK': 6.88,
+  'PLN': 4.02,
+  'RUB': 92.0,
+  'TRY': 32.5,
+  'AED': 3.67,
+  'SAR': 3.75,
+  'THB': 36.2,
+  'IDR': 15900.0,
+  'MYR': 4.72,
+  'PHP': 58.5,
+  'VND': 25200.0,
+  'NGN': 1550.0,
+  'EGP': 48.5,
+  'ILS': 3.72,
+  'CZK': 23.2,
+  'HUF': 365.0,
+  'NZD': 1.68,
+  'ZMW': 27.5,
+  'PKR': 278.0,
+};
+
+/// Returns a human-readable USD-to-currency rate hint for AI prompts.
+String _usdRateHint(String currency) {
+  final rate = _usdToCurrencyRates[currency.toUpperCase()] ?? 1.0;
+  if (rate >= 100) return rate.toStringAsFixed(0);
+  if (rate >= 10) return rate.toStringAsFixed(1);
+  return rate.toStringAsFixed(2);
+}
+
+/// Returns a rough converted value hint for AI prompts.
+String _convertHint(double usdAmount, String currency) {
+  final rate = _usdToCurrencyRates[currency.toUpperCase()] ?? 1.0;
+  final converted = usdAmount * rate;
+  if (converted >= 1000000) return '${(converted / 1000000).toStringAsFixed(1)}M';
+  if (converted >= 1000) return converted.toStringAsFixed(0);
+  return converted.toStringAsFixed(converted % 1 == 0 ? 0 : 2);
+}
+
+/// Generates a currency conversion instruction block for AI prompts.
+/// When the currency is not USD, tells the AI to convert all values.
+String _currencyConversionInstruction(String currency) {
+  if (currency.toUpperCase() == 'USD') return '';
+  final rate = _usdToCurrencyRates[currency.toUpperCase()] ?? 1.0;
+  return '\n- All monetary amounts MUST be expressed in $currency. Convert from USD equivalents using realistic exchange rates (1 USD ≈ ${_usdRateHint(currency)} $currency). Do NOT simply reuse USD numerical values — $currency has a different purchasing power and exchange rate. For example, if USD amount would be 10,000, the amount in $currency should be approximately ${_convertHint(10000, currency)}. Apply this conversion to every monetary amount in your response.';
+}
+
 enum _AiProjectType { physical, digital, hybrid, service, unknown }
 
 enum _AiProjectScale { small, medium, large }
@@ -2699,6 +2766,7 @@ $c
 - If context is not enough for a reliable unit value, return estimated_cost as 0 and needs_more_context as true.
 '''
         : '';
+    final currencyInstruction = _currencyConversionInstruction(currency);
     return '''
 Estimate a realistic one-off cost for a single project line item in $currency.
 
@@ -2717,7 +2785,7 @@ Rules:
 - If confidence is low, return estimated_cost as 0 and needs_more_context as true.
 - For physical projects, avoid software lifecycle assumptions (MVP, sprint, API integration) unless explicitly stated.
 - Keep the estimate realistic for the project stage and starting point.
-$unitModeRules
+$unitModeRules$currencyInstruction
 
 Item: "$safeName"
 Description: "$safeDesc"
@@ -2736,6 +2804,7 @@ $scaleConstraints
   // SUGGESTIONS
   Future<List<CostEstimateItem>> generateCostEstimateSuggestions({
     required String context,
+    String currency = 'USD',
   }) async {
     final trimmed = context.trim();
     if (trimmed.isEmpty) throw Exception('No context provided');
@@ -2774,6 +2843,7 @@ $scaleConstraints
             projectType: projectType,
             domainHints: domainHints,
             scaleConstraints: scaleConstraints,
+            currency: currency,
           ),
         },
       ],
@@ -2953,9 +3023,11 @@ $c
     required _AiProjectType projectType,
     required String domainHints,
     String scaleConstraints = '',
+    String currency = 'USD',
   }) {
     final c = _escape(context);
     final typeLabel = _projectTypeLabel(projectType);
+    final currencyInstruction = _currencyConversionInstruction(currency);
     return '''
 Based on the project context below, suggest 3-5 realistic cost estimate items (mix of direct and indirect costs if appropriate).
 
@@ -2978,6 +3050,7 @@ Rules:
 - If context is insufficient, return {"items": []}.
 - For physical projects, do not output software phases such as Discovery and Planning, MVP Build, Integration, or Data.
 - Do not use SaaS-only metrics or terms (CAC/LTV/churn/MRR) unless the context explicitly indicates a SaaS/digital business model.
+- All amounts in the JSON must be in $currency.$currencyInstruction
 
 $scaleConstraints
 
@@ -4133,6 +4206,7 @@ $domainHints
       );
       return '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}", "project_type_hint": "$typeHint"}';
     }).join(',');
+    final currencyInstruction = _currencyConversionInstruction(currency);
     return '''
 For each solution below, provide a cost breakdown with up to 20 items (aim for 8-20 when possible).
 Each item must include: item, description, estimated_cost (number in $currency), roi_percent (number), and npv_by_years (keys "3_years", "5_years", "10_years" with numeric values in $currency).
@@ -4144,6 +4218,7 @@ Rules:
 - Ensure solutions are distinct: avoid identical item lists and identical costs across different solutions.
 - If confidence is low for a specific line item, omit it instead of inventing a generic entry.
 - Be detailed and specific: do not use "etc.", "and similar", or vague groupings.
+- All monetary values (estimated_cost, npv_by_years) must be in $currency.$currencyInstruction
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -5465,6 +5540,7 @@ Return plain text only.'''
       _AiProjectScale.large =>
         '\$5,000-\$40,000/mo for large enterprises, infrastructure, or multi-site deployments.',
     };
+    final currencyInstruction = _currencyConversionInstruction(currency);
     return '''
 We are preparing benefit line items for a project portfolio.
 Detected project scale: $scaleLabel
@@ -5484,6 +5560,7 @@ IMPORTANT REALISM RULES:
 - Do NOT suggest \$3,000+ per month for a small business app like a barbershop; that is unrealistic.
 - Revenue benefits should be the largest; stakeholder_commitment and other should be smallest.
 - Scale ALL values proportionally to the project's budget and business size.
+- All monetary values (unit_value, target total) must be in $currency.$currencyInstruction
 
 Return strict JSON:
 {
@@ -5811,6 +5888,7 @@ Return ONLY JSON.
     final notes = contextNotes.trim().isEmpty
         ? 'No additional context supplied.'
         : contextNotes.trim();
+    final currencyInstruction = _currencyConversionInstruction(currency);
     return '''
 These are the financial benefit line items currently modelled (currency: $currency):
 $payload
@@ -5821,6 +5899,7 @@ Extra notes for context: $notes
 Do not suggest SaaS-only levers (CAC/LTV/churn/MRR) unless the project context clearly indicates SaaS/digital subscription.
 Do not suggest construction-only levers for purely digital projects.
 Projected savings for each scenario MUST NOT exceed 30% of the total benefit value across all items.
+- All monetary values (projected_savings) must be in $currency.$currencyInstruction
 $scaleConstraints
 Domain guardrails:
 $domainHints

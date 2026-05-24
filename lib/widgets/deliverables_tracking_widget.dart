@@ -7,8 +7,6 @@ import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/inline_editable_text.dart';
-import 'package:ndu_project/widgets/progress_charts.dart';
-import 'package:ndu_project/widgets/progress_quick_actions.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:intl/intl.dart';
 
@@ -35,17 +33,6 @@ class _DeliverablesTrackingWidgetState
   DeliverableRow? _deletedItem;
   int? _deletedIndex;
   Timer? _undoTimer;
-
-  void _addNewDeliverable() {
-    final newDeliverable = DeliverableRow(
-      title: '',
-      description: '',
-      owner: '',
-      status: 'Not Started',
-    );
-    final updated = [newDeliverable, ..._deliverables];
-    widget.onDeliverablesChanged(updated);
-  }
 
   void _updateDeliverable(int index, DeliverableRow updated) {
     final updatedList = List<DeliverableRow>.from(_deliverables);
@@ -186,47 +173,9 @@ class _DeliverablesTrackingWidgetState
 
   @override
   Widget build(BuildContext context) {
-    // Prepare timeline data
-    final timelineData = _deliverables
-        .map((d) => {
-              'title': d.title,
-              'dueDate': d.dueDate,
-              'status': d.status,
-              'completionDate': d.completionDate,
-            })
-        .toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Quick Actions
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            ProgressQuickActions(
-              onAdd: _addNewDeliverable,
-              onRegenerate: () {
-                // Regenerate all deliverables
-              },
-              showRegenerate: false, // Disable for now
-              showExport: false, // Disable for now
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        // Timeline Chart
-        if (_deliverables.isNotEmpty) ...[
-          const Text(
-            'Deliverable Timeline',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 12),
-          DeliverableTimelineChart(deliverables: timelineData),
-          const SizedBox(height: 24),
-        ],
         // Deliverables Table
         _buildDeliverablesTable(),
       ],

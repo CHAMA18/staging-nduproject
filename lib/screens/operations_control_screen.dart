@@ -50,6 +50,77 @@ class _OperationsControlScreenState extends State<OperationsControlScreen> {
     final completedActivities =
         activities.where((a) => a.status == 'complete').length;
 
+    final isMobile = AppBreakpoints.isMobile(context);
+
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header('Operations Control Board'),
+          const SizedBox(height: 20),
+          evmMetricsRow(bac, ev, ac, cpi, cv, eac),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: scheduleSummaryCard(
+                    activities.length, completedActivities),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: riskSummaryCard(openRisks, totalRiskScore),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: changeRequestSummaryCard(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          controlAccountTable(accounts),
+        ],
+      ),
+    );
+
+    if (isMobile) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        drawer: Drawer(
+          width: sidebarWidth,
+          child: SafeArea(
+            child: const InitiationLikeSidebar(
+              activeItemLabel: 'Operations Control',
+            ),
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    MobileSidebarHamburger(
+                      sidebar: const InitiationLikeSidebar(
+                        activeItemLabel: 'Operations Control',
+                      ),
+                    ),
+                    content,
+                    const Positioned(
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       floatingActionButton: const KazAiChatBubble(positioned: false),
@@ -63,39 +134,7 @@ class _OperationsControlScreenState extends State<OperationsControlScreen> {
                 activeItemLabel: 'Operations Control',
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    header('Operations Control Board'),
-                    const SizedBox(height: 20),
-                    evmMetricsRow(bac, ev, ac, cpi, cv, eac),
-                    const SizedBox(height: 20),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: scheduleSummaryCard(
-                              activities.length, completedActivities),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: riskSummaryCard(openRisks, totalRiskScore),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: changeRequestSummaryCard(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    controlAccountTable(accounts),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: content),
           ],
         ),
       ),

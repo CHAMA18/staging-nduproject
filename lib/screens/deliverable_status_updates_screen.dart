@@ -161,61 +161,6 @@ class _DeliverableStatusUpdatesScreenState
     });
   }
 
-  Future<void> _addAiDrafts() async {
-    if (_isAutoGenerating) return;
-    setState(() => _isAutoGenerating = true);
-    try {
-      final generated = await ExecutionPhaseAiSeed.generateEntries(
-        context: context,
-        section: 'Deliverable Status Updates',
-        sections: const {
-          'deliverables': 'Key execution deliverables to track and update',
-        },
-        itemsPerSection: 2,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _deliverables = [
-          ..._deliverables,
-          ...(generated['deliverables'] ?? const [])
-              .map((entry) => DeliverableRow(
-                    title: entry.title,
-                    description: entry.details,
-                    owner: 'Project Lead',
-                    status: entry.status?.toString().isNotEmpty == true
-                        ? entry.status!
-                        : 'Not Started',
-                  )),
-        ];
-      });
-      _persistChanges();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI draft deliverables added.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to generate AI drafts: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isAutoGenerating = false);
-    }
-  }
-
-  void _addBlankItem() {
-    setState(() {
-      _deliverables = [
-        DeliverableRow(title: '', description: '', owner: '', status: 'Not Started'),
-        ..._deliverables,
-      ];
-    });
-    _persistChanges();
-  }
-
   void _handleDeliverablesChanged(List<DeliverableRow> updated) {
     setState(() => _deliverables = updated);
     _persistChanges();
@@ -246,8 +191,6 @@ class _DeliverableStatusUpdatesScreenState
             showNavigationButtons: false,
           ),
           const SizedBox(height: 16),
-          _buildHeader(),
-            const SizedBox(height: 20),
             _buildInfoPanel(),
             const SizedBox(height: 20),
             if (_loading)
@@ -273,35 +216,6 @@ class _DeliverableStatusUpdatesScreenState
             const SizedBox(height: 48),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return ExecutionPageHeader(
-      badge: 'Execution · Deliverables',
-      title: 'Deliverable Status Updates',
-      description:
-          'Track, update, and control project deliverables through their lifecycle. '
-          'Each deliverable is monitored against acceptance criteria, ownership, and due-date adherence. '
-          'Use the status workflow (Not Started → In Progress → Completed / At Risk / Blocked) '
-          'to maintain real-time visibility and drive accountability across the execution phase.',
-      trailing: ExecutionActionBar(
-        actions: [
-          ExecutionActionItem(
-            label: 'Add deliverable',
-            icon: Icons.add,
-            tone: ExecutionActionTone.primary,
-            onPressed: _loading ? null : _addBlankItem,
-          ),
-          ExecutionActionItem(
-            label: 'Add AI draft',
-            icon: Icons.auto_awesome_outlined,
-            tone: ExecutionActionTone.ai,
-            isLoading: _isAutoGenerating,
-            onPressed: _loading ? null : _addAiDrafts,
-          ),
-        ],
       ),
     );
   }

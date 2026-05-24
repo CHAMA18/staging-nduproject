@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 // This is a temporary bypass to allow the app to work
 // while Firebase authentication platform channel issues are resolved
 class MockAuthService {
+  static bool get _isAllowed => kDebugMode;
   static bool _isAuthenticated = false;
   static String? _currentUserEmail;
   static String? _currentUserName;
@@ -24,6 +25,7 @@ class MockAuthService {
     String? firstName,
     String? lastName,
   }) async {
+    if (!_isAllowed) throw Exception('MockAuthService is not available in release builds');
     try {
       // Simulate API delay
       await Future.delayed(const Duration(milliseconds: 500));
@@ -54,6 +56,7 @@ class MockAuthService {
 
   // Mock Google Sign In
   static Future<bool> signInWithGoogle() async {
+    if (!_isAllowed) throw Exception('MockAuthService is not available in release builds');
     try {
       // Simulate API delay
       await Future.delayed(const Duration(milliseconds: 800));
@@ -76,6 +79,7 @@ class MockAuthService {
     required String email,
     required String password,
   }) async {
+    if (!_isAllowed) throw Exception('MockAuthService is not available in release builds');
     try {
       // Simulate API delay
       await Future.delayed(const Duration(milliseconds: 500));

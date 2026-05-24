@@ -639,15 +639,18 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                               style: const TextStyle(
                                   fontSize: 12, color: Color(0xFF0EA5E9)))),
                           DataCell(Text(risk.title,
-                              style: const TextStyle(fontSize: 13))),
+                              style: const TextStyle(fontSize: 13),
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                           DataCell(Text(risk.owner,
                               style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF64748B)))),
+                                  fontSize: 13, color: Color(0xFF64748B)),
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                           DataCell(_chip('${risk.probability} p')),
                           DataCell(_impactChip(risk.impact)),
                           DataCell(_statusChip(risk.status)),
                           DataCell(Text(risk.nextReview,
-                              style: const TextStyle(fontSize: 12))),
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                           DataCell(_buildRowActions(
                             onEdit: () => _openEditRiskDialog(risk),
                             onDelete: () => _deleteRisk(risk),

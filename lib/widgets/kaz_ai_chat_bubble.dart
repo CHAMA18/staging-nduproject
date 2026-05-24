@@ -574,7 +574,10 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
       }
 
       final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content = (data['choices'] as List).first['message']['content'] as String;
+      final choices = data['choices'] as List?;
+      final content = (choices != null && choices.isNotEmpty)
+          ? (choices.first['message']?['content'] as String?) ?? ''
+          : '';
       return content.trim();
     } catch (e) {
       return 'I\'m having trouble connecting right now. Please try again in a moment.';

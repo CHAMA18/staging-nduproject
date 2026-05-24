@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/services/auth_nav.dart';
@@ -244,7 +245,7 @@ class UnifiedPhaseHeader extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.arrow_back_ios, size: 16),
             tooltip: 'Back',
-            onPressed: onBackPressed ?? () => Navigator.pop(context),
+            onPressed: onBackPressed ?? () => context.pop(),
           ),
           if (onForwardPressed != null)
             IconButton(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
-
-import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 const Color _kAccentColor = Color(0xFFFFC812);
@@ -35,9 +34,7 @@ class _ProjectWorkspaceSidebarState extends State<ProjectWorkspaceSidebar> {
       _SidebarItemData(
         icon: Icons.shield_moon_outlined,
         label: 'SSHER',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const SsherStackedScreen()),
-        ),
+        onTap: () => context.push('/ssher-stacked'),
       ),
       _SidebarItemData(icon: Icons.design_services_outlined, label: 'Design'),
       _SidebarItemData(icon: Icons.route_outlined, label: 'Execution Plan'),

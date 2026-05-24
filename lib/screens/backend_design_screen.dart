@@ -1003,7 +1003,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          initialValue: value,
+          value: value,
           items: items
               .map(
                 (item) => DropdownMenuItem<String>(
@@ -1336,7 +1336,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: type,
+              value: type,
               items: _componentTypes
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1362,7 +1362,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: owner,
+              value: owner,
               items: ownerOptions
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1378,7 +1378,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: status,
+              value: status,
               items: _componentStatuses
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1455,7 +1455,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: protocol,
+              value: protocol,
               items: _protocolOptions
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1544,7 +1544,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: owner,
+              value: owner,
               items: ownerOptions
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1560,7 +1560,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: status,
+              value: status,
               items: _documentStatuses
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -1648,7 +1648,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: owner,
+              value: owner,
               items: ownerOptions
                   .map((option) =>
                       DropdownMenuItem(value: option, child: Text(option)))
@@ -2863,7 +2863,7 @@ class _DropdownCell extends StatelessWidget {
     final resolved = options.contains(value) ? value : options.first;
     return DropdownButtonFormField<String>(
       key: ValueKey(fieldKey),
-      initialValue: resolved,
+      value: resolved,
       items: options
           .map((option) => DropdownMenuItem(value: option, child: Text(option)))
           .toList(),

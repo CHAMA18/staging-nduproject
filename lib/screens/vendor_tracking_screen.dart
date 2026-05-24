@@ -519,7 +519,8 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             Text(isEdit ? 'Edit KPI Metric' : 'Add KPI Metric', style: const TextStyle(fontSize: 16)),
           ],
         ),
-        content: SizedBox(
+        content: SingleChildScrollView(
+          child: SizedBox(
           width: 480,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -538,6 +539,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 Expanded(child: VoiceTextField(controller: trendCtl, decoration: const InputDecoration(labelText: 'Trend note', isDense: true, border: OutlineInputBorder()))),
               ]),
             ],
+          ),
           ),
         ),
         actions: [
@@ -799,7 +801,8 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             const SizedBox(width: 8),
             Text(isEdit ? 'Edit Risk Signal' : 'Add Risk Signal', style: const TextStyle(fontSize: 16)),
           ]),
-          content: SizedBox(
+          content: SingleChildScrollView(
+            child: SizedBox(
             width: 480,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -810,14 +813,14 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
-                    initialValue: severity,
+                    value: severity,
                     decoration: const InputDecoration(labelText: 'Severity', isDense: true, border: OutlineInputBorder()),
                     items: ['Critical', 'High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => severity = v); },
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: DropdownButtonFormField<String>(
-                    initialValue: status,
+                    value: status,
                     decoration: const InputDecoration(labelText: 'Status', isDense: true, border: OutlineInputBorder()),
                     items: ['Open', 'Monitoring', 'Mitigated', 'Closed'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => status = v); },
@@ -830,6 +833,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                   Expanded(child: VoiceTextField(controller: catCtl, decoration: const InputDecoration(labelText: 'Category', isDense: true, border: OutlineInputBorder()))),
                 ]),
               ],
+            ),
             ),
           ),
           actions: [
@@ -1022,14 +1026,14 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: DropdownButtonFormField<String>(
-                    initialValue: priority,
+                    value: priority,
                     decoration: const InputDecoration(labelText: 'Priority', isDense: true, border: OutlineInputBorder()),
                     items: ['Critical', 'High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => priority = v); },
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: DropdownButtonFormField<String>(
-                    initialValue: status,
+                    value: status,
                     decoration: const InputDecoration(labelText: 'Status', isDense: true, border: OutlineInputBorder()),
                     items: ['Agenda locked', 'Docs requested', 'Pending invite', 'Completed', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) { if (v != null) setDState(() => status = v); },
@@ -1215,7 +1219,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: selectedCategory,
+                  value: selectedCategory,
                   decoration: const InputDecoration(labelText: 'Category *'),
                   items: const [
                     'Logistics',
@@ -1235,7 +1239,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: selectedCriticality,
+                  value: selectedCriticality,
                   decoration: const InputDecoration(labelText: 'Criticality *'),
                   items: const ['High', 'Medium', 'Low']
                       .map((crit) =>
@@ -1272,7 +1276,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                     maxLines: 5),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: ratingController.text,
+                  value: ratingController.text,
                   decoration: const InputDecoration(labelText: 'Rating *'),
                   items: ['A', 'B', 'C', 'D']
                       .map((r) => DropdownMenuItem(value: r, child: Text(r)))
@@ -1281,7 +1285,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: statusController.text,
+                  value: statusController.text,
                   decoration: const InputDecoration(labelText: 'Status *'),
                   items: ['Active', 'Watch', 'At risk', 'Onboard']
                       .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -1296,7 +1300,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 if (contracts.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
-                    initialValue: selectedContractId,
+                    value: selectedContractId,
                     decoration: const InputDecoration(
                         labelText: 'Linked Contract (Optional)'),
                     items: [

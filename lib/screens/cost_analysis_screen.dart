@@ -234,6 +234,19 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     'USD': 1.0,
     'EUR': 0.92,
     'GBP': 0.79,
+    'JPY': 155.0,
+    'CNY': 7.25,
+    'CAD': 1.37,
+    'AUD': 1.53,
+    'CHF': 0.89,
+    'INR': 83.5,
+    'BRL': 5.05,
+    'MXN': 17.2,
+    'ZAR': 18.5,
+    'SGD': 1.35,
+    'ZMW': 27.5,
+    'NGN': 1550.0,
+    'AED': 3.67,
   };
   late final OpenAiServiceSecure _openAi;
   bool _isGenerating = false;
@@ -2668,7 +2681,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Widget _buildCurrencySelector() {
-    final availableCurrencies = {'USD', 'EUR', 'GBP', 'ZMW'};
+    final availableCurrencies = _currencyRates.keys.toSet();
     final selectedCurrency =
         availableCurrencies.contains(_currency) ? _currency : 'USD';
     return Container(
@@ -2691,12 +2704,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           const SizedBox(width: 16),
           DropdownButton<String>(
             value: selectedCurrency,
-            items: const [
-              DropdownMenuItem(value: 'USD', child: Text('USD')),
-              DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-              DropdownMenuItem(value: 'GBP', child: Text('GBP')),
-              DropdownMenuItem(value: 'ZMW', child: Text('ZMW')),
-            ],
+            items: _currencyRates.keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
             onChanged: (value) {
               if (value != null) {
                 final factor = _currencyFactor(_lastCurrency, value);
@@ -7871,7 +7879,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Widget _currencyDropdown() {
-    final availableCurrencies = {'USD', 'EUR', 'GBP', 'ZMW'};
+    final availableCurrencies = _currencyRates.keys.toSet();
     final selectedCurrency =
         availableCurrencies.contains(_currency) ? _currency : 'USD';
     return Container(
@@ -7883,12 +7891,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedCurrency,
-          items: const [
-            DropdownMenuItem(value: 'USD', child: Text('USD')),
-            DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-            DropdownMenuItem(value: 'GBP', child: Text('GBP')),
-            DropdownMenuItem(value: 'ZMW', child: Text('ZMW')),
-          ],
+          items: _currencyRates.keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
           onChanged: (v) {
             final selected = v ?? 'USD';
             final factor = _currencyFactor(_lastCurrency, selected);

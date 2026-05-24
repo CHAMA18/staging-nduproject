@@ -109,43 +109,6 @@ class _PaymentDialogState extends State<PaymentDialog> {
       _couponError = null;
     });
 
-    // Special fast-path: SAVE200 grants immediate access
-    if (code.toUpperCase() == 'SAVE200') {
-      // Create a valid subscription record in Firestore so AuthWrapper allows access
-      final success = await SubscriptionService.activateCouponSubscription(
-        tier: widget.tier,
-        isAnnual: widget.isAnnual,
-        couponCode: 'SAVE200',
-      );
-
-      if (success) {
-        if (mounted) {
-          setState(() {
-            _isValidatingCoupon = false;
-            _appliedCoupon = AppliedCouponResult(
-              couponId: '',
-              code: 'SAVE200',
-              discountedPrice: 0,
-              originalPrice: _originalPrice,
-              discountPercent: 100,
-              discountAmount: _originalPrice,
-            );
-          });
-          widget.onPaymentComplete();
-          Navigator.of(context).pop(true);
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isValidatingCoupon = false;
-            _couponError =
-                'Failed to activate coupon subscription. Please try again.';
-          });
-        }
-      }
-      return;
-    }
-
     final applied = await SubscriptionService.applyCoupon(
       couponCode: code,
       tier: widget.tier,

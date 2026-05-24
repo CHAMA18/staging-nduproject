@@ -214,11 +214,6 @@ class _StakeholderManagementScreenState
                   Expanded(
                     child: Stack(
                       children: [
-                    MobileSidebarHamburger(
-                      sidebar: const InitiationLikeSidebar(
-                        activeItemLabel: 'Stakeholder Management',
-                      ),
-                    ),
                         scrollableContent,
                         const Positioned(
                             right: 24,

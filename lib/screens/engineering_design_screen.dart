@@ -1125,7 +1125,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _structuralStatusOptions.contains(status)
+                  value: _structuralStatusOptions.contains(status)
                       ? status
                       : _structuralStatusOptions.first,
                   items: _structuralStatusOptions
@@ -1250,7 +1250,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _componentStatusOptions.contains(status)
+                  value: _componentStatusOptions.contains(status)
                       ? status
                       : _componentStatusOptions.first,
                   items: _componentStatusOptions
@@ -1375,7 +1375,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _calculationStatusOptions.contains(status)
+                  value: _calculationStatusOptions.contains(status)
                       ? status
                       : _calculationStatusOptions.first,
                   items: _calculationStatusOptions
@@ -1393,7 +1393,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _peStampOptions.contains(peStamp)
+                  value: _peStampOptions.contains(peStamp)
                       ? peStamp
                       : _peStampOptions.first,
                   items: _peStampOptions
@@ -1520,7 +1520,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _complianceStatusOptions.contains(complianceStatus)
+                  value: _complianceStatusOptions.contains(complianceStatus)
                       ? complianceStatus
                       : _complianceStatusOptions.first,
                   items: _complianceStatusOptions
@@ -1646,7 +1646,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _ecnPriorityOptions.contains(priority)
+                  value: _ecnPriorityOptions.contains(priority)
                       ? priority
                       : _ecnPriorityOptions.first,
                   items: _ecnPriorityOptions
@@ -1664,7 +1664,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _ecnStatusOptions.contains(status)
+                  value: _ecnStatusOptions.contains(status)
                       ? status
                       : _ecnStatusOptions.first,
                   items: _ecnStatusOptions
@@ -1796,7 +1796,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _readinessStatusOptions.contains(status)
+                  value: _readinessStatusOptions.contains(status)
                       ? status
                       : _readinessStatusOptions.first,
                   items: _readinessStatusOptions

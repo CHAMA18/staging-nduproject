@@ -1076,7 +1076,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedPriority,
+                          value: selectedPriority,
                           decoration: const InputDecoration(
                               labelText: 'Priority *', isDense: true),
                           items: DesignComponent.priorities
@@ -1110,7 +1110,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedType,
+                          value: selectedType,
                           decoration: const InputDecoration(
                               labelText: 'Type *', isDense: true),
                           items: DesignComponent.specificationTypes
@@ -1132,7 +1132,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedPhase,
+                          value: selectedPhase,
                           decoration: const InputDecoration(
                               labelText: 'Phase', isDense: true),
                           items: _getPhaseOptionsForDialog()
@@ -1149,7 +1149,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedOwner,
+                          value: selectedOwner,
                           decoration: const InputDecoration(
                               labelText: 'Owner', isDense: true),
                           items: DesignComponent.ownerRoles
@@ -1166,7 +1166,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedStatus,
+                          value: selectedStatus,
                           decoration: const InputDecoration(
                               labelText: 'Status *', isDense: true),
                           items: DesignComponent.statuses

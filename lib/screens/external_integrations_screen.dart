@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class ExternalIntegrationsScreen extends StatefulWidget {
   const ExternalIntegrationsScreen({super.key});
   static void open(BuildContext context) => Navigator.of(context).push(
@@ -145,6 +146,7 @@ class _ExternalIntegrationsScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'External Integrations',
       appBarTitle: 'External Integrations',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: _loading

@@ -14,6 +14,7 @@ import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 
 import 'package:ndu_project/screens/project_charter_sections.dart';
 import 'package:ndu_project/screens/charter_governance_section.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ProjectCharterScreen extends StatefulWidget {
   const ProjectCharterScreen({super.key});
@@ -264,6 +265,7 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       activeItemLabel: 'Project Charter',
       appBarTitle: 'Project Charter',
       backgroundColor: const Color(0xFFF7F9FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: _isGenerating
           ? Center(
               child: Column(

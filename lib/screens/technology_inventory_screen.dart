@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class TechnologyInventoryScreen extends StatefulWidget {
   const TechnologyInventoryScreen({super.key});
 
@@ -158,6 +159,7 @@ class _TechnologyInventoryScreenState extends State<TechnologyInventoryScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Technology Inventory',
       appBarTitle: 'Technology Inventory',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: _loading

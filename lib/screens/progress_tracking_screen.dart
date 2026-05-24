@@ -21,6 +21,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/status_reports_widget.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ProgressTrackingScreen extends StatefulWidget {
   const ProgressTrackingScreen({super.key});
@@ -395,6 +396,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Progress Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,

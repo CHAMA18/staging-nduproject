@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class TechnologyDefinitionsScreen extends StatefulWidget {
   const TechnologyDefinitionsScreen({super.key});
   static void open(BuildContext context) =>
@@ -139,6 +140,7 @@ class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScree
     return ResponsiveScaffold(
       activeItemLabel: 'Technology Definitions',
       appBarTitle: 'Technology Definitions',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: _loading

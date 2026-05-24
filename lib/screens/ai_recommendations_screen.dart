@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
   static void open(BuildContext context) =>
@@ -130,6 +131,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'AI Recommendations',
       appBarTitle: 'AI Recommendations',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: _loading

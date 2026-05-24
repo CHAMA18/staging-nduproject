@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class AiIntegrationsScreen extends StatefulWidget {
   const AiIntegrationsScreen({super.key});
   static void open(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AiIntegrationsScreen()));
@@ -135,7 +136,7 @@ class _AiIntegrationsScreenState extends State<AiIntegrationsScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    return ResponsiveScaffold(activeItemLabel: 'AI Integrations', appBarTitle: 'AI Integrations', body: Padding(
+    return ResponsiveScaffold(activeItemLabel: 'AI Integrations', appBarTitle: 'AI Integrations', floatingActionButton: const KazAiChatBubble(positioned: false), body: Padding(
       padding: const EdgeInsets.all(20),
       child: _loading
           ? const Center(child: CircularProgressIndicator())

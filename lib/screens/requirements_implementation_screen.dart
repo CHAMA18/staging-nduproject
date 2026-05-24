@@ -762,7 +762,7 @@ class _RequirementsImplementationScreenState
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                   LaunchPhaseNavigation(
                     backLabel: 'Back: Design Management',
                     nextLabel: 'Next: Technical Alignment',

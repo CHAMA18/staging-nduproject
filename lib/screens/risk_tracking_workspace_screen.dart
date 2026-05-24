@@ -437,7 +437,7 @@ class _RiskTrackingWorkspaceScreenState
                         Expanded(child: _buildMitigationPlans()),
                       ],
                     ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   LaunchPhaseNavigation(
                     backLabel: 'Back: Launch Checklist',
                     nextLabel: 'Next: Scope Completion',

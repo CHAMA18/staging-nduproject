@@ -216,7 +216,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                         _buildMiddleInsights(context),
                         const SizedBox(height: 26),
                         _buildLowerGrid(context),
-                        const SizedBox(height: 26),
+                        const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel:
                               'Back: Gap Analysis & Scope Reconciliation',

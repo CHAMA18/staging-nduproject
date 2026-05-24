@@ -612,7 +612,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   _buildGovernanceGrid(snapshot),
                   const SizedBox(height: 20),
                   _buildDetailedRegistersPanel(ownerOptions),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   LaunchPhaseNavigation(
                     backLabel: 'Back: Requirements Implementation',
                     nextLabel: 'Next: Development Set Up',

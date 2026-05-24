@@ -227,7 +227,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                               setState(() => _searchQuery = value),
                           onEdit: _handleEditIssue,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel: PlanningPhaseNavigation.backLabel(
                               'issue_management'),

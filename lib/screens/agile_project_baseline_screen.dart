@@ -735,7 +735,7 @@ class _AgileProjectBaselineScreenState
                                 ],
                               ),
                             ],
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 24),
                             LaunchPhaseNavigation(
                               backLabel: PlanningPhaseNavigation.backLabel(
                                   'agile_project_baseline'),

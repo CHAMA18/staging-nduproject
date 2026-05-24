@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/ai_diagram_panel.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {
   const ExecutionPlanInterfaceManagementOverviewScreen({super.key});
@@ -28,6 +29,7 @@ class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {
     return ResponsiveScaffold(
       activeItemLabel: 'Execution Interface Management Overview',
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: 32),

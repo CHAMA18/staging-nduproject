@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/team_meetings_resource_grid.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart' as launch;
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class TeamMeetingsScreen extends StatefulWidget {
   const TeamMeetingsScreen({super.key});
@@ -221,6 +222,7 @@ class _TeamMeetingsScreenState extends State<TeamMeetingsScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Team Meetings',
       backgroundColor: Colors.white,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),

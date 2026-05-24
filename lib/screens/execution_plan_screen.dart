@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ExecutionPlanScreen extends StatefulWidget {
   const ExecutionPlanScreen({super.key});
@@ -35,6 +36,7 @@ class _ExecutionPlanScreenState extends State<ExecutionPlanScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Execution Plan Overview',
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: 32),

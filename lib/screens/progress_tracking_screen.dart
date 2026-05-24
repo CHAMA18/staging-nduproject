@@ -463,7 +463,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
               ),
               const SizedBox(height: 20),
               _buildActiveWorkspace(),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               LaunchPhaseNavigation(
                 backLabel: 'Back: Team Meetings',
                 nextLabel: 'Next: Contracts Tracking',

@@ -276,7 +276,7 @@ class _StatusReportsScreenState extends State<StatusReportsScreen> {
                 statusReports: _statusReports,
                 onStatusReportsChanged: _handleStatusReportsChanged,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               LaunchPhaseNavigation(
                 backLabel: 'Back: Recurring Deliverables',
                 nextLabel: 'Next: Contracts Tracking',

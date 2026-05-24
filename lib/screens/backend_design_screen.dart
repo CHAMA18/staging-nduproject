@@ -321,7 +321,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
             _buildInterfaceContractsPanel(),
             const SizedBox(height: 20),
             _buildDocumentsSecurityPanel(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             LaunchPhaseNavigation(
               backLabel: 'Back: UI/UX Design',
               nextLabel: 'Next: Engineering',

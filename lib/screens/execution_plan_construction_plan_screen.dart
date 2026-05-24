@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class ExecutionPlanConstructionPlanScreen extends StatelessWidget {
   const ExecutionPlanConstructionPlanScreen({super.key});
@@ -24,6 +25,7 @@ class ExecutionPlanConstructionPlanScreen extends StatelessWidget {
     return ResponsiveScaffold(
       activeItemLabel: 'Execution Plan - Construction Plan',
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: 32),

@@ -532,7 +532,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             _buildSecurityBaselineRegister(),
             const SizedBox(height: 20),
             _buildApprovalGatesPanel(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             LaunchPhaseNavigation(
               backLabel: 'Back: Technical Alignment',
               nextLabel: 'Next: UI/UX Design',

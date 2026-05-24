@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/staff_team_resource_grid.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart' as launch;
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class StaffTeamScreen extends StatefulWidget {
   const StaffTeamScreen({super.key});
@@ -265,6 +266,7 @@ class _StaffTeamScreenState extends State<StaffTeamScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SafeArea(
         child: isMobile
             ? _buildMobileLayout(horizontalPadding)

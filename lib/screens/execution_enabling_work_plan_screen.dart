@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_service.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionEnablingWorkPlanScreen extends StatelessWidget {
@@ -25,6 +26,7 @@ class ExecutionEnablingWorkPlanScreen extends StatelessWidget {
     return ResponsiveScaffold(
       activeItemLabel: 'Execution Enabling Work Plan',
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: 32),

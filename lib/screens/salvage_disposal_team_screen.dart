@@ -892,7 +892,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
             _buildTabBar(),
             const SizedBox(height: 24),
             _buildTabContent(isNarrow),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             LaunchPhaseNavigation(
               backLabel: 'Back: Identify & Staff Ops Team',
               nextLabel: 'Next: Deliver Project Closure',

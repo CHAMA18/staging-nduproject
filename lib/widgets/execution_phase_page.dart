@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ExecutionSectionSpec {
@@ -145,7 +146,7 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
               const SizedBox(height: 16),
             ],
             if (widget.navigation != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
               LaunchPhaseNavigation(
                 backLabel: widget.navigation!.backLabel,
                 nextLabel: widget.navigation!.nextLabel,
@@ -157,6 +158,7 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
           ],
         ),
       ),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
     );
   }
 

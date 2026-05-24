@@ -141,7 +141,7 @@ class _InterfaceManagementScreenState extends State<InterfaceManagementScreen> {
                         _buildTabBar(),
                         const SizedBox(height: 16),
                         _buildTabContent(),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel: PlanningPhaseNavigation.backLabel(
                               'interface_management'),

@@ -6,6 +6,7 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:provider/provider.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class OperationsControlScreen extends StatefulWidget {
   const OperationsControlScreen({super.key});
@@ -51,6 +52,7 @@ class _OperationsControlScreenState extends State<OperationsControlScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

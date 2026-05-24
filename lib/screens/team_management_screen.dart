@@ -13,6 +13,7 @@ import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 class TeamManagementScreen extends StatefulWidget {
   const TeamManagementScreen({super.key});
 
@@ -258,6 +259,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
     );
     return Scaffold(
       backgroundColor: Colors.white,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

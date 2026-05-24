@@ -342,7 +342,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
                           )
                         else
                           _buildTabContent(),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel: PlanningPhaseNavigation.backLabel(
                               'scope_tracking_plan'),

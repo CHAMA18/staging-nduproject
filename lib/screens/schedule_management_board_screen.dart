@@ -4,6 +4,7 @@ import '../theme.dart';
 import '../widgets/responsive.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 const String _currencySymbol = r'$';
 
 class ScheduleManagementBoardScreen extends StatelessWidget {
@@ -106,6 +107,7 @@ class ScheduleManagementBoardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

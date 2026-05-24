@@ -262,7 +262,7 @@ class _DeliverableStatusUpdatesScreenState
                 deliverables: _deliverables,
                 onDeliverablesChanged: _handleDeliverablesChanged,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               LaunchPhaseNavigation(
                 backLabel: 'Back: Progress Tracking',
                 nextLabel: 'Next: Recurring Deliverables',

@@ -6,6 +6,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/execution_plan_shared.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class ExecutionPlanStakeholderIdentificationScreen extends StatelessWidget {
@@ -26,6 +27,7 @@ class ExecutionPlanStakeholderIdentificationScreen extends StatelessWidget {
     return ResponsiveScaffold(
       activeItemLabel: 'Execution Stakeholder Identification',
       backgroundColor: const Color(0xFFF9FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding, vertical: 32),

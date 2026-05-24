@@ -282,7 +282,7 @@ class _RecurringDeliverablesScreenState
                 recurringDeliverables: _recurringDeliverables,
                 onRecurringChanged: _handleRecurringChanged,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               LaunchPhaseNavigation(
                 backLabel: 'Back: Deliverable Status Updates',
                 nextLabel: 'Next: Status Reports',

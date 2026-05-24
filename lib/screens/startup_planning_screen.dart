@@ -107,7 +107,7 @@ class StartUpPlanningScreen extends StatelessWidget {
                                     child: const _OpsHandoffCard()),
                               ],
                             ),
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 24),
                             LaunchPhaseNavigation(
                               backLabel: PlanningPhaseNavigation.backLabel(
                                   'startup_planning'),

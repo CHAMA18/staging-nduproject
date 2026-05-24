@@ -374,7 +374,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                 ? const Center(child: CircularProgressIndicator())
                 : _buildKanbanBoard(),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           LaunchPhaseNavigation(
             backLabel: PlanningPhaseNavigation.backLabel('deliverables_roadmap'),
             nextLabel: PlanningPhaseNavigation.nextLabel('deliverables_roadmap'),

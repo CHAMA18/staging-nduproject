@@ -438,7 +438,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       subtitle:
           'What went well, what to improve, and recommendations for future projects.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.auto_stories_outlined,
       headerIconColor: const Color(0xFFF59E0B),
       child: VoiceTextFormField(
@@ -480,7 +480,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         title: 'Close-Out Summary',
         subtitle: 'Aggregated view of all close-out progress.',
         collapsible: true,
-        initiallyExpanded: true,
+        initiallyExpanded: false,
         headerIcon: Icons.assignment_outlined,
         headerIconColor: const Color(0xFF10B981),
         child: Column(
@@ -528,7 +528,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         subtitle:
             '${_approvals.where((a) => a.status == 'Approved').length} of ${_approvals.length} approved.',
         collapsible: true,
-        initiallyExpanded: true,
+        initiallyExpanded: false,
         headerIcon: Icons.fact_check_outlined,
         headerIconColor: const Color(0xFF6366F1),
         child: _approvals.isEmpty

@@ -316,7 +316,7 @@ class _DeliverableStatusUpdatesScreenState
           'become blockers. Status reports should flow from deliverable data to maintain '
           'consistency between execution tracking and stakeholder communication.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.lightbulb_outline_rounded,
       headerIconColor: const Color(0xFFF59E0B),
       child: Column(

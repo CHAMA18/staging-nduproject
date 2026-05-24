@@ -3988,7 +3988,7 @@ class _PreferredSolutionAnalysisScreenState
                               : 'No scope statement provided.',
                           style: const TextStyle(fontSize: 14, height: 1.5),
                         ),
-                        initiallyExpanded: true,
+                        initiallyExpanded: false,
                       ),
                       SolutionDetailSection(
                         title: 'Risks Identified',
@@ -7353,7 +7353,7 @@ class _PreferredSolutionDetailsScreenState
                       subtitle: cbaRows.isEmpty
                           ? 'No data available'
                           : '${cbaRows.length} cost items',
-                      initiallyExpanded: true,
+                      initiallyExpanded: false,
                       content: cbaRows.isEmpty
                           ? _buildEmptyState('No cost analysis available',
                               Icons.attach_money, Colors.amber)

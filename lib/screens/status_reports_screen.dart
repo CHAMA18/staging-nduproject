@@ -330,7 +330,7 @@ class _StatusReportsScreenState extends State<StatusReportsScreen> {
           'What do we need from you? Reports should be concise, action-oriented, and '
           'tied directly to deliverable data for consistency.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.description_outlined,
       headerIconColor: const Color(0xFF0EA5E9),
       child: Column(

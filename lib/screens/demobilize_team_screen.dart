@@ -464,7 +464,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       subtitle:
           'Recognition, feedback, reassignment notes, and closing thoughts.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.groups_outlined,
       headerIconColor: const Color(0xFF7C3AED),
       child: VoiceTextFormField(

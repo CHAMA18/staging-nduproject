@@ -15,6 +15,7 @@ import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/launch_data_table.dart';
 class LaunchChecklistScreen extends StatefulWidget {
   const LaunchChecklistScreen({super.key});
 
@@ -495,649 +496,298 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   }
 
   Widget _buildChecklistSection() {
-    return _buildSectionCard(
-      icon: Icons.checklist_rounded,
-      iconColor: const Color(0xFF6366F1),
-      iconBg: const Color(0xFFEEF2FF),
+    return LaunchDataTable(
       title: 'Launch Checklist',
       subtitle: 'Critical action items with owners and due dates',
-      child: Column(
-        children: [
-          if (_checklistItems.isEmpty)
-            _buildEmptyState('No checklist items yet', Icons.checklist_outlined)
-          else
-            ..._checklistItems.map((item) => _buildChecklistItem(item)),
-          const SizedBox(height: 12),
-          _buildAddButton('Add checklist item', _addChecklistItem),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChecklistItem(_ChecklistItemData item) {
-    final statusColor = _getStatusColor(item.status);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x04000000),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+      columns: const ['Task', 'Detail', 'Owner', 'Due', 'Status'],
+      rowCount: _checklistItems.length,
+      onAdd: _addChecklistItem,
+      addLabel: 'Add checklist item',
+      emptyMessage: 'No checklist items yet. Add critical action items before go-live.',
+      cellBuilder: (context, i) {
+        final item = _checklistItems[i];
+        return LaunchDataRow(
+          onDelete: () => _deleteChecklistItem(item.id),
+          showDivider: i < _checklistItems.length - 1,
+          cells: [
+            LaunchEditableCell(
+              value: item.title,
+              hint: 'Task',
+              bold: true,
+              expand: true,
+              onChanged: (v) {
+                _checklistItems[i] = _ChecklistItemData(
+                  id: item.id, title: v, detail: item.detail,
+                  owner: item.owner, due: item.due, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-            child: Icon(
-              item.status.toLowerCase().contains('complete') ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 20,
-              color: statusColor,
+            LaunchEditableCell(
+              value: item.detail,
+              hint: 'Detail',
+              expand: true,
+              onChanged: (v) {
+                _checklistItems[i] = _ChecklistItemData(
+                  id: item.id, title: item.title, detail: v,
+                  owner: item.owner, due: item.due, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.detail,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 14, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.owner,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.due,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            LaunchEditableCell(
+              value: item.owner,
+              hint: 'Owner',
+              expand: true,
+              onChanged: (v) {
+                _checklistItems[i] = _ChecklistItemData(
+                  id: item.id, title: item.title, detail: item.detail,
+                  owner: v, due: item.due, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withOpacity(0.3)),
+            LaunchEditableCell(
+              value: item.due,
+              hint: 'Due',
+              width: 100,
+              onChanged: (v) {
+                _checklistItems[i] = _ChecklistItemData(
+                  id: item.id, title: item.title, detail: item.detail,
+                  owner: item.owner, due: v, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-            child: Text(
-              item.status,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
+            LaunchStatusDropdown(
+              value: item.status,
+              items: const ['Complete', 'On track', 'At risk', 'In review', 'Pending'],
+              onChanged: (v) {
+                if (v == null) return;
+                _checklistItems[i] = _ChecklistItemData(
+                  id: item.id, title: item.title, detail: item.detail,
+                  owner: item.owner, due: item.due, status: v,
+                );
+                _scheduleSave();
+                setState(() {});
+              },
             ),
-          ),
-          const SizedBox(width: 8),
-          _buildEditButton(() => _editChecklistItem(item)),
-          const SizedBox(width: 8),
-          _buildDeleteButton(() => _deleteChecklistItem(item.id)),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildApprovalsSection() {
-    return _buildSectionCard(
-      icon: Icons.approval_rounded,
-      iconColor: const Color(0xFF10B981),
-      iconBg: const Color(0xFFECFDF5),
+    return LaunchDataTable(
       title: 'Approvals & Sign-offs',
       subtitle: 'Required approvals before go-live',
-      child: Column(
-        children: [
-          if (_approvals.isEmpty)
-            _buildEmptyState('No approvals yet', Icons.approval_outlined)
-          else
-            ..._approvals.map((item) => _buildApprovalItem(item)),
-          const SizedBox(height: 12),
-          _buildAddButton('Add approval', _addApproval),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildApprovalItem(_ApprovalData item) {
-    final statusColor = _getStatusColor(item.status);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x04000000),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+      columns: const ['Approval', 'Detail', 'Approver', 'Status'],
+      rowCount: _approvals.length,
+      onAdd: _addApproval,
+      addLabel: 'Add approval',
+      emptyMessage: 'No approvals yet. Track required sign-offs before launch.',
+      cellBuilder: (context, i) {
+        final item = _approvals[i];
+        return LaunchDataRow(
+          onDelete: () => _deleteApproval(item.id),
+          showDivider: i < _approvals.length - 1,
+          cells: [
+            LaunchEditableCell(
+              value: item.label,
+              hint: 'Approval',
+              bold: true,
+              expand: true,
+              onChanged: (v) {
+                _approvals[i] = _ApprovalData(
+                  id: item.id, label: v, detail: item.detail,
+                  status: item.status, approver: item.approver,
+                );
+                _scheduleSave();
+              },
             ),
-            child: Icon(
-              item.status.toLowerCase().contains('complete') ? Icons.check_circle : Icons.pending,
-              size: 20,
-              color: statusColor,
+            LaunchEditableCell(
+              value: item.detail,
+              hint: 'Detail',
+              expand: true,
+              onChanged: (v) {
+                _approvals[i] = _ApprovalData(
+                  id: item.id, label: item.label, detail: v,
+                  status: item.status, approver: item.approver,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.detail,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            LaunchEditableCell(
+              value: item.approver,
+              hint: 'Approver',
+              expand: true,
+              onChanged: (v) {
+                _approvals[i] = _ApprovalData(
+                  id: item.id, label: item.label, detail: item.detail,
+                  status: item.status, approver: v,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withOpacity(0.3)),
+            LaunchStatusDropdown(
+              value: item.status,
+              items: const ['Complete', 'In review', 'Pending'],
+              onChanged: (v) {
+                if (v == null) return;
+                _approvals[i] = _ApprovalData(
+                  id: item.id, label: item.label, detail: item.detail,
+                  status: v, approver: item.approver,
+                );
+                _scheduleSave();
+                setState(() {});
+              },
             ),
-            child: Text(
-              item.status,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _buildEditButton(() => _editApproval(item)),
-          const SizedBox(width: 8),
-          _buildDeleteButton(() => _deleteApproval(item.id)),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildMilestonesSection() {
-    return _buildSectionCard(
-      icon: Icons.flag_rounded,
-      iconColor: const Color(0xFFF59E0B),
-      iconBg: const Color(0xFFFEF3C7),
+    return LaunchDataTable(
       title: 'Launch Milestones',
       subtitle: 'Key milestones leading to go-live',
-      child: Column(
-        children: [
-          if (_milestones.isEmpty)
-            _buildEmptyState('No milestones yet', Icons.flag_outlined)
-          else
-            ..._milestones.map((item) => _buildMilestoneItem(item)),
-          const SizedBox(height: 12),
-          _buildAddButton('Add milestone', _addMilestone),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMilestoneItem(_MilestoneData item) {
-    final statusColor = _getStatusColor(item.status);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x04000000),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
+      columns: const ['Milestone', 'Detail', 'Due', 'Status'],
+      rowCount: _milestones.length,
+      onAdd: _addMilestone,
+      addLabel: 'Add milestone',
+      emptyMessage: 'No milestones yet. Add key milestones leading to go-live.',
+      cellBuilder: (context, i) {
+        final item = _milestones[i];
+        return LaunchDataRow(
+          onDelete: () => _deleteMilestone(item.id),
+          showDivider: i < _milestones.length - 1,
+          cells: [
+            LaunchEditableCell(
+              value: item.title,
+              hint: 'Milestone',
+              bold: true,
+              expand: true,
+              onChanged: (v) {
+                _milestones[i] = _MilestoneData(
+                  id: item.id, title: v, detail: item.detail,
+                  due: item.due, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-            child: Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF59E0B),
-                shape: BoxShape.circle,
-              ),
+            LaunchEditableCell(
+              value: item.detail,
+              hint: 'Detail',
+              expand: true,
+              onChanged: (v) {
+                _milestones[i] = _MilestoneData(
+                  id: item.id, title: item.title, detail: v,
+                  due: item.due, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.detail,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            LaunchEditableCell(
+              value: item.due,
+              hint: 'Due',
+              width: 100,
+              onChanged: (v) {
+                _milestones[i] = _MilestoneData(
+                  id: item.id, title: item.title, detail: item.detail,
+                  due: v, status: item.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
+            LaunchStatusDropdown(
+              value: item.status,
+              items: const ['Complete', 'Upcoming', 'In progress', 'Delayed'],
+              onChanged: (v) {
+                if (v == null) return;
+                _milestones[i] = _MilestoneData(
+                  id: item.id, title: item.title, detail: item.detail,
+                  due: item.due, status: v,
+                );
+                _scheduleSave();
+                setState(() {});
+              },
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF6B7280)),
-                const SizedBox(width: 4),
-                Text(
-                  item.due,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: statusColor.withOpacity(0.3)),
-            ),
-            child: Text(
-              item.status,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _buildEditButton(() => _editMilestone(item)),
-          const SizedBox(width: 8),
-          _buildDeleteButton(() => _deleteMilestone(item.id)),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildTimelineSection() {
-    return _buildSectionCard(
-      icon: Icons.timeline_rounded,
-      iconColor: const Color(0xFF0EA5E9),
-      iconBg: const Color(0xFFE0F2FE),
+    return LaunchDataTable(
       title: 'Launch Timeline',
       subtitle: 'Timeline stages toward go-live',
-      child: Column(
-        children: [
-          if (_timelineStages.isEmpty)
-            _buildEmptyState('No timeline stages yet', Icons.timeline_outlined)
-          else
-            ..._timelineStages.asMap().entries.map((entry) {
-              final index = entry.key;
-              final stage = entry.value;
-              return _buildTimelineStage(stage, index, _timelineStages.length);
-            }),
-          const SizedBox(height: 12),
-          _buildAddButton('Add stage', _addTimelineStage),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimelineStage(_TimelineStage stage, int index, int total) {
-    final isLast = index == total - 1;
-    final statusColor = _getStatusColor(stage.status);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              if (!isLast)
-                Container(
-                  width: 2,
-                  height: 60,
-                  color: const Color(0xFFE5E7EB),
-                  margin: const EdgeInsets.only(top: 8),
-                ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          stage.label,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          stage.detail,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF6B7280)),
-                        const SizedBox(width: 4),
-                        Text(
-                          stage.date,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildEditButton(() => _editTimelineStage(stage)),
-                  const SizedBox(width: 8),
-                  _buildDeleteButton(() => _deleteTimelineStage(stage.id)),
-                ],
-              ),
+      columns: const ['Stage', 'Detail', 'Date', 'Status'],
+      rowCount: _timelineStages.length,
+      onAdd: _addTimelineStage,
+      addLabel: 'Add stage',
+      emptyMessage: 'No timeline stages yet. Add stages leading to go-live.',
+      cellBuilder: (context, i) {
+        final stage = _timelineStages[i];
+        return LaunchDataRow(
+          onDelete: () => _deleteTimelineStage(stage.id),
+          showDivider: i < _timelineStages.length - 1,
+          cells: [
+            LaunchEditableCell(
+              value: stage.label,
+              hint: 'Stage',
+              bold: true,
+              expand: true,
+              onChanged: (v) {
+                _timelineStages[i] = _TimelineStage(
+                  id: stage.id, label: v, detail: stage.detail,
+                  date: stage.date, status: stage.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    required String title,
-    required String subtitle,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, size: 20, color: iconColor),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            LaunchEditableCell(
+              value: stage.detail,
+              hint: 'Detail',
+              expand: true,
+              onChanged: (v) {
+                _timelineStages[i] = _TimelineStage(
+                  id: stage.id, label: stage.label, detail: v,
+                  date: stage.date, status: stage.status,
+                );
+                _scheduleSave();
+              },
             ),
-          ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: const Color(0xFF9CA3AF), size: 28),
+            LaunchEditableCell(
+              value: stage.date,
+              hint: 'Date',
+              width: 100,
+              onChanged: (v) {
+                _timelineStages[i] = _TimelineStage(
+                  id: stage.id, label: stage.label, detail: stage.detail,
+                  date: v, status: stage.status,
+                );
+                _scheduleSave();
+              },
             ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF6B7280),
-              ),
+            LaunchStatusDropdown(
+              value: stage.status,
+              items: const ['Complete', 'In progress', 'Upcoming', 'Delayed'],
+              onChanged: (v) {
+                if (v == null) return;
+                _timelineStages[i] = _TimelineStage(
+                  id: stage.id, label: stage.label, detail: stage.detail,
+                  date: stage.date, status: v,
+                );
+                _scheduleSave();
+                setState(() {});
+              },
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddButton(String label, VoidCallback onPressed) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.add, size: 16),
-      label: Text(label),
-      style: FilledButton.styleFrom(
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      ),
-    );
-  }
-
-  Widget _buildEditButton(VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEEF2FF),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFC7D2FE)),
-          ),
-          child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF6366F1)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteButton(VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEE2E2),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFECACA)),
-          ),
-          child: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
-        ),
-      ),
+        );
+      },
     );
   }
 

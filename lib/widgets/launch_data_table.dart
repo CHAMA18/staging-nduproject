@@ -150,16 +150,18 @@ class LaunchDataTable extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           if (onAdd != null)
-            TextButton.icon(
+            FilledButton.icon(
               onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18),
+              icon: const Icon(Icons.add, size: 16),
               label: Text(addLabel),
-              style: TextButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                foregroundColor: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(10)),
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
               ),
             ),
         ],
@@ -272,10 +274,14 @@ class LaunchDataTable extends StatelessWidget {
       width: tableWidth,
       padding: const EdgeInsets.symmetric(
         horizontal: _tableHorizontalPadding,
-        vertical: 12,
+        vertical: 14,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
+        color: Color(0xFF1E293B),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(0),
+          bottomRight: Radius.circular(0),
+        ),
       ),
       child: Row(
         children: [
@@ -286,9 +292,9 @@ class LaunchDataTable extends StatelessWidget {
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF6B7280),
+                color: Color(0xFFFFFFFF),
                 letterSpacing: 0.3,
               ),
             ),
@@ -350,7 +356,7 @@ class _LaunchDataRowState extends State<LaunchDataRow> {
         children: [
           Container(
             width: tableLayout?.tableWidth,
-            color: _hovering ? const Color(0xFFF9FAFB) : Colors.white,
+            color: _hovering ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
             padding: const EdgeInsets.symmetric(
               horizontal: _tableHorizontalPadding,
               vertical: 10,
@@ -385,7 +391,7 @@ class _LaunchDataRowState extends State<LaunchDataRow> {
             ),
           ),
           if (widget.showDivider)
-            const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
         ],
       ),
     );

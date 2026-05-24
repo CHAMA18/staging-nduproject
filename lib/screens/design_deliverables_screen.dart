@@ -1008,6 +1008,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
 
   Widget _buildDeliverableRegister() {
     final filtered = _filteredRegister;
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Deliverable register',
       subtitle:
@@ -1015,22 +1016,14 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       trailing: _actionButton(Icons.add, 'Add deliverable',
           onPressed: () => _showAddDeliverableDialog()),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Table header
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 14),
             decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
-            child: const Row(
-              children: [
-                Expanded(flex: 4, child: Text('DELIVERABLE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 100, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 100, child: Text('DUE/GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('RISK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('', style: TextStyle(fontSize: 10))),
-              ],
-            ),
+            child: _RegisterHeaderRow(isNarrow: isNarrow),
           ),
           if (filtered.isEmpty)
             Padding(
@@ -1061,6 +1054,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                 onEdit: () => _showEditDeliverableDialog(row, actualIndex),
                 onDelete: () => _confirmDeleteDeliverable(actualIndex),
                 showDivider: index != filtered.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -1073,6 +1067,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildAcceptanceEvidencePanel() {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Acceptance evidence matrix',
       subtitle:
@@ -1080,20 +1075,13 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       trailing: _actionButton(Icons.add, 'Add evidence',
           onPressed: () => _showAcceptanceEvidenceEditor()),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 14),
             decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text('EVIDENCE AREA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 3, child: Text('WHAT MUST BE CAPTURED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 2, child: Text('VERIFICATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 110, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('', style: TextStyle(fontSize: 10))),
-              ],
-            ),
+            child: _EvidenceHeaderRow(isNarrow: isNarrow),
           ),
           if (_acceptanceEvidence.isEmpty)
             const Padding(
@@ -1110,6 +1098,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                     _showAcceptanceEvidenceEditor(entry: row, index: index),
                 onDelete: () => _confirmDeleteAcceptanceEvidence(index),
                 showDivider: index != _acceptanceEvidence.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -1122,6 +1111,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildHandoffGovernancePanel() {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Handoff governance',
       subtitle:
@@ -1129,21 +1119,13 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       trailing: _actionButton(Icons.add, 'Add control',
           onPressed: () => _showHandoffGovernanceEditor()),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 14),
             decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text('CONTROL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 3, child: Text('INDUSTRY STANDARD PRACTICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 2, child: Text('WATERFALL EVIDENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 2, child: Text('AGILE/HYBRID EVIDENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('DECISION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('', style: TextStyle(fontSize: 10))),
-              ],
-            ),
+            child: _HandoffHeaderRow(isNarrow: isNarrow),
           ),
           if (_handoffGovernance.isEmpty)
             const Padding(
@@ -1160,6 +1142,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                     _showHandoffGovernanceEditor(entry: row, index: index),
                 onDelete: () => _confirmDeleteHandoffGovernance(index),
                 showDivider: index != _handoffGovernance.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -1172,6 +1155,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildApprovalGatesPanel() {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Approval gate readiness',
       subtitle:
@@ -1179,21 +1163,13 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       trailing: _actionButton(Icons.add, 'Add gate',
           onPressed: () => _showApprovalGateEditor()),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 14),
             decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text('GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                Expanded(flex: 3, child: Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 120, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 90, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('', style: TextStyle(fontSize: 10))),
-              ],
-            ),
+            child: _ApprovalGateHeaderRow(isNarrow: isNarrow),
           ),
           if (_approvalGates.isEmpty)
             const Padding(
@@ -1210,6 +1186,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                     _showApprovalGateEditor(entry: row, index: index),
                 onDelete: () => _confirmDeleteApprovalGate(index),
                 showDivider: index != _approvalGates.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -1222,6 +1199,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildPipelinePanel() {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Deliverable pipeline',
       subtitle:
@@ -1229,18 +1207,13 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       trailing: _actionButton(Icons.add, 'Add stage',
           onPressed: _showAddPipelineItemDialog),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 14),
             decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
-            child: const Row(
-              children: [
-                Expanded(flex: 5, child: Text('STAGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 120, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                SizedBox(width: 80, child: Text('', style: TextStyle(fontSize: 10))),
-              ],
-            ),
+            child: _PipelineHeaderRow(isNarrow: isNarrow),
           ),
           if (_data.pipeline.isEmpty)
             const Padding(
@@ -1259,6 +1232,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                   _updateData(_data.copyWith(pipeline: next));
                 },
                 showDivider: index != _data.pipeline.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -2099,6 +2073,7 @@ class _PanelShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2113,10 +2088,11 @@ class _PanelShell extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isNarrow ? 14 : 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2129,18 +2105,20 @@ class _PanelShell extends StatelessWidget {
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF111827))),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(subtitle,
                           style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF6B7280),
-                              height: 1.45)),
+                              height: 1.4),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
                 if (trailing != null) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   trailing!,
                 ],
               ],
@@ -2216,25 +2194,159 @@ Widget _statusBadge(String text, Color color) {
   );
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// RESPONSIVE HEADER ROW WIDGETS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const _headerStyle = TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8);
+
+class _RegisterHeaderRow extends StatelessWidget {
+  const _RegisterHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Text('DELIVERABLE / OWNER / STATUS / DUE / RISK',
+          style: _headerStyle, overflow: TextOverflow.ellipsis);
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 4, child: Text('DELIVERABLE', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('OWNER', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: Text('DUE/GATE', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 1, child: Text('RISK', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _EvidenceHeaderRow extends StatelessWidget {
+  const _EvidenceHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Text('EVIDENCE / CAPTURED / VERIFIED / OWNER',
+          style: _headerStyle, overflow: TextOverflow.ellipsis);
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 2, child: Text('EVIDENCE AREA', style: _headerStyle)),
+        Expanded(flex: 3, child: Text('WHAT MUST BE CAPTURED', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('VERIFICATION', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('OWNER', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _PipelineHeaderRow extends StatelessWidget {
+  const _PipelineHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Row(
+        children: [
+          Expanded(child: Text('STAGE', style: _headerStyle)),
+          SizedBox(width: 80, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+          SizedBox(width: 48),
+        ],
+      );
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 5, child: Text('STAGE', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _HandoffHeaderRow extends StatelessWidget {
+  const _HandoffHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Text('CONTROL / PRACTICE / EVIDENCE / DECISION',
+          style: _headerStyle, overflow: TextOverflow.ellipsis);
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 2, child: Text('CONTROL', style: _headerStyle)),
+        Expanded(flex: 3, child: Text('INDUSTRY STANDARD PRACTICE', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('WATERFALL EVIDENCE', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('AGILE/HYBRID EVIDENCE', style: _headerStyle)),
+        Expanded(flex: 1, child: Text('DECISION', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _ApprovalGateHeaderRow extends StatelessWidget {
+  const _ApprovalGateHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Text('GATE / DESCRIPTION / APPROVER / PRIORITY / STATUS',
+          style: _headerStyle, overflow: TextOverflow.ellipsis);
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 2, child: Text('GATE', style: _headerStyle)),
+        Expanded(flex: 3, child: Text('DESCRIPTION', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('APPROVER', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 1, child: Text('PRIORITY', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DISPLAY ROW WIDGETS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 class _DeliverableRegisterRow extends StatelessWidget {
   const _DeliverableRegisterRow({
     required this.row,
     required this.onEdit,
     required this.onDelete,
     required this.showDivider,
+    this.isNarrow = false,
   });
   final DesignDeliverableRegisterItem row;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool showDivider;
+  final bool isNarrow;
 
   @override
   Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      // Stacked card layout for narrow screens
+      return _buildNarrowLayout(context, hPad);
+    }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 flex: 4,
@@ -2246,30 +2358,34 @@ class _DeliverableRegisterRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
               ),
-              SizedBox(
-                width: 100,
+              Expanded(
+                flex: 2,
                 child: Text(row.owner,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF6B7280)),
-                    textAlign: TextAlign.center),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
-              SizedBox(
-                  width: 100,
-                  child: Center(
-                      child: _statusBadge(row.status, _statusColor(row.status)))),
-              SizedBox(
-                width: 100,
+              Expanded(
+                flex: 2,
+                child: Center(
+                    child: _statusBadge(row.status, _statusColor(row.status))),
+              ),
+              Expanded(
+                flex: 2,
                 child: Text(row.due,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF6B7280)),
-                    textAlign: TextAlign.center),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 1,
+                child: Center(
+                    child: _statusBadge(row.risk, _riskColor(row.risk))),
               ),
               SizedBox(
-                  width: 80,
-                  child: Center(
-                      child: _statusBadge(row.risk, _riskColor(row.risk)))),
-              SizedBox(
-                width: 80,
+                width: 64,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -2290,9 +2406,63 @@ class _DeliverableRegisterRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(BuildContext context, double hPad) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(row.name,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                alignment: WrapAlignment.start,
+                children: [
+                  _statusBadge(row.status, _statusColor(row.status)),
+                  _statusBadge(row.risk, _riskColor(row.risk)),
+                  Text('${row.owner} · ${row.due}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                      visualDensity: VisualDensity.compact),
+                  IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                      visualDensity: VisualDensity.compact),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
       ],
     );
@@ -2305,18 +2475,24 @@ class _AcceptanceEvidenceDisplayRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.showDivider,
+    this.isNarrow = false,
   });
   final _AcceptanceEvidenceRow row;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool showDivider;
+  final bool isNarrow;
 
   @override
   Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      return _buildNarrowLayout(hPad);
+    }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2326,29 +2502,37 @@ class _AcceptanceEvidenceDisplayRow extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF111827)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 3,
                 child: Text(row.whatMustBeCaptured,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 2,
                 child: Text(row.verificationMethod,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis),
               ),
-              SizedBox(
-                width: 110,
+              Expanded(
+                flex: 2,
                 child: Text(row.approvalOwner,
                     style: const TextStyle(
                         fontSize: 11, color: Color(0xFF6B7280)),
-                    textAlign: TextAlign.center),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
               SizedBox(
-                width: 80,
+                width: 64,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -2369,9 +2553,62 @@ class _AcceptanceEvidenceDisplayRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(double hPad) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(row.evidenceArea,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Text(row.whatMustBeCaptured,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), height: 1.4),
+                  maxLines: 3, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Text('Verify: ${row.verificationMethod}',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(row.approvalOwner,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                  Row(
+                    children: [
+                      IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact),
+                      IconButton(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          visualDensity: VisualDensity.compact),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
       ],
     );
@@ -2384,18 +2621,24 @@ class _HandoffGovernanceDisplayRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.showDivider,
+    this.isNarrow = false,
   });
   final _HandoffGovernanceRow row;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool showDivider;
+  final bool isNarrow;
 
   @override
   Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      return _buildNarrowLayout(hPad);
+    }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2405,36 +2648,45 @@ class _HandoffGovernanceDisplayRow extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF111827)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 3,
                 child: Text(row.industryStandardPractice,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 2,
                 child: Text(row.waterfallEvidence,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 2,
                 child: Text(row.agileHybridEvidence,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 1,
+                child: Center(
+                    child: _statusBadge(
+                        row.decision,
+                        row.decision == 'Required'
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFFF59E0B))),
               ),
               SizedBox(
-                  width: 90,
-                  child: Center(
-                      child: _statusBadge(
-                          row.decision,
-                          row.decision == 'Required'
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFFF59E0B)))),
-              SizedBox(
-                width: 80,
+                width: 64,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -2455,9 +2707,72 @@ class _HandoffGovernanceDisplayRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(double hPad) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(row.control,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  _statusBadge(
+                      row.decision,
+                      row.decision == 'Required'
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFFF59E0B)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(row.industryStandardPractice,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), height: 1.4),
+                  maxLines: 3, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text('WF: ${row.waterfallEvidence}',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact),
+                      IconButton(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          visualDensity: VisualDensity.compact),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
       ],
     );
@@ -2470,18 +2785,24 @@ class _ApprovalGateDisplayRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.showDivider,
+    this.isNarrow = false,
   });
   final _ApprovalGateRow row;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool showDivider;
+  final bool isNarrow;
 
   @override
   Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      return _buildNarrowLayout(hPad);
+    }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2491,33 +2812,41 @@ class _ApprovalGateDisplayRow extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF111827)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 flex: 3,
                 child: Text(row.description,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45)),
+                        fontSize: 11, color: Color(0xFF4B5563), height: 1.45),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis),
               ),
-              SizedBox(
-                width: 120,
+              Expanded(
+                flex: 2,
                 child: Text(row.approver,
                     style: const TextStyle(
                         fontSize: 11, color: Color(0xFF6B7280)),
-                    textAlign: TextAlign.center),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 1,
+                child: Center(
+                    child: _statusBadge(
+                        row.priority, _priorityColor(row.priority))),
+              ),
+              Expanded(
+                flex: 2,
+                child: Center(
+                    child: _statusBadge(
+                        row.status, _statusColor(row.status))),
               ),
               SizedBox(
-                  width: 90,
-                  child: Center(
-                      child: _statusBadge(
-                          row.priority, _priorityColor(row.priority)))),
-              SizedBox(
-                  width: 100,
-                  child: Center(
-                      child: _statusBadge(
-                          row.status, _statusColor(row.status)))),
-              SizedBox(
-                width: 80,
+                width: 64,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -2538,9 +2867,67 @@ class _ApprovalGateDisplayRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(double hPad) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(row.gate,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  _statusBadge(row.priority, _priorityColor(row.priority)),
+                  const SizedBox(width: 6),
+                  _statusBadge(row.status, _statusColor(row.status)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(row.description,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), height: 1.4),
+                  maxLines: 3, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(row.approver,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                  Row(
+                    children: [
+                      IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact),
+                      IconButton(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          visualDensity: VisualDensity.compact),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
       ],
     );
@@ -2553,18 +2940,70 @@ class _PipelineDisplayRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.showDivider,
+    this.isNarrow = false,
   });
   final DesignDeliverablePipelineItem item;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool showDivider;
+  final bool isNarrow;
 
   @override
   Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      return Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(item.label,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                _statusBadge(item.status, _statusColor(item.status)),
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 48,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined,
+                              size: 14, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero),
+                      IconButton(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline,
+                              size: 14, color: Color(0xFFEF4444)),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showDivider)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: hPad),
+              child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            ),
+        ],
+      );
+    }
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
           child: Row(
             children: [
               Expanded(
@@ -2573,15 +3012,18 @@ class _PipelineDisplayRow extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF111827))),
+                        color: Color(0xFF111827)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 2,
+                child: Center(
+                    child: _statusBadge(
+                        item.status, _statusColor(item.status))),
               ),
               SizedBox(
-                  width: 120,
-                  child: Center(
-                      child: _statusBadge(
-                          item.status, _statusColor(item.status)))),
-              SizedBox(
-                width: 80,
+                width: 64,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -2602,9 +3044,9 @@ class _PipelineDisplayRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
       ],
     );

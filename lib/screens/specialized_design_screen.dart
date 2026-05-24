@@ -36,8 +36,6 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   bool _isLoading = false;
   String? _loadError;
 
-  final Set<String> _selectedFilters = {'All items'};
-
   // Registers
   List<SecurityPatternRow> _securityRows = [];
   List<PerformancePatternRow> _performanceRows = [];
@@ -274,7 +272,6 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
 
     return ResponsiveScaffold(
@@ -301,15 +298,15 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   const SizedBox(height: 20),
                   _buildFrameworkGuide(),
                   const SizedBox(height: 24),
-                  if (_showSecurity) _buildSecurityRegister(),
-                  if (_showSecurity) const SizedBox(height: 20),
-                  if (_showPerformance) _buildPerformanceRegister(),
-                  if (_showPerformance) const SizedBox(height: 20),
-                  if (_showIntegration) _buildIntegrationRegister(),
-                  if (_showIntegration) const SizedBox(height: 20),
-                  if (_showCompliance) _buildComplianceRegister(),
-                  if (_showCompliance) const SizedBox(height: 20),
-                  if (_showReviewGates) _buildReviewGatesPanel(),
+                  _buildSecurityRegister(),
+                  const SizedBox(height: 20),
+                  _buildPerformanceRegister(),
+                  const SizedBox(height: 20),
+                  _buildIntegrationRegister(),
+                  const SizedBox(height: 20),
+                  _buildComplianceRegister(),
+                  const SizedBox(height: 20),
+                  _buildReviewGatesPanel(),
                   const SizedBox(height: 24),
                   LaunchPhaseNavigation(
                     backLabel: 'Back: Technical Development',
@@ -325,12 +322,6 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
       ),
     );
   }
-
-  bool get _showSecurity => _selectedFilters.contains('All items') || _selectedFilters.contains('Security');
-  bool get _showPerformance => _selectedFilters.contains('All items') || _selectedFilters.contains('Performance');
-  bool get _showIntegration => _selectedFilters.contains('All items') || _selectedFilters.contains('Integrations');
-  bool get _showCompliance => _selectedFilters.contains('All items') || _selectedFilters.contains('Compliance');
-  bool get _showReviewGates => _selectedFilters.contains('All items') || _selectedFilters.contains('Review pending');
 
   // ─── Header ────────────────────────────────────────────────────────
 
@@ -359,116 +350,6 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeaderActions() {
-    return Wrap(
-      spacing: 10, runSpacing: 10,
-      children: [
-        _actionButton(Icons.add, 'Add control', onPressed: () => _showSecurityDialog()),
-        _actionButton(Icons.upload_outlined, 'Import patterns', onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import patterns from security tooling is available from the Security Register.')));
-        }),
-        _actionButton(Icons.description_outlined, 'Export spec', onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Export specification is queued. Use the registers while export tools are finalized.')));
-        }),
-        _primaryButton('Start security review'),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _primaryButton(String label) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        setState(() { _selectedFilters..clear()..add('Review pending'); });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Security review started. Filter set to items pending review.')));
-      },
-      icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0EA5E9), foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  // ─── Filter Chips ────────────────────────────────────────────────
-
-  Widget _buildFilterChips() {
-    const filters = ['All items', 'Security', 'Performance', 'Integrations', 'Compliance', 'Review pending'];
-    return Wrap(
-      spacing: 10, runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return ChoiceChip(
-          label: Text(filter, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : const Color(0xFF475569))),
-          selected: selected,
-          selectedColor: const Color(0xFF111827),
-          backgroundColor: Colors.white,
-          shape: StadiumBorder(side: BorderSide(color: const Color(0xFFE5E7EB))),
-          onSelected: (value) {
-            setState(() {
-              if (value) {
-                if (filter == 'All items') { _selectedFilters..clear()..add(filter); }
-                else { _selectedFilters..remove('All items')..add(filter); }
-              } else {
-                _selectedFilters.remove(filter);
-                if (_selectedFilters.isEmpty) _selectedFilters.add('All items');
-              }
-            });
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  // ─── Stats Row ────────────────────────────────────────────────────
-
-  Widget _buildStatsRow(bool isNarrow) {
-    final securityReady = _securityRows.where((r) => r.status == 'Ready').length;
-    final perfDraft = _performanceRows.where((r) => r.status == 'Draft' || r.status == 'Pending').length;
-    final integrationReady = _integrationRows.where((r) => r.status == 'Ready').length;
-    final reviewPending = _reviewGates.where((g) => g.status == 'Pending' || g.status == 'In Review').length;
-
-    final stats = [
-      _StatCardData('${_securityRows.length}', 'Security Controls', '$securityReady ready', const Color(0xFF0EA5E9)),
-      _StatCardData('$perfDraft', 'Performance Pending', 'SLA targets pending', const Color(0xFF10B981)),
-      _StatCardData('${_integrationRows.length}', 'Integrations', '$integrationReady contract-ready', const Color(0xFFF97316)),
-      _StatCardData('$reviewPending', 'Pending Reviews', reviewPending > 0 ? 'Require attention' : 'All reviewed', const Color(0xFF6366F1)),
-    ];
-
-    if (isNarrow) {
-      return Column(children: [for (int i = 0; i < stats.length; i++) ...[SizedBox(width: double.infinity, child: _buildStatCard(stats[i])), if (i < stats.length - 1) const SizedBox(height: 12)]]);
-    }
-    return Row(children: [for (int i = 0; i < stats.length; i++) ...[Expanded(child: _buildStatCard(stats[i])), if (i < stats.length - 1) const SizedBox(width: 12)]]);
-  }
-
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
-        const SizedBox(height: 6),
-        Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-        const SizedBox(height: 6),
-        Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
-      ]),
     );
   }
 
@@ -1073,14 +954,6 @@ class _ReviewGateRow {
       return _ReviewGateRow(id: m['id'] ?? '', gate: m['gate'] ?? '', description: m['description'] ?? '', approver: m['approver'] ?? '', department: m['department'] ?? '', priority: m['priority'] ?? 'High', status: m['status'] ?? 'Pending', targetDate: m['targetDate'] ?? 'TBD');
     }).toList();
   }
-}
-
-class _StatCardData {
-  final String value;
-  final String label;
-  final String supporting;
-  final Color color;
-  _StatCardData(this.value, this.label, this.supporting, this.color);
 }
 
 class _ColDef {

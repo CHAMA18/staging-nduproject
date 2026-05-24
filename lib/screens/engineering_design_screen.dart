@@ -13,10 +13,6 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/utils/design_planning_document.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-
 import 'package:ndu_project/widgets/voice_text_field.dart';
 // ─── Data Models ─────────────────────────────────────────────────────────────
 
@@ -410,13 +406,6 @@ class _ReadinessGate {
   }
 }
 
-class _StatCardData {
-  final String value;
-  final String label;
-  final String supporting;
-  final Color color;
-  const _StatCardData(this.label, this.value, this.supporting, this.color);
-}
 
 // ─── Debouncer ───────────────────────────────────────────────────────────────
 
@@ -524,7 +513,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _keyDecisionsController = TextEditingController();
   final _Debouncer _saveDebouncer = _Debouncer();
-  final Set<String> _selectedFilters = {'All registers'};
 
   bool _isLoading = false;
   bool _suspendSave = false;
@@ -1865,114 +1853,10 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
     );
   }
 
-  // ─── Export PDF ────────────────────────────────────────────────────────────
-
-  Future<void> _exportEngineeringChecklist() async {
-    final doc = pw.Document();
-    final notes = _notesController.text.trim();
-    final keyDecisions = _keyDecisionsController.text.trim();
-
-    doc.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (context) => [
-          pw.Text(
-            'Engineering Checklist',
-            style: pw.TextStyle(
-              fontSize: 22,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 12),
-          _pdfTextBlock('Notes', notes),
-          _pdfTextBlock('Key decisions', keyDecisions),
-          _pdfSection(
-              'Structural & Architecture Register',
-              _structuralItems
-                  .map((e) =>
-                      '${e.layer} — ${e.description} [${e.specification}] (${e.status})')
-                  .toList()),
-          _pdfSection(
-              'Components & Interfaces Register',
-              _componentItems
-                  .map((e) =>
-                      '${e.component} — ${e.responsibility} [${e.interfaceType}] (${e.status})')
-                  .toList()),
-          _pdfSection(
-              'Calculations & Analysis Register',
-              _calculationItems
-                  .map((e) =>
-                      '${e.calculation} [${e.standard}] — PE: ${e.peStamp} (${e.status})')
-                  .toList()),
-          _pdfSection(
-              'Compliance & Standards Register',
-              _complianceItems
-                  .map((e) =>
-                      '${e.standard} — ${e.scope} (${e.complianceStatus})')
-                  .toList()),
-          _pdfSection(
-              'Engineering Change Notices',
-              _ecnItems
-                  .map((e) =>
-                      '${e.ecnId}: ${e.title} [${e.priority}] (${e.status})')
-                  .toList()),
-          _pdfSection(
-              'Engineering Readiness Gates',
-              _readinessGates
-                  .map((e) => '${e.gate} — ${e.owner} (${e.status})')
-                  .toList()),
-        ],
-      ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (format) async => doc.save(),
-      name: 'engineering-checklist.pdf',
-    );
-  }
-
-  pw.Widget _pdfTextBlock(String title, String content) {
-    final normalized =
-        content.trim().isEmpty ? 'No entries.' : content.trim();
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(title,
-            style: pw.TextStyle(
-                fontSize: 14, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 6),
-        pw.Text(normalized, style: const pw.TextStyle(fontSize: 12)),
-        pw.SizedBox(height: 12),
-      ],
-    );
-  }
-
-  pw.Widget _pdfSection(String title, List<String> items) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(title,
-            style: pw.TextStyle(
-                fontSize: 14, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 6),
-        if (items.isEmpty)
-          pw.Text('No entries.', style: const pw.TextStyle(fontSize: 12))
-        else
-          pw.Column(
-            children:
-                items.map((item) => pw.Bullet(text: item)).toList(),
-          ),
-        pw.SizedBox(height: 12),
-      ],
-    );
-  }
-
   // ─── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
 
     return ResponsiveScaffold(
@@ -1995,12 +1879,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 children: [
                   if (_isLoading) const LinearProgressIndicator(minHeight: 2),
                   if (_isLoading) const SizedBox(height: 16),
-                  _buildHeader(isNarrow),
-                  const SizedBox(height: 16),
-                  _buildFilterChips(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(),
-                  const SizedBox(height: 20),
                   _buildFrameworkGuide(),
                   const SizedBox(height: 24),
                   _buildStructuralRegister(),
@@ -2027,288 +1905,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Header ────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(bool isNarrow) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0EA5E9),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            'ENGINEERING CONTROL',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = isNarrow || constraints.maxWidth < 1040;
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Engineering Design',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Structural & technical detailing hub for blueprints, calculations, approvals, '
-                  'interface detail, compliance evidence, and engineering change notices. '
-                  'Aligned with ISO 9001, AISC, ASCE, and PMI PMBOK design processes, '
-                  'this register ensures engineering scope and quality remain visible and actionable.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                ),
-              ],
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleBlock,
-                  const SizedBox(height: 12),
-                  _buildHeaderActions(),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: titleBlock),
-                const SizedBox(width: 20),
-                Flexible(child: _buildHeaderActions()),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeaderActions() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        OutlinedButton.icon(
-          onPressed: () => _openStructuralItemDialog(),
-          icon: const Icon(Icons.add, size: 18, color: Color(0xFF64748B)),
-          label: const Text('Add layer',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B))),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        OutlinedButton.icon(
-          onPressed: _exportEngineeringChecklist,
-          icon: const Icon(Icons.description_outlined,
-              size: 18, color: Color(0xFF64748B)),
-          label: const Text('Export PDF',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B))),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─── Filter Chips ──────────────────────────────────────────────────────────
-
-  Widget _buildFilterChips() {
-    const filters = [
-      'All registers',
-      'Structural',
-      'Components',
-      'Calculations',
-      'Compliance',
-      'ECN',
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return ChoiceChip(
-          label: Text(
-            filter,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : const Color(0xFF475569),
-            ),
-          ),
-          selected: selected,
-          selectedColor: const Color(0xFF111827),
-          backgroundColor: Colors.white,
-          shape: StadiumBorder(
-            side: BorderSide(color: const Color(0xFFE5E7EB)),
-          ),
-          onSelected: (value) {
-            setState(() {
-              if (value) {
-                if (filter == 'All registers') {
-                  _selectedFilters
-                    ..clear()
-                    ..add(filter);
-                } else {
-                  _selectedFilters
-                    ..remove('All registers')
-                    ..add(filter);
-                }
-              } else {
-                _selectedFilters.remove(filter);
-                if (_selectedFilters.isEmpty) {
-                  _selectedFilters.add('All registers');
-                }
-              }
-            });
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  bool get _showStructural =>
-      _selectedFilters.contains('All registers') ||
-      _selectedFilters.contains('Structural');
-  bool get _showComponents =>
-      _selectedFilters.contains('All registers') ||
-      _selectedFilters.contains('Components');
-  bool get _showCalculations =>
-      _selectedFilters.contains('All registers') ||
-      _selectedFilters.contains('Calculations');
-  bool get _showCompliance =>
-      _selectedFilters.contains('All registers') ||
-      _selectedFilters.contains('Compliance');
-  bool get _showEcn =>
-      _selectedFilters.contains('All registers') ||
-      _selectedFilters.contains('ECN');
-
-  // ─── Stats Row ─────────────────────────────────────────────────────────────
-
-  Widget _buildStatsRow() {
-    final architectureLayers = _structuralItems.length;
-    final componentsDefined = _componentItems
-        .where((c) => c.status == 'Defined' || c.status == 'In Review')
-        .length;
-    final calculationsComplete =
-        _calculationItems.where((c) => c.status == 'Complete').length;
-    final ecnsActive = _ecnItems
-        .where((e) =>
-            e.status != 'Approved' && e.status != 'Cancelled')
-        .length;
-
-    final stats = [
-      _StatCardData(
-        'Architecture Layers',
-        '$architectureLayers',
-        'Registered',
-        const Color(0xFF0EA5E9),
-      ),
-      _StatCardData(
-        'Components Defined',
-        '$componentsDefined',
-        '${_componentItems.length} total',
-        const Color(0xFF10B981),
-      ),
-      _StatCardData(
-        'Calculations Complete',
-        '$calculationsComplete',
-        '${_calculationItems.length} total',
-        const Color(0xFFF59E0B),
-      ),
-      _StatCardData(
-        'ECNs Active',
-        '$ecnsActive',
-        ecnsActive > 0 ? 'Require attention' : 'All resolved',
-        const Color(0xFF6366F1),
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final useWrap = constraints.maxWidth < 760;
-        if (useWrap) {
-          return Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: stats
-                .map((s) => SizedBox(
-                      width: (constraints.maxWidth - 12) / 2,
-                      child: _buildStatCard(s),
-                    ))
-                .toList(),
-          );
-        }
-        return Row(
-          children: stats
-              .map((s) => Expanded(child: _buildStatCard(s)))
-              .toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(right: 0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data.value,
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: data.color)),
-          const SizedBox(height: 6),
-          Text(data.label,
-              style:
-                  const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-          const SizedBox(height: 4),
-          Text(data.supporting,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: data.color)),
         ],
       ),
     );
@@ -2501,7 +2097,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   // ─── Structural & Architecture Register ────────────────────────────────────
 
   Widget _buildStructuralRegister() {
-    if (!_showStructural) return const SizedBox.shrink();
     return _PanelShell(
       title: 'Structural & Architecture Register',
       subtitle:
@@ -2639,7 +2234,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   // ─── Components & Interfaces Register ──────────────────────────────────────
 
   Widget _buildComponentsRegister() {
-    if (!_showComponents) return const SizedBox.shrink();
     return _PanelShell(
       title: 'Components & Interfaces Register',
       subtitle:
@@ -2778,7 +2372,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   // ─── Calculations & Analysis Register ──────────────────────────────────────
 
   Widget _buildCalculationsRegister() {
-    if (!_showCalculations) return const SizedBox.shrink();
     return _PanelShell(
       title: 'Calculations & Analysis Register',
       subtitle:
@@ -2927,7 +2520,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   // ─── Compliance & Standards Register ───────────────────────────────────────
 
   Widget _buildComplianceRegister() {
-    if (!_showCompliance) return const SizedBox.shrink();
     return _PanelShell(
       title: 'Compliance & Standards Register',
       subtitle:
@@ -3073,7 +2665,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   // ─── ECN Register ──────────────────────────────────────────────────────────
 
   Widget _buildEcnRegister() {
-    if (!_showEcn) return const SizedBox.shrink();
     return _PanelShell(
       title: 'Engineering Change Notices Register',
       subtitle:

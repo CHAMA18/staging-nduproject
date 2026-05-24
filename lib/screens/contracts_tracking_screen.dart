@@ -36,7 +36,6 @@ class ContractsTrackingScreen extends StatefulWidget {
 }
 
 class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
-  final Set<String> _selectedFilters = {'All contracts'};
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
@@ -413,280 +412,6 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
-  Widget _buildHeader(bool isNarrow) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFC812),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            'CONTRACT CONTROL',
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
-          ),
-        ),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = isNarrow || constraints.maxWidth < 1040;
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Contracts Tracking',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Track renewals, approvals, risk signals, and compliance milestones for critical vendor contracts. '
-                  'Aligned with PMI PMBOK Conduct Procurements and Control Procurements processes, '
-                  'this register ensures contract scope, value, and obligations remain visible and actionable throughout execution.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                ),
-              ],
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleBlock,
-                  const SizedBox(height: 12),
-                  _buildHeaderActions(),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: titleBlock),
-                const SizedBox(width: 20),
-                Flexible(child: _buildHeaderActions()),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeaderActions() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _actionButton(Icons.add, 'Add contract',
-            onPressed: () => _showAddContractDialog(context)),
-        _actionButton(Icons.upload_outlined, 'Upload addendum', onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Upload addendum is available from each contract record edit dialog.')),
-          );
-        }),
-        _actionButton(Icons.description_outlined, 'Export register',
-            onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Export register is queued. Use the contracts table while export tools are finalized.')),
-          );
-        }),
-        _primaryButton('Start renewal review'),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label,
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _primaryButton(String label) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        setState(() {
-          _selectedFilters
-            ..clear()
-            ..add('Needs review');
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Renewal review started. Filter set to contracts that need review.')),
-        );
-      },
-      icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0EA5E9),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    const filters = [
-      'All contracts',
-      'Renewal due',
-      'At risk',
-      'Pending sign-off',
-      'Archived'
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return ChoiceChip(
-          label: Text(
-            filter,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : const Color(0xFF475569),
-            ),
-          ),
-          selected: selected,
-          selectedColor: const Color(0xFF111827),
-          backgroundColor: Colors.white,
-          shape: StadiumBorder(
-            side: BorderSide(color: const Color(0xFFE5E7EB)),
-          ),
-          onSelected: (value) {
-            setState(() {
-              if (value) {
-                if (filter == 'All contracts') {
-                  _selectedFilters
-                    ..clear()
-                    ..add(filter);
-                } else {
-                  _selectedFilters
-                    ..remove('All contracts')
-                    ..add(filter);
-                }
-              } else {
-                _selectedFilters.remove(filter);
-                if (_selectedFilters.isEmpty) {
-                  _selectedFilters.add('All contracts');
-                }
-              }
-            });
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildStatsRow(bool isNarrow) {
-    final contractsStream = _contractStreamForProject();
-    if (contractsStream == null) {
-      return const SizedBox.shrink();
-    }
-
-    return StreamBuilder<List<ContractModel>>(
-      stream: contractsStream,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox.shrink();
-        }
-
-        final contracts = snapshot.data!;
-        final activeCount = contracts.where((c) => c.status == 'Active').length;
-        final renewalDue = contracts.where((c) {
-          final endDate = c.endDate;
-          if (endDate == null) return false;
-          final daysUntilRenewal = endDate.difference(DateTime.now()).inDays;
-          return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
-        }).length;
-        final totalValue =
-            contracts.fold<double>(0.0, (total, c) => total + c.estimatedValue);
-        final atRiskCount =
-            contracts.where((c) => c.status == 'At risk').length;
-
-        final stats = [
-          _StatCardData('Active Contracts', '$activeCount',
-              '${contracts.length} total', const Color(0xFF0EA5E9)),
-          _StatCardData(
-              'Total Committed Value',
-              '\$${(totalValue / 1000000).toStringAsFixed(1)}M',
-              'FY spend',
-              const Color(0xFF10B981)),
-          _StatCardData('Upcoming Renewals', '$renewalDue', 'Next 30-60 days',
-              const Color(0xFFF97316)),
-          _StatCardData(
-              'At Risk',
-              '$atRiskCount',
-              atRiskCount > 0 ? 'Require attention' : 'All stable',
-              const Color(0xFF6366F1)),
-        ];
-
-        return Column(
-          children: [
-            for (int i = 0; i < stats.length; i++) ...[
-              SizedBox(
-                  width: double.infinity, child: _buildStatCard(stats[i])),
-              if (i < stats.length - 1) const SizedBox(height: 12),
-            ],
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data.value,
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: data.color)),
-          const SizedBox(height: 6),
-          Text(data.label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-          const SizedBox(height: 6),
-          Text(data.supporting,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: data.color)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildContractManagementGuide() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -831,7 +556,6 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return _PanelShell(
       title: 'Contract register',
       subtitle: 'Track scope, owners, and renewal milestones',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
       child: StreamBuilder<List<ContractModel>>(
         stream: contractsStream,
         builder: (context, snapshot) {
@@ -853,9 +577,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           }
 
           final contracts = snapshot.data ?? [];
-          final filteredContracts = _filterContracts(contracts);
 
-          if (filteredContracts.isEmpty) {
+          if (contracts.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -876,7 +599,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           }
 
           return ContractsTableWidget(
-            contracts: filteredContracts,
+            contracts: contracts,
             onContractUpdated: (updated) async {
               await _updateContract(updated);
             },
@@ -887,34 +610,6 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         },
       ),
     );
-  }
-
-  List<ContractModel> _filterContracts(List<ContractModel> contracts) {
-    if (_selectedFilters.contains('All contracts')) return contracts;
-    return contracts.where((c) {
-      if (_selectedFilters.contains('Renewal due')) {
-        final endDate = c.endDate;
-        if (endDate == null) return false;
-        final daysUntilRenewal = endDate.difference(DateTime.now()).inDays;
-        return daysUntilRenewal <= 60 && daysUntilRenewal > 0;
-      }
-      if (_selectedFilters.contains('At risk')) {
-        final endDate = c.endDate;
-        if (endDate == null) return false;
-        final daysUntilRenewal = endDate.difference(DateTime.now()).inDays;
-        return daysUntilRenewal <= 30 &&
-            daysUntilRenewal > 0 &&
-            c.status != 'Expired';
-      }
-      if (_selectedFilters.contains('Pending sign-off') &&
-          c.status == 'Draft') {
-        return true;
-      }
-      if (_selectedFilters.contains('Archived') && c.status == 'Expired') {
-        return true;
-      }
-      return false;
-    }).toList();
   }
 
   Widget _buildRenewalPanel() {
@@ -3540,11 +3235,4 @@ class _Debouncer {
   }
 }
 
-class _StatCardData {
-  const _StatCardData(this.label, this.value, this.supporting, this.color);
 
-  final String label;
-  final String value;
-  final String supporting;
-  final Color color;
-}

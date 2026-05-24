@@ -659,33 +659,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         children: [
           _buildStableHeaderCard(snapshot),
           const SizedBox(height: 24),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              _buildStableMetricCard(
-                'Control Areas',
-                '${_constraints.length}',
-                const Color(0xFF1D4ED8),
-              ),
-              _buildStableMetricCard(
-                'Trace Links',
-                '${_mappings.length}',
-                const Color(0xFF0F766E),
-              ),
-              _buildStableMetricCard(
-                'Decisions',
-                '${_dependencies.length}',
-                const Color(0xFFD97706),
-              ),
-              _buildStableMetricCard(
-                'Delivery Models',
-                '${_methodologyStandards.length}',
-                const Color(0xFF7C3AED),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
           _buildStableMethodologyMatrix(),
           const SizedBox(height: 24),
           _buildStableReadinessGateTable(),
@@ -801,36 +774,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF111827),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStableMetricCard(String label, String value, Color color) {
-    return Container(
-      width: 180,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: color,
             ),
           ),
         ],

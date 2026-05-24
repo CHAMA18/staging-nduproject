@@ -207,7 +207,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Close-Out Checklist',
       subtitle:
           'Verify all items are addressed before formally closing the project.',
-      columns: const ['Category', 'Item', 'Status', 'Notes'],
+      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _closeOutChecklist.length,
       onAdd: () {
         setState(() => _closeOutChecklist.add(LaunchCloseOutCheckItem()));
@@ -277,7 +277,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Final Approvals',
       subtitle:
           'Stakeholders who must sign off before the project is formally closed.',
-      columns: const ['Stakeholder', 'Role', 'Status', 'Date', 'Notes'],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _approvals.length,
       onAdd: () {
         setState(() => _approvals.add(LaunchApproval()));
@@ -355,11 +355,11 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       subtitle:
           'Document repositories, code, and access changes required for closure.',
       columns: const [
-        'Repository',
-        'Type',
-        'Retention',
-        'Access Change',
-        'Status'
+        LaunchColumn(label: 'Repository', flexible: true),
+        LaunchColumn(label: 'Type', width: 100),
+        LaunchColumn(label: 'Retention', width: 100),
+        LaunchColumn(label: 'Access Change', width: 120),
+        LaunchColumn(label: 'Status', width: 120),
       ],
       rowCount: _archive.length,
       onAdd: () {

@@ -171,13 +171,7 @@ class _VendorAccountCloseOutScreenState
     return LaunchDataTable(
       title: 'Vendor Close-Out Table',
       subtitle: 'Track each vendor\'s account status and outstanding items.',
-      columns: const [
-        'Vendor',
-        'Contract Ref',
-        'Status',
-        'Outstanding',
-        'Notes'
-      ],
+      columns: const [LaunchColumn(label: 'Vendor', flexible: true), LaunchColumn(label: 'Contract Ref', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Outstanding', flexible: true), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _vendors.length,
       onAdd: () {
         setState(() => _vendors.add(LaunchVendorItem()));
@@ -257,13 +251,7 @@ class _VendorAccountCloseOutScreenState
       title: 'Access Revocation',
       subtitle:
           'Track system/tool access that needs to be revoked for each vendor.',
-      columns: const [
-        'System',
-        'Vendor',
-        'Access Level',
-        'Revoked Date',
-        'Status',
-      ],
+      columns: const [LaunchColumn(label: 'System', flexible: true), LaunchColumn(label: 'Vendor', width: 110), LaunchColumn(label: 'Access Level', width: 120), LaunchColumn(label: 'Revoked Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _accessItems.length,
       onAdd: () {
         setState(() => _accessItems.add(LaunchAccessItem()));
@@ -341,7 +329,7 @@ class _VendorAccountCloseOutScreenState
       title: 'Outstanding Obligations',
       subtitle:
           'Pending payments, deliverables, SLAs, or warranties requiring resolution.',
-      columns: const ['Obligation', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Obligation', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _obligations.length,
       onAdd: () {
         setState(() => _obligations.add(LaunchFollowUpItem()));
@@ -409,7 +397,7 @@ class _VendorAccountCloseOutScreenState
       title: 'Account Closure Checklist',
       subtitle:
           'Standardized steps to verify each vendor account is fully closed.',
-      columns: const ['Task', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _closureChecklist.length,
       onAdd: () {
         setState(() => _closureChecklist.add(LaunchFollowUpItem()));

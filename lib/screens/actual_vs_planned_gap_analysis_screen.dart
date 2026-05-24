@@ -164,7 +164,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Scope Gap Analysis',
       subtitle: 'Compare planned deliverables vs actual outcomes.',
-      columns: const ['Planned', 'Actual', 'Gap', 'Status'],
+      columns: const [LaunchColumn(label: 'Planned', flexible: true), LaunchColumn(label: 'Actual', flexible: true), LaunchColumn(label: 'Gap', flexible: true), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _scopeGaps.length,
       onAdd: () {
         setState(() => _scopeGaps.add(LaunchGapItem()));
@@ -230,7 +230,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Milestone Variance',
       subtitle: 'Compare planned vs actual milestone dates.',
-      columns: const ['Milestone', 'Planned', 'Actual', 'Variance', 'Status'],
+      columns: const [LaunchColumn(label: 'Milestone', flexible: true), LaunchColumn(label: 'Planned', width: 110), LaunchColumn(label: 'Actual', width: 110), LaunchColumn(label: 'Variance', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _milestoneVariances.length,
       onAdd: () {
         setState(() => _milestoneVariances.add(LaunchMilestoneVariance()));
@@ -303,7 +303,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Budget Variance',
       subtitle: 'Compare planned vs actual costs by category.',
-      columns: const ['Category', 'Planned', 'Actual', 'Variance', '%'],
+      columns: const [LaunchColumn(label: 'Category', flexible: true), LaunchColumn(label: 'Planned', width: 100), LaunchColumn(label: 'Actual', width: 100), LaunchColumn(label: 'Variance', width: 100), LaunchColumn(label: '%', width: 80)],
       rowCount: _budgetVariances.length,
       onAdd: () {
         setState(() => _budgetVariances.add(LaunchBudgetVariance()));
@@ -378,7 +378,7 @@ class _ActualVsPlannedGapAnalysisScreenState
       title: 'Root Cause Analysis',
       subtitle:
           'For major gaps: identify root cause, impact, and corrective action.',
-      columns: const ['Gap', 'Root Cause', 'Impact', 'Action', 'Status'],
+      columns: const [LaunchColumn(label: 'Gap', flexible: true), LaunchColumn(label: 'Root Cause', flexible: true), LaunchColumn(label: 'Impact', width: 120), LaunchColumn(label: 'Action', flexible: true), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _rootCauses.length,
       onAdd: () {
         setState(() => _rootCauses.add(LaunchRootCauseItem()));
@@ -453,7 +453,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Follow-Up Actions',
       subtitle: 'Items requiring post-project attention.',
-      columns: const ['Action', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Action', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _followUpActions.length,
       onAdd: () {
         setState(() => _followUpActions.add(LaunchFollowUpItem()));

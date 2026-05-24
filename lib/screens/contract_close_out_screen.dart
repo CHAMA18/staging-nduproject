@@ -169,7 +169,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Financial Summary',
       subtitle: 'Key financial metrics for contract close-out.',
-      columns: const ['Metric', 'Value', 'Notes'],
+      columns: const [LaunchColumn(label: 'Metric', flexible: true), LaunchColumn(label: 'Value', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _financialSummary.length,
       onAdd: () {
         setState(() => _financialSummary.add(LaunchFinancialMetric()));
@@ -227,7 +227,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       title: 'Contracts Status',
       subtitle:
           'All contracts requiring close-out. Import from execution or add manually.',
-      columns: const ['Contract', 'Vendor', 'Ref', 'Value', 'Status'],
+      columns: const [LaunchColumn(label: 'Contract', flexible: true), LaunchColumn(label: 'Vendor', width: 110), LaunchColumn(label: 'Ref', width: 100), LaunchColumn(label: 'Value', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _contracts.length,
       onAdd: () {
         setState(() => _contracts.add(LaunchContractItem()));
@@ -303,7 +303,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Close-Out Steps',
       subtitle: 'Standardized steps to verify each contract is fully closed.',
-      columns: const ['Step', 'Contract Ref', 'Status', 'Notes'],
+      columns: const [LaunchColumn(label: 'Step', flexible: true), LaunchColumn(label: 'Contract Ref', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _closeOutSteps.length,
       onAdd: () {
         setState(() => _closeOutSteps.add(LaunchCloseOutStep()));
@@ -370,7 +370,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Financial & Compliance Sign-Off',
       subtitle: 'Track approvals from finance, legal, and compliance.',
-      columns: const ['Approver', 'Role', 'Status', 'Date', 'Notes'],
+      columns: const [LaunchColumn(label: 'Approver', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _signOffs.length,
       onAdd: () {
         setState(() => _signOffs.add(LaunchApproval()));

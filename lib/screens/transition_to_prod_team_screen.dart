@@ -163,7 +163,7 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Production Team Roster',
       subtitle: 'Members receiving the handover from the project team.',
-      columns: const ['Name', 'Role', 'Contact', 'Start Date', 'Status'],
+      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Start Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _teamRoster.length,
       onAdd: _addMember,
       importLabel: 'Import from Staffing',
@@ -232,7 +232,7 @@ class _TransitionToProdTeamScreenState
       title: 'Handover Checklist',
       subtitle:
           'Structured items to transfer to production: docs, access, monitoring, training, runbooks.',
-      columns: const ['Category', 'Item', 'Owner', 'Due', 'Status'],
+      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Due', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _handoverChecklist.length,
       onAdd: _addHandoverItem,
       emptyMessage:
@@ -299,7 +299,7 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Track sessions, artifacts, and owners for knowledge capture.',
-      columns: const ['Topic', 'From', 'To', 'Method', 'Status'],
+      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _knowledgeTransfers.length,
       onAdd: _addKnowledgeTransfer,
       emptyMessage:
@@ -366,7 +366,7 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Ops & Client Sign-Offs',
       subtitle: 'Track who needs to approve the handover and their status.',
-      columns: const ['Stakeholder', 'Role', 'Status', 'Date', 'Notes'],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _signOffs.length,
       onAdd: _addApproval,
       emptyMessage:

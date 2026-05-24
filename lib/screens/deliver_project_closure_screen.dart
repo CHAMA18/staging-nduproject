@@ -173,7 +173,12 @@ class _DeliverProjectClosureScreenState
       title: 'Scope Acceptance',
       subtitle:
           'Track acceptance status for each deliverable. Items are editable inline.',
-      columns: ['Deliverable', 'Criteria', 'Status', 'Date'],
+      columns: const [
+        LaunchColumn(label: 'Deliverable', flexible: true),
+        LaunchColumn(label: 'Criteria', flexible: true),
+        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Date', width: 100),
+      ],
       rowCount: _scopeItems.length,
       onAdd: () => _addScopeItem(),
       importLabel: 'Import Scope',
@@ -231,7 +236,12 @@ class _DeliverProjectClosureScreenState
     return LaunchDataTable(
       title: 'Delivery Milestones',
       subtitle: 'Track planned vs actual completion for key milestones.',
-      columns: ['Milestone', 'Planned', 'Actual', 'Status'],
+      columns: const [
+        LaunchColumn(label: 'Milestone', flexible: true),
+        LaunchColumn(label: 'Planned', width: 120),
+        LaunchColumn(label: 'Actual', width: 120),
+        LaunchColumn(label: 'Status', width: 120),
+      ],
       rowCount: _milestones.length,
       onAdd: () => _addMilestone(),
       emptyMessage:
@@ -285,7 +295,12 @@ class _DeliverProjectClosureScreenState
     return LaunchDataTable(
       title: 'Outstanding Items',
       subtitle: 'Items still pending closure before or shortly after handover.',
-      columns: ['Title', 'Details', 'Owner', 'Status'],
+      columns: const [
+        LaunchColumn(label: 'Title', flexible: true),
+        LaunchColumn(label: 'Details', flexible: true),
+        LaunchColumn(label: 'Owner', width: 120),
+        LaunchColumn(label: 'Status', width: 120),
+      ],
       rowCount: _outstandingItems.length,
       onAdd: () => _addFollowUp(_outstandingItems),
       emptyMessage:
@@ -341,7 +356,12 @@ class _DeliverProjectClosureScreenState
     return LaunchDataTable(
       title: 'Post-Delivery Risks',
       subtitle: 'Risks and gaps to monitor after project delivery.',
-      columns: ['Title', 'Details', 'Owner', 'Status'],
+      columns: const [
+        LaunchColumn(label: 'Title', flexible: true),
+        LaunchColumn(label: 'Details', flexible: true),
+        LaunchColumn(label: 'Owner', width: 120),
+        LaunchColumn(label: 'Status', width: 120),
+      ],
       rowCount: _riskFollowUps.length,
       onAdd: () => _addFollowUp(_riskFollowUps),
       emptyMessage:

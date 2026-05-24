@@ -216,7 +216,7 @@ class _SummarizeAccountRisksScreenState
     return LaunchDataTable(
       title: 'Highlights & Wins',
       subtitle: 'Key achievements and what went well.',
-      columns: const ['Highlight', 'Details'],
+      columns: const [LaunchColumn(label: 'Highlight', flexible: true), LaunchColumn(label: 'Details', flexible: true)],
       rowCount: _highlights.length,
       onAdd: () {
         setState(() => _highlights.add(LaunchHighlightItem()));
@@ -263,7 +263,7 @@ class _SummarizeAccountRisksScreenState
     return LaunchDataTable(
       title: 'Top Risks',
       subtitle: 'Key risks that need attention or monitoring post-launch.',
-      columns: const ['Risk', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Risk', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _topRisks.length,
       onAdd: () {
         setState(() => _topRisks.add(LaunchFollowUpItem()));
@@ -330,7 +330,7 @@ class _SummarizeAccountRisksScreenState
       title: 'Next 90 Days Focus',
       subtitle:
           'Immediate priorities and follow-ups to keep the project on track post-launch.',
-      columns: const ['Priority', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Priority', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _next90Days.length,
       onAdd: () {
         setState(() => _next90Days.add(LaunchFollowUpItem()));

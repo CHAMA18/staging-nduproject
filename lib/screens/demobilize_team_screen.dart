@@ -176,7 +176,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Team Ramp-Down Roster',
       subtitle: 'Track each team member\'s release status and dates.',
-      columns: const ['Name', 'Role', 'Contact', 'Status'],
+      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _teamRoster.length,
       onAdd: () {
         setState(() => _teamRoster.add(LaunchTeamMember()));
@@ -244,7 +244,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Sessions and artifacts being handed off before team release.',
-      columns: const ['Topic', 'From', 'To', 'Method', 'Status'],
+      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _knowledgeTransfers.length,
       onAdd: () {
         setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
@@ -320,7 +320,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Vendor Offboarding',
       subtitle:
           'Track vendor exits, access cleanup, and remaining obligations.',
-      columns: const ['Task', 'Details', 'Owner', 'Status'],
+      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _vendorOffboarding.length,
       onAdd: () {
         setState(() => _vendorOffboarding.add(LaunchFollowUpItem()));
@@ -387,7 +387,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Communications & People Care',
       subtitle:
           'Planned communications to stakeholders, team, and affected people.',
-      columns: const ['Audience', 'Message', 'Channel', 'Send Date', 'Status'],
+      columns: const [LaunchColumn(label: 'Audience', flexible: true), LaunchColumn(label: 'Message', flexible: true), LaunchColumn(label: 'Channel', width: 100), LaunchColumn(label: 'Send Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _communications.length,
       onAdd: () {
         setState(() => _communications.add(LaunchCommunicationItem()));

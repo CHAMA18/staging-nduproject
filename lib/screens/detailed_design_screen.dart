@@ -766,7 +766,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
       subtitle:
           'Decomposition view per IEEE 1016 — architectural patterns, service boundaries, and integration topology',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.account_tree_outlined,
       headerIconColor: const Color(0xFF7C3AED),
       child: LayoutBuilder(
@@ -799,7 +799,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
         subtitle:
             'Traceable specifications with MoSCoW prioritization, methodology phasing, and requirements traceability',
         collapsible: true,
-        initiallyExpanded: true,
+        initiallyExpanded: false,
         headerIcon: Icons.folder_special_outlined,
         headerIconColor: const Color(0xFF2563EB),
         child: const Center(
@@ -818,7 +818,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
       subtitle:
           'Traceable specifications with MoSCoW prioritization, methodology phasing, and requirements traceability',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.folder_special_outlined,
       headerIconColor: const Color(0xFF2563EB),
       trailing: _buildSpecTypeLegend(),

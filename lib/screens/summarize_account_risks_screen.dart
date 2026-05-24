@@ -181,7 +181,7 @@ class _SummarizeAccountRisksScreenState
       title: 'Executive Summary',
       subtitle: 'Narrative overview of the project status at launch.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.summarize_outlined,
       headerIconColor: const Color(0xFFEF4444),
       child: VoiceTextFormField(

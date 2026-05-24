@@ -436,7 +436,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                 subtitle:
                     'Switch between live deliverables, recurring execution work, and stakeholder reporting without nested tables or fixed-height tabs.',
                 collapsible: true,
-                initiallyExpanded: true,
+                initiallyExpanded: false,
                 headerIcon: Icons.view_timeline_outlined,
                 headerIconColor: const Color(0xFF2563EB),
                 child: Wrap(

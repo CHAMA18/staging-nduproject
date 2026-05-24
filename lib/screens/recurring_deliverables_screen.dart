@@ -336,7 +336,7 @@ class _RecurringDeliverablesScreenState
           'They anchor the project\'s operational heartbeat and provide predictable '
           'touchpoints for governance, quality assurance, and team coordination.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.schedule_outlined,
       headerIconColor: const Color(0xFF7C3AED),
       child: Column(

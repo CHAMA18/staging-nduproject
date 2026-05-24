@@ -398,7 +398,7 @@ class _DeliverProjectClosureScreenState
       title: 'Closure Notes',
       subtitle: 'Any additional notes or context for the delivery record.',
       collapsible: true,
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       headerIcon: Icons.note_alt_outlined,
       headerIconColor: const Color(0xFF6366F1),
       child: VoiceTextFormField(

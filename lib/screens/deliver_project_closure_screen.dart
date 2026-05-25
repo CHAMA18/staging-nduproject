@@ -74,8 +74,6 @@ class _DeliverProjectClosureScreenState
               showContentButton: false,
               showNavigationButtons: false,
             ),
-            const SizedBox(height: 16),
-            _buildHeader(),
             const SizedBox(height: 20),
             _buildMetricsRow(),
             const SizedBox(height: 20),
@@ -98,26 +96,6 @@ class _DeliverProjectClosureScreenState
             const SizedBox(height: 48),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return ExecutionPageHeader(
-      badge: 'LAUNCH PHASE',
-      title: 'Deliver Project · Closure Summary',
-      description:
-          'Confirm scope is delivered and accepted. Review milestones, outstanding items, and post-delivery risks before transitioning.',
-      trailing: ExecutionActionBar(
-        actions: [
-          ExecutionActionItem(
-            label: _isGenerating ? 'Generating…' : 'AI Assist',
-            icon: Icons.auto_awesome_outlined,
-            tone: ExecutionActionTone.ai,
-            isLoading: _isGenerating,
-            onPressed: _isGenerating ? null : _populateFromAi,
-          ),
-        ],
       ),
     );
   }

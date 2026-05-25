@@ -129,7 +129,13 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
               _selectedView = _selectedView == 'full' ? 'summary' : 'full';
             }),
           ),
-
+          ExecutionActionItem(
+            label: _isGenerating ? 'Generating…' : 'AI Assist',
+            icon: Icons.auto_awesome_outlined,
+            tone: ExecutionActionTone.ai,
+            isLoading: _isGenerating,
+            onPressed: _isGenerating ? null : _populateFromAi,
+          ),
         ],
       ),
     );

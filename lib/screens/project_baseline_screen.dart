@@ -30,6 +30,7 @@ class ProjectBaselineScreen extends StatefulWidget {
 class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   bool _loading = true;
   bool _showComparison = false;
+  bool _isGenerating = false;
 
   String _projectName = '';
   DateTime? _baselineStartDate;
@@ -584,6 +585,71 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     );
   }
 
+  Future<void> _regenerateNotes() async {
+    if (_isGenerating) return;
+
+    setState(() => _isGenerating = true);
+
+    try {
+      final contextText = _buildAiContext();
+      final ai = OpenAiServiceSecure();
+      final text = await ai.generateFepSectionText(
+        section: 'Project Baseline Summary',
+        context: contextText,
+        maxTokens: 800,
+        temperature: 0.6,
+      );
+
+      if (!mounted) return;
+      final cleaned = TextSanitizer.sanitizeAiRichText(text).trim();
+      if (cleaned.isNotEmpty) {
+        await ProjectDataHelper.updateAndSave(
+          context: context,
+          checkpoint: 'project_baseline',
+          showSnackbar: false,
+          dataUpdater: (data) => data.copyWith(
+            planningNotes: {
+              ...data.planningNotes,
+              'planning_project_baseline_notes': cleaned,
+            },
+          ),
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI generation failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
+
+  String _buildAiContext() {
+    final buffer = StringBuffer();
+    buffer.writeln('Project: $_projectName');
+    buffer.writeln('');
+    buffer.writeln('SCHEDULE BASELINE:');
+    buffer.writeln(_buildScheduleSummary());
+    buffer.writeln('');
+    buffer.writeln('COST BASELINE:');
+    buffer.writeln(_buildCostSummary());
+    buffer.writeln('');
+    buffer.writeln('SCOPE BASELINE:');
+    buffer.writeln(_buildScopeSummary());
+    buffer.writeln('');
+    buffer.writeln('MILESTONES:');
+    for (final m in _milestones) {
+      buffer
+          .writeln('- ${m.name}: ${_formatDate(m.baselineDate)} (${m.status})');
+    }
+    buffer.writeln('');
+    buffer.writeln(
+        'Generate a summary of the project baseline including key dates, budget summary, and scope boundaries.');
+    return buffer.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
@@ -698,6 +764,26 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _isGenerating ? null : _regenerateNotes,
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 18),
+                label: const Text('AI Assist'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF8B5CF6),
+                  side: const BorderSide(color: Color(0xFF8B5CF6)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(width: 12),

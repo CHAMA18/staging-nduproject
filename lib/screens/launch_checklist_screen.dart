@@ -41,7 +41,6 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
-  bool _isExporting = false;
   String _selectedView = 'full'; // 'full' or 'summary'
 
   String? get _projectId => ProjectDataHelper.getData(context).projectId;

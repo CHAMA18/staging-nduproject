@@ -46,7 +46,6 @@ class _ActualVsPlannedGapAnalysisScreenState
   bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
-  bool _isExporting = false;
   String _selectedView = 'full'; // 'full' or 'summary'
 
   @override

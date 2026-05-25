@@ -185,9 +185,20 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Production Team Roster',
       subtitle: 'Members receiving the handover from the project team.',
-      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Start Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Name', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Contact', width: 120, fieldType: LaunchFieldType.text, hint: 'Contact'), LaunchColumn(label: 'Start Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Start'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Transitioning', 'Released'])],
       rowCount: _teamRoster.length,
-      onAdd: _addMember,
+      onAddValues: (values) {
+        setState(() {
+          _teamRoster.add(LaunchTeamMember(
+            name: values['Name'] ?? '',
+            role: values['Role'] ?? '',
+            contact: values['Contact'] ?? '',
+            startDate: values['Start Date'] ?? '',
+            releaseStatus: values['Status'] ?? 'Active',
+          ));
+        });
+        _scheduleSave();
+      },
       importLabel: 'Import from Staffing',
       onImport: _importStaffing,
       emptyMessage:
@@ -254,9 +265,20 @@ class _TransitionToProdTeamScreenState
       title: 'Handover Checklist',
       subtitle:
           'Structured items to transfer to production: docs, access, monitoring, training, runbooks.',
-      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Due', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Category', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchHandoverItem.categories), LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete'])],
       rowCount: _handoverChecklist.length,
-      onAdd: _addHandoverItem,
+      onAddValues: (values) {
+        setState(() {
+          _handoverChecklist.add(LaunchHandoverItem(
+            category: values['Category'] ?? 'Documentation',
+            item: values['Item'] ?? '',
+            owner: values['Owner'] ?? '',
+            dueDate: values['Due'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
+        _scheduleSave();
+      },
       emptyMessage:
           'No handover items. Add items to track the production handover.',
       cellBuilder: (context, idx) {
@@ -321,9 +343,20 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Track sessions, artifacts, and owners for knowledge capture.',
-      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Topic', flexible: true, fieldType: LaunchFieldType.text, hint: 'Topic'), LaunchColumn(label: 'From', width: 110, fieldType: LaunchFieldType.text, hint: 'From'), LaunchColumn(label: 'To', width: 110, fieldType: LaunchFieldType.text, hint: 'To'), LaunchColumn(label: 'Method', width: 100, fieldType: LaunchFieldType.text, hint: 'Method'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete'])],
       rowCount: _knowledgeTransfers.length,
-      onAdd: _addKnowledgeTransfer,
+      onAddValues: (values) {
+        setState(() {
+          _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+            topic: values['Topic'] ?? '',
+            fromPerson: values['From'] ?? '',
+            toPerson: values['To'] ?? '',
+            method: values['Method'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
+        _scheduleSave();
+      },
       emptyMessage:
           'No knowledge transfers. Track knowledge handoff from project team to operations.',
       cellBuilder: (context, idx) {
@@ -388,9 +421,20 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Ops & Client Sign-Offs',
       subtitle: 'Track who needs to approve the handover and their status.',
-      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _signOffs.length,
-      onAdd: _addApproval,
+      onAddValues: (values) {
+        setState(() {
+          _signOffs.add(LaunchApproval(
+            stakeholder: values['Stakeholder'] ?? '',
+            role: values['Role'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            date: values['Date'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
+        _scheduleSave();
+      },
       emptyMessage:
           'No sign-offs yet. Capture who needs to approve the handover.',
       cellBuilder: (context, idx) {
@@ -448,26 +492,6 @@ class _TransitionToProdTeamScreenState
         );
       },
     );
-  }
-
-  void _addMember() {
-    setState(() => _teamRoster.add(LaunchTeamMember()));
-    _scheduleSave();
-  }
-
-  void _addHandoverItem() {
-    setState(() => _handoverChecklist.add(LaunchHandoverItem()));
-    _scheduleSave();
-  }
-
-  void _addKnowledgeTransfer() {
-    setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
-    _scheduleSave();
-  }
-
-  void _addApproval() {
-    setState(() => _signOffs.add(LaunchApproval()));
-    _scheduleSave();
   }
 
   Future<void> _deleteTeamMember(int idx) async {

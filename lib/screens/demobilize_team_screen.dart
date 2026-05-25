@@ -198,10 +198,20 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Team Ramp-Down Roster',
       subtitle: 'Track each team member\'s release status and dates.',
-      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Name', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'),
+        LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'),
+        LaunchColumn(label: 'Contact', width: 120, fieldType: LaunchFieldType.text, hint: 'Contact'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Transitioning', 'Released']),
+      ],
       rowCount: _teamRoster.length,
-      onAdd: () {
-        setState(() => _teamRoster.add(LaunchTeamMember()));
+      onAddValues: (values) {
+        setState(() => _teamRoster.add(LaunchTeamMember(
+          name: values['Name'] ?? '',
+          role: values['Role'] ?? '',
+          contact: values['Contact'] ?? '',
+          releaseStatus: values['Status'] ?? 'Active',
+        )));
         _save();
       },
       onImport: _importTeam,
@@ -266,10 +276,22 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Sessions and artifacts being handed off before team release.',
-      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Topic', flexible: true, fieldType: LaunchFieldType.text, hint: 'Topic'),
+        LaunchColumn(label: 'From', width: 110, fieldType: LaunchFieldType.text, hint: 'From'),
+        LaunchColumn(label: 'To', width: 110, fieldType: LaunchFieldType.text, hint: 'To'),
+        LaunchColumn(label: 'Method', width: 100, fieldType: LaunchFieldType.text, hint: 'Method'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete']),
+      ],
       rowCount: _knowledgeTransfers.length,
-      onAdd: () {
-        setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
+      onAddValues: (values) {
+        setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+          topic: values['Topic'] ?? '',
+          fromPerson: values['From'] ?? '',
+          toPerson: values['To'] ?? '',
+          method: values['Method'] ?? '',
+          status: values['Status'] ?? 'Pending',
+        )));
         _save();
       },
       emptyMessage: 'No transfers. Track knowledge handoff sessions.',
@@ -342,10 +364,20 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Vendor Offboarding',
       subtitle:
           'Track vendor exits, access cleanup, and remaining obligations.',
-      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'),
+        LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'),
+        LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
+      ],
       rowCount: _vendorOffboarding.length,
-      onAdd: () {
-        setState(() => _vendorOffboarding.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() => _vendorOffboarding.add(LaunchFollowUpItem(
+          title: values['Task'] ?? '',
+          details: values['Details'] ?? '',
+          owner: values['Owner'] ?? '',
+          status: values['Status'] ?? 'Pending',
+        )));
         _save();
       },
       emptyMessage: 'No vendor items. Track vendor offboarding tasks.',
@@ -409,10 +441,22 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Communications & People Care',
       subtitle:
           'Planned communications to stakeholders, team, and affected people.',
-      columns: const [LaunchColumn(label: 'Audience', flexible: true), LaunchColumn(label: 'Message', flexible: true), LaunchColumn(label: 'Channel', width: 100), LaunchColumn(label: 'Send Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Audience', flexible: true, fieldType: LaunchFieldType.text, hint: 'Audience'),
+        LaunchColumn(label: 'Message', flexible: true, fieldType: LaunchFieldType.text, hint: 'Message'),
+        LaunchColumn(label: 'Channel', width: 100, fieldType: LaunchFieldType.text, hint: 'Channel'),
+        LaunchColumn(label: 'Send Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Send Date'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Planned', 'Sent', 'Cancelled']),
+      ],
       rowCount: _communications.length,
-      onAdd: () {
-        setState(() => _communications.add(LaunchCommunicationItem()));
+      onAddValues: (values) {
+        setState(() => _communications.add(LaunchCommunicationItem(
+          audience: values['Audience'] ?? '',
+          message: values['Message'] ?? '',
+          channel: values['Channel'] ?? '',
+          sendDate: values['Send Date'] ?? '',
+          status: values['Status'] ?? 'Planned',
+        )));
         _save();
       },
       emptyMessage:

@@ -186,10 +186,15 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Scope Gap Analysis',
       subtitle: 'Compare planned deliverables vs actual outcomes.',
-      columns: const [LaunchColumn(label: 'Planned', flexible: true), LaunchColumn(label: 'Actual', flexible: true), LaunchColumn(label: 'Gap', flexible: true), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Planned', flexible: true, fieldType: LaunchFieldType.text, hint: 'Planned'), LaunchColumn(label: 'Actual', flexible: true, fieldType: LaunchFieldType.text, hint: 'Actual'), LaunchColumn(label: 'Gap', flexible: true, fieldType: LaunchFieldType.text, hint: 'Gap'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchGapItem.gapStatuses, hint: 'Status')],
       rowCount: _scopeGaps.length,
-      onAdd: () {
-        setState(() => _scopeGaps.add(LaunchGapItem()));
+      onAddValues: (values) {
+        setState(() => _scopeGaps.add(LaunchGapItem(
+          planned: values['Planned'] ?? '',
+          actual: values['Actual'] ?? '',
+          gapDescription: values['Gap'] ?? '',
+          gapStatus: values['Status'] ?? 'Met',
+        )));
         _save();
       },
       emptyMessage: 'Add items to compare planned vs actual.',
@@ -252,10 +257,16 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Milestone Variance',
       subtitle: 'Compare planned vs actual milestone dates.',
-      columns: const [LaunchColumn(label: 'Milestone', flexible: true), LaunchColumn(label: 'Planned', width: 110), LaunchColumn(label: 'Actual', width: 110), LaunchColumn(label: 'Variance', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'), LaunchColumn(label: 'Planned', width: 110, fieldType: LaunchFieldType.date, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 110, fieldType: LaunchFieldType.date, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 100, fieldType: LaunchFieldType.text, hint: 'Days'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['On Track', 'Delayed', 'Missed', 'Early'], hint: 'Status')],
       rowCount: _milestoneVariances.length,
-      onAdd: () {
-        setState(() => _milestoneVariances.add(LaunchMilestoneVariance()));
+      onAddValues: (values) {
+        setState(() => _milestoneVariances.add(LaunchMilestoneVariance(
+          milestone: values['Milestone'] ?? '',
+          plannedDate: values['Planned'] ?? '',
+          actualDate: values['Actual'] ?? '',
+          varianceDays: values['Variance'] ?? '',
+          status: values['Status'] ?? 'On Track',
+        )));
         _save();
       },
       emptyMessage: 'Track planned vs actual milestone dates.',
@@ -325,10 +336,16 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Budget Variance',
       subtitle: 'Compare planned vs actual costs by category.',
-      columns: const [LaunchColumn(label: 'Category', flexible: true), LaunchColumn(label: 'Planned', width: 100), LaunchColumn(label: 'Actual', width: 100), LaunchColumn(label: 'Variance', width: 100), LaunchColumn(label: '%', width: 80)],
+      columns: const [LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'), LaunchColumn(label: 'Planned', width: 100, fieldType: LaunchFieldType.text, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 100, fieldType: LaunchFieldType.text, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 100, fieldType: LaunchFieldType.text, hint: 'Variance'), LaunchColumn(label: '%', width: 80, fieldType: LaunchFieldType.text, hint: '%')],
       rowCount: _budgetVariances.length,
-      onAdd: () {
-        setState(() => _budgetVariances.add(LaunchBudgetVariance()));
+      onAddValues: (values) {
+        setState(() => _budgetVariances.add(LaunchBudgetVariance(
+          category: values['Category'] ?? '',
+          plannedAmount: values['Planned'] ?? '',
+          actualAmount: values['Actual'] ?? '',
+          variance: values['Variance'] ?? '',
+          variancePercent: values['%'] ?? '',
+        )));
         _save();
       },
       emptyMessage: 'Track planned vs actual budget by category.',
@@ -400,10 +417,16 @@ class _ActualVsPlannedGapAnalysisScreenState
       title: 'Root Cause Analysis',
       subtitle:
           'For major gaps: identify root cause, impact, and corrective action.',
-      columns: const [LaunchColumn(label: 'Gap', flexible: true), LaunchColumn(label: 'Root Cause', flexible: true), LaunchColumn(label: 'Impact', width: 120), LaunchColumn(label: 'Action', flexible: true), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Gap', flexible: true, fieldType: LaunchFieldType.text, hint: 'Gap'), LaunchColumn(label: 'Root Cause', flexible: true, fieldType: LaunchFieldType.text, hint: 'Cause'), LaunchColumn(label: 'Impact', width: 120, fieldType: LaunchFieldType.text, hint: 'Impact'), LaunchColumn(label: 'Action', flexible: true, fieldType: LaunchFieldType.text, hint: 'Action'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Resolved'], hint: 'Status')],
       rowCount: _rootCauses.length,
-      onAdd: () {
-        setState(() => _rootCauses.add(LaunchRootCauseItem()));
+      onAddValues: (values) {
+        setState(() => _rootCauses.add(LaunchRootCauseItem(
+          gap: values['Gap'] ?? '',
+          rootCause: values['Root Cause'] ?? '',
+          impact: values['Impact'] ?? '',
+          correctiveAction: values['Action'] ?? '',
+          status: values['Status'] ?? 'Open',
+        )));
         _save();
       },
       emptyMessage: 'Analyze why major gaps occurred.',
@@ -475,10 +498,15 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Follow-Up Actions',
       subtitle: 'Items requiring post-project attention.',
-      columns: const [LaunchColumn(label: 'Action', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Action', flexible: true, fieldType: LaunchFieldType.text, hint: 'Action'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Complete'], hint: 'Status')],
       rowCount: _followUpActions.length,
-      onAdd: () {
-        setState(() => _followUpActions.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() => _followUpActions.add(LaunchFollowUpItem(
+          title: values['Action'] ?? '',
+          details: values['Details'] ?? '',
+          owner: values['Owner'] ?? '',
+          status: values['Status'] ?? 'Open',
+        )));
         _save();
       },
       emptyMessage: 'List items requiring attention after project closure.',

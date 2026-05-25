@@ -238,10 +238,15 @@ class _SummarizeAccountRisksScreenState
     return LaunchDataTable(
       title: 'Highlights & Wins',
       subtitle: 'Key achievements and what went well.',
-      columns: const [LaunchColumn(label: 'Highlight', flexible: true), LaunchColumn(label: 'Details', flexible: true)],
+      columns: const [LaunchColumn(label: 'Highlight', flexible: true, fieldType: LaunchFieldType.text, hint: 'Highlight'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details')],
       rowCount: _highlights.length,
-      onAdd: () {
-        setState(() => _highlights.add(LaunchHighlightItem()));
+      onAddValues: (values) {
+        setState(() {
+          _highlights.add(LaunchHighlightItem(
+            title: values['Highlight'] ?? '',
+            details: values['Details'] ?? '',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Capture wins and achievements.',
@@ -285,10 +290,17 @@ class _SummarizeAccountRisksScreenState
     return LaunchDataTable(
       title: 'Top Risks',
       subtitle: 'Key risks that need attention or monitoring post-launch.',
-      columns: const [LaunchColumn(label: 'Risk', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Risk', flexible: true, fieldType: LaunchFieldType.text, hint: 'Risk'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'Mitigated', 'Closed'])],
       rowCount: _topRisks.length,
-      onAdd: () {
-        setState(() => _topRisks.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _topRisks.add(LaunchFollowUpItem(
+            title: values['Risk'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Open',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Document key delivery risks and mitigation plans.',
@@ -352,10 +364,17 @@ class _SummarizeAccountRisksScreenState
       title: 'Next 90 Days Focus',
       subtitle:
           'Immediate priorities and follow-ups to keep the project on track post-launch.',
-      columns: const [LaunchColumn(label: 'Priority', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Priority', flexible: true, fieldType: LaunchFieldType.text, hint: 'Priority'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Planned', 'In Progress', 'Complete'])],
       rowCount: _next90Days.length,
-      onAdd: () {
-        setState(() => _next90Days.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _next90Days.add(LaunchFollowUpItem(
+            title: values['Priority'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Planned',
+          ));
+        });
         _save();
       },
       emptyMessage: 'List immediate priorities for the next 90 days.',

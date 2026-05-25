@@ -193,10 +193,18 @@ class _VendorAccountCloseOutScreenState
     return LaunchDataTable(
       title: 'Vendor Close-Out Table',
       subtitle: 'Track each vendor\'s account status and outstanding items.',
-      columns: const [LaunchColumn(label: 'Vendor', flexible: true), LaunchColumn(label: 'Contract Ref', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Outstanding', flexible: true), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Vendor', flexible: true, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Contract Ref', width: 120, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Closing', 'Closed']), LaunchColumn(label: 'Outstanding', flexible: true, fieldType: LaunchFieldType.text, hint: 'Items'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _vendors.length,
-      onAdd: () {
-        setState(() => _vendors.add(LaunchVendorItem()));
+      onAddValues: (values) {
+        setState(() {
+          _vendors.add(LaunchVendorItem(
+            vendorName: values['Vendor'] ?? '',
+            contractRef: values['Contract Ref'] ?? '',
+            accountStatus: values['Status'] ?? 'Active',
+            outstandingItems: values['Outstanding'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       importLabel: 'Import Vendors',
@@ -273,10 +281,18 @@ class _VendorAccountCloseOutScreenState
       title: 'Access Revocation',
       subtitle:
           'Track system/tool access that needs to be revoked for each vendor.',
-      columns: const [LaunchColumn(label: 'System', flexible: true), LaunchColumn(label: 'Vendor', width: 110), LaunchColumn(label: 'Access Level', width: 120), LaunchColumn(label: 'Revoked Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'System', flexible: true, fieldType: LaunchFieldType.text, hint: 'System'), LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Access Level', width: 120, fieldType: LaunchFieldType.text, hint: 'Level'), LaunchColumn(label: 'Revoked Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Revoked', 'Confirmed'])],
       rowCount: _accessItems.length,
-      onAdd: () {
-        setState(() => _accessItems.add(LaunchAccessItem()));
+      onAddValues: (values) {
+        setState(() {
+          _accessItems.add(LaunchAccessItem(
+            system: values['System'] ?? '',
+            vendor: values['Vendor'] ?? '',
+            accessLevel: values['Access Level'] ?? '',
+            revokedDate: values['Revoked Date'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       emptyMessage:
@@ -351,10 +367,17 @@ class _VendorAccountCloseOutScreenState
       title: 'Outstanding Obligations',
       subtitle:
           'Pending payments, deliverables, SLAs, or warranties requiring resolution.',
-      columns: const [LaunchColumn(label: 'Obligation', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Obligation', flexible: true, fieldType: LaunchFieldType.text, hint: 'Title'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Complete'])],
       rowCount: _obligations.length,
-      onAdd: () {
-        setState(() => _obligations.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _obligations.add(LaunchFollowUpItem(
+            title: values['Obligation'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Open',
+          ));
+        });
         _save();
       },
       emptyMessage: 'No obligations. Track pending vendor obligations.',
@@ -419,10 +442,17 @@ class _VendorAccountCloseOutScreenState
       title: 'Account Closure Checklist',
       subtitle:
           'Standardized steps to verify each vendor account is fully closed.',
-      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete'])],
       rowCount: _closureChecklist.length,
-      onAdd: () {
-        setState(() => _closureChecklist.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _closureChecklist.add(LaunchFollowUpItem(
+            title: values['Task'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       emptyMessage: 'No checklist items. Add closure verification tasks.',

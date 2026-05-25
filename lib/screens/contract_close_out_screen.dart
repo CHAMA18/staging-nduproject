@@ -191,10 +191,16 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Financial Summary',
       subtitle: 'Key financial metrics for contract close-out.',
-      columns: const [LaunchColumn(label: 'Metric', flexible: true), LaunchColumn(label: 'Value', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Metric', flexible: true, fieldType: LaunchFieldType.text, hint: 'Metric'), LaunchColumn(label: 'Value', width: 120, fieldType: LaunchFieldType.text, hint: 'Value'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _financialSummary.length,
-      onAdd: () {
-        setState(() => _financialSummary.add(LaunchFinancialMetric()));
+      onAddValues: (values) {
+        setState(() {
+          _financialSummary.add(LaunchFinancialMetric(
+            label: values['Metric'] ?? '',
+            value: values['Value'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage:
@@ -249,10 +255,18 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       title: 'Contracts Status',
       subtitle:
           'All contracts requiring close-out. Import from execution or add manually.',
-      columns: const [LaunchColumn(label: 'Contract', flexible: true), LaunchColumn(label: 'Vendor', width: 110), LaunchColumn(label: 'Ref', width: 100), LaunchColumn(label: 'Value', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Contract', flexible: true, fieldType: LaunchFieldType.text, hint: 'Contract'), LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Ref', width: 100, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Value', width: 100, fieldType: LaunchFieldType.text, hint: 'Value'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchContractItem.closeOutStatuses)],
       rowCount: _contracts.length,
-      onAdd: () {
-        setState(() => _contracts.add(LaunchContractItem()));
+      onAddValues: (values) {
+        setState(() {
+          _contracts.add(LaunchContractItem(
+            contractName: values['Contract'] ?? '',
+            vendor: values['Vendor'] ?? '',
+            contractRef: values['Ref'] ?? '',
+            value: values['Value'] ?? '',
+            closeOutStatus: values['Status'] ?? 'Open',
+          ));
+        });
         _scheduleSave();
       },
       importLabel: 'Import',
@@ -325,10 +339,17 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Close-Out Steps',
       subtitle: 'Standardized steps to verify each contract is fully closed.',
-      columns: const [LaunchColumn(label: 'Step', flexible: true), LaunchColumn(label: 'Contract Ref', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Step', flexible: true, fieldType: LaunchFieldType.text, hint: 'Step'), LaunchColumn(label: 'Contract Ref', width: 120, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _closeOutSteps.length,
-      onAdd: () {
-        setState(() => _closeOutSteps.add(LaunchCloseOutStep()));
+      onAddValues: (values) {
+        setState(() {
+          _closeOutSteps.add(LaunchCloseOutStep(
+            step: values['Step'] ?? '',
+            contractRef: values['Contract Ref'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage:
@@ -392,10 +413,18 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Financial & Compliance Sign-Off',
       subtitle: 'Track approvals from finance, legal, and compliance.',
-      columns: const [LaunchColumn(label: 'Approver', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Approver', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _signOffs.length,
-      onAdd: () {
-        setState(() => _signOffs.add(LaunchApproval()));
+      onAddValues: (values) {
+        setState(() {
+          _signOffs.add(LaunchApproval(
+            stakeholder: values['Approver'] ?? '',
+            role: values['Role'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            date: values['Date'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage: 'Track finance and compliance approval status.',

@@ -182,13 +182,19 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Financial Metrics',
       subtitle: 'ROI, payback period, total investment, and projected returns.',
       columns: const [
-        LaunchColumn(label: 'Metric', flexible: true),
-        LaunchColumn(label: 'Value', width: 120),
-        LaunchColumn(label: 'Notes', flexible: true),
+        LaunchColumn(label: 'Metric', flexible: true, fieldType: LaunchFieldType.text, hint: 'Metric'),
+        LaunchColumn(label: 'Value', width: 120, fieldType: LaunchFieldType.text, hint: 'Value'),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _financialMetrics.length,
-      onAdd: () {
-        setState(() => _financialMetrics.add(LaunchFinancialMetric()));
+      onAddValues: (values) {
+        setState(() {
+          _financialMetrics.add(LaunchFinancialMetric(
+            label: values['Metric'] ?? '',
+            value: values['Value'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       emptyMessage:
@@ -244,16 +250,25 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       subtitle:
           'Track warranty coverage for deliverables, equipment, and services.',
       columns: const [
-        LaunchColumn(label: 'Item', flexible: true),
-        LaunchColumn(label: 'Vendor', width: 110),
-        LaunchColumn(label: 'Type', width: 100),
-        LaunchColumn(label: 'Start', width: 100),
-        LaunchColumn(label: 'Expiry', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'),
+        LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'),
+        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Start', width: 100, fieldType: LaunchFieldType.date, hint: 'Start'),
+        LaunchColumn(label: 'Expiry', width: 100, fieldType: LaunchFieldType.date, hint: 'Expiry'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Expiring Soon', 'Expired', 'Claimed']),
       ],
       rowCount: _warranties.length,
-      onAdd: () {
-        setState(() => _warranties.add(LaunchWarrantyItem()));
+      onAddValues: (values) {
+        setState(() {
+          _warranties.add(LaunchWarrantyItem(
+            item: values['Item'] ?? '',
+            vendor: values['Vendor'] ?? '',
+            warrantyType: values['Type'] ?? '',
+            startDate: values['Start'] ?? '',
+            expiryDate: values['Expiry'] ?? '',
+            status: values['Status'] ?? 'Active',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Add warranty items with vendor, type, and expiry.',
@@ -336,14 +351,21 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Operations Cost Projection',
       subtitle: 'Monthly and annual ongoing costs post-launch.',
       columns: const [
-        LaunchColumn(label: 'Category', flexible: true),
-        LaunchColumn(label: 'Monthly', width: 100),
-        LaunchColumn(label: 'Annual', width: 100),
-        LaunchColumn(label: 'Notes', flexible: true),
+        LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'),
+        LaunchColumn(label: 'Monthly', width: 100, fieldType: LaunchFieldType.text, hint: 'Monthly'),
+        LaunchColumn(label: 'Annual', width: 100, fieldType: LaunchFieldType.text, hint: 'Annual'),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _opsCosts.length,
-      onAdd: () {
-        setState(() => _opsCosts.add(LaunchOpsCostItem()));
+      onAddValues: (values) {
+        setState(() {
+          _opsCosts.add(LaunchOpsCostItem(
+            category: values['Category'] ?? '',
+            monthlyCost: values['Monthly'] ?? '',
+            annualCost: values['Annual'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       emptyMessage:
@@ -443,13 +465,19 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Recommendations',
       subtitle: 'Key actions for commercial sustainability.',
       columns: const [
-        LaunchColumn(label: 'Recommendation', flexible: true),
-        LaunchColumn(label: 'Details', flexible: true),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Recommendation', flexible: true, fieldType: LaunchFieldType.text, hint: 'Title'),
+        LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Complete']),
       ],
       rowCount: _recommendations.length,
-      onAdd: () {
-        setState(() => _recommendations.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _recommendations.add(LaunchFollowUpItem(
+            title: values['Recommendation'] ?? '',
+            details: values['Details'] ?? '',
+            status: values['Status'] ?? 'Open',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Add actions to ensure commercial viability.',

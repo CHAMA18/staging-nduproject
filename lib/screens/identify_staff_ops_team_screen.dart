@@ -733,18 +733,18 @@ class _IdentifyStaffOpsTeamScreenState
           title: 'Readiness Checklist',
           subtitle: 'Pre-handover verification — add, edit, or remove items inline',
           columns: const [
-            LaunchColumn(label: 'Item', flexible: true),
-            LaunchColumn(label: 'Notes', flexible: true),
-            LaunchColumn(label: 'Status', width: 130),
+            LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Checklist item'),
+            LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes / evidence'),
+            LaunchColumn(label: 'Status', width: 130, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'Pending', 'In Progress', 'Not Applicable']),
           ],
           rowCount: items.length,
-          onAdd: () async {
+          onAddValues: (values) async {
             try {
               await OpsService.createChecklistItem(
                 projectId: _projectId!,
-                item: '',
-                completed: false,
-                notes: '',
+                item: values['Item'] ?? '',
+                completed: values['Status'] == 'Complete',
+                notes: values['Notes'] ?? '',
               );
             } catch (e) {
               if (mounted) {

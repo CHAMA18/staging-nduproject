@@ -207,10 +207,17 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Close-Out Checklist',
       subtitle:
           'Verify all items are addressed before formally closing the project.',
-      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Category', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchCloseOutCheckItem.categories), LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _closeOutChecklist.length,
-      onAdd: () {
-        setState(() => _closeOutChecklist.add(LaunchCloseOutCheckItem()));
+      onAddValues: (values) {
+        setState(() {
+          _closeOutChecklist.add(LaunchCloseOutCheckItem(
+            category: values['Category'] ?? 'Deliverables',
+            item: values['Item'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Add close-out verification tasks by category.',
@@ -277,10 +284,18 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Final Approvals',
       subtitle:
           'Stakeholders who must sign off before the project is formally closed.',
-      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _approvals.length,
-      onAdd: () {
-        setState(() => _approvals.add(LaunchApproval()));
+      onAddValues: (values) {
+        setState(() {
+          _approvals.add(LaunchApproval(
+            stakeholder: values['Stakeholder'] ?? '',
+            role: values['Role'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            date: values['Date'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       emptyMessage: 'Add stakeholders who need to sign off.',
@@ -355,15 +370,23 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       subtitle:
           'Document repositories, code, and access changes required for closure.',
       columns: const [
-        LaunchColumn(label: 'Repository', flexible: true),
-        LaunchColumn(label: 'Type', width: 100),
-        LaunchColumn(label: 'Retention', width: 100),
-        LaunchColumn(label: 'Access Change', width: 120),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Repository', flexible: true, fieldType: LaunchFieldType.text, hint: 'Repository'),
+        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Retention', width: 100, fieldType: LaunchFieldType.text, hint: 'Retention'),
+        LaunchColumn(label: 'Access Change', width: 120, fieldType: LaunchFieldType.text, hint: 'Access'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
       ],
       rowCount: _archive.length,
-      onAdd: () {
-        setState(() => _archive.add(LaunchArchiveItem()));
+      onAddValues: (values) {
+        setState(() {
+          _archive.add(LaunchArchiveItem(
+            repository: values['Repository'] ?? '',
+            documentType: values['Type'] ?? '',
+            retentionPeriod: values['Retention'] ?? '',
+            accessChange: values['Access Change'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       emptyMessage: 'List repositories and documents for archival.',

@@ -554,20 +554,20 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Checklist',
       subtitle: 'Critical action items with owners and due dates',
       columns: const [
-        LaunchColumn(label: 'Task', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Owner', width: 120),
-        LaunchColumn(label: 'Due', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
+        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'On track', 'At risk', 'In review', 'Pending'], hint: 'Status'),
       ],
       rowCount: _checklistItems.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _checklistItems.add(_ChecklistItemData(
-              title: 'New checklist item',
-              detail: '',
-              owner: '',
-              due: '',
-              status: 'Pending',
+              title: values['Task'] ?? '',
+              detail: values['Detail'] ?? '',
+              owner: values['Owner'] ?? '',
+              due: values['Due'] ?? '',
+              status: values['Status'] ?? 'Pending',
             )));
         _save();
       },
@@ -651,18 +651,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Approvals & Sign-offs',
       subtitle: 'Required approvals before go-live',
       columns: const [
-        LaunchColumn(label: 'Approval', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Approver', width: 120),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Approval', flexible: true, fieldType: LaunchFieldType.text, hint: 'Approval'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Approver', width: 120, fieldType: LaunchFieldType.text, hint: 'Approver'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'In review', 'Pending'], hint: 'Status'),
       ],
       rowCount: _approvals.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _approvals.add(_ApprovalData(
-              label: 'New approval',
-              detail: '',
-              status: 'Pending',
-              approver: '',
+              label: values['Approval'] ?? '',
+              detail: values['Detail'] ?? '',
+              status: values['Status'] ?? 'Pending',
+              approver: values['Approver'] ?? '',
             )));
         _save();
       },
@@ -731,18 +731,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Milestones',
       subtitle: 'Key milestones leading to go-live',
       columns: const [
-        LaunchColumn(label: 'Milestone', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Due', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'Upcoming', 'In progress', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _milestones.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _milestones.add(_MilestoneData(
-              title: 'New milestone',
-              detail: '',
-              due: '',
-              status: 'Upcoming',
+              title: values['Milestone'] ?? '',
+              detail: values['Detail'] ?? '',
+              due: values['Due'] ?? '',
+              status: values['Status'] ?? 'Upcoming',
             )));
         _save();
       },
@@ -811,18 +811,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Timeline',
       subtitle: 'Timeline stages toward go-live',
       columns: const [
-        LaunchColumn(label: 'Stage', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Date', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Stage', flexible: true, fieldType: LaunchFieldType.text, hint: 'Stage'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'In progress', 'Upcoming', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _timelineStages.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _timelineStages.add(_TimelineStage(
-              label: 'New stage',
-              detail: '',
-              date: '',
-              status: 'Upcoming',
+              label: values['Stage'] ?? '',
+              detail: values['Detail'] ?? '',
+              date: values['Date'] ?? '',
+              status: values['Status'] ?? 'Upcoming',
             )));
         _save();
       },

@@ -81,23 +81,23 @@ class OpenAiConfig {
   /// returns '' and the request goes directly to OpenAI.
   ///
   /// For reasoning models (o3, o4, o1), this also:
-  /// - Converts `max_tokens` → `max_completion_tokens` (required by reasoning models)
-  /// - Converts `max_output_tokens` → `max_completion_tokens` (required by reasoning models)
+  /// - Converts `max_tokens` → `max_output_tokens` (required by reasoning models)
+  /// - Converts `max_completion_tokens` → `max_output_tokens` (required by reasoning models)
   /// - Removes `temperature` parameter (reasoning models only support default value of 1)
-  /// Reasoning models reject `max_tokens`, `max_output_tokens`, and non-default
+  /// Reasoning models reject `max_tokens`, `max_completion_tokens`, and non-default
   /// `temperature` values with 400 errors.
   static Map<String, dynamic> wrapBody(Map<String, dynamic> body) {
     final result = Map<String, dynamic>.from(body);
 
     // Convert token limit parameters and strip unsupported params for reasoning models
     if (SecureAPIConfig.isReasoningModel) {
-      // max_tokens → max_completion_tokens
+      // max_tokens → max_output_tokens
       if (result.containsKey('max_tokens')) {
-        result['max_completion_tokens'] = result.remove('max_tokens');
+        result['max_output_tokens'] = result.remove('max_tokens');
       }
-      // max_output_tokens → max_completion_tokens
-      if (result.containsKey('max_output_tokens')) {
-        result['max_completion_tokens'] = result.remove('max_output_tokens');
+      // max_completion_tokens → max_output_tokens
+      if (result.containsKey('max_completion_tokens')) {
+        result['max_output_tokens'] = result.remove('max_completion_tokens');
       }
       // Reasoning models (o3, o4, o1) only support temperature=1 (default).
       // Sending any other value causes a 400 error:

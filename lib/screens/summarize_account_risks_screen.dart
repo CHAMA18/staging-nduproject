@@ -1,4 +1,9 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
@@ -38,6 +43,7 @@ class _SummarizeAccountRisksScreenState
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -106,6 +112,13 @@ class _SummarizeAccountRisksScreenState
           'Executive one-page health summary showing budget, scope, timeline, risks, and next steps.',
       trailing: ExecutionActionBar(
         actions: [
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
@@ -658,6 +671,121 @@ class _SummarizeAccountRisksScreenState
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'project_summary_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Project Summary', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Metrics
+            _pdfSectionTitle('Executive Metrics'),
+            pw.SizedBox(height: 6),
+            if (_metrics.isEmpty)
+              _pdfCell('No metrics recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Label', 'Value', 'Notes'],
+                data: _metrics.map((m) => [m.label, m.value, m.notes]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Highlights
+            _pdfSectionTitle('Highlights & Wins'),
+            pw.SizedBox(height: 6),
+            if (_highlights.isEmpty)
+              _pdfCell('No highlights recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Title', 'Details'],
+                data: _highlights.map((h) => [h.title, h.details]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Top Risks
+            _pdfSectionTitle('Top Risks'),
+            pw.SizedBox(height: 6),
+            if (_topRisks.isEmpty)
+              _pdfCell('No risks recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Risk', 'Details', 'Owner', 'Status'],
+                data: _topRisks.map((r) => [r.title, r.details, r.owner, r.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Next 90 Days
+            _pdfSectionTitle('Next 90 Days Focus'),
+            pw.SizedBox(height: 6),
+            if (_next90Days.isEmpty)
+              _pdfCell('No next actions recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Priority', 'Details', 'Owner', 'Status'],
+                data: _next90Days.map((n) => [n.title, n.details, n.owner, n.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   String _s(dynamic v) => (v ?? '').toString().trim();

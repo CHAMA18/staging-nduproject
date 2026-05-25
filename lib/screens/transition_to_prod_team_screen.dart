@@ -1,4 +1,9 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
@@ -36,6 +41,7 @@ class _TransitionToProdTeamScreenState
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -104,6 +110,13 @@ class _TransitionToProdTeamScreenState
           'Hand over deliverables, documentation, and system access to the operations team. Track sign-offs and knowledge transfer.',
       trailing: ExecutionActionBar(
         actions: [
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
@@ -680,6 +693,121 @@ class _TransitionToProdTeamScreenState
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'transition_to_prod_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Transition to Production Team', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Team Roster
+            _pdfSectionTitle('Production Team Roster'),
+            pw.SizedBox(height: 6),
+            if (_teamRoster.isEmpty)
+              _pdfCell('No team members recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Name', 'Role', 'Contact', 'Status'],
+                data: _teamRoster.map((m) => [m.name, m.role, m.contact, m.releaseStatus]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Handover Checklist
+            _pdfSectionTitle('Handover Checklist'),
+            pw.SizedBox(height: 6),
+            if (_handoverChecklist.isEmpty)
+              _pdfCell('No handover items recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Category', 'Item', 'Owner', 'Status'],
+                data: _handoverChecklist.map((h) => [h.category, h.item, h.owner, h.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Knowledge Transfers
+            _pdfSectionTitle('Knowledge Transfer'),
+            pw.SizedBox(height: 6),
+            if (_knowledgeTransfers.isEmpty)
+              _pdfCell('No knowledge transfers recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Topic', 'From', 'To', 'Method', 'Status'],
+                data: _knowledgeTransfers.map((k) => [k.topic, k.fromPerson, k.toPerson, k.method, k.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Sign-Offs
+            _pdfSectionTitle('Ops & Client Sign-Offs'),
+            pw.SizedBox(height: 6),
+            if (_signOffs.isEmpty)
+              _pdfCell('No sign-offs recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Stakeholder', 'Role', 'Status'],
+                data: _signOffs.map((s) => [s.stakeholder, s.role, s.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   List<LaunchTeamMember> _mapMembers(List<Map<String, dynamic>>? raw) {

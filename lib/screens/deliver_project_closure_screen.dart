@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
@@ -40,6 +43,7 @@ class _DeliverProjectClosureScreenState
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -110,6 +114,13 @@ class _DeliverProjectClosureScreenState
           'Confirm scope is delivered and accepted. Review milestones, outstanding items, and post-delivery risks before transitioning.',
       trailing: ExecutionActionBar(
         actions: [
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
@@ -688,6 +699,182 @@ class _DeliverProjectClosureScreenState
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename =
+          'deliver_project_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text(
+              'Deliver Project — Closure Summary',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '$projectName — Generated ${now.toLocal().toIso8601String()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Scope Acceptance'),
+            pw.SizedBox(height: 6),
+            if (_scopeItems.isEmpty)
+              pw.Text('No scope items recorded.',
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey500))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                children: [
+                  pw.TableRow(
+                    decoration:
+                        const pw.BoxDecoration(color: PdfColors.grey100),
+                    children: [
+                      _pdfHeaderCell('Deliverable'),
+                      _pdfHeaderCell('Acceptance Criteria'),
+                      _pdfHeaderCell('Status'),
+                    ],
+                  ),
+                  ..._scopeItems.map((s) => pw.TableRow(children: [
+                        _pdfCell(s.deliverable),
+                        _pdfCell(s.acceptanceCriteria),
+                        _pdfCell(s.status),
+                      ])),
+                ],
+              ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Delivery Milestones'),
+            pw.SizedBox(height: 6),
+            if (_milestones.isEmpty)
+              pw.Text('No milestones recorded.',
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey500))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                children: [
+                  pw.TableRow(
+                    decoration:
+                        const pw.BoxDecoration(color: PdfColors.grey100),
+                    children: [
+                      _pdfHeaderCell('Milestone'),
+                      _pdfHeaderCell('Status'),
+                    ],
+                  ),
+                  ..._milestones.map((m) => pw.TableRow(children: [
+                        _pdfCell(m.title),
+                        _pdfCell(m.status),
+                      ])),
+                ],
+              ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Outstanding Items'),
+            pw.SizedBox(height: 6),
+            if (_outstandingItems.isEmpty)
+              pw.Text('No outstanding items.',
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey500))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                children: [
+                  pw.TableRow(
+                    decoration:
+                        const pw.BoxDecoration(color: PdfColors.grey100),
+                    children: [
+                      _pdfHeaderCell('Title'),
+                      _pdfHeaderCell('Details'),
+                      _pdfHeaderCell('Status'),
+                    ],
+                  ),
+                  ..._outstandingItems.map((o) => pw.TableRow(children: [
+                        _pdfCell(o.title),
+                        _pdfCell(o.details),
+                        _pdfCell(o.status),
+                      ])),
+                ],
+              ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Post-Delivery Risks'),
+            pw.SizedBox(height: 6),
+            if (_riskFollowUps.isEmpty)
+              pw.Text('No post-delivery risks recorded.',
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey500))
+            else
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                children: [
+                  pw.TableRow(
+                    decoration:
+                        const pw.BoxDecoration(color: PdfColors.grey100),
+                    children: [
+                      _pdfHeaderCell('Title'),
+                      _pdfHeaderCell('Details'),
+                      _pdfHeaderCell('Status'),
+                    ],
+                  ),
+                  ..._riskFollowUps.map((r) => pw.TableRow(children: [
+                        _pdfCell(r.title),
+                        _pdfCell(r.details),
+                        _pdfCell(r.status),
+                      ])),
+                ],
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', filename)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF export failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title,
+        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(text,
+          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+    );
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)),
+    );
   }
 
   List<LaunchScopeItem> _mapToScopeItems(List<Map<String, dynamic>>? raw) {

@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/project_close_out_screen.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/utils/launch_phase_ai_seed.dart';
+import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
@@ -11,6 +13,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class DemobilizeTeamScreen extends StatefulWidget {
@@ -35,6 +40,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -118,6 +124,13 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
             icon: Icons.download_outlined,
             tone: ExecutionActionTone.secondary,
             onPressed: _importTeam,
+          ),
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
           ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
@@ -712,4 +725,212 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
 
   String _s(dynamic v) => (v ?? '').toString().trim();
   String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName;
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename =
+          'demobilize_team_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text(
+              'Demobilize Team',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '$projectName — Generated ${now.toLocal().toIso8601String()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Team Ramp-Down Roster'),
+            pw.SizedBox(height: 6),
+            if (_teamRoster.isEmpty)
+              pw.Text('No team members.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Name', 'Role', 'Contact', 'Status'],
+                data: _teamRoster
+                    .map((m) => [
+                          _pc(m.name),
+                          _pc(m.role),
+                          _pc(m.contact),
+                          _pc(m.releaseStatus),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Knowledge Transfer'),
+            pw.SizedBox(height: 6),
+            if (_knowledgeTransfers.isEmpty)
+              pw.Text('No knowledge transfers.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Topic',
+                  'From',
+                  'To',
+                  'Method',
+                  'Status'
+                ],
+                data: _knowledgeTransfers
+                    .map((k) => [
+                          _pc(k.topic),
+                          _pc(k.fromPerson),
+                          _pc(k.toPerson),
+                          _pc(k.method),
+                          _pc(k.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Vendor Offboarding'),
+            pw.SizedBox(height: 6),
+            if (_vendorOffboarding.isEmpty)
+              pw.Text('No vendor offboarding items.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Task', 'Details', 'Owner', 'Status'],
+                data: _vendorOffboarding
+                    .map((v) => [
+                          _pc(v.title),
+                          _pc(v.details),
+                          _pc(v.owner),
+                          _pc(v.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Communications & People Care'),
+            pw.SizedBox(height: 6),
+            if (_communications.isEmpty)
+              pw.Text('No communications.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Audience',
+                  'Message',
+                  'Channel',
+                  'Send Date',
+                  'Status'
+                ],
+                data: _communications
+                    .map((c) => [
+                          _pc(c.audience),
+                          _pc(c.message),
+                          _pc(c.channel),
+                          _pc(c.sendDate),
+                          _pc(c.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Team Debrief Notes'),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              _debriefNotes.notes.trim().isEmpty
+                  ? 'No debrief notes recorded.'
+                  : _debriefNotes.notes.trim(),
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (kIsWeb) {
+        download_helper.downloadFile(bytes, filename,
+            mimeType: 'application/pdf');
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF exported: $filename')),
+        );
+      }
+    } catch (e) {
+      debugPrint('PDF export error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _isExporting = false);
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: const pw.BoxDecoration(
+        color: PdfColor(0.06, 0.27, 0.45),
+        borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+      ),
+      child: pw.Text(title,
+          style: pw.TextStyle(
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white)),
+    );
+  }
+
+  String _pc(String v) => v.trim().isEmpty ? '-' : v.trim();
 }

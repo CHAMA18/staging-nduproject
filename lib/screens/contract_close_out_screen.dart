@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/launch_phase_models.dart';
@@ -5,6 +6,7 @@ import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/utils/launch_phase_ai_seed.dart';
+import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
@@ -12,6 +14,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class ContractCloseOutScreen extends StatefulWidget {
   const ContractCloseOutScreen({super.key});
@@ -34,6 +39,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -107,6 +113,13 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
             icon: Icons.download_outlined,
             tone: ExecutionActionTone.secondary,
             onPressed: _importContracts,
+          ),
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
           ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
@@ -674,4 +687,196 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       .toList();
   String _ns(dynamic v, String fb) =>
       (v ?? '').toString().trim().isEmpty ? fb : v.toString().trim();
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName;
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename =
+          'contract_close_out_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text(
+              'Contract Close Out',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '$projectName — Generated ${now.toLocal().toIso8601String()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Financial Summary'),
+            pw.SizedBox(height: 6),
+            if (_financialSummary.isEmpty)
+              pw.Text('No financial metrics.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Metric', 'Value', 'Notes'],
+                data: _financialSummary
+                    .map((m) => [
+                          _pc(m.label),
+                          _pc(m.value),
+                          _pc(m.notes),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Contracts Status'),
+            pw.SizedBox(height: 6),
+            if (_contracts.isEmpty)
+              pw.Text('No contracts.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Contract', 'Vendor', 'Ref', 'Value', 'Status'],
+                data: _contracts
+                    .map((c) => [
+                          _pc(c.contractName),
+                          _pc(c.vendor),
+                          _pc(c.contractRef),
+                          _pc(c.value),
+                          _pc(c.closeOutStatus),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Close-Out Steps'),
+            pw.SizedBox(height: 6),
+            if (_closeOutSteps.isEmpty)
+              pw.Text('No close-out steps.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Step', 'Contract Ref', 'Status', 'Notes'],
+                data: _closeOutSteps
+                    .map((s) => [
+                          _pc(s.step),
+                          _pc(s.contractRef),
+                          _pc(s.status),
+                          _pc(s.notes),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Financial & Compliance Sign-Off'),
+            pw.SizedBox(height: 6),
+            if (_signOffs.isEmpty)
+              pw.Text('No sign-off records.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Approver',
+                  'Role',
+                  'Status',
+                  'Date',
+                  'Notes'
+                ],
+                data: _signOffs
+                    .map((s) => [
+                          _pc(s.stakeholder),
+                          _pc(s.role),
+                          _pc(s.status),
+                          _pc(s.date),
+                          _pc(s.notes),
+                        ])
+                    .toList(),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (kIsWeb) {
+        download_helper.downloadFile(bytes, filename,
+            mimeType: 'application/pdf');
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF exported: $filename')),
+        );
+      }
+    } catch (e) {
+      debugPrint('PDF export error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _isExporting = false);
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: const pw.BoxDecoration(
+        color: PdfColor(0.06, 0.27, 0.45),
+        borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+      ),
+      child: pw.Text(title,
+          style: pw.TextStyle(
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white)),
+    );
+  }
+
+  String _pc(String v) => v.trim().isEmpty ? '-' : v.trim();
 }

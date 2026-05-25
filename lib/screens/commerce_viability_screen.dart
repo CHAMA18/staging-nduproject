@@ -1,4 +1,9 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
@@ -37,6 +42,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -107,6 +113,13 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
           'Verify commercial sustainability, track warranties, project ongoing costs, and make the go/grow/pause decision.',
       trailing: ExecutionActionBar(
         actions: [
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
@@ -703,6 +716,121 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'commerce_viability_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Warranties & Operations Support', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Financial Metrics
+            _pdfSectionTitle('Financial Metrics'),
+            pw.SizedBox(height: 6),
+            if (_financialMetrics.isEmpty)
+              _pdfCell('No financial metrics recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Metric', 'Value', 'Notes'],
+                data: _financialMetrics.map((m) => [m.label, m.value, m.notes]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Warranties
+            _pdfSectionTitle('Warranty Tracker'),
+            pw.SizedBox(height: 6),
+            if (_warranties.isEmpty)
+              _pdfCell('No warranties recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Item', 'Vendor', 'Type', 'Status'],
+                data: _warranties.map((w) => [w.item, w.vendor, w.warrantyType, w.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Ops Costs
+            _pdfSectionTitle('Operations Cost Projection'),
+            pw.SizedBox(height: 6),
+            if (_opsCosts.isEmpty)
+              _pdfCell('No ops costs recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Category', 'Monthly', 'Annual', 'Notes'],
+                data: _opsCosts.map((c) => [c.category, c.monthlyCost, c.annualCost, c.notes]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Recommendations
+            _pdfSectionTitle('Recommendations'),
+            pw.SizedBox(height: 6),
+            if (_recommendations.isEmpty)
+              _pdfCell('No recommendations recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Recommendation', 'Details', 'Status'],
+                data: _recommendations.map((r) => [r.title, r.details, r.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   String _s(dynamic v) => (v ?? '').toString().trim();

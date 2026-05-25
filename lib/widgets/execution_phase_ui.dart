@@ -315,7 +315,7 @@ class ExecutionMetricsGrid extends StatelessWidget {
   const ExecutionMetricsGrid({
     super.key,
     required this.metrics,
-    this.minTileWidth = 220,
+    this.minTileWidth = 160,
   });
 
   final List<ExecutionMetricData> metrics;
@@ -328,13 +328,18 @@ class ExecutionMetricsGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
-        final int columns = width >= 1180
-            ? 4
-            : width >= 860
-                ? 3
-                : width >= 540
-                    ? 2
-                    : 1;
+        final int count = metrics.length;
+        // Smart column calculation: prefer fitting all metrics in one row
+        // when possible, only wrap on very narrow screens.
+        int columns;
+        if (width >= 600) {
+          // Wide enough: fit all metrics in a single row (up to 5)
+          columns = count.clamp(1, 5);
+        } else if (width >= 400) {
+          columns = 2;
+        } else {
+          columns = 1;
+        }
         final double spacing = 16;
         final double tileWidth =
             (width - (spacing * (columns - 1))) / columns;

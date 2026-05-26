@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 enum _QualityTab { plan, targets, qaTracking, qcTracking, metrics }
 
 const _dateHint = 'Select date';
@@ -312,6 +313,69 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
     setState(() => _selectedTab = tab);
   }
 
+  Widget _buildNavigationHint() {
+    return InnerPageNavigationHint(
+      pageId: 'quality_management',
+      pageTitle: 'Quality Management',
+      description: 'Navigate between quality management sections',
+      currentSectionId: _selectedTab.name,
+      onSectionTap: (sectionId) {
+        final tab = _QualityTab.values.firstWhere(
+          (t) => t.name == sectionId,
+          orElse: () => _selectedTab,
+        );
+        _handleTabSelected(tab);
+      },
+      sections: [
+        InnerPageSection(
+          id: _QualityTab.plan.name,
+          label: 'Quality Plan',
+          icon: Icons.description_outlined,
+          stepNumber: 1,
+          status: _selectedTab == _QualityTab.plan
+              ? InnerPageSectionStatus.current
+              : InnerPageSectionStatus.available,
+        ),
+        InnerPageSection(
+          id: _QualityTab.targets.name,
+          label: 'Targets',
+          icon: Icons.flag_outlined,
+          stepNumber: 2,
+          status: _selectedTab == _QualityTab.targets
+              ? InnerPageSectionStatus.current
+              : InnerPageSectionStatus.available,
+        ),
+        InnerPageSection(
+          id: _QualityTab.qaTracking.name,
+          label: 'QA Tracking',
+          icon: Icons.verified_outlined,
+          stepNumber: 3,
+          status: _selectedTab == _QualityTab.qaTracking
+              ? InnerPageSectionStatus.current
+              : InnerPageSectionStatus.available,
+        ),
+        InnerPageSection(
+          id: _QualityTab.qcTracking.name,
+          label: 'QC Tracking',
+          icon: Icons.fact_check_outlined,
+          stepNumber: 4,
+          status: _selectedTab == _QualityTab.qcTracking
+              ? InnerPageSectionStatus.current
+              : InnerPageSectionStatus.available,
+        ),
+        InnerPageSection(
+          id: _QualityTab.metrics.name,
+          label: 'Metrics',
+          icon: Icons.analytics_outlined,
+          stepNumber: 5,
+          status: _selectedTab == _QualityTab.metrics
+              ? InnerPageSectionStatus.current
+              : InnerPageSectionStatus.available,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -368,6 +432,8 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                       selectedTab: _selectedTab,
                       onSelected: _handleTabSelected,
                     ),
+                    const SizedBox(height: 16),
+                    _buildNavigationHint(),
                     const SizedBox(height: 28),
                     _TabContent(selectedTab: _selectedTab),
                     const SizedBox(height: 28),
@@ -429,6 +495,8 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                           selectedTab: _selectedTab,
                           onSelected: _handleTabSelected,
                         ),
+                        const SizedBox(height: 16),
+                        _buildNavigationHint(),
                         const SizedBox(height: 28),
                         _TabContent(selectedTab: _selectedTab),
                         const SizedBox(height: 28),

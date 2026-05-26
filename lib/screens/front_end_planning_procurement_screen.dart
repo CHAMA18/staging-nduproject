@@ -32,6 +32,7 @@ import 'package:ndu_project/widgets/procurement/procurement_items_list_view.dart
 import 'package:ndu_project/widgets/procurement/procurement_vendor_management.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 enum ProcurementScreenMode { fep, planning }
 
 enum _MissingProcurementAction {
@@ -5354,6 +5355,34 @@ class _FrontEndPlanningProcurementScreenState
                         onSelected: _handleTabSelected,
                         tabsWithErrors: _tabsWithErrors,
                         disabledTabs: _tabsWithRestrictedAccess,
+                      ),
+                      const SizedBox(height: 16),
+                      InnerPageNavigationHint(
+                        pageId: _isPlanningMode ? 'planning_procurement' : 'fep_procurement',
+                        pageTitle: 'Procurement',
+                        description: 'Navigate between procurement sections',
+                        currentSectionId: _selectedTab.name,
+                        onSectionTap: (sectionId) {
+                          final tab = _ProcurementTab.values.firstWhere(
+                            (t) => t.name == sectionId,
+                            orElse: () => _selectedTab,
+                          );
+                          _handleTabSelected(tab);
+                        },
+                        sections: _ProcurementTab.values.map((tab) {
+                          final isRestricted = _tabsWithRestrictedAccess.contains(tab);
+                          final isCurrent = tab == _selectedTab;
+                          return InnerPageSection(
+                            id: tab.name,
+                            label: tab.label,
+                            stepNumber: _ProcurementTab.values.indexOf(tab) + 1,
+                            status: isRestricted
+                                ? InnerPageSectionStatus.locked
+                                : isCurrent
+                                    ? InnerPageSectionStatus.current
+                                    : InnerPageSectionStatus.available,
+                          );
+                        }).toList(),
                       ),
                       const SizedBox(height: 24),
                       AnimatedSwitcher(

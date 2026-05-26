@@ -927,9 +927,9 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: const Color(0xFFEFF6FF),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x08000000),
@@ -947,13 +947,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: const Color(0xFFDBEAFE),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.insert_drive_file_outlined,
                         size: 20,
-                        color: Color(0xFF16A34A),
+                        color: Color(0xFF005BB3),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -971,7 +971,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A).withOpacity(0.12),
+                          color: const Color(0xFF005BB3).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -979,7 +979,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF16A34A),
+                            color: Color(0xFF005BB3),
                           ),
                         ),
                       ),
@@ -995,14 +995,14 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           Icon(
                             Icons.folder_open_outlined,
                             size: 48,
-                            color: const Color(0xFF16A34A).withOpacity(0.3),
+                            color: const Color(0xFF005BB3).withOpacity(0.3),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             'No documents added',
                             style: TextStyle(
                               fontSize: 13,
-                              color: const Color(0xFF16A34A).withOpacity(0.6),
+                              color: const Color(0xFF005BB3).withOpacity(0.6),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -1017,7 +1017,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
                     child: Row(
                       children: [
@@ -1025,7 +1025,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
+                            color: const Color(0xFFDBEAFE),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -1033,7 +1033,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                 ? Icons.attach_file
                                 : Icons.description_outlined,
                             size: 16,
-                            color: const Color(0xFF16A34A),
+                            color: const Color(0xFF005BB3),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1055,7 +1055,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF16A34A).withOpacity(0.1),
+                                      color: const Color(0xFF005BB3).withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -1063,7 +1063,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                       style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF16A34A),
+                                        color: Color(0xFF005BB3),
                                       ),
                                     ),
                                   ),
@@ -1086,7 +1086,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                         if (doc.url != null && doc.url!.isNotEmpty)
                           IconButton(
                             icon: const Icon(Icons.open_in_new,
-                                size: 16, color: Color(0xFF16A34A)),
+                                size: 16, color: Color(0xFF005BB3)),
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Opening ${doc.url}')),
@@ -1121,7 +1121,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _addOutputDoc,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
+                      backgroundColor: const Color(0xFF005BB3),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1147,9 +1147,9 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: const Color(0xFFEFF6FF),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x08000000),
@@ -1167,13 +1167,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
+                        color: const Color(0xFFDBEAFE),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.build_outlined,
                         size: 20,
-                        color: Color(0xFFD97706),
+                        color: Color(0xFF005BB3),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1191,7 +1191,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD97706).withOpacity(0.12),
+                          color: const Color(0xFF005BB3).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1199,7 +1199,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFFD97706),
+                            color: Color(0xFF005BB3),
                           ),
                         ),
                       ),
@@ -1215,14 +1215,14 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           Icon(
                             Icons.handyman_outlined,
                             size: 48,
-                            color: const Color(0xFFD97706).withOpacity(0.3),
+                            color: const Color(0xFF005BB3).withOpacity(0.3),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             'No tools configured',
                             style: TextStyle(
                               fontSize: 13,
-                              color: const Color(0xFFD97706).withOpacity(0.6),
+                              color: const Color(0xFF005BB3).withOpacity(0.6),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -1237,7 +1237,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
                     child: Row(
                       children: [
@@ -1245,7 +1245,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
+                            color: const Color(0xFFDBEAFE),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -1253,7 +1253,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                 ? Icons.attach_file
                                 : (tool.isInternal ? Icons.dns : Icons.public),
                             size: 16,
-                            color: const Color(0xFFD97706),
+                            color: const Color(0xFF005BB3),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1275,7 +1275,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFD97706).withOpacity(0.1),
+                                      color: const Color(0xFF005BB3).withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -1283,7 +1283,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                                       style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFFD97706),
+                                        color: Color(0xFF005BB3),
                                       ),
                                     ),
                                   ),
@@ -1306,7 +1306,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                         if (tool.url.isNotEmpty)
                           IconButton(
                             icon: const Icon(Icons.open_in_new,
-                                size: 16, color: Color(0xFFD97706)),
+                                size: 16, color: Color(0xFF005BB3)),
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Opening ${tool.url}')),
@@ -1341,7 +1341,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _showAddToolUploadDialog,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD97706),
+                      backgroundColor: const Color(0xFF005BB3),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1586,13 +1586,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
+                  color: const Color(0xFFDBEAFE),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.design_services_outlined,
                   size: 20,
-                  color: Color(0xFFD97706),
+                  color: Color(0xFF005BB3),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1655,7 +1655,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   size: 14,
                   color: _isSaving
                       ? Colors.orange
-                      : const Color(0xFF16A34A)),
+                      : const Color(0xFF005BB3)),
               const SizedBox(width: 6),
               Text(
                 _isSaving
@@ -1667,7 +1667,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   fontSize: 12,
                   color: _isSaving
                       ? Colors.orange
-                      : const Color(0xFF16A34A),
+                      : const Color(0xFF005BB3),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2288,7 +2288,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               _buildGovernanceMetric(
                 'Requirements',
                 '${projectData.frontEndPlanningData.requirements.length}',
-                const Color(0xFFD97706),
+                const Color(0xFF005BB3),
               ),
               _buildGovernanceMetric(
                 'Architecture Nodes',
@@ -3593,11 +3593,11 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
+                  color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.insert_drive_file_outlined,
-                    size: 18, color: Color(0xFF16A34A)),
+                    size: 18, color: Color(0xFF005BB3)),
               ),
               const SizedBox(width: 10),
               const Text('Add Document',
@@ -3641,7 +3641,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: uploadedFileName != null
-                          ? const Color(0xFF16A34A)
+                          ? const Color(0xFF005BB3)
                           : const Color(0xFFE2E8F0),
                     ),
                   ),
@@ -3651,7 +3651,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                         Row(
                           children: [
                             const Icon(Icons.check_circle,
-                                size: 20, color: Color(0xFF16A34A)),
+                                size: 20, color: Color(0xFF005BB3)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -3742,8 +3742,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           label: Text(
                               isUploading ? 'Uploading...' : 'Choose File'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF16A34A),
-                            side: const BorderSide(color: Color(0xFF16A34A)),
+                            foregroundColor: const Color(0xFF005BB3),
+                            side: const BorderSide(color: Color(0xFF005BB3)),
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
@@ -3798,7 +3798,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 Navigator.pop(dialogContext);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF16A34A),
+                backgroundColor: const Color(0xFF005BB3),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Add Document'),
@@ -3828,11 +3828,11 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
+                  color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.build_outlined,
-                    size: 18, color: Color(0xFFD97706)),
+                    size: 18, color: Color(0xFF005BB3)),
               ),
               const SizedBox(width: 10),
               const Text('Add Design Tool',
@@ -3877,11 +3877,11 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFFBEB),
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: uploadedFileName != null
-                          ? const Color(0xFFD97706)
+                          ? const Color(0xFF005BB3)
                           : const Color(0xFFE2E8F0),
                     ),
                   ),
@@ -3891,7 +3891,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                         Row(
                           children: [
                             const Icon(Icons.check_circle,
-                                size: 20, color: Color(0xFFD97706)),
+                                size: 20, color: Color(0xFF005BB3)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -3982,8 +3982,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           label: Text(
                               isUploading ? 'Uploading...' : 'Choose File'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFD97706),
-                            side: const BorderSide(color: Color(0xFFD97706)),
+                            foregroundColor: const Color(0xFF005BB3),
+                            side: const BorderSide(color: Color(0xFF005BB3)),
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
@@ -4032,7 +4032,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 Navigator.pop(dialogContext);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD97706),
+                backgroundColor: const Color(0xFF005BB3),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Add Tool'),

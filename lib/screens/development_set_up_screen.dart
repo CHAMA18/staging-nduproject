@@ -513,8 +513,6 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             const SizedBox(height: 24),
             _buildMethodologySelector(),
             const SizedBox(height: 24),
-            _buildMethodologyComparisonTable(),
-            const SizedBox(height: 24),
             _buildFilterChips(),
             const SizedBox(height: 20),
             _buildStatsRow(),
@@ -845,74 +843,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // METHODOLOGY COMPARISON TABLE
-  // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMethodologyComparisonTable() {
-    return _PanelShell(
-      title: 'Methodology Comparison Matrix',
-      subtitle: 'Industry-standard comparison of Development Setup requirements across Waterfall, Hybrid, and Agile methodologies. Based on PMBOK 7th Ed., ISO/IEC 12207, and SAFe 6.0 frameworks.',
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 800),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildComparisonHeader(),
-              const SizedBox(height: 8),
-              _buildComparisonRow(dimension: 'Environment Provisioning', waterfall: 'Complete all environments before development starts', hybrid: 'Core environments upfront; dev env evolves', agile: 'Minimal viable environment for Sprint 1'),
-              _buildComparisonRow(dimension: 'CI/CD Pipeline', waterfall: 'Full pipeline with phase-gate approvals', hybrid: 'Basic CI upfront; CD matures iteratively', agile: 'Fast CI from day 1; CD per sprint'),
-              _buildComparisonRow(dimension: 'Tooling & Licensing', waterfall: 'All tools licensed and configured upfront', hybrid: 'Critical tools first; others staged', agile: 'Essential tools for Sprint 1; expand as needed'),
-              _buildComparisonRow(dimension: 'Quality Gates', waterfall: 'Phase entry/exit criteria with formal sign-off', hybrid: 'Phase gates for infra; DoD for features', agile: 'Definition of Ready and Definition of Done'),
-              _buildComparisonRow(dimension: 'Security & Compliance', waterfall: 'Full security audit before development', hybrid: 'Compliance baseline upfront; iterative hardening', agile: 'Shift-left security in CI pipeline'),
-              _buildComparisonRow(dimension: 'Branching Strategy', waterfall: 'Strict branching per phase', hybrid: 'GitFlow with release trains', agile: 'Trunk-based with feature flags'),
-              _buildComparisonRow(dimension: 'Rollback Approach', waterfall: 'CCB-approved rollback with documented criteria', hybrid: 'Formal rollback for infra; feature flags for code', agile: 'Automated rollback with feature flags and canary'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComparisonHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(14)),
-      child: const Row(
-        children: [
-          SizedBox(width: 180, child: Text('DIMENSION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF334155), letterSpacing: 0.7))),
-          SizedBox(width: 10),
-          Expanded(child: Text('WATERFALL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), letterSpacing: 0.7))),
-          SizedBox(width: 10),
-          Expanded(child: Text('HYBRID', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF7C3AED), letterSpacing: 0.7))),
-          SizedBox(width: 10),
-          Expanded(child: Text('AGILE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF16A34A), letterSpacing: 0.7))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComparisonRow({required String dimension, required String waterfall, required String hybrid, required String agile}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 180, child: Text(dimension, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
-          const SizedBox(width: 10),
-          Expanded(child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.15))), child: Text(waterfall, style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.4)))),
-          const SizedBox(width: 10),
-          Expanded(child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.15))), child: Text(hybrid, style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.4)))),
-          const SizedBox(width: 10),
-          Expanded(child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF16A34A).withOpacity(0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF16A34A).withOpacity(0.15))), child: Text(agile, style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.4)))),
-        ],
-      ),
-    );
-  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // FILTER CHIPS

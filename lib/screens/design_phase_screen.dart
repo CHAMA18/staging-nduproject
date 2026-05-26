@@ -80,22 +80,26 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   // UI state
   bool _showProgressCard = true;
 
-  DesignTool _activeTool =
-      kIsWeb ? DesignTool.richText : DesignTool.architecture;
+  DesignTool _activeTool = DesignTool.architecture;
   late final TextEditingController _richTextController;
 
   // Component Library for dragging into Output Docs OR directly onto canvas
   final List<_PaletteItem> _library = const [
-    _PaletteItem('Service', Icons.settings_suggest),
-    _PaletteItem('API', Icons.cloud_sync_outlined),
-    _PaletteItem('Database', Icons.storage),
-    _PaletteItem('Queue', Icons.sync_alt),
-    _PaletteItem('Cache', Icons.memory),
-    _PaletteItem('Auth', Icons.verified_user),
-    _PaletteItem('Mobile App', Icons.phone_android),
-    _PaletteItem('Web App', Icons.language),
-    _PaletteItem('Admin Portal', Icons.admin_panel_settings),
-    _PaletteItem('3rd-Party', Icons.link),
+    _PaletteItem('Service', Icons.settings_suggest, type: ArchitectureNodeType.service),
+    _PaletteItem('API Gateway', Icons.cloud_sync_outlined, type: ArchitectureNodeType.api),
+    _PaletteItem('Database', Icons.storage, type: ArchitectureNodeType.database),
+    _PaletteItem('Message Queue', Icons.sync_alt, type: ArchitectureNodeType.queue),
+    _PaletteItem('Cache', Icons.memory, type: ArchitectureNodeType.cache),
+    _PaletteItem('Auth Service', Icons.verified_user, type: ArchitectureNodeType.auth),
+    _PaletteItem('Mobile App', Icons.phone_android, type: ArchitectureNodeType.mobileApp),
+    _PaletteItem('Web App', Icons.language, type: ArchitectureNodeType.webApp),
+    _PaletteItem('Admin Portal', Icons.admin_panel_settings, type: ArchitectureNodeType.adminPortal),
+    _PaletteItem('3rd-Party', Icons.link, type: ArchitectureNodeType.thirdParty),
+    _PaletteItem('Load Balancer', Icons.shuffle, type: ArchitectureNodeType.loadBalancer),
+    _PaletteItem('CDN', Icons.cloud_queue, type: ArchitectureNodeType.cdn),
+    _PaletteItem('Object Storage', Icons.folder_outlined, type: ArchitectureNodeType.storage),
+    _PaletteItem('Container', Icons.widgets, type: ArchitectureNodeType.container),
+    _PaletteItem('IoT Device', Icons.device_hub, type: ArchitectureNodeType.iotDevice),
   ];
 
   ArchitectureNode _createNodeFromDrop(Offset pos, dynamic payload) {
@@ -109,12 +113,15 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
         : payload is _DocItem
             ? payload.icon
             : null;
+    final nodeType = payload is ArchitectureDragPayload
+        ? payload.nodeType ?? ArchitectureNodeType.custom
+        : ArchitectureNodeType.custom;
     return ArchitectureNode(
       id: 'n_${_nodeCounter++}',
       label: label,
       position: pos,
-      color: Colors.white,
-      icon: icon,
+      nodeType: nodeType,
+      icon: icon ?? nodeType.icon,
     );
   }
 
@@ -3260,7 +3267,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               itemBuilder: (context, i) {
                 final item = _library[i];
                 final payload = ArchitectureDragPayload(item.label,
-                    icon: item.icon, color: Colors.blueGrey[50]);
+                    icon: item.icon, color: item.type.bgColor, nodeType: item.type);
                 return LongPressDraggable<ArchitectureDragPayload>(
                   data: payload,
                   dragAnchorStrategy: pointerDragAnchorStrategy,
@@ -3281,7 +3288,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                         id: 'n_${_nodeCounter++}',
                         label: item.label,
                         position: centerPos,
-                        color: Colors.white,
+                        nodeType: item.type,
                         icon: item.icon,
                       );
                       setState(() {
@@ -3405,9 +3412,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       case DesignTool.richText:
         return _buildRichTextPlaceholder();
       case DesignTool.architecture:
-        if (kIsWeb) {
-          return _buildWebArchitectureFallback();
-        }
         return ArchitectureCanvas(
           nodes: _nodes,
           edges: _edges,
@@ -4046,13 +4050,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   void _addArchitectureNode() {
     final node = ArchitectureNode(
       id: 'n_${_nodeCounter++}',
-      label: 'New node',
+      label: 'New Component',
+      nodeType: ArchitectureNodeType.service,
       position: Offset(
         220 + (_nodes.length * 24).toDouble(),
         160 + (_nodes.length * 24).toDouble(),
       ),
-      color: Colors.white,
-      icon: Icons.widgets_outlined,
+      icon: ArchitectureNodeType.service.icon,
     );
     setState(() => _nodes.add(node));
     _scheduleSave();
@@ -4189,38 +4193,53 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       {bool isDragging = false,
       bool showAddButton = false,
       VoidCallback? onAddToCanvas}) {
+    final accent = item.type.accentColor;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isDragging
-            ? LightModeColors.accent.withOpacity(0.15)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppSemanticColors.border),
+            ? accent.withOpacity(0.12)
+            : item.type.bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDragging ? accent : const Color(0xFFE4E7EC),
+          width: isDragging ? 1.5 : 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(item.icon, size: 18, color: Colors.blueGrey[800]),
-          const SizedBox(width: 10),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Icon(item.icon, size: 15, color: accent),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(item.label,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: accent.withOpacity(0.85),
+                )),
           ),
           if (showAddButton && onAddToCanvas != null) ...[
             InkWell(
               onTap: onAddToCanvas,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
               child: Container(
                 padding: const EdgeInsets.all(4),
                 child: Icon(Icons.add_circle_outline,
-                    size: 18, color: LightModeColors.accent),
+                    size: 16, color: accent),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
           ],
-          const Icon(Icons.drag_indicator, size: 16, color: Colors.grey),
+          Icon(Icons.drag_indicator, size: 14, color: Colors.grey[400]),
         ],
       ),
     );
@@ -4235,7 +4254,8 @@ class _DocItem {
 }
 
 class _PaletteItem {
-  const _PaletteItem(this.label, this.icon);
+  const _PaletteItem(this.label, this.icon, {this.type = ArchitectureNodeType.custom});
   final String label;
   final IconData icon;
+  final ArchitectureNodeType type;
 }

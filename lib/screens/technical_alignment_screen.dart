@@ -895,14 +895,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             },
           ),
           const SizedBox(height: 16),
-          _buildTableHeaderRow(
+          _buildScrollableTableHeader(
             columns: const [
-              _TableColumn(label: 'Model', flex: 2),
-              _TableColumn(label: 'Best-fit Use', flex: 3),
-              _TableColumn(label: 'Required Alignment Evidence', flex: 3),
-              _TableColumn(label: 'Technical Control Focus', flex: 3),
-              _TableColumn(label: 'Exit Standard', flex: 3),
-              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+              _TableColumn(label: 'Model', flex: 2, minWidth: 160),
+              _TableColumn(label: 'Best-fit Use', flex: 3, minWidth: 220),
+              _TableColumn(label: 'Required Alignment Evidence', flex: 3, minWidth: 260),
+              _TableColumn(label: 'Technical Control Focus', flex: 3, minWidth: 260),
+              _TableColumn(label: 'Exit Standard', flex: 3, minWidth: 220),
+              _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -930,14 +930,22 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               },
             )
           else
-            for (int i = 0; i < _methodologyStandards.length; i++) ...[
-              _buildMethodologyRow(
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(label: 'Model', flex: 2, minWidth: 160),
+                _TableColumn(label: 'Best-fit Use', flex: 3, minWidth: 220),
+                _TableColumn(label: 'Required Alignment Evidence', flex: 3, minWidth: 260),
+                _TableColumn(label: 'Technical Control Focus', flex: 3, minWidth: 260),
+                _TableColumn(label: 'Exit Standard', flex: 3, minWidth: 220),
+                _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
+              ],
+              rowCount: _methodologyStandards.length,
+              rowBuilder: (i) => _buildMethodologyRow(
                 _methodologyStandards[i],
                 index: i,
                 isStriped: i.isOdd,
               ),
-              if (i != _methodologyStandards.length - 1) const SizedBox(height: 8),
-            ],
+            ),
         ],
       ),
     );
@@ -956,9 +964,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 160,
             child: _buildTableField(
               initialValue: row.model,
               hintText: 'Model',
@@ -970,8 +979,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 220,
             child: _buildTableField(
               initialValue: row.bestFit,
               hintText: 'Best-fit Use',
@@ -985,8 +994,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.evidence,
               hintText: 'Required Alignment Evidence',
@@ -1000,8 +1009,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.controls,
               hintText: 'Technical Control Focus',
@@ -1015,8 +1024,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 220,
             child: _buildTableField(
               initialValue: row.exitStandard,
               hintText: 'Exit Standard',
@@ -1030,8 +1039,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: 80,
             child: Align(
               alignment: Alignment.center,
               child: _buildDeleteAction(() async {
@@ -1095,14 +1104,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             },
           ),
           const SizedBox(height: 16),
-          _buildTableHeaderRow(
+          _buildScrollableTableHeader(
             columns: const [
-              _TableColumn(label: 'Control Domain', flex: 2),
-              _TableColumn(label: 'What Must Be True', flex: 3),
-              _TableColumn(label: 'Evidence To Attach', flex: 3),
-              _TableColumn(label: 'Owner', flex: 2),
-              _TableColumn(label: 'Decision', flex: 2),
-              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+              _TableColumn(label: 'Control Domain', flex: 2, minWidth: 160),
+              _TableColumn(label: 'What Must Be True', flex: 3, minWidth: 240),
+              _TableColumn(label: 'Evidence To Attach', flex: 3, minWidth: 240),
+              _TableColumn(label: 'Owner', flex: 2, minWidth: 130),
+              _TableColumn(label: 'Decision', flex: 2, minWidth: 130),
+              _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -1130,15 +1139,23 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               },
             )
           else
-            for (int i = 0; i < _readinessGateItems.length; i++) ...[
-              _buildReadinessGateRow(
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(label: 'Control Domain', flex: 2, minWidth: 160),
+                _TableColumn(label: 'What Must Be True', flex: 3, minWidth: 240),
+                _TableColumn(label: 'Evidence To Attach', flex: 3, minWidth: 240),
+                _TableColumn(label: 'Owner', flex: 2, minWidth: 130),
+                _TableColumn(label: 'Decision', flex: 2, minWidth: 130),
+                _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
+              ],
+              rowCount: _readinessGateItems.length,
+              rowBuilder: (i) => _buildReadinessGateRow(
                 _readinessGateItems[i],
                 index: i,
                 isStriped: i.isOdd,
                 decisionOptions: decisionOptions,
               ),
-              if (i != _readinessGateItems.length - 1) const SizedBox(height: 8),
-            ],
+            ),
         ],
       ),
     );
@@ -1158,9 +1175,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 160,
             child: _buildTableField(
               initialValue: row.domain,
               hintText: 'Control Domain',
@@ -1172,8 +1190,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 240,
             child: _buildTableField(
               initialValue: row.standard,
               hintText: 'What Must Be True',
@@ -1187,8 +1205,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 240,
             child: _buildTableField(
               initialValue: row.evidence,
               hintText: 'Evidence To Attach',
@@ -1202,8 +1220,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 130,
             child: _buildTableField(
               initialValue: row.owner,
               hintText: 'Owner',
@@ -1215,8 +1233,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 130,
             child: _buildDecisionDropdown(
               value: row.decision,
               options: decisionOptions,
@@ -1228,8 +1246,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: 80,
             child: Align(
               alignment: Alignment.center,
               child: _buildDeleteAction(() async {
@@ -1347,14 +1365,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             },
           ),
           const SizedBox(height: 16),
-          _buildTableHeaderRow(
+          _buildScrollableTableHeader(
             columns: const [
-              _TableColumn(label: 'Trace Object', flex: 2),
-              _TableColumn(label: 'Technical Alignment Question', flex: 3),
-              _TableColumn(label: 'Verification Method', flex: 2),
-              _TableColumn(label: 'Waterfall Evidence', flex: 2),
-              _TableColumn(label: 'Agile / Hybrid Evidence', flex: 2),
-              _TableColumn(label: 'Action', flex: 1, alignment: Alignment.center),
+              _TableColumn(label: 'Trace Object', flex: 2, minWidth: 160),
+              _TableColumn(label: 'Technical Alignment Question', flex: 3, minWidth: 260),
+              _TableColumn(label: 'Verification Method', flex: 2, minWidth: 180),
+              _TableColumn(label: 'Waterfall Evidence', flex: 2, minWidth: 200),
+              _TableColumn(label: 'Agile / Hybrid Evidence', flex: 2, minWidth: 200),
+              _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -1382,14 +1400,22 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               },
             )
           else
-            for (int i = 0; i < _traceabilityItems.length; i++) ...[
-              _buildTraceabilityRow(
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(label: 'Trace Object', flex: 2, minWidth: 160),
+                _TableColumn(label: 'Technical Alignment Question', flex: 3, minWidth: 260),
+                _TableColumn(label: 'Verification Method', flex: 2, minWidth: 180),
+                _TableColumn(label: 'Waterfall Evidence', flex: 2, minWidth: 200),
+                _TableColumn(label: 'Agile / Hybrid Evidence', flex: 2, minWidth: 200),
+                _TableColumn(label: 'Action', flex: 1, minWidth: 80, alignment: Alignment.center),
+              ],
+              rowCount: _traceabilityItems.length,
+              rowBuilder: (i) => _buildTraceabilityRow(
                 _traceabilityItems[i],
                 index: i,
                 isStriped: i.isOdd,
               ),
-              if (i != _traceabilityItems.length - 1) const SizedBox(height: 8),
-            ],
+            ),
         ],
       ),
     );
@@ -1408,9 +1434,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 160,
             child: _buildTableField(
               initialValue: row.object,
               hintText: 'Trace Object',
@@ -1422,8 +1449,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.question,
               hintText: 'Technical Alignment Question',
@@ -1437,8 +1464,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 180,
             child: _buildTableField(
               initialValue: row.verification,
               hintText: 'Verification Method',
@@ -1452,8 +1479,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 200,
             child: _buildTableField(
               initialValue: row.waterfallEvidence,
               hintText: 'Waterfall Evidence',
@@ -1467,8 +1494,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 200,
             child: _buildTableField(
               initialValue: row.agileEvidence,
               hintText: 'Agile / Hybrid Evidence',
@@ -1482,8 +1509,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: 80,
             child: Align(
               alignment: Alignment.center,
               child: _buildDeleteAction(() async {
@@ -3603,6 +3630,50 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
   }
 
+  /// Wraps the table header in a horizontal scroll view so columns are
+  /// never cramped, even on narrow viewports.
+  Widget _buildScrollableTableHeader({required List<_TableColumn> columns}) {
+    final totalWidth = columns.fold<double>(
+      0.0,
+      (sum, col) => sum + col.minWidth,
+    ) + (columns.length - 1) * 10.0; // account for SizedBox(width:10) gaps
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: totalWidth),
+        child: _buildTableHeaderRow(columns: columns),
+      ),
+    );
+  }
+
+  /// Wraps table rows in a horizontal scroll view matching the header.
+  Widget _buildScrollableTableBody({
+    required List<_TableColumn> columns,
+    required int rowCount,
+    required Widget Function(int index) rowBuilder,
+  }) {
+    final totalWidth = columns.fold<double>(
+      0.0,
+      (sum, col) => sum + col.minWidth,
+    ) + (columns.length - 1) * 10.0;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: totalWidth),
+        child: Column(
+          children: [
+            for (int i = 0; i < rowCount; i++) ...[
+              rowBuilder(i),
+              if (i != rowCount - 1) const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTableHeaderRow({required List<_TableColumn> columns}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -3613,13 +3684,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ),
       child: Row(
         children: [
-          for (final column in columns)
-            Expanded(
-              flex: column.flex,
+          for (int i = 0; i < columns.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            SizedBox(
+              width: columns[i].minWidth,
               child: Align(
-                alignment: column.alignment,
+                alignment: columns[i].alignment,
                 child: Text(
-                  column.label.toUpperCase(),
+                  columns[i].label.toUpperCase(),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -3630,6 +3702,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -4981,10 +5054,12 @@ class _TableColumn {
   const _TableColumn({
     required this.label,
     this.flex = 1,
+    this.minWidth = 100.0,
     this.alignment = Alignment.center,
   });
 
   final String label;
   final int flex;
+  final double minWidth;
   final Alignment alignment;
 }

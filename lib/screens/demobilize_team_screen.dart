@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/project_close_out_screen.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/utils/launch_phase_ai_seed.dart';
+import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
@@ -11,6 +13,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
@@ -36,8 +41,10 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
+  String _selectedView = 'full'; // 'full' or 'summary'
 
   @override
   void initState() {
@@ -82,8 +89,6 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
             _buildVendorOffboardingPanel(),
             const SizedBox(height: 16),
             _buildCommunicationsPanel(),
-            const SizedBox(height: 16),
-            _buildDebriefNotesPanel(),
             const SizedBox(height: 24),
             LaunchPhaseNavigation(
               backLabel: 'Back: Project Close Out',
@@ -119,6 +124,21 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
             icon: Icons.download_outlined,
             tone: ExecutionActionTone.secondary,
             onPressed: _importTeam,
+          ),
+          ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
+          ExecutionActionItem(
+            label: _selectedView == 'full' ? 'Summary View' : 'Full View',
+            icon: _selectedView == 'full' ? Icons.summarize_outlined : Icons.list_alt,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () => setState(() {
+              _selectedView = _selectedView == 'full' ? 'summary' : 'full';
+            }),
           ),
           ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
@@ -177,10 +197,20 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Team Ramp-Down Roster',
       subtitle: 'Track each team member\'s release status and dates.',
-      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Name', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'),
+        LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'),
+        LaunchColumn(label: 'Contact', width: 120, fieldType: LaunchFieldType.text, hint: 'Contact'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Transitioning', 'Released']),
+      ],
       rowCount: _teamRoster.length,
-      onAdd: () {
-        setState(() => _teamRoster.add(LaunchTeamMember()));
+      onAddValues: (values) {
+        setState(() => _teamRoster.add(LaunchTeamMember(
+          name: values['Name'] ?? '',
+          role: values['Role'] ?? '',
+          contact: values['Contact'] ?? '',
+          releaseStatus: values['Status'] ?? 'Active',
+        )));
         _save();
       },
       onImport: _importTeam,
@@ -264,10 +294,22 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Sessions and artifacts being handed off before team release.',
-      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Topic', flexible: true, fieldType: LaunchFieldType.text, hint: 'Topic'),
+        LaunchColumn(label: 'From', width: 110, fieldType: LaunchFieldType.text, hint: 'From'),
+        LaunchColumn(label: 'To', width: 110, fieldType: LaunchFieldType.text, hint: 'To'),
+        LaunchColumn(label: 'Method', width: 100, fieldType: LaunchFieldType.text, hint: 'Method'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete']),
+      ],
       rowCount: _knowledgeTransfers.length,
-      onAdd: () {
-        setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
+      onAddValues: (values) {
+        setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+          topic: values['Topic'] ?? '',
+          fromPerson: values['From'] ?? '',
+          toPerson: values['To'] ?? '',
+          method: values['Method'] ?? '',
+          status: values['Status'] ?? 'Pending',
+        )));
         _save();
       },
       csvColumns: const [
@@ -361,10 +403,20 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Vendor Offboarding',
       subtitle:
           'Track vendor exits, access cleanup, and remaining obligations.',
-      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'),
+        LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'),
+        LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
+      ],
       rowCount: _vendorOffboarding.length,
-      onAdd: () {
-        setState(() => _vendorOffboarding.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() => _vendorOffboarding.add(LaunchFollowUpItem(
+          title: values['Task'] ?? '',
+          details: values['Details'] ?? '',
+          owner: values['Owner'] ?? '',
+          status: values['Status'] ?? 'Pending',
+        )));
         _save();
       },
       csvColumns: const [
@@ -447,10 +499,22 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       title: 'Communications & People Care',
       subtitle:
           'Planned communications to stakeholders, team, and affected people.',
-      columns: const [LaunchColumn(label: 'Audience', flexible: true), LaunchColumn(label: 'Message', flexible: true), LaunchColumn(label: 'Channel', width: 100), LaunchColumn(label: 'Send Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [
+        LaunchColumn(label: 'Audience', flexible: true, fieldType: LaunchFieldType.text, hint: 'Audience'),
+        LaunchColumn(label: 'Message', flexible: true, fieldType: LaunchFieldType.text, hint: 'Message'),
+        LaunchColumn(label: 'Channel', width: 100, fieldType: LaunchFieldType.text, hint: 'Channel'),
+        LaunchColumn(label: 'Send Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Send Date'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Planned', 'Sent', 'Cancelled']),
+      ],
       rowCount: _communications.length,
-      onAdd: () {
-        setState(() => _communications.add(LaunchCommunicationItem()));
+      onAddValues: (values) {
+        setState(() => _communications.add(LaunchCommunicationItem(
+          audience: values['Audience'] ?? '',
+          message: values['Message'] ?? '',
+          channel: values['Channel'] ?? '',
+          sendDate: values['Send Date'] ?? '',
+          status: values['Status'] ?? 'Planned',
+        )));
         _save();
       },
       csvColumns: const [
@@ -536,43 +600,6 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildDebriefNotesPanel() {
-    return ExecutionPanelShell(
-      title: 'Team Debrief Notes',
-      subtitle:
-          'Recognition, feedback, reassignment notes, and closing thoughts.',
-      collapsible: true,
-      initiallyExpanded: false,
-      headerIcon: Icons.groups_outlined,
-      headerIconColor: const Color(0xFF7C3AED),
-      child: VoiceTextFormField(
-        initialValue: _debriefNotes.notes,
-        maxLines: 6,
-        style: const TextStyle(fontSize: 13, height: 1.6),
-        decoration: InputDecoration(
-          hintText:
-              'Team recognition, feedback, reassignment notes, closing thoughts…',
-          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFFFD700))),
-        ),
-        onChanged: (v) {
-          _debriefNotes = LaunchClosureNotes(notes: v);
-          _save();
-        },
-      ),
     );
   }
 
@@ -732,9 +759,9 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+    LaunchAiResult? result;
     try {
-      gen = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Demobilize Team',
         sections: const {
@@ -751,6 +778,19 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       debugPrint('Demobilize AI error: $e');
     }
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasData = _teamRoster.isNotEmpty ||
         _knowledgeTransfers.isNotEmpty ||
         _vendorOffboarding.isNotEmpty ||
@@ -760,26 +800,26 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       return;
     }
     setState(() {
-      _teamRoster = (gen['team_roster'] ?? [])
+      _teamRoster = (generated['team_roster'] ?? [])
           .map((m) => LaunchTeamMember(
               name: _s(m['title']),
               role: _s(m['details']),
               releaseStatus: 'Active'))
           .where((i) => i.name.isNotEmpty)
           .toList();
-      _knowledgeTransfers = (gen['knowledge_transfer'] ?? [])
+      _knowledgeTransfers = (generated['knowledge_transfer'] ?? [])
           .map((m) => LaunchKnowledgeTransfer(
               topic: _s(m['title']), status: _ns(m['status'], 'Pending')))
           .where((i) => i.topic.isNotEmpty)
           .toList();
-      _vendorOffboarding = (gen['vendor_offboarding'] ?? [])
+      _vendorOffboarding = (generated['vendor_offboarding'] ?? [])
           .map((m) => LaunchFollowUpItem(
               title: _s(m['title']),
               details: _s(m['details']),
               status: _ns(m['status'], 'Pending')))
           .where((i) => i.title.isNotEmpty)
           .toList();
-      _communications = (gen['communications'] ?? [])
+      _communications = (generated['communications'] ?? [])
           .map((m) => LaunchCommunicationItem(
               audience: _s(m['title']),
               message: _s(m['details']),
@@ -793,4 +833,212 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
 
   String _s(dynamic v) => (v ?? '').toString().trim();
   String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName;
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename =
+          'demobilize_team_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text(
+              'Demobilize Team',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '$projectName — Generated ${now.toLocal().toIso8601String()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Team Ramp-Down Roster'),
+            pw.SizedBox(height: 6),
+            if (_teamRoster.isEmpty)
+              pw.Text('No team members.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Name', 'Role', 'Contact', 'Status'],
+                data: _teamRoster
+                    .map((m) => [
+                          _pc(m.name),
+                          _pc(m.role),
+                          _pc(m.contact),
+                          _pc(m.releaseStatus),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Knowledge Transfer'),
+            pw.SizedBox(height: 6),
+            if (_knowledgeTransfers.isEmpty)
+              pw.Text('No knowledge transfers.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Topic',
+                  'From',
+                  'To',
+                  'Method',
+                  'Status'
+                ],
+                data: _knowledgeTransfers
+                    .map((k) => [
+                          _pc(k.topic),
+                          _pc(k.fromPerson),
+                          _pc(k.toPerson),
+                          _pc(k.method),
+                          _pc(k.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Vendor Offboarding'),
+            pw.SizedBox(height: 6),
+            if (_vendorOffboarding.isEmpty)
+              pw.Text('No vendor offboarding items.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Task', 'Details', 'Owner', 'Status'],
+                data: _vendorOffboarding
+                    .map((v) => [
+                          _pc(v.title),
+                          _pc(v.details),
+                          _pc(v.owner),
+                          _pc(v.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Communications & People Care'),
+            pw.SizedBox(height: 6),
+            if (_communications.isEmpty)
+              pw.Text('No communications.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Audience',
+                  'Message',
+                  'Channel',
+                  'Send Date',
+                  'Status'
+                ],
+                data: _communications
+                    .map((c) => [
+                          _pc(c.audience),
+                          _pc(c.message),
+                          _pc(c.channel),
+                          _pc(c.sendDate),
+                          _pc(c.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Team Debrief Notes'),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              _debriefNotes.notes.trim().isEmpty
+                  ? 'No debrief notes recorded.'
+                  : _debriefNotes.notes.trim(),
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (kIsWeb) {
+        download_helper.downloadFile(bytes, filename,
+            mimeType: 'application/pdf');
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF exported: $filename')),
+        );
+      }
+    } catch (e) {
+      debugPrint('PDF export error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _isExporting = false);
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: const pw.BoxDecoration(
+        color: PdfColor(0.06, 0.27, 0.45),
+        borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+      ),
+      child: pw.Text(title,
+          style: pw.TextStyle(
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white)),
+    );
+  }
+
+  String _pc(String v) => v.trim().isEmpty ? '-' : v.trim();
 }

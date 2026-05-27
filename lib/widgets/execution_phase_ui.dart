@@ -315,7 +315,7 @@ class ExecutionMetricsGrid extends StatelessWidget {
   const ExecutionMetricsGrid({
     super.key,
     required this.metrics,
-    this.minTileWidth = 220,
+    this.minTileWidth = 160,
   });
 
   final List<ExecutionMetricData> metrics;
@@ -328,13 +328,18 @@ class ExecutionMetricsGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
-        final int columns = width >= 1180
-            ? 4
-            : width >= 860
-                ? 3
-                : width >= 540
-                    ? 2
-                    : 1;
+        final int count = metrics.length;
+        // Smart column calculation: prefer fitting all metrics in one row
+        // when possible, only wrap on very narrow screens.
+        int columns;
+        if (width >= 600) {
+          // Wide enough: fit all metrics in a single row (up to 5)
+          columns = count.clamp(1, 5);
+        } else if (width >= 400) {
+          columns = 2;
+        } else {
+          columns = 1;
+        }
         final double spacing = 16;
         final double tileWidth =
             (width - (spacing * (columns - 1))) / columns;
@@ -346,6 +351,7 @@ class ExecutionMetricsGrid extends StatelessWidget {
               .map(
                 (metric) => SizedBox(
                   width: tileWidth.clamp(minTileWidth, width).toDouble(),
+                  height: 110,
                   child: ExecutionMetricCard(metric: metric),
                 ),
               )
@@ -381,7 +387,7 @@ class ExecutionMetricCard extends StatelessWidget {
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -415,19 +421,20 @@ class ExecutionMetricCard extends StatelessWidget {
                     height: 1.0,
                   ),
                 ),
-                if (metric.helper != null && metric.helper!.trim().isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      metric.helper!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280),
-                        height: 1.4,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    (metric.helper != null && metric.helper!.trim().isNotEmpty)
+                        ? metric.helper!
+                        : '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6B7280),
+                      height: 1.4,
                     ),
                   ),
+                ),
               ],
             ),
           ),

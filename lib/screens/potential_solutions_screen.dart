@@ -1474,7 +1474,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: const Color(0xFFF5F7FB),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(8),
               topRight: Radius.circular(8),
@@ -1491,7 +1491,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Color(0xFF475467),
                     ),
                   ),
                 ),
@@ -1504,7 +1504,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Color(0xFF475467),
                     ),
                   ),
                 ),

@@ -450,17 +450,15 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
-          Flexible(
-            child: const PlanningPhaseHeader(
-              title: 'Tools Integration',
-              showImportButton: false,
-              showContentButton: false,
-              showNavigationButtons: false,
-            ),
+          const PlanningPhaseHeader(
+            title: 'Tools Integration',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(padding),
+              padding: EdgeInsets.fromLTRB(padding, 8, padding, padding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

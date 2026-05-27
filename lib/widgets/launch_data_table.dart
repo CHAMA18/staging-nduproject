@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:ndu_project/utils/csv_import_helper.dart';
-import 'package:ndu_project/widgets/csv_import_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 const double _defaultColumnWidth = 160;
 const double _tableHorizontalPadding = 20;
-const double _columnGap = 2;
-const double _actionColumnWidth = 40;
+const double _columnGap = 12;
+const double _actionColumnWidth = 80;
 
 class _TableLayoutInherited extends InheritedWidget {
   final double tableWidth;
@@ -33,15 +31,43 @@ class _TableLayoutInherited extends InheritedWidget {
       hasRowActions != oldWidget.hasRowActions;
 }
 
+class _EditingMode extends InheritedWidget {
+  final bool isEditing;
+
+  const _EditingMode({
+    required this.isEditing,
+    required super.child,
+  });
+
+  static bool of(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<_EditingMode>()
+            ?.isEditing ??
+        false;
+  }
+
+  @override
+  bool updateShouldNotify(_EditingMode oldWidget) =>
+      isEditing != oldWidget.isEditing;
+}
+
+enum LaunchFieldType { text, date, dropdown }
+
 class LaunchColumn {
   final String label;
   final double? width;
   final bool flexible;
+  final LaunchFieldType fieldType;
+  final List<String>? dropdownItems;
+  final String? hint;
 
   const LaunchColumn({
     required this.label,
     this.width,
     this.flexible = false,
+    this.fieldType = LaunchFieldType.text,
+    this.dropdownItems,
+    this.hint,
   }) : assert(
             width != null || flexible, 'Either width or flexible must be set');
 }
@@ -55,17 +81,16 @@ class LaunchDataTable extends StatelessWidget {
     required this.cellBuilder,
     this.subtitle,
     this.onAdd,
-    this.addLabel = 'Add',
+    this.onAddValues,
+    this.addLabel = 'Add item',
     this.importLabel,
     this.onImport,
-    this.csvColumns,
-    this.onCsvImport,
     this.emptyMessage = 'No entries yet. Add details to get started.',
-  }) : _columns = columns is List<LaunchColumn>
-            ? columns
-            : columns
-                .map((c) => LaunchColumn(label: c.toString(), flexible: true))
-                .toList();
+  }) : _columns = columns
+            .map((c) => c is LaunchColumn
+                ? c
+                : LaunchColumn(label: c.toString(), flexible: true))
+            .toList();
 
   final String title;
   final String? subtitle;
@@ -73,32 +98,13 @@ class LaunchDataTable extends StatelessWidget {
   final int rowCount;
   final Widget Function(BuildContext context, int rowIdx) cellBuilder;
   final VoidCallback? onAdd;
+  final ValueChanged<Map<String, String>>? onAddValues;
   final String addLabel;
   final String? importLabel;
   final VoidCallback? onImport;
-
-  /// CSV column specs for the import dialog. When provided, a CSV import
-  /// button appears in the table header.
-  final List<CsvColumnSpec>? csvColumns;
-
-  /// Callback invoked with the list of row maps parsed from CSV.
-  /// Each map key matches a [CsvColumnSpec.key].
-  final Future<void> Function(List<Map<String, String>> rows)? onCsvImport;
-
   final String emptyMessage;
 
   List<LaunchColumn> get columns => _columns;
-
-  Future<void> _openCsvImport(BuildContext context) async {
-    final rows = await showCsvImportDialog(
-      context,
-      tableTitle: title,
-      columns: csvColumns!,
-    );
-    if (rows != null && rows.isNotEmpty && onCsvImport != null) {
-      await onCsvImport!(rows);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,17 +125,19 @@ class LaunchDataTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-          if (rowCount == 0) _buildEmpty() else _buildRows(context),
+          _buildCardHeader(context),
+          if (rowCount == 0)
+            _buildEmpty()
+          else
+            _buildRows(context),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildCardHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Row(
         children: [
           Expanded(
@@ -166,47 +174,52 @@ class LaunchDataTable extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(10)),
                 foregroundColor: const Color(0xFF4B5563),
                 side: const BorderSide(color: Color(0xFFD1D5DB)),
               ),
             ),
             const SizedBox(width: 8),
           ],
-          if (csvColumns != null && onCsvImport != null) ...[
+          if (onAdd != null || onAddValues != null)
             OutlinedButton.icon(
-              onPressed: () => _openCsvImport(context),
-              icon: const Icon(Icons.upload_file, size: 16),
-              label: const Text('Import CSV'),
-              style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                foregroundColor: const Color(0xFF059669),
-                side: const BorderSide(color: Color(0xFF6EE7B7)),
+              onPressed: () => _showAddDialog(context),
+              icon: const Icon(Icons.add, size: 16, color: Color(0xFF6B7280)),
+              label: Text(
+                addLabel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: Color(0xFF374151),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (onAdd != null)
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 16),
-              label: Text(addLabel),
-              style: FilledButton.styleFrom(
+              style: OutlinedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                side: const BorderSide(color: Color(0xFFD1D5DB)),
+                backgroundColor: Colors.white,
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _showAddDialog(BuildContext context) async {
+    if (onAddValues != null) {
+      final result = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (ctx) => _AddItemDialog(
+          title: title,
+          columns: _columns,
+        ),
+      );
+      if (result != null) onAddValues!(result);
+    } else {
+      onAdd?.call();
+    }
   }
 
   Widget _buildEmpty() {
@@ -237,7 +250,7 @@ class LaunchDataTable extends StatelessWidget {
         final rows = List.generate(rowCount, (i) => cellBuilder(context, i));
         final effectiveColumns = _resolveColumns(rows);
         final hasRowActions = rows.any(
-          (row) => row is LaunchDataRow && row.onDelete != null,
+          (row) => row is LaunchDataRow && (row.onDelete != null || row.onEdit != null),
         );
         final minTableWidth = _minTableWidth(effectiveColumns, hasRowActions);
         final tableWidth = constraints.maxWidth > minTableWidth
@@ -255,7 +268,12 @@ class LaunchDataTable extends StatelessWidget {
               children: [
                 _buildColumnHeaders(
                     tableWidth, effectiveColumns, hasRowActions),
-                ...rows,
+                for (int i = 0; i < rows.length; i++) ...[
+                  rows[i],
+                  if (i < rows.length - 1)
+                    const Divider(
+                        height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+                ],
               ],
             ),
           ),
@@ -314,32 +332,41 @@ class LaunchDataTable extends StatelessWidget {
       width: tableWidth,
       padding: const EdgeInsets.symmetric(
         horizontal: _tableHorizontalPadding,
-        vertical: 14,
+        vertical: 12,
       ),
       decoration: const BoxDecoration(
         color: Color(0xFF1E293B),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(0),
-        ),
       ),
       child: Row(
         children: [
           ..._buildColumnSlots(
             columns,
             (col, _) => Text(
-              col.label,
-              textAlign: TextAlign.center,
+              col.label.toUpperCase(),
+              textAlign: TextAlign.left,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
                 color: Color(0xFFFFFFFF),
-                letterSpacing: 0.3,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-          if (hasRowActions) const SizedBox(width: _actionColumnWidth),
+          if (hasRowActions)
+            SizedBox(
+              width: _actionColumnWidth,
+              child: const Text(
+                'ACTIONS',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFFFFFFF),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -371,11 +398,13 @@ class LaunchDataRow extends StatefulWidget {
     super.key,
     required this.cells,
     this.onDelete,
-    this.showDivider = true,
+    this.onEdit,
+    this.showDivider = false,
   });
 
   final List<Widget> cells;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
   final bool showDivider;
 
   @override
@@ -384,11 +413,13 @@ class LaunchDataRow extends StatefulWidget {
 
 class _LaunchDataRowState extends State<LaunchDataRow> {
   bool _hovering = false;
+  bool _isEditing = false;
 
   @override
   Widget build(BuildContext context) {
     final tableLayout = _TableLayoutInherited.of(context);
     final columns = tableLayout?.columns;
+    final hasActions = widget.onDelete != null || widget.onEdit != null;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -396,42 +427,85 @@ class _LaunchDataRowState extends State<LaunchDataRow> {
         children: [
           Container(
             width: tableLayout?.tableWidth,
-            color: _hovering ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
+            decoration: BoxDecoration(
+              color: _isEditing
+                  ? const Color(0xFFFFFDF5)
+                  : (_hovering ? const Color(0xFFF8FAFC) : Colors.white),
+              border: _isEditing
+                  ? const Border(
+                      left: BorderSide(color: Color(0xFFF59E0B), width: 3))
+                  : null,
+            ),
             padding: const EdgeInsets.symmetric(
               horizontal: _tableHorizontalPadding,
               vertical: 10,
             ),
-            child: Row(
-              children: [
-                if (columns == null)
-                  ...widget.cells
-                else
-                  ..._buildColumnSlots(
-                    columns,
-                    (_, index) {
-                      if (index >= widget.cells.length) {
-                        return const SizedBox.shrink();
-                      }
-                      return _CellSlot(child: widget.cells[index]);
-                    },
-                  ),
-                if (tableLayout?.hasRowActions ?? false)
-                  SizedBox(
-                    width: _actionColumnWidth,
-                    child: _hovering && widget.onDelete != null
-                        ? IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                size: 18, color: Color(0xFF9CA3AF)),
-                            onPressed: widget.onDelete,
-                            tooltip: 'Delete',
-                          )
-                        : null,
-                  ),
-              ],
+            child: _EditingMode(
+              isEditing: _isEditing,
+              child: Row(
+                children: [
+                  if (columns == null)
+                    ...widget.cells
+                  else
+                    ..._buildColumnSlots(
+                      columns,
+                      (_, index) {
+                        if (index >= widget.cells.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return _CellSlot(child: widget.cells[index]);
+                      },
+                    ),
+                  if (hasActions)
+                    SizedBox(
+                      width: _actionColumnWidth,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (widget.onEdit != null)
+                            Tooltip(
+                              message: _isEditing ? 'Save' : 'Edit',
+                              child: IconButton(
+                                icon: Icon(
+                                  _isEditing
+                                      ? Icons.check_circle_rounded
+                                      : Icons.edit_outlined,
+                                  size: 16,
+                                  color: _isEditing
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFF9CA3AF),
+                                ),
+                                onPressed: () {
+                                  setState(() => _isEditing = !_isEditing);
+                                },
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                    minWidth: 28, minHeight: 28),
+                                splashRadius: 14,
+                              ),
+                            ),
+                          if (widget.onEdit != null && widget.onDelete != null)
+                            const SizedBox(width: 2),
+                          if (widget.onDelete != null)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  size: 16, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(
+                                  minWidth: 28, minHeight: 28),
+                              splashRadius: 14,
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           if (widget.showDivider)
-            const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+            const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
         ],
       ),
     );
@@ -446,7 +520,7 @@ class _CellSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
+      height: 38,
       child: Align(
         alignment: Alignment.centerLeft,
         child: child,
@@ -455,6 +529,9 @@ class _CellSlot extends StatelessWidget {
   }
 }
 
+/// A styled editable cell that renders as a proper input field
+/// with a subtle border, rounded corners, and background fill
+/// — matching the checklist table style from the screenshot.
 class LaunchEditableCell extends StatefulWidget {
   const LaunchEditableCell({
     super.key,
@@ -479,6 +556,7 @@ class LaunchEditableCell extends StatefulWidget {
 
 class _LaunchEditableCellState extends State<LaunchEditableCell> {
   late final TextEditingController _controller;
+  bool _isFocused = false;
 
   @override
   void initState() {
@@ -505,23 +583,57 @@ class _LaunchEditableCellState extends State<LaunchEditableCell> {
 
   @override
   Widget build(BuildContext context) {
-    final inTable = _TableLayoutInherited.of(context) != null;
-    final child = VoiceTextField(
-      controller: _controller,
-      onChanged: widget.onChanged,
-      style: TextStyle(
-        fontSize: 12,
-        color: const Color(0xFF111827),
-        fontWeight: widget.bold ? FontWeight.w600 : FontWeight.normal,
-      ),
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(vertical: 8),
-        isDense: true,
+    final isEditing = _EditingMode.of(context);
+
+    if (!isEditing) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          widget.value.isEmpty ? '—' : widget.value,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            color: widget.value.isEmpty
+                ? const Color(0xFF9CA3AF)
+                : const Color(0xFF111827),
+            fontWeight: widget.bold ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      );
+    }
+
+    final borderColor =
+        _isFocused ? const Color(0xFF2563EB) : const Color(0xFFE5E7EB);
+    final bgColor = _isFocused ? Colors.white : const Color(0xFFF9FAFB);
+
+    final child = Focus(
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor, width: _isFocused ? 1.5 : 1),
+        ),
+        child: VoiceTextField(
+          controller: _controller,
+          onChanged: widget.onChanged,
+          style: TextStyle(
+            fontSize: 12.5,
+            color: const Color(0xFF111827),
+            fontWeight: widget.bold ? FontWeight.w600 : FontWeight.w400,
+          ),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            isDense: true,
+          ),
+        ),
       ),
     );
+    final inTable = _TableLayoutInherited.of(context) != null;
     if (inTable) return child;
     if (widget.width != null) {
       return SizedBox(width: widget.width, child: child);
@@ -551,6 +663,7 @@ class LaunchDateCell extends StatefulWidget {
 
 class _LaunchDateCellState extends State<LaunchDateCell> {
   late String _displayValue;
+  bool _isHovering = false;
 
   @override
   void initState() {
@@ -570,37 +683,78 @@ class _LaunchDateCellState extends State<LaunchDateCell> {
   Widget build(BuildContext context) {
     final text = _displayValue.trim();
     final isEmpty = text.isEmpty;
+    final isEditing = _EditingMode.of(context);
+
+    if (!isEditing) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isEmpty) ...[
+              const Icon(Icons.calendar_today_outlined,
+                  size: 13, color: Color(0xFF9CA3AF)),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              isEmpty ? '—' : text,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isEmpty
+                    ? const Color(0xFF9CA3AF)
+                    : const Color(0xFF111827),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return SizedBox(
       width: widget.width,
-      height: 34,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: () => _pickDate(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  isEmpty ? widget.hint : text,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isEmpty
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF111827),
+      height: 38,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _pickDate(context),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _isHovering ? Colors.white : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _isHovering
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFFE5E7EB),
+                width: _isHovering ? 1.5 : 1,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isEmpty ? widget.hint : text,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: isEmpty
+                          ? const Color(0xFF9CA3AF)
+                          : const Color(0xFF111827),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.calendar_today_outlined,
-                size: 14,
-                color: Color(0xFF6B7280),
-              ),
-            ],
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 13,
+                  color: Color(0xFF6B7280),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -669,23 +823,49 @@ class LaunchStatusDropdown extends StatelessWidget {
     final menuItems = _normalizedItems();
     final effective = _effectiveValue(menuItems);
     final statusColor = _statusColor(effective ?? '');
+    final isEditing = _EditingMode.of(context);
+
+    if (!isEditing) {
+      final label = effective ?? 'Not set';
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: statusColor,
+            ),
+          ),
+        ),
+      );
+    }
 
     if (menuItems.isEmpty || effective == null) {
       return SizedBox(
         width: width,
+        height: 38,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: const Text(
-            'Not set',
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
+          child: const Center(
+            child: Text(
+              'Not set',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280),
+              ),
             ),
           ),
         ),
@@ -694,23 +874,26 @@ class LaunchStatusDropdown extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      height: 28,
+      height: 38,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
+          color: statusColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: statusColor.withOpacity(0.15)),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: effective,
               isDense: true,
               isExpanded: true,
               iconSize: 14,
+              iconDisabledColor: statusColor.withOpacity(0.5),
+              iconEnabledColor: statusColor,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: statusColor,
               ),
               items: items
@@ -757,10 +940,10 @@ class LaunchStatusDropdown extends StatelessWidget {
 
   Color _statusColor(String status) {
     final s = status.toLowerCase();
-    if (s.contains('complet') || s.contains('done') || s.contains('closed')) {
+    if (s.contains('complet') || s.contains('done') || s.contains('closed') || s.contains('ready')) {
       return const Color(0xFF10B981);
     }
-    if (s.contains('progress') || s.contains('active') || s.contains('in ')) {
+    if (s.contains('progress') || s.contains('active') || s.contains('track')) {
       return const Color(0xFF2563EB);
     }
     if (s.contains('overdue') || s.contains('at risk') || s.contains('delay')) {
@@ -801,4 +984,284 @@ Future<bool> launchConfirmDelete(BuildContext context,
     ),
   );
   return result ?? false;
+}
+
+class _AddItemDialog extends StatefulWidget {
+  final String title;
+  final List<LaunchColumn> columns;
+
+  const _AddItemDialog({
+    required this.title,
+    required this.columns,
+  });
+
+  @override
+  State<_AddItemDialog> createState() => _AddItemDialogState();
+}
+
+class _AddItemDialogState extends State<_AddItemDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _controllers = <String, TextEditingController>{};
+  final _dateValues = <String, String>{};
+  final _dropdownValues = <String, String?>{};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final col in widget.columns) {
+      switch (col.fieldType) {
+        case LaunchFieldType.text:
+          _controllers[col.label] = TextEditingController();
+        case LaunchFieldType.date:
+          _dateValues[col.label] = '';
+        case LaunchFieldType.dropdown:
+          _dropdownValues[col.label] =
+              (col.dropdownItems != null && col.dropdownItems!.isNotEmpty)
+                  ? col.dropdownItems!.first
+                  : null;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.add_circle_outline,
+                color: Color(0xFF2563EB), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Add New Item',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close, size: 20, color: Color(0xFF9CA3AF)),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 480,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: widget.columns
+                .map((col) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildField(col),
+                    ))
+                .toList(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text('Cancel',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280))),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2563EB),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 0,
+          ),
+          child: const Text('Add Item',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField(LaunchColumn col) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          col.label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 6),
+        _buildInput(col),
+      ],
+    );
+  }
+
+  Widget _buildInput(LaunchColumn col) {
+    switch (col.fieldType) {
+      case LaunchFieldType.text:
+        return TextFormField(
+          controller: _controllers[col.label],
+          style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+          decoration: InputDecoration(
+            hintText: col.hint ?? 'Enter ${col.label.toLowerCase()}',
+            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+            ),
+          ),
+        );
+      case LaunchFieldType.date:
+        return _buildDateField(col);
+      case LaunchFieldType.dropdown:
+        return _buildDropdownField(col);
+    }
+  }
+
+  Widget _buildDateField(LaunchColumn col) {
+    final value = _dateValues[col.label] ?? '';
+    final display = value.isEmpty ? '' : value;
+    return InkWell(
+      onTap: () => _pickDate(col.label),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: display.isEmpty
+                  ? const Color(0xFFE5E7EB)
+                  : const Color(0xFF2563EB)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                display.isEmpty
+                    ? (col.hint ?? 'Select date')
+                    : display,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: display.isEmpty
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF111827),
+                ),
+              ),
+            ),
+            const Icon(Icons.calendar_today_outlined,
+                size: 16, color: Color(0xFF6B7280)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate(String label) async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year - 20),
+      lastDate: DateTime(now.year + 20),
+    );
+    if (selected == null) return;
+    final formatted =
+        '${selected.year}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+    setState(() => _dateValues[label] = formatted);
+  }
+
+  Widget _buildDropdownField(LaunchColumn col) {
+    final items = col.dropdownItems ?? [];
+    final current = _dropdownValues[col.label];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          isExpanded: true,
+          hint: Text(col.hint ?? 'Select ${col.label.toLowerCase()}',
+              style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
+          iconSize: 18,
+          style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+          items: items
+              .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          onChanged: (v) => setState(() => _dropdownValues[col.label] = v),
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    final values = <String, String>{};
+    for (final col in widget.columns) {
+      switch (col.fieldType) {
+        case LaunchFieldType.text:
+          values[col.label] = _controllers[col.label]?.text ?? '';
+        case LaunchFieldType.date:
+          values[col.label] = _dateValues[col.label] ?? '';
+        case LaunchFieldType.dropdown:
+          values[col.label] = _dropdownValues[col.label] ?? '';
+      }
+    }
+    Navigator.pop(context, values);
+  }
 }

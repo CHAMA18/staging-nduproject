@@ -1,5 +1,10 @@
+import 'dart:html' as html;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
 import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
@@ -34,8 +39,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
+  String _selectedView = 'full'; // 'full' or 'summary'
 
   String? get _projectId => ProjectDataHelper.getData(context).projectId;
 
@@ -226,9 +233,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+    LaunchAiResult? result;
     try {
-      gen = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Launch Checklist',
         sections: const {
@@ -247,6 +254,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       debugPrint('Launch checklist AI error: $e');
     }
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasData = _checklistItems.isNotEmpty ||
         _approvals.isNotEmpty ||
         _milestones.isNotEmpty ||
@@ -256,7 +276,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       return;
     }
     setState(() {
-      _checklistItems = (gen['checklist_items'] ?? [])
+      _checklistItems = (generated['checklist_items'] ?? [])
           .map((m) => _ChecklistItemData(
                 title: _s(m['title']),
                 detail: _s(m['details']),
@@ -266,7 +286,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               ))
           .where((i) => i.title.isNotEmpty)
           .toList();
-      _approvals = (gen['approvals'] ?? [])
+      _approvals = (generated['approvals'] ?? [])
           .map((m) => _ApprovalData(
                 label: _s(m['title']),
                 detail: _s(m['details']),
@@ -275,7 +295,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               ))
           .where((i) => i.label.isNotEmpty)
           .toList();
-      _milestones = (gen['milestones'] ?? [])
+      _milestones = (generated['milestones'] ?? [])
           .map((m) => _MilestoneData(
                 title: _s(m['title']),
                 detail: _s(m['details']),
@@ -284,7 +304,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               ))
           .where((i) => i.title.isNotEmpty)
           .toList();
-      _timelineStages = (gen['timeline_stages'] ?? [])
+      _timelineStages = (generated['timeline_stages'] ?? [])
           .map((m) => _TimelineStage(
                 label: _s(m['title']),
                 detail: _s(m['details']),
@@ -296,6 +316,121 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'launch_checklist_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Launch Checklist', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Checklist Items
+            _pdfSectionTitle('Launch Checklist'),
+            pw.SizedBox(height: 6),
+            if (_checklistItems.isEmpty)
+              _pdfCell('No checklist items recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Task', 'Detail', 'Owner', 'Due', 'Status'],
+                data: _checklistItems.map((c) => [c.title, c.detail, c.owner, c.due, c.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Approvals
+            _pdfSectionTitle('Approvals & Sign-offs'),
+            pw.SizedBox(height: 6),
+            if (_approvals.isEmpty)
+              _pdfCell('No approvals recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Approval', 'Detail', 'Approver', 'Status'],
+                data: _approvals.map((a) => [a.label, a.detail, a.approver, a.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Milestones
+            _pdfSectionTitle('Launch Milestones'),
+            pw.SizedBox(height: 6),
+            if (_milestones.isEmpty)
+              _pdfCell('No milestones recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Milestone', 'Detail', 'Due', 'Status'],
+                data: _milestones.map((m) => [m.title, m.detail, m.due, m.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Timeline Stages
+            _pdfSectionTitle('Launch Timeline'),
+            pw.SizedBox(height: 6),
+            if (_timelineStages.isEmpty)
+              _pdfCell('No timeline stages recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Stage', 'Detail', 'Date', 'Status'],
+                data: _timelineStages.map((t) => [t.label, t.detail, t.date, t.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   String _s(dynamic v) => (v ?? '').toString().trim();
@@ -465,6 +600,21 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       trailing: ExecutionActionBar(
         actions: [
           ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
+          ExecutionActionItem(
+            label: _selectedView == 'full' ? 'Summary View' : 'Full View',
+            icon: _selectedView == 'full' ? Icons.summarize_outlined : Icons.list_alt,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () => setState(() {
+              _selectedView = _selectedView == 'full' ? 'summary' : 'full';
+            }),
+          ),
+          ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
             tone: ExecutionActionTone.ai,
@@ -520,20 +670,20 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Checklist',
       subtitle: 'Critical action items with owners and due dates',
       columns: const [
-        LaunchColumn(label: 'Task', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Owner', width: 120),
-        LaunchColumn(label: 'Due', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
+        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'On track', 'At risk', 'In review', 'Pending'], hint: 'Status'),
       ],
       rowCount: _checklistItems.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _checklistItems.add(_ChecklistItemData(
-              title: 'New checklist item',
-              detail: '',
-              owner: '',
-              due: '',
-              status: 'Pending',
+              title: values['Task'] ?? '',
+              detail: values['Detail'] ?? '',
+              owner: values['Owner'] ?? '',
+              due: values['Due'] ?? '',
+              status: values['Status'] ?? 'Pending',
             )));
         _save();
       },
@@ -638,18 +788,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Approvals & Sign-offs',
       subtitle: 'Required approvals before go-live',
       columns: const [
-        LaunchColumn(label: 'Approval', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Approver', width: 120),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Approval', flexible: true, fieldType: LaunchFieldType.text, hint: 'Approval'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Approver', width: 120, fieldType: LaunchFieldType.text, hint: 'Approver'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'In review', 'Pending'], hint: 'Status'),
       ],
       rowCount: _approvals.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _approvals.add(_ApprovalData(
-              label: 'New approval',
-              detail: '',
-              status: 'Pending',
-              approver: '',
+              label: values['Approval'] ?? '',
+              detail: values['Detail'] ?? '',
+              status: values['Status'] ?? 'Pending',
+              approver: values['Approver'] ?? '',
             )));
         _save();
       },
@@ -737,18 +887,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Milestones',
       subtitle: 'Key milestones leading to go-live',
       columns: const [
-        LaunchColumn(label: 'Milestone', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Due', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'Upcoming', 'In progress', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _milestones.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _milestones.add(_MilestoneData(
-              title: 'New milestone',
-              detail: '',
-              due: '',
-              status: 'Upcoming',
+              title: values['Milestone'] ?? '',
+              detail: values['Detail'] ?? '',
+              due: values['Due'] ?? '',
+              status: values['Status'] ?? 'Upcoming',
             )));
         _save();
       },
@@ -836,18 +986,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       title: 'Launch Timeline',
       subtitle: 'Timeline stages toward go-live',
       columns: const [
-        LaunchColumn(label: 'Stage', flexible: true),
-        LaunchColumn(label: 'Detail', flexible: true),
-        LaunchColumn(label: 'Date', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Stage', flexible: true, fieldType: LaunchFieldType.text, hint: 'Stage'),
+        LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
+        LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'In progress', 'Upcoming', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _timelineStages.length,
-      onAdd: () {
+      onAddValues: (values) {
         setState(() => _timelineStages.add(_TimelineStage(
-              label: 'New stage',
-              detail: '',
-              date: '',
-              status: 'Upcoming',
+              label: values['Stage'] ?? '',
+              detail: values['Detail'] ?? '',
+              date: values['Date'] ?? '',
+              status: values['Status'] ?? 'Upcoming',
             )));
         _save();
       },

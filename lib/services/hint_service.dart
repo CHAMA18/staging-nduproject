@@ -56,5 +56,32 @@ class HintService {
     await prefs.setBool(_kDisableViewedHints, false);
     await prefs.setStringList(_kViewedPages, <String>[]);
   }
+
+  // ─── Per-page dismiss for InnerPageNavigationHint ──────────────────────────
+
+  static const _kDismissedPages = 'hints.dismissed_pages';
+
+  /// Whether the user has permanently dismissed the inner-page nav hint for [key].
+  static Future<bool> isPageDismissed(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kDismissedPages) ?? const <String>[];
+    return list.contains(key);
+  }
+
+  /// Mark an inner-page nav hint as permanently dismissed.
+  static Future<void> markPageDismissed(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kDismissedPages) ?? <String>[];
+    if (!list.contains(key)) {
+      list.add(key);
+      await prefs.setStringList(_kDismissedPages, list);
+    }
+  }
+
+  /// Restore all dismissed inner-page nav hints (called during "Enable All").
+  static Future<void> restoreAllDismissed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kDismissedPages);
+  }
 }
 

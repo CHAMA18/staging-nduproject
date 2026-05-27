@@ -1515,17 +1515,23 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                   color: Colors.red.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Colors.red.withOpacity(0.3))),
-              child: Row(children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: Text(_error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis)),
-                TextButton(
-                    onPressed: _isGenerating ? null : _generateTechnologies,
-                    child: const Text('Retry')),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                      onPressed: _isGenerating ? null : _generateTechnologies,
+                      child: const Text('Retry')),
+                ),
               ]),
             ),
           const SizedBox(height: 8),
@@ -1546,36 +1552,50 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 children:
                     List.generate(_techControllers.length, (i) => _row(i))),
           ] else ...[
+            // Table header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
+                  color: const Color(0xFFF5F7FB),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
               child: const Row(children: [
                 Expanded(
+                    flex: 2,
                     child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text('Solution',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
+                SizedBox(width: 16),
                 Expanded(
+                    flex: 3,
                     child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text('Core Technology',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
               ]),
             ),
-            const SizedBox(height: 8),
+            // Table body
             Container(
               decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
-              child: Column(
-                  children:
-                      List.generate(_techControllers.length, (i) => _row(i))),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
+              child: _techControllers.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No solutions added yet. Add solutions from the Potential Solutions page to generate IT considerations.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: List.generate(_techControllers.length, (i) => _row(i))),
             ),
           ],
           const SizedBox(height: 24),
@@ -1625,6 +1645,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
 
   Widget _row(int index) {
     final isMobile = AppBreakpoints.isMobile(context);
+    final isStriped = index.isOdd;
     // Handle cases where we have more controllers than solutions (user added items)
     final s = index < _solutions.length
         ? _solutions[index]
@@ -1632,8 +1653,9 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
+          color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
           border:
-              Border(top: BorderSide(color: Colors.grey.withOpacity(0.25)))),
+              Border(top: BorderSide(color: const Color(0xFFE4E7EC)))),
       child: isMobile
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1654,6 +1676,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
             ])
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
+                flex: 2,
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Column(
@@ -1671,7 +1694,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                                   textAlign: TextAlign.left,
                                   style: const TextStyle(
                                       fontSize: 13,
-                                      color: Colors.black87,
+                                      color: Color(0xFF1F2937),
                                       fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -1681,7 +1704,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                           Text(s.description,
                               textAlign: TextAlign.left,
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
+                                  fontSize: 12, color: Color(0xFF6B7280)),
                               maxLines: 5,
                               softWrap: true,
                               overflow: TextOverflow.ellipsis),
@@ -1690,25 +1713,26 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(child: _techTextArea(_techControllers[index], index)),
+              Expanded(
+                flex: 3,
+                child: _techTextArea(_techControllers[index], index),
+              ),
             ]),
     );
   }
 
   Widget _numberBadge(int number) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Container(
-      width: 20,
-      height: 20,
+      width: 22,
+      height: 22,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: primary.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: primary.withOpacity(0.6), width: 1),
+        color: const Color(0xFFFBBF24),
+        borderRadius: BorderRadius.circular(11),
       ),
       child: Text('$number',
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w700, color: primary)),
+          style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
     );
   }
 
@@ -1754,18 +1778,17 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
             controller: controller,
             onBeforeUndo: () => _saveITConsiderationsData(),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.grey.withOpacity(0.25))),
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE4E7EC))),
             child: VoiceTextField(
               controller: controller,
-              minLines: 2,
+              minLines: 3,
               maxLines: null,
-              textAlign: TextAlign.center,
               onChanged: (value) {
                 provider.addFieldToHistory(fieldKey, value,
                     isAiGenerated: true);
@@ -1778,7 +1801,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                     'Enter core technologies specific to this solution (e.g., platforms, frameworks, databases, tools)...',
                 hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
               ),
-              style: const TextStyle(fontSize: 12, color: Colors.black87),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.5),
             ),
           ),
         ],

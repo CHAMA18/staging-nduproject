@@ -678,9 +678,11 @@ class DesignSpecification {
 class DesignDocument {
   String id;
   String title;
-  String type; // 'Input' or 'Output'
+  String type; // 'Input', 'Output', or 'Reference'
   String? url;
   String? notes;
+  String? uploadedFileName;
+  String? uploadedStoragePath;
 
   DesignDocument({
     String? id,
@@ -688,7 +690,12 @@ class DesignDocument {
     this.type = 'Output',
     this.url,
     this.notes,
+    this.uploadedFileName,
+    this.uploadedStoragePath,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+  bool get hasUploadedFile =>
+      uploadedFileName != null && uploadedFileName!.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -696,6 +703,8 @@ class DesignDocument {
         'type': type,
         'url': url,
         'notes': notes,
+        'uploadedFileName': uploadedFileName,
+        'uploadedStoragePath': uploadedStoragePath,
       };
 
   factory DesignDocument.fromJson(Map<String, dynamic> json) {
@@ -705,6 +714,8 @@ class DesignDocument {
       type: json['type']?.toString() ?? 'Output',
       url: json['url']?.toString(),
       notes: json['notes']?.toString(),
+      uploadedFileName: json['uploadedFileName']?.toString(),
+      uploadedStoragePath: json['uploadedStoragePath']?.toString(),
     );
   }
 }
@@ -714,19 +725,28 @@ class DesignToolLink {
   String name;
   String url;
   bool isInternal;
+  String? uploadedFileName;
+  String? uploadedStoragePath;
 
   DesignToolLink({
     String? id,
     this.name = '',
     this.url = '',
     this.isInternal = false,
+    this.uploadedFileName,
+    this.uploadedStoragePath,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+  bool get hasUploadedFile =>
+      uploadedFileName != null && uploadedFileName!.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'url': url,
         'isInternal': isInternal,
+        'uploadedFileName': uploadedFileName,
+        'uploadedStoragePath': uploadedStoragePath,
       };
 
   factory DesignToolLink.fromJson(Map<String, dynamic> json) {
@@ -735,6 +755,8 @@ class DesignToolLink {
       name: json['name']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
       isInternal: json['isInternal'] == true,
+      uploadedFileName: json['uploadedFileName']?.toString(),
+      uploadedStoragePath: json['uploadedStoragePath']?.toString(),
     );
   }
 }

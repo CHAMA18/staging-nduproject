@@ -81,24 +81,23 @@ class OpenAiConfig {
   /// returns '' and the request goes directly to OpenAI.
   ///
   /// For reasoning models (o3, o4, o1), this also:
-  /// - Converts `max_tokens` → `max_completion_tokens` (required by reasoning models)
-  /// - Converts `max_output_tokens` → `max_completion_tokens` (required by reasoning models)
   /// - Removes `temperature` parameter (reasoning models only support default value of 1)
-  /// Reasoning models reject `max_tokens`, `max_output_tokens`, and non-default
-  /// `temperature` values with 400 errors.
+  /// - Removes any legacy token parameters that are not accepted by the API
+  /// The Chat Completions API now requires `max_completion_tokens` for o3/o4
+  /// models. The legacy `max_tokens` parameter causes a 400 error.
   static Map<String, dynamic> wrapBody(Map<String, dynamic> body) {
     final result = Map<String, dynamic>.from(body);
 
-    // Convert token limit parameters and strip unsupported params for reasoning models
+    // Strip unsupported params for reasoning models
     if (SecureAPIConfig.isReasoningModel) {
-      // max_tokens → max_completion_tokens
-      if (result.containsKey('max_tokens')) {
-        result['max_completion_tokens'] = result.remove('max_tokens');
-      }
-      // max_output_tokens → max_completion_tokens
-      if (result.containsKey('max_output_tokens')) {
-        result['max_completion_tokens'] = result.remove('max_output_tokens');
-      }
+      // The Chat Completions API now requires `max_completion_tokens` for
+      // reasoning models (o3, o4). The legacy `max_tokens` parameter causes:
+      //   - max_tokens → 400 "Unsupported parameter: 'max_tokens' is not supported with this model"
+      //   - max_output_tokens → 400 "Unknown parameter"
+      // So we remove the legacy variants and keep max_completion_tokens.
+      result.remove('max_tokens');
+      result.remove('max_output_tokens');
+
       // Reasoning models (o3, o4, o1) only support temperature=1 (default).
       // Sending any other value causes a 400 error:
       // "'temperature' does not support X with this model. Only the default (1) value is supported."
@@ -159,7 +158,7 @@ class OpenAiAutocompleteService {
       'model': OpenAiConfig.model,
       'temperature': _temperature,
       // Give the model more headroom for higher-quality continuations
-      'max_output_tokens': 300,
+      'max_completion_tokens': 300,
       'input': [
         {
           'role': 'system',
@@ -326,7 +325,7 @@ class OpenAiDiagramService {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {

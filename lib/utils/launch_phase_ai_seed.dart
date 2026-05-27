@@ -183,35 +183,249 @@ class LaunchPhaseAiSeed {
   }
 
   // ────────────────────────────────────────────────────────────────
-  // 2. AI generation entry point
+  // 2. Context sufficiency check
+  // ────────────────────────────────────────────────────────────────
+
+  /// Evaluates whether the cross-phase context contains enough concrete
+  /// data to generate meaningful Launch Phase entries.
+  ///
+  /// Returns a [ContextSufficiencyResult] that indicates whether context is
+  /// sufficient and, if not, which areas are missing data.
+  static Future<ContextSufficiencyResult> checkContextSufficiency(
+    BuildContext context, {
+    required String sectionLabel,
+  }) async {
+    final projectData = ProjectDataHelper.getData(context);
+    final projectId = projectData.projectId;
+
+    final missingAreas = <String>[];
+
+    // Check base project data
+    final projectName = projectData.projectName ?? '';
+    final projectDescription = projectData.projectDescription ?? '';
+    if (projectName.isEmpty && projectDescription.isEmpty) {
+      missingAreas.add('Project name and description');
+    }
+
+    // Check for any prior phase data in the base context
+    final baseContext = ProjectDataHelper.buildExecutivePlanContext(
+      projectData,
+      sectionLabel: sectionLabel,
+    );
+    final fallbackContext = baseContext.trim().isEmpty
+        ? ProjectDataHelper.buildProjectContextScan(
+            projectData,
+            sectionLabel: sectionLabel,
+          )
+        : baseContext;
+
+    if (fallbackContext.trim().isEmpty) {
+      missingAreas.add('Any prior phase data (Initiation, Planning, Design, Execution)');
+    }
+
+    // Check cross-phase Firestore data for concrete entries
+    if (projectId != null && projectId.isNotEmpty) {
+      final staffing = await LaunchPhaseService.loadExecutionStaffing(projectId);
+      final contracts = await LaunchPhaseService.loadExecutionContracts(projectId);
+      final vendors = await LaunchPhaseService.loadExecutionVendors(projectId);
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(projectId);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(projectId);
+      final scopeTracking = await LaunchPhaseService.loadScopeTrackingItems(projectId);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(projectId);
+      final planningDeliverables = await LaunchPhaseService.loadPlanningDeliverables(projectId);
+
+      final hasStaffing = staffing.isNotEmpty;
+      final hasContracts = contracts.isNotEmpty;
+      final hasVendors = vendors.isNotEmpty;
+      final hasBudget = budgetRows.isNotEmpty;
+      final hasDeliverables = deliverableRows.isNotEmpty || planningDeliverables.isNotEmpty;
+      final hasScope = scopeTracking.isNotEmpty;
+      final hasRisks = (riskSnapshot['riskItems'] as List?)?.isNotEmpty == true;
+
+      // Section-specific sufficiency checks
+      switch (sectionLabel) {
+        case 'Deliver Project Closure':
+          if (!hasScope) missingAreas.add('Scope tracking data from Execution Phase');
+          if (!hasDeliverables) missingAreas.add('Deliverables from Planning or Execution Phase');
+          if (!hasRisks) missingAreas.add('Risk tracking data from Execution Phase');
+          break;
+        case 'Transition to Production Team':
+          if (!hasStaffing) missingAreas.add('Staffing/team roster from Execution Phase');
+          if (!hasDeliverables) missingAreas.add('Deliverables from prior phases');
+          break;
+        case 'Contract Close Out':
+          if (!hasContracts) missingAreas.add('Contract records from Execution Phase');
+          if (!hasVendors) missingAreas.add('Vendor records from Execution Phase');
+          break;
+        case 'Vendor Account Close Out':
+          if (!hasVendors) missingAreas.add('Vendor records from Execution Phase');
+          if (!hasContracts) missingAreas.add('Contract records from Execution Phase');
+          break;
+        case 'Project Summary':
+          if (!hasScope && !hasDeliverables) missingAreas.add('Scope or deliverable data from prior phases');
+          if (!hasBudget) missingAreas.add('Budget data from Execution Phase');
+          break;
+        case 'Commerce Viability':
+          if (!hasBudget) missingAreas.add('Budget/financial data from Execution Phase');
+          if (!hasContracts && !hasVendors) missingAreas.add('Contract or vendor data from Execution Phase');
+          break;
+        case 'Actual vs Planned Gap Analysis':
+          if (!hasBudget) missingAreas.add('Budget data for variance analysis');
+          if (!hasScope && !hasDeliverables) missingAreas.add('Scope or deliverable data for gap analysis');
+          if (!hasRisks) missingAreas.add('Risk tracking data from Execution Phase');
+          break;
+        case 'Project Close Out':
+          if (!hasContracts && !hasVendors && !hasStaffing) {
+            missingAreas.add('Any project records (contracts, vendors, team) from prior phases');
+          }
+          break;
+        case 'Demobilize Team':
+          if (!hasStaffing) missingAreas.add('Staffing/team roster from Execution Phase');
+          if (!hasContracts && !hasVendors) missingAreas.add('Vendor or contract data for offboarding');
+          break;
+        case 'Launch Checklist':
+          if (!hasScope && !hasDeliverables && !hasRisks) {
+            missingAreas.add('Scope, deliverable, or risk data from prior phases');
+          }
+          break;
+      }
+    }
+
+    final isSufficient = missingAreas.isEmpty;
+    return ContextSufficiencyResult(
+      isSufficient: isSufficient,
+      missingAreas: missingAreas,
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // 3. AI generation entry point
   // ────────────────────────────────────────────────────────────────
 
   /// Generates AI-populated entries for a Launch Phase screen, using
   /// the full cross-phase dependency context.
   ///
-  /// Returns a map of section keys to lists of raw entry maps,
-  /// each containing 'title', 'details', and 'status'.
-  static Future<Map<String, List<Map<String, dynamic>>>> generateEntries({
+  /// Returns a [LaunchAiResult] containing the generated entries and
+  /// context sufficiency information. If context is insufficient,
+  /// the [LaunchAiResult.isContextSufficient] flag will be false.
+  static Future<LaunchAiResult> generateEntries({
     required BuildContext context,
     required String sectionLabel,
     required Map<String, String> sections,
     int itemsPerSection = 3,
   }) async {
+    // Check context sufficiency first
+    final sufficiency = await checkContextSufficiency(
+      context,
+      sectionLabel: sectionLabel,
+    );
+
     final contextText = await buildFullPhaseDependencyContext(
       context,
       sectionLabel: sectionLabel,
     );
-    if (contextText.isEmpty) return {};
+    if (contextText.isEmpty) {
+      return LaunchAiResult(
+        entries: {},
+        isContextSufficient: false,
+        missingAreas: ['No project data available. Please complete prior phases first.'],
+      );
+    }
 
-    return OpenAiServiceSecure().generateLaunchPhaseEntries(
+    final entries = await OpenAiServiceSecure().generateLaunchPhaseEntries(
       context: contextText,
       sections: sections,
       itemsPerSection: itemsPerSection,
     );
+
+    return LaunchAiResult(
+      entries: entries,
+      isContextSufficient: sufficiency.isSufficient,
+      missingAreas: sufficiency.missingAreas,
+    );
   }
 
   // ────────────────────────────────────────────────────────────────
-  // 3. Auto-populate helpers (data-driven, no AI call)
+  // 4. Insufficient context dialog
+  // ────────────────────────────────────────────────────────────────
+
+  /// Shows a dialog informing the user that there is insufficient
+  /// prior-phase context to generate meaningful AI entries.
+  static Future<void> showInsufficientContextDialog(
+    BuildContext context, {
+    required List<String> missingAreas,
+  }) async {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: const Color(0xFFF59E0B), size: 28),
+            const SizedBox(width: 12),
+            const Flexible(
+              child: Text(
+                'Insufficient Context',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'The AI cannot generate meaningful entries because the following prior-phase data is missing or incomplete:',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            ...missingAreas.map((area) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.circle, size: 8,
+                          color: const Color(0xFFEF4444)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          area,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+            const SizedBox(height: 16),
+            const Text(
+              'Please complete the relevant sections in prior phases before using AI to populate this screen.',
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                  height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF005BB3),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text('Understood',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // 5. Auto-populate helpers (data-driven, no AI call)
   // ────────────────────────────────────────────────────────────────
 
   /// Loads ALL cross-phase data from Firestore and returns a structured
@@ -236,6 +450,31 @@ class LaunchPhaseAiSeed {
       stakeholders: await LaunchPhaseService.loadCoreStakeholders(projectId),
     );
   }
+}
+
+/// Result of a context sufficiency check.
+class ContextSufficiencyResult {
+  final bool isSufficient;
+  final List<String> missingAreas;
+
+  const ContextSufficiencyResult({
+    required this.isSufficient,
+    required this.missingAreas,
+  });
+}
+
+/// Result of AI generation for a Launch Phase screen.
+/// Includes the generated entries and context sufficiency information.
+class LaunchAiResult {
+  final Map<String, List<Map<String, dynamic>>> entries;
+  final bool isContextSufficient;
+  final List<String> missingAreas;
+
+  const LaunchAiResult({
+    required this.entries,
+    required this.isContextSufficient,
+    required this.missingAreas,
+  });
 }
 
 /// Immutable snapshot of cross-phase data used for deterministic

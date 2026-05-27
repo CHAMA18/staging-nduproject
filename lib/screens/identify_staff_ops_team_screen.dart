@@ -10,6 +10,7 @@ import 'package:ndu_project/services/ops_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
+import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
@@ -698,96 +699,128 @@ class _IdentifyStaffOpsTeamScreenState
       );
     }
 
-    return _PanelShell(
-      title: 'Readiness checklist',
-      subtitle: 'Pre-handover verification',
-      child: StreamBuilder<List<OpsChecklistItemModel>>(
-        stream: OpsService.streamChecklist(_projectId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
+    return StreamBuilder<List<OpsChecklistItemModel>>(
+      stream: OpsService.streamChecklist(_projectId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _PanelShell(
+            title: 'Readiness checklist',
+            subtitle: 'Pre-handover verification',
+            child: Center(
                 child: Padding(
                     padding: EdgeInsets.all(24.0),
-                    child: CircularProgressIndicator()));
-          }
+                    child: CircularProgressIndicator())),
+          );
+        }
 
-          if (snapshot.hasError) {
-            return Center(
+        if (snapshot.hasError) {
+          return _PanelShell(
+            title: 'Readiness checklist',
+            subtitle: 'Pre-handover verification',
+            child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Text('Error loading checklist: ${snapshot.error}',
                     style: const TextStyle(color: Colors.red)),
               ),
-            );
-          }
-
-          final items = snapshot.data ?? [];
-
-          if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    const Text('No checklist items found.',
-                        style: TextStyle(color: Color(0xFF64748B))),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () => _showAddChecklistItemDialog(context),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add First Item'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return Column(
-            children: items.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                          item.completed
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          size: 20,
-                          color: item.completed
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF94A3B8)),
-                      onPressed: () {
-                        OpsService.updateChecklistItem(
-                          projectId: _projectId!,
-                          itemId: item.id,
-                          completed: !item.completed,
-                        );
-                      },
-                    ),
-                    Expanded(
-                        child: Text(item.item,
-                            style: const TextStyle(fontSize: 12))),
-                    IconButton(
-                      icon: const Icon(Icons.edit,
-                          size: 16, color: Color(0xFF64748B)),
-                      onPressed: () =>
-                          _showEditChecklistItemDialog(context, item),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete,
-                          size: 16, color: Color(0xFFEF4444)),
-                      onPressed: () =>
-                          _showDeleteChecklistItemDialog(context, item),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            ),
           );
-        },
-      ),
+        }
+
+        final items = snapshot.data ?? [];
+
+        return LaunchDataTable(
+          title: 'Readiness Checklist',
+          subtitle: 'Pre-handover verification — add, edit, or remove items inline',
+          columns: const [
+            LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Checklist item'),
+            LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes / evidence'),
+            LaunchColumn(label: 'Status', width: 130, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'Pending', 'In Progress', 'Not Applicable']),
+          ],
+          rowCount: items.length,
+          onAddValues: (values) async {
+            try {
+              await OpsService.createChecklistItem(
+                projectId: _projectId!,
+                item: values['Item'] ?? '',
+                completed: values['Status'] == 'Complete',
+                notes: values['Notes'] ?? '',
+              );
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error adding item: $e')),
+                );
+              }
+            }
+          },
+          emptyMessage:
+              'No checklist items yet. Add items to track pre-handover verification.',
+          cellBuilder: (context, i) {
+            final item = items[i];
+            return LaunchDataRow(
+              onDelete: () async {
+                final confirmed = await launchConfirmDelete(context,
+                    itemName: 'checklist item');
+                if (!confirmed || !mounted) return;
+                try {
+                  await OpsService.deleteChecklistItem(
+                    projectId: _projectId!,
+                    itemId: item.id,
+                  );
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting item: $e')),
+                    );
+                  }
+                }
+              },
+              showDivider: i < items.length - 1,
+              cells: [
+                LaunchEditableCell(
+                  value: item.item,
+                  hint: 'Checklist item',
+                  bold: true,
+                  expand: true,
+                  onChanged: (v) {
+                    OpsService.updateChecklistItem(
+                      projectId: _projectId!,
+                      itemId: item.id,
+                      item: v,
+                    );
+                  },
+                ),
+                LaunchEditableCell(
+                  value: item.notes ?? '',
+                  hint: 'Notes / evidence',
+                  expand: true,
+                  onChanged: (v) {
+                    OpsService.updateChecklistItem(
+                      projectId: _projectId!,
+                      itemId: item.id,
+                      notes: v,
+                    );
+                  },
+                ),
+                LaunchStatusDropdown(
+                  value: item.completed ? 'Complete' : 'Pending',
+                  items: const ['Complete', 'Pending', 'In Progress', 'Not Applicable'],
+                  width: 130,
+                  onChanged: (v) {
+                    if (v == null) return;
+                    OpsService.updateChecklistItem(
+                      projectId: _projectId!,
+                      itemId: item.id,
+                      completed: v == 'Complete',
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1022,173 +1055,6 @@ class _IdentifyStaffOpsTeamScreenState
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error deleting member: $e')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddChecklistItemDialog(BuildContext context) {
-    final projectId = _projectId;
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
-      );
-      return;
-    }
-    _showChecklistItemDialog(context, null, projectId);
-  }
-
-  void _showEditChecklistItemDialog(
-      BuildContext context, OpsChecklistItemModel item) {
-    final projectId = _projectId;
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
-      );
-      return;
-    }
-    _showChecklistItemDialog(context, item, projectId);
-  }
-
-  void _showChecklistItemDialog(
-      BuildContext context, OpsChecklistItemModel? item, String projectId) {
-    final isEdit = item != null;
-    final itemController = TextEditingController(text: item?.item ?? '');
-    final notesController = TextEditingController(text: item?.notes ?? '');
-    bool completed = item?.completed ?? false;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(isEdit ? 'Edit Checklist Item' : 'Add Checklist Item'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              VoiceTextField(
-                  controller: itemController,
-                  decoration: const InputDecoration(labelText: 'Item *')),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                title: const Text('Completed'),
-                value: completed,
-                onChanged: (v) => setState(() => completed = v ?? false),
-              ),
-              const SizedBox(height: 12),
-              VoiceTextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Notes'),
-                  maxLines: 2),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (itemController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please fill in the item field')),
-                  );
-                  return;
-                }
-
-                try {
-                  if (isEdit) {
-                    await OpsService.updateChecklistItem(
-                      projectId: projectId,
-                      itemId: item.id,
-                      item: itemController.text,
-                      completed: completed,
-                      notes: notesController.text.isEmpty
-                          ? null
-                          : notesController.text,
-                    );
-                  } else {
-                    await OpsService.createChecklistItem(
-                      projectId: projectId,
-                      item: itemController.text,
-                      completed: completed,
-                      notes: notesController.text.isEmpty
-                          ? null
-                          : notesController.text,
-                    );
-                  }
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(isEdit
-                              ? 'Item updated successfully'
-                              : 'Item added successfully')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
-                }
-              },
-              child: Text(isEdit ? 'Update' : 'Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteChecklistItemDialog(
-      BuildContext context, OpsChecklistItemModel item) {
-    final projectId = _projectId;
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Checklist Item'),
-        content: Text('Are you sure you want to delete "${item.item}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await OpsService.deleteChecklistItem(
-                    projectId: projectId, itemId: item.id);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Item deleted successfully')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error deleting item: $e')),
                   );
                 }
               }

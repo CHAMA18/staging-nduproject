@@ -132,6 +132,7 @@ import 'package:ndu_project/screens/admin/admin_coupons_screen.dart';
 import 'package:ndu_project/screens/admin/admin_subscription_lookup_screen.dart';
 import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/screens/pricing/mobile_pricing_screen.dart';
+import 'package:ndu_project/routing/shimmer_page_transition.dart';
 
 /// Named route constants for consistency.
 class AppRoutes {
@@ -319,516 +320,501 @@ class AppRouter {
       GoRoute(
         name: AppRoutes.landing,
         path: '/',
-        builder: (context, state) => const LandingScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const LandingScreen()),
       ),
       GoRoute(
         name: AppRoutes.splash,
         path: '/splash',
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const SplashScreen()),
       ),
       GoRoute(
         name: AppRoutes.onboarding,
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const OnboardingScreen()),
       ),
       GoRoute(
         name: AppRoutes.mobilePricing,
         path: '/mobile-pricing',
-        builder: (context, state) => const MobilePricingScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const MobilePricingScreen()),
       ),
       GoRoute(
         name: AppRoutes.adminPortal,
         path: '/${AppRoutes.adminPortal}',
-        builder: (context, state) => const AdminAuthWrapper(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper()),
       ),
       GoRoute(
         name: AppRoutes.adminHome,
         path: '/${AppRoutes.adminHome}',
-        builder: (context, state) =>
-            const AdminAuthWrapper(child: AdminHomeScreen()),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper(child: AdminHomeScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminProjects,
         path: '/${AppRoutes.adminProjects}',
-        builder: (context, state) =>
-            const AdminAuthWrapper(child: AdminProjectsScreen()),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper(child: AdminProjectsScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminUsers,
         path: '/${AppRoutes.adminUsers}',
-        builder: (context, state) =>
-            const AdminAuthWrapper(child: AdminUsersScreen()),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper(child: AdminUsersScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminCoupons,
         path: '/${AppRoutes.adminCoupons}',
-        builder: (context, state) =>
-            const AdminAuthWrapper(child: AdminCouponsScreen()),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper(child: AdminCouponsScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminSubscriptionLookup,
         path: '/${AppRoutes.adminSubscriptionLookup}',
-        builder: (context, state) =>
-            const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const AdminAuthWrapper(child: AdminSubscriptionLookupScreen())),
       ),
       GoRoute(
         name: AppRoutes.signIn,
         path: '/${AppRoutes.signIn}',
-        builder: (context, state) => const SignInScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const SignInScreen()),
       ),
       GoRoute(
         name: AppRoutes.createAccount,
         path: '/${AppRoutes.createAccount}',
-        builder: (context, state) => const CreateAccountScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const CreateAccountScreen()),
       ),
       GoRoute(
         name: AppRoutes.forgotPassword,
         path: '/${AppRoutes.forgotPassword}',
-        builder: (context, state) => const MobileForgotPasswordScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const MobileForgotPasswordScreen()),
       ),
       GoRoute(
         name: AppRoutes.pricing,
         path: '/${AppRoutes.pricing}',
-        builder: (context, state) => const PricingScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const PricingScreen()),
       ),
       GoRoute(
         name: AppRoutes.settings,
         path: '/${AppRoutes.settings}',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const SettingsScreen()),
       ),
       // Dashboards
       GoRoute(
         name: AppRoutes.dashboard,
         path: '/${AppRoutes.dashboard}',
-        builder: (context, state) => const ProjectDashboardScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const ProjectDashboardScreen()),
       ),
       GoRoute(
         name: AppRoutes.programDashboard,
         path: '/${AppRoutes.programDashboard}',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final programId = state.uri.queryParameters['programId'];
-          return ProgramDashboardScreen(programId: programId);
+          return shimmerTransitionPage(state: state, child: ProgramDashboardScreen(programId: programId));
         },
       ),
       GoRoute(
         name: AppRoutes.mobileDashboard,
         path: '/${AppRoutes.mobileDashboard}',
-        builder: (context, state) => const MobileDashboardScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const MobileDashboardScreen()),
       ),
       GoRoute(
         name: AppRoutes.portfolioDashboard,
         path: '/${AppRoutes.portfolioDashboard}',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final portfolioId = state.uri.queryParameters['portfolioId'];
-          return PortfolioDashboardScreen(portfolioId: portfolioId);
+          return shimmerTransitionPage(state: state, child: PortfolioDashboardScreen(portfolioId: portfolioId));
         },
       ),
       GoRoute(
         name: AppRoutes.launchChecklist,
         path: '/${AppRoutes.launchChecklist}',
-        builder: (context, state) => const LaunchChecklistScreen(),
+        pageBuilder: (context, state) => shimmerTransitionPage(state: state, child: const LaunchChecklistScreen()),
       ),
 
       // Supplemental entry points
       GoRoute(
           name: AppRoutes.home,
           path: '/${AppRoutes.home}',
-          builder: (c, s) => const HomeScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const HomeScreen())),
       GoRoute(
           name: AppRoutes.managementLevel,
           path: '/${AppRoutes.managementLevel}',
-          builder: (c, s) => const ManagementLevelScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ManagementLevelScreen())),
       GoRoute(
           name: AppRoutes.lessonsLearned,
           path: '/${AppRoutes.lessonsLearned}',
-          builder: (c, s) => const LessonsLearnedScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const LessonsLearnedScreen())),
       GoRoute(
           name: AppRoutes.stakeholderManagement,
           path: '/${AppRoutes.stakeholderManagement}',
-          builder: (c, s) => const StakeholderManagementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const StakeholderManagementScreen())),
       GoRoute(
         name: AppRoutes.coreStakeholders,
         path: '/${AppRoutes.coreStakeholders}',
-        builder: (c, s) =>
-            const CoreStakeholdersScreen(notes: '', solutions: []),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const CoreStakeholdersScreen(notes: '', solutions: [])),
       ),
 
       // FEP cluster
       GoRoute(
           name: AppRoutes.fep,
           path: '/${AppRoutes.fep}',
-          builder: (c, s) => const FrontEndPlanningScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningScreen())),
       GoRoute(
           name: AppRoutes.fepWorkspace,
           path: '/${AppRoutes.fepWorkspace}',
-          builder: (c, s) => const FrontEndPlanningWorkspaceScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningWorkspaceScreen())),
       GoRoute(
           name: AppRoutes.fepRequirements,
           path: '/${AppRoutes.fepRequirements}',
-          builder: (c, s) => const FrontEndPlanningRequirementsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningRequirementsScreen())),
       GoRoute(
           name: AppRoutes.fepPersonnel,
           path: '/${AppRoutes.fepPersonnel}',
-          builder: (c, s) => const FrontEndPlanningPersonnelScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningPersonnelScreen())),
       GoRoute(
           name: AppRoutes.fepProcurement,
           path: '/${AppRoutes.fepProcurement}',
-          builder: (c, s) => const FrontEndPlanningProcurementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningProcurementScreen())),
       GoRoute(
           name: AppRoutes.fepContracts,
           path: '/${AppRoutes.fepContracts}',
-          builder: (c, s) => const PlanningContractingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const PlanningContractingScreen())),
       GoRoute(
           name: AppRoutes.fepVendorQuotes,
           path: '/${AppRoutes.fepVendorQuotes}',
-          builder: (c, s) =>
-              const FrontEndPlanningContractVendorQuotesScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningContractVendorQuotesScreen())),
       GoRoute(
           name: AppRoutes.fepInfrastructure,
           path: '/${AppRoutes.fepInfrastructure}',
-          builder: (c, s) => const FrontEndPlanningInfrastructureScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningInfrastructureScreen())),
       GoRoute(
           name: AppRoutes.fepTechnology,
           path: '/${AppRoutes.fepTechnology}',
-          builder: (c, s) => const PlanningTechnologyScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const PlanningTechnologyScreen())),
       GoRoute(
           name: AppRoutes.fepTechnologyPersonnel,
           path: '/${AppRoutes.fepTechnologyPersonnel}',
-          builder: (c, s) => const FrontEndPlanningTechnologyPersonnelScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningTechnologyPersonnelScreen())),
       GoRoute(
           name: AppRoutes.fepRisks,
           path: '/${AppRoutes.fepRisks}',
-          builder: (c, s) => const FrontEndPlanningRisksScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningRisksScreen())),
       GoRoute(
           name: AppRoutes.fepAllowance,
           path: '/${AppRoutes.fepAllowance}',
-          builder: (c, s) => const FrontEndPlanningAllowanceScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningAllowanceScreen())),
       GoRoute(
           name: AppRoutes.fepMilestone,
           path: '/${AppRoutes.fepMilestone}',
-          builder: (c, s) => const FrontEndPlanningMilestoneScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningMilestoneScreen())),
       GoRoute(
           name: AppRoutes.fepOpportunities,
           path: '/${AppRoutes.fepOpportunities}',
-          builder: (c, s) => const FrontEndPlanningOpportunitiesScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningOpportunitiesScreen())),
       GoRoute(
           name: AppRoutes.fepSummary,
           path: '/${AppRoutes.fepSummary}',
-          builder: (c, s) => const FrontEndPlanningSummaryScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningSummaryScreen())),
       GoRoute(
           name: AppRoutes.fepSummaryEnd,
           path: '/${AppRoutes.fepSummaryEnd}',
-          builder: (c, s) => const FrontEndPlanningSummaryEndScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningSummaryEndScreen())),
       GoRoute(
           name: AppRoutes.fepSecurity,
           path: '/${AppRoutes.fepSecurity}',
-          builder: (c, s) => const FrontEndPlanningSecurityScreen()),
-
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const FrontEndPlanningSecurityScreen())),
       // Process cluster
       GoRoute(
           name: AppRoutes.projectPlan,
           path: '/${AppRoutes.projectPlan}',
-          builder: (c, s) => const ProjectPlanScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProjectPlanScreen())),
       GoRoute(
           name: AppRoutes.projectFramework,
           path: '/${AppRoutes.projectFramework}',
-          builder: (c, s) => const ProjectFrameworkScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProjectFrameworkScreen())),
       GoRoute(
           name: AppRoutes.projectFrameworkNext,
           path: '/${AppRoutes.projectFrameworkNext}',
-          builder: (c, s) => const ProjectFrameworkNextScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProjectFrameworkNextScreen())),
       GoRoute(
           name: AppRoutes.projectCharter,
           path: '/${AppRoutes.projectCharter}',
-          builder: (c, s) => const ProjectCharterScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProjectCharterScreen())),
       GoRoute(
         name: AppRoutes.projectDecisionSummary,
         path: '/${AppRoutes.projectDecisionSummary}',
-        builder: (c, s) => ProjectDecisionSummaryScreen(
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: ProjectDecisionSummaryScreen(
           projectName: 'Untitled Project',
           selectedSolution: AiSolutionItem(
               title: 'TBD Solution', description: 'Draft placeholder'),
           allSolutions: const [],
           businessCase: '',
           notes: '',
-        ),
+        )),
       ),
       GoRoute(
           name: AppRoutes.progressTracking,
           path: '/${AppRoutes.progressTracking}',
-          builder: (c, s) => const ProgressTrackingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProgressTrackingScreen())),
       GoRoute(
           name: AppRoutes.wbs,
           path: '/${AppRoutes.wbs}',
-          builder: (c, s) => const WorkBreakdownStructureScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const WorkBreakdownStructureScreen())),
       GoRoute(
           name: AppRoutes.executionPlan,
           path: '/${AppRoutes.executionPlan}',
-          builder: (c, s) => const ExecutionPlanScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ExecutionPlanScreen())),
       GoRoute(
           name: AppRoutes.executionPlanInterface,
           path: '/${AppRoutes.executionPlanInterface}',
-          builder: (c, s) =>
-              const ExecutionPlanInterfaceManagementOverviewScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ExecutionPlanInterfaceManagementOverviewScreen())),
       GoRoute(
           name: AppRoutes.costEstimate,
           path: '/${AppRoutes.costEstimate}',
-          builder: (c, s) => const CostEstimateScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const CostEstimateScreen())),
       GoRoute(
         name: AppRoutes.costAnalysis,
         path: '/${AppRoutes.costAnalysis}',
-        builder: (c, s) => const CostAnalysisScreen(notes: '', solutions: []),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const CostAnalysisScreen(notes: '', solutions: [])),
       ),
       GoRoute(
           name: AppRoutes.potentialSolutions,
           path: '/${AppRoutes.potentialSolutions}',
-          builder: (c, s) => const PotentialSolutionsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const PotentialSolutionsScreen())),
       GoRoute(
         name: AppRoutes.preferredSolutionAnalysis,
         path: '/${AppRoutes.preferredSolutionAnalysis}',
-        builder: (c, s) => const PreferredSolutionAnalysisScreen(
-            notes: '', solutions: [], businessCase: ''),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const PreferredSolutionAnalysisScreen(
+            notes: '', solutions: [], businessCase: '')),
       ),
       GoRoute(
           name: AppRoutes.riskAssessment,
           path: '/${AppRoutes.riskAssessment}',
-          builder: (c, s) => const RiskAssessmentScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const RiskAssessmentScreen())),
       GoRoute(
         name: AppRoutes.riskIdentification,
         path: '/${AppRoutes.riskIdentification}',
-        builder: (c, s) =>
-            const RiskIdentificationScreen(notes: '', solutions: []),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const RiskIdentificationScreen(notes: '', solutions: [])),
       ),
       GoRoute(
           name: AppRoutes.issueManagement,
           path: '/${AppRoutes.issueManagement}',
-          builder: (c, s) => const IssueManagementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const IssueManagementScreen())),
       GoRoute(
           name: AppRoutes.changeManagement,
           path: '/${AppRoutes.changeManagement}',
-          builder: (c, s) => ChangeManagementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: ChangeManagementScreen())),
       GoRoute(
           name: AppRoutes.schedule,
           path: '/${AppRoutes.schedule}',
-          builder: (c, s) => const ScheduleScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ScheduleScreen())),
       GoRoute(
           name: AppRoutes.contractDetails,
           path: '/${AppRoutes.contractDetails}',
-          builder: (c, s) => ContractDetailsDashboardScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: ContractDetailsDashboardScreen())),
       GoRoute(
           name: AppRoutes.scheduleManagementBoard,
           path: '/${AppRoutes.scheduleManagementBoard}',
-          builder: (c, s) => const ScheduleManagementBoardScreen()),
-
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ScheduleManagementBoardScreen())),
       // Team cluster
       GoRoute(
           name: AppRoutes.teamManagement,
           path: '/${AppRoutes.teamManagement}',
-          builder: (c, s) => const TeamManagementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TeamManagementScreen())),
       GoRoute(
           name: AppRoutes.teamMeetings,
           path: '/${AppRoutes.teamMeetings}',
-          builder: (c, s) => const TeamMeetingsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TeamMeetingsScreen())),
       GoRoute(
           name: AppRoutes.teamRoles,
           path: '/${AppRoutes.teamRoles}',
-          builder: (c, s) => const TeamRolesResponsibilitiesScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TeamRolesResponsibilitiesScreen())),
       GoRoute(
           name: AppRoutes.teamTraining,
           path: '/${AppRoutes.teamTraining}',
-          builder: (c, s) => const TeamTrainingAndBuildingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TeamTrainingAndBuildingScreen())),
       GoRoute(
           name: AppRoutes.trainingTasks,
           path: '/${AppRoutes.trainingTasks}',
-          builder: (c, s) => const TrainingProjectTasksScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TrainingProjectTasksScreen())),
       GoRoute(
           name: AppRoutes.staffTeam,
           path: '/${AppRoutes.staffTeam}',
-          builder: (c, s) => const StaffTeamScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const StaffTeamScreen())),
       GoRoute(
         name: AppRoutes.infrastructureConsiderations,
         path: '/${AppRoutes.infrastructureConsiderations}',
-        builder: (c, s) =>
-            const InfrastructureConsiderationsScreen(notes: '', solutions: []),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const InfrastructureConsiderationsScreen(notes: '', solutions: [])),
       ),
       GoRoute(
         name: AppRoutes.itConsiderations,
         path: '/${AppRoutes.itConsiderations}',
-        builder: (c, s) =>
-            const ITConsiderationsScreen(notes: '', solutions: []),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ITConsiderationsScreen(notes: '', solutions: [])),
       ),
       GoRoute(
           name: AppRoutes.securityManagement,
           path: '/${AppRoutes.securityManagement}',
-          builder: (c, s) => const SecurityManagementScreen()),
-
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SecurityManagementScreen())),
       // Program basics
       GoRoute(
           name: AppRoutes.programBasics,
           path: '/${AppRoutes.programBasics}',
-          builder: (c, s) => const ProgramBasicsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProgramBasicsScreen())),
       GoRoute(
           name: AppRoutes.initiationPhase,
           path: '/${AppRoutes.initiationPhase}',
-          builder: (c, s) => const InitiationPhaseScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const InitiationPhaseScreen())),
       GoRoute(
           name: AppRoutes.designPhase,
           path: '/${AppRoutes.designPhase}',
-          builder: (c, s) => const DesignPhaseScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DesignPhaseScreen())),
       GoRoute(
           name: AppRoutes.requirementsImplementation,
           path: '/${AppRoutes.requirementsImplementation}',
-          builder: (c, s) => const RequirementsImplementationScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const RequirementsImplementationScreen())),
       GoRoute(
           name: AppRoutes.deliverablesRoadmap,
           path: '/${AppRoutes.deliverablesRoadmap}',
-          builder: (c, s) => const DeliverablesRoadmapScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DeliverablesRoadmapScreen())),
       GoRoute(
           name: AppRoutes.deliverProjectClosure,
           path: '/${AppRoutes.deliverProjectClosure}',
-          builder: (c, s) => const DeliverProjectClosureScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DeliverProjectClosureScreen())),
       GoRoute(
           name: AppRoutes.transitionToProdTeam,
           path: '/${AppRoutes.transitionToProdTeam}',
-          builder: (c, s) => const TransitionToProdTeamScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TransitionToProdTeamScreen())),
       GoRoute(
           name: AppRoutes.contractCloseOut,
           path: '/${AppRoutes.contractCloseOut}',
-          builder: (c, s) => const ContractCloseOutScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ContractCloseOutScreen())),
       GoRoute(
           name: AppRoutes.vendorAccountCloseOut,
           path: '/${AppRoutes.vendorAccountCloseOut}',
-          builder: (c, s) => const VendorAccountCloseOutScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const VendorAccountCloseOutScreen())),
       GoRoute(
           name: AppRoutes.uiUxDesign,
           path: '/${AppRoutes.uiUxDesign}',
-          builder: (c, s) => const UiUxDesignScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const UiUxDesignScreen())),
       GoRoute(
           name: AppRoutes.developmentSetUp,
           path: '/${AppRoutes.developmentSetUp}',
-          builder: (c, s) => const DevelopmentSetUpScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DevelopmentSetUpScreen())),
       GoRoute(
           name: AppRoutes.technicalAlignment,
           path: '/${AppRoutes.technicalAlignment}',
-          builder: (c, s) => const TechnicalAlignmentScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TechnicalAlignmentScreen())),
       GoRoute(
           name: AppRoutes.backendDesign,
           path: '/${AppRoutes.backendDesign}',
-          builder: (c, s) => const BackendDesignScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const BackendDesignScreen())),
       GoRoute(
           name: AppRoutes.longLeadEquipmentOrdering,
           path: '/${AppRoutes.longLeadEquipmentOrdering}',
-          builder: (c, s) => const LongLeadEquipmentOrderingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const LongLeadEquipmentOrderingScreen())),
       GoRoute(
           name: AppRoutes.projectCloseOut,
           path: '/${AppRoutes.projectCloseOut}',
-          builder: (c, s) => const ProjectCloseOutScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ProjectCloseOutScreen())),
       GoRoute(
           name: AppRoutes.demobilizeTeam,
           path: '/${AppRoutes.demobilizeTeam}',
-          builder: (c, s) => const DemobilizeTeamScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DemobilizeTeamScreen())),
       GoRoute(
           name: AppRoutes.technicalDevelopment,
           path: '/${AppRoutes.technicalDevelopment}',
-          builder: (c, s) => const TechnicalDevelopmentScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TechnicalDevelopmentScreen())),
       GoRoute(
           name: AppRoutes.toolsIntegration,
           path: '/${AppRoutes.toolsIntegration}',
-          builder: (c, s) => const ToolsIntegrationScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ToolsIntegrationScreen())),
       GoRoute(
           name: AppRoutes.summarizeAccountRisks,
           path: '/${AppRoutes.summarizeAccountRisks}',
-          builder: (c, s) => const SummarizeAccountRisksScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SummarizeAccountRisksScreen())),
       GoRoute(
           name: AppRoutes.agileDevelopmentIterations,
           path: '/${AppRoutes.agileDevelopmentIterations}',
-          builder: (c, s) => const AgileDevelopmentIterationsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AgileDevelopmentIterationsScreen())),
       GoRoute(
           name: AppRoutes.engineeringDesign,
           path: '/${AppRoutes.engineeringDesign}',
-          builder: (c, s) => const EngineeringDesignScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const EngineeringDesignScreen())),
       GoRoute(
           name: AppRoutes.scopeCompletion,
           path: '/${AppRoutes.scopeCompletion}',
-          builder: (c, s) => const ScopeCompletionScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ScopeCompletionScreen())),
       GoRoute(
           name: AppRoutes.technicalDebtManagement,
           path: '/${AppRoutes.technicalDebtManagement}',
-          builder: (c, s) => const TechnicalDebtManagementScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TechnicalDebtManagementScreen())),
       GoRoute(
           name: AppRoutes.riskTracking,
           path: '/${AppRoutes.riskTracking}',
-          builder: (c, s) => const RiskTrackingWorkspaceScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const RiskTrackingWorkspaceScreen())),
       GoRoute(
           name: AppRoutes.identifyStaffOpsTeam,
           path: '/${AppRoutes.identifyStaffOpsTeam}',
-          builder: (c, s) => const IdentifyStaffOpsTeamScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const IdentifyStaffOpsTeamScreen())),
       GoRoute(
           name: AppRoutes.contractsTracking,
           path: '/${AppRoutes.contractsTracking}',
-          builder: (c, s) => const ContractsTrackingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ContractsTrackingScreen())),
       GoRoute(
           name: AppRoutes.vendorTracking,
           path: '/${AppRoutes.vendorTracking}',
-          builder: (c, s) => const VendorTrackingScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const VendorTrackingScreen())),
       GoRoute(
           name: AppRoutes.deliverableStatusUpdates,
           path: '/${AppRoutes.deliverableStatusUpdates}',
-          builder: (c, s) => const DeliverableStatusUpdatesScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DeliverableStatusUpdatesScreen())),
       GoRoute(
           name: AppRoutes.recurringDeliverables,
           path: '/${AppRoutes.recurringDeliverables}',
-          builder: (c, s) => const RecurringDeliverablesScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const RecurringDeliverablesScreen())),
       GoRoute(
           name: AppRoutes.statusReports,
           path: '/${AppRoutes.statusReports}',
-          builder: (c, s) => const StatusReportsScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const StatusReportsScreen())),
       GoRoute(
           name: AppRoutes.detailedDesign,
           path: '/${AppRoutes.detailedDesign}',
-          builder: (c, s) => const DetailedDesignScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const DetailedDesignScreen())),
       GoRoute(
           name: AppRoutes.scopeTrackingImplementation,
           path: '/${AppRoutes.scopeTrackingImplementation}',
-          builder: (c, s) => const ScopeTrackingImplementationScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const ScopeTrackingImplementationScreen())),
       GoRoute(
           name: AppRoutes.stakeholderAlignment,
           path: '/${AppRoutes.stakeholderAlignment}',
-          builder: (c, s) => const StakeholderAlignmentScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const StakeholderAlignmentScreen())),
       GoRoute(
           name: AppRoutes.updateOpsMaintenancePlans,
           path: '/${AppRoutes.updateOpsMaintenancePlans}',
-          builder: (c, s) => const UpdateOpsMaintenancePlansScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const UpdateOpsMaintenancePlansScreen())),
       GoRoute(
           name: AppRoutes.privacyPolicy,
           path: '/${AppRoutes.privacyPolicy}',
-          builder: (c, s) => const PrivacyPolicyScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const PrivacyPolicyScreen())),
       GoRoute(
           name: AppRoutes.termsConditions,
           path: '/${AppRoutes.termsConditions}',
-          builder: (c, s) => const TermsConditionsScreen()),
-
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const TermsConditionsScreen())),
       // SSHER suite
       GoRoute(
           name: AppRoutes.ssherStacked,
           path: '/${AppRoutes.ssherStacked}',
-          builder: (c, s) => const SsherStackedScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SsherStackedScreen())),
       GoRoute(
           name: AppRoutes.ssher1,
           path: '/${AppRoutes.ssher1}',
-          builder: (c, s) => const SsherScreen1()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SsherScreen1())),
       GoRoute(
           name: AppRoutes.ssher2,
           path: '/${AppRoutes.ssher2}',
-          builder: (c, s) => const SsherScreen2()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SsherScreen2())),
       GoRoute(
           name: AppRoutes.ssher3,
           path: '/${AppRoutes.ssher3}',
-          builder: (c, s) => const SsherScreen3()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SsherScreen3())),
       GoRoute(
           name: AppRoutes.ssher4,
           path: '/${AppRoutes.ssher4}',
-          builder: (c, s) => const SsherScreen4()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SsherScreen4())),
       // SafetyFullViewScreen requires constructor data; reachable via the SSHER flow, not direct URL
     ],
     errorBuilder: (context, state) {
@@ -893,52 +879,51 @@ class AppRouter {
       // Root path - will be handled by redirect function above
       GoRoute(
         path: '/',
-        builder: (c, s) {
+        pageBuilder: (c, s) {
           // This should never be reached due to redirect, but provide fallback
           User? user;
           try {
             user = FirebaseAuth.instance.currentUser;
           } catch (_) {}
           if (user?.email != null && user!.email!.isNotEmpty) {
-            return const AdminAuthWrapper(child: AdminHomeScreen());
+            return shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminHomeScreen()));
           }
-          return const SignInScreen();
+          return shimmerTransitionPage(state: s, child: const SignInScreen());
         },
       ),
       GoRoute(
           name: AppRoutes.signIn,
           path: '/${AppRoutes.signIn}',
-          builder: (c, s) => const SignInScreen()),
+          pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const SignInScreen())),
       GoRoute(
         name: AppRoutes.adminHome,
         path: '/${AppRoutes.adminHome}',
-        builder: (c, s) => const AdminAuthWrapper(child: AdminHomeScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminHomeScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminProjects,
         path: '/${AppRoutes.adminProjects}',
-        builder: (c, s) => const AdminAuthWrapper(child: AdminProjectsScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminProjectsScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminUsers,
         path: '/${AppRoutes.adminUsers}',
-        builder: (c, s) => const AdminAuthWrapper(child: AdminUsersScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminUsersScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminCoupons,
         path: '/${AppRoutes.adminCoupons}',
-        builder: (c, s) => const AdminAuthWrapper(child: AdminCouponsScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminCouponsScreen())),
       ),
       GoRoute(
         name: AppRoutes.adminSubscriptionLookup,
         path: '/${AppRoutes.adminSubscriptionLookup}',
-        builder: (c, s) =>
-            const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: AdminSubscriptionLookupScreen())),
       ),
       GoRoute(
         name: AppRoutes.settings,
         path: '/${AppRoutes.settings}',
-        builder: (c, s) => const AdminAuthWrapper(child: SettingsScreen()),
+        pageBuilder: (c, s) => shimmerTransitionPage(state: s, child: const AdminAuthWrapper(child: SettingsScreen())),
       ),
     ],
     errorBuilder: (context, state) =>

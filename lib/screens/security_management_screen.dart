@@ -13,6 +13,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 enum _SecurityTab { dashboard, roles, permissions, settings, accessLogs }
 
 class SecurityManagementScreen extends StatefulWidget {
@@ -363,6 +364,24 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
                           const _SecurityNotesCard(),
                           const SizedBox(height: 24),
                         _TabStrip(selectedTab: _selectedTab, onSelected: _handleTabSelected),
+                        const SizedBox(height: 16),
+                        InnerPageNavigationHint(
+                          pageId: 'security_management',
+                          pageTitle: 'Security Management',
+                          description: 'Navigate between security sections',
+                          currentSectionId: _selectedTab.name,
+                          sections: [
+                            InnerPageSection(id: _SecurityTab.dashboard.name, label: 'Dashboard', icon: Icons.dashboard_customize, status: _selectedTab == _SecurityTab.dashboard ? InnerPageSectionStatus.current : InnerPageSectionStatus.available, stepNumber: 1),
+                            InnerPageSection(id: _SecurityTab.roles.name, label: 'Roles', icon: Icons.badge_outlined, status: _selectedTab == _SecurityTab.roles ? InnerPageSectionStatus.current : InnerPageSectionStatus.available, stepNumber: 2),
+                            InnerPageSection(id: _SecurityTab.permissions.name, label: 'Permissions', icon: Icons.lock_open_outlined, status: _selectedTab == _SecurityTab.permissions ? InnerPageSectionStatus.current : InnerPageSectionStatus.available, stepNumber: 3),
+                            InnerPageSection(id: _SecurityTab.settings.name, label: 'Settings', icon: Icons.settings_outlined, status: _selectedTab == _SecurityTab.settings ? InnerPageSectionStatus.current : InnerPageSectionStatus.available, stepNumber: 4),
+                            InnerPageSection(id: _SecurityTab.accessLogs.name, label: 'Access Logs', icon: Icons.receipt_long_outlined, status: _selectedTab == _SecurityTab.accessLogs ? InnerPageSectionStatus.current : InnerPageSectionStatus.available, stepNumber: 5),
+                          ],
+                          onSectionTap: (sectionId) {
+                            final tab = _SecurityTab.values.firstWhere((t) => t.name == sectionId);
+                            _handleTabSelected(tab);
+                          },
+                        ),
                         const SizedBox(height: 28),
                         _TabContent(
                           selectedTab: _selectedTab,

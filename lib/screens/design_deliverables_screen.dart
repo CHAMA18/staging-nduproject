@@ -52,6 +52,8 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   List<_HandoffGovernanceRow> _handoffGovernance = [];
   // CRUD state for approval gates
   List<_ApprovalGateRow> _approvalGates = [];
+  // CRUD state for dependencies
+  List<_DependencyRow> _dependencyRows = [];
 
   // Firestore tracking doc
   // _trackedProjectId removed - unused
@@ -225,6 +227,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       final aeData = data['acceptanceEvidence'] as List?;
       final hgData = data['handoffGovernance'] as List?;
       final agData = data['approvalGates'] as List?;
+      final depData = data['dependencies'] as List?;
 
       setState(() {
         if (aeData != null && aeData.isNotEmpty) {
@@ -248,6 +251,25 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                   (e) => _ApprovalGateRow.fromMap(Map<String, dynamic>.from(e)))
               .toList();
         }
+        if (depData != null && depData.isNotEmpty) {
+          _dependencyRows = depData
+              .whereType<Map>()
+              .map(
+                  (e) => _DependencyRow.fromMap(Map<String, dynamic>.from(e)))
+              .toList();
+        } else if (_data.dependencies.isNotEmpty) {
+          // Migrate legacy plain-text dependencies into structured rows
+          _dependencyRows = _data.dependencies.asMap().entries.map((entry) {
+            return _DependencyRow(
+              id: _newId(),
+              description: entry.value,
+              owner: '',
+              status: 'Open',
+              priority: 'Medium',
+              dueDate: 'TBD',
+            );
+          }).toList();
+        }
       });
     } catch (e) {
       debugPrint('Load tracking data error: $e');
@@ -263,6 +285,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
             _acceptanceEvidence.map((e) => e.toMap()).toList(),
         'handoffGovernance': _handoffGovernance.map((e) => e.toMap()).toList(),
         'approvalGates': _approvalGates.map((e) => e.toMap()).toList(),
+        'dependencies': _dependencyRows.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
@@ -1245,64 +1268,36 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Widget _buildDependenciesPanel() {
+    final isNarrow = MediaQuery.of(context).size.width < 700;
     return _PanelShell(
       title: 'Dependencies & prerequisites',
       subtitle: 'Items that must be resolved before deliverables can advance',
-      trailing: _actionButton(Icons.add, 'Add dependency', onPressed: () {
-        _updateData(
-            _data.copyWith(dependencies: [..._data.dependencies, '']));
-      }),
+      trailing: _actionButton(Icons.add, 'Add dependency',
+          onPressed: () => _showDependencyEditor()),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (_data.dependencies.isEmpty)
+          Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: isNarrow ? 12 : 20, vertical: 14),
+            decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+            child: _DependencyHeaderRow(isNarrow: isNarrow),
+          ),
+          if (_dependencyRows.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24),
               child: Text('No dependencies captured yet.',
                   style: TextStyle(color: Color(0xFF6B7280))),
             )
           else
-            ..._data.dependencies.asMap().entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.circle,
-                        size: 8, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: VoiceTextFormField(
-                        key: ValueKey('dep-${entry.key}'),
-                        initialValue: entry.value,
-                        enabled: _canEditDeliverables,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          hintText: 'Add dependency',
-                          border: InputBorder.none,
-                        ),
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF374151)),
-                        onChanged: (value) {
-                          final next = [..._data.dependencies];
-                          next[entry.key] = value;
-                          _updateData(
-                              _data.copyWith(dependencies: next));
-                        },
-                      ),
-                    ),
-                    if (_canDeleteDeliverables)
-                      IconButton(
-                        onPressed: () {
-                          final next = [..._data.dependencies]
-                            ..removeAt(entry.key);
-                          _updateData(
-                              _data.copyWith(dependencies: next));
-                        },
-                        icon: const Icon(Icons.delete_outline,
-                            size: 18, color: Color(0xFFEF4444)),
-                      ),
-                  ],
-                ),
+            ...List.generate(_dependencyRows.length, (index) {
+              final row = _dependencyRows[index];
+              return _DependencyDisplayRow(
+                row: row,
+                onEdit: () => _showDependencyEditor(entry: row, index: index),
+                onDelete: () => _confirmDeleteDependency(index),
+                showDivider: index != _dependencyRows.length - 1,
+                isNarrow: isNarrow,
               );
             }),
         ],
@@ -1812,6 +1807,158 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // DIALOGS — Dependencies
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  void _showDependencyEditor({_DependencyRow? entry, int? index}) {
+    if (index == null && !_canCreateDeliverables) {
+      _showPermissionSnackBar('add dependencies');
+      return;
+    }
+    if (index != null && !_canEditDeliverables) {
+      _showPermissionSnackBar('edit dependencies');
+      return;
+    }
+    final descCtl = TextEditingController(text: entry?.description ?? '');
+    final ownerCtl = TextEditingController(text: entry?.owner ?? '');
+    String priority = entry?.priority ?? 'Medium';
+    String status = entry?.status ?? 'Open';
+    final dateCtl = TextEditingController(text: entry?.dueDate ?? 'TBD');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return AlertDialog(
+              title: Text(index != null ? 'Edit Dependency' : 'Add Dependency'),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VoiceTextField(
+                        controller: descCtl,
+                        decoration: const InputDecoration(
+                            labelText: 'Description'),
+                        maxLines: 3),
+                    const SizedBox(height: 12),
+                    VoiceTextField(
+                        controller: ownerCtl,
+                        decoration: const InputDecoration(
+                            labelText: 'Owner / Responsible Party')),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: priority,
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'Critical', child: Text('Critical')),
+                        DropdownMenuItem(
+                            value: 'High', child: Text('High')),
+                        DropdownMenuItem(
+                            value: 'Medium', child: Text('Medium')),
+                        DropdownMenuItem(
+                            value: 'Low', child: Text('Low')),
+                      ],
+                      onChanged: (v) =>
+                          setModalState(() => priority = v ?? priority),
+                      decoration:
+                          const InputDecoration(labelText: 'Priority'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'Open', child: Text('Open')),
+                        DropdownMenuItem(
+                            value: 'In progress', child: Text('In progress')),
+                        DropdownMenuItem(
+                            value: 'Resolved', child: Text('Resolved')),
+                        DropdownMenuItem(
+                            value: 'Blocked', child: Text('Blocked')),
+                        DropdownMenuItem(
+                            value: 'Waived', child: Text('Waived')),
+                      ],
+                      onChanged: (v) =>
+                          setModalState(() => status = v ?? status),
+                      decoration:
+                          const InputDecoration(labelText: 'Status'),
+                    ),
+                    const SizedBox(height: 12),
+                    VoiceTextField(
+                        controller: dateCtl,
+                        decoration: const InputDecoration(
+                            labelText: 'Due Date',
+                            hintText: 'e.g. 2026-06-15 or TBD')),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel')),
+                FilledButton(
+                  onPressed: () {
+                    final row = _DependencyRow(
+                      id: entry?.id ?? _newId(),
+                      description: descCtl.text.trim(),
+                      owner: ownerCtl.text.trim(),
+                      priority: priority,
+                      status: status,
+                      dueDate: dateCtl.text.trim(),
+                    );
+                    setState(() {
+                      if (index != null) {
+                        _dependencyRows[index] = row;
+                      } else {
+                        _dependencyRows.add(row);
+                      }
+                    });
+                    _saveTrackingData();
+                    Navigator.pop(ctx);
+                  },
+                  child: Text(index != null ? 'Save' : 'Add'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteDependency(int index) {
+    if (!_canDeleteDeliverables) {
+      _showPermissionSnackBar('delete dependencies');
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Dependency'),
+        content: const Text(
+            'Remove this dependency item? This action cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _dependencyRows.removeAt(index));
+              _saveTrackingData();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // DIALOGS — Pipeline
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2055,6 +2202,41 @@ class _ApprovalGateRow {
       );
 }
 
+class _DependencyRow {
+  _DependencyRow({
+    required this.id,
+    this.description = '',
+    this.owner = '',
+    this.priority = 'Medium',
+    this.status = 'Open',
+    this.dueDate = 'TBD',
+  });
+  final String id;
+  String description;
+  String owner;
+  String priority;
+  String status;
+  String dueDate;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'description': description,
+        'owner': owner,
+        'priority': priority,
+        'status': status,
+        'dueDate': dueDate,
+      };
+
+  static _DependencyRow fromMap(Map<String, dynamic> m) => _DependencyRow(
+        id: m['id'] ?? '',
+        description: m['description'] ?? '',
+        owner: m['owner'] ?? '',
+        priority: m['priority'] ?? 'Medium',
+        status: m['status'] ?? 'Open',
+        dueDate: m['dueDate'] ?? 'TBD',
+      );
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PANEL SHELL WIDGET
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2176,6 +2358,23 @@ Color _priorityColor(String priority) {
       return const Color(0xFFF59E0B);
     case 'low':
       return const Color(0xFF10B981);
+    default:
+      return const Color(0xFF64748B);
+  }
+}
+
+Color _dependencyStatusColor(String status) {
+  switch (status.toLowerCase()) {
+    case 'resolved':
+      return const Color(0xFF10B981);
+    case 'in progress':
+      return const Color(0xFF2563EB);
+    case 'open':
+      return const Color(0xFFF59E0B);
+    case 'blocked':
+      return const Color(0xFFEF4444);
+    case 'waived':
+      return const Color(0xFF9CA3AF);
     default:
       return const Color(0xFF64748B);
   }
@@ -2310,6 +2509,29 @@ class _ApprovalGateHeaderRow extends StatelessWidget {
         Expanded(flex: 2, child: Text('APPROVER', style: _headerStyle, textAlign: TextAlign.center)),
         Expanded(flex: 1, child: Text('PRIORITY', style: _headerStyle, textAlign: TextAlign.center)),
         Expanded(flex: 2, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+        SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _DependencyHeaderRow extends StatelessWidget {
+  const _DependencyHeaderRow({required this.isNarrow});
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return const Text('DESCRIPTION / OWNER / PRIORITY / STATUS / DUE',
+          style: _headerStyle, overflow: TextOverflow.ellipsis);
+    }
+    return const Row(
+      children: [
+        Expanded(flex: 3, child: Text('DESCRIPTION', style: _headerStyle)),
+        Expanded(flex: 2, child: Text('OWNER', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 1, child: Text('PRIORITY', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: Text('STATUS', style: _headerStyle, textAlign: TextAlign.center)),
+        Expanded(flex: 1, child: Text('DUE', style: _headerStyle, textAlign: TextAlign.center)),
         SizedBox(width: 64),
       ],
     );
@@ -2906,6 +3128,167 @@ class _ApprovalGateDisplayRow extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(row.approver,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                  Row(
+                    children: [
+                      IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact),
+                      IconButton(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                          visualDensity: VisualDensity.compact),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+}
+
+class _DependencyDisplayRow extends StatelessWidget {
+  const _DependencyDisplayRow({
+    required this.row,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+    this.isNarrow = false,
+  });
+  final _DependencyRow row;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    final hPad = isNarrow ? 12.0 : 20.0;
+    if (isNarrow) {
+      return _buildNarrowLayout(hPad);
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(row.description,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(row.owner,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280)),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Expanded(
+                flex: 1,
+                child: Center(
+                    child: _statusBadge(
+                        row.priority, _priorityColor(row.priority))),
+              ),
+              Expanded(
+                flex: 2,
+                child: Center(
+                    child: _statusBadge(
+                        row.status, _dependencyStatusColor(row.status))),
+              ),
+              Expanded(
+                flex: 1,
+                child: Center(
+                  child: Text(row.dueDate,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ),
+              SizedBox(
+                width: 64,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_outlined,
+                            size: 16, color: Color(0xFF64748B)),
+                        visualDensity: VisualDensity.compact),
+                    IconButton(
+                        onPressed: onDelete,
+                        icon: const Icon(Icons.delete_outline,
+                            size: 16, color: Color(0xFFEF4444)),
+                        visualDensity: VisualDensity.compact),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(double hPad) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(row.description,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _statusBadge(row.priority, _priorityColor(row.priority)),
+                  const SizedBox(width: 6),
+                  _statusBadge(row.status, _dependencyStatusColor(row.status)),
+                  const SizedBox(width: 6),
+                  Text(row.dueDate,
+                      style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(row.owner,
                       style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                   Row(
                     children: [

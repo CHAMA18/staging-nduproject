@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 enum _TechnologyTab {
@@ -952,6 +953,24 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
                               const SizedBox(height: 14),
                               _buildTabsBar(),
                               const SizedBox(height: 12),
+                              InnerPageNavigationHint(
+                                pageId: 'planning_technology',
+                                pageTitle: 'Technology Planning',
+                                sections: _TechnologyTab.values.map((tab) => InnerPageSection(
+                                  id: tab.name,
+                                  label: tab.label,
+                                  status: tab == _selectedTab
+                                      ? InnerPageSectionStatus.current
+                                      : InnerPageSectionStatus.available,
+                                  stepNumber: _TechnologyTab.values.indexOf(tab) + 1,
+                                )).toList(),
+                                currentSectionId: _selectedTab.name,
+                                onSectionTap: (sectionId) {
+                                  final tab = _TechnologyTab.values.firstWhere(
+                                      (t) => t.name == sectionId);
+                                  setState(() => _selectedTab = tab);
+                                },
+                              ),
                               _buildCurrentTabContent(),
                               const SizedBox(height: 24),
                               LaunchPhaseNavigation(

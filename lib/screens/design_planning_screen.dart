@@ -17,6 +17,7 @@ import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 // import 'package:ndu_project/widgets/launch_phase_navigation.dart'; // removed: UI redesign
 // import 'package:ndu_project/widgets/planning_phase_header.dart'; // removed: UI redesign
@@ -1936,6 +1937,26 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Inner-Page Navigation Hint ──
+        InnerPageNavigationHint(
+          pageId: 'design_planning',
+          pageTitle: 'Design Planning',
+          description: 'This page has 14 guided sections. Complete each in order to advance.',
+          accentColor: _kPrimary,
+          currentSectionId: _activeSectionId,
+          sections: _sectionOrder.asMap().entries.map((entry) {
+            final index = entry.key;
+            final section = entry.value;
+            final progress = _sectionProgress[section.id] ?? _SectionProgressState.pending;
+            return InnerPageSection(
+              id: section.id,
+              label: section.label,
+              stepNumber: index + 1,
+              status: _mapSectionProgress(progress, section.id),
+            );
+          }).toList(),
+          onSectionTap: (sectionId) => _activateSection(sectionId),
+        ),
         _buildOverviewSection(data),
         _buildDesignOverviewSection(data),
         _buildDesignSpecificationsWorkspaceSection(),
@@ -1952,6 +1973,20 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         _buildApprovalsSection(owners),
       ],
     );
+  }
+
+  InnerPageSectionStatus _mapSectionProgress(_SectionProgressState state, String sectionId) {
+    final isCurrent = sectionId == _activeSectionId;
+    if (isCurrent) return InnerPageSectionStatus.current;
+    switch (state) {
+      case _SectionProgressState.complete:
+        return InnerPageSectionStatus.completed;
+      case _SectionProgressState.notApplicable:
+        return InnerPageSectionStatus.notApplicable;
+      case _SectionProgressState.pending:
+        if (!_canOpenSection(sectionId)) return InnerPageSectionStatus.locked;
+        return InnerPageSectionStatus.available;
+    }
   }
 
   Widget _buildGuidedSectionCard({

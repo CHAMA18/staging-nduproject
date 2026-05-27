@@ -119,6 +119,149 @@ class HintContentService {
           createdAt: _seedTimestamp,
           updatedAt: _seedTimestamp,
         ),
+
+        // ─── Inner-Page Navigation Hints ───────────────────────────────────
+
+        PageHintConfig(
+          id: 'design_planning_nav',
+          pageId: 'design_planning_nav',
+          pageLabel: 'Design Planning',
+          title: 'Guided Multi-Section Navigation',
+          message:
+              'Design Planning is divided into 14 sequential sections. Use the navigation hint at the top to jump between sections. Complete or mark each section as "Not applicable" to unlock the next one.',
+          category: 'Design Phase',
+          description:
+              'Inner-page navigation guide for the Design Planning multi-section form.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'planning_technology_nav',
+          pageId: 'planning_technology_nav',
+          pageLabel: 'Planning Technology',
+          title: 'Technology Tabs Navigation',
+          message:
+              'This screen has 5 technology tabs: Inventory, AI Integrations, External Integrations, Definitions, and AI Recommendations. Use the navigation hint to switch between them quickly.',
+          category: 'Planning',
+          description:
+              'Inner-page navigation guide for the Planning Technology tabbed interface.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'planning_contracting_nav',
+          pageId: 'planning_contracting_nav',
+          pageLabel: 'Planning Contracting',
+          title: 'Contracting Workflow Tabs',
+          message:
+              'Navigate through 8 contracting workflow stages using the navigation hint. Each tab represents a phase from initial Overview through to Handoff.',
+          category: 'Planning',
+          description:
+              'Inner-page navigation guide for the Planning Contracting workflow.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'interface_management_nav',
+          pageId: 'interface_management_nav',
+          pageLabel: 'Interface Management',
+          title: 'Interface Management Sections',
+          message:
+              'This screen has 7 sections covering the full interface management lifecycle. Use the navigation hint to jump to Register, Architecture, RACI, Risks, Handoff, Maturity, or Audit Trail.',
+          category: 'Execution',
+          description:
+              'Inner-page navigation guide for Interface Management.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'fep_procurement_nav',
+          pageId: 'fep_procurement_nav',
+          pageLabel: 'Procurement',
+          title: 'Procurement Workflow Navigation',
+          message:
+              'Navigate 7 procurement stages using the navigation hint. Some tabs are locked until earlier stages are completed. The mini-map shows your current position in the workflow.',
+          category: 'Front End Planning',
+          description:
+              'Inner-page navigation guide for the Procurement workflow.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'project_plan_nav',
+          pageId: 'project_plan_nav',
+          pageLabel: 'Project Plan',
+          title: 'Project Plan Tabs',
+          message:
+              'The Project Plan screen has 5 tabs: Overview, Resources, Tasks, Budget, and Risks. Use the navigation hint to switch between planning views.',
+          category: 'Planning',
+          description:
+              'Inner-page navigation guide for Project Plan.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'quality_management_nav',
+          pageId: 'quality_management_nav',
+          pageLabel: 'Quality Management',
+          title: 'Quality Management Tabs',
+          message:
+              'Navigate between 5 quality management views: Plan, Targets, QA Tracking, QC Tracking, and Metrics using the navigation hint.',
+          category: 'Execution',
+          description:
+              'Inner-page navigation guide for Quality Management.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'security_management_nav',
+          pageId: 'security_management_nav',
+          pageLabel: 'Security Management',
+          title: 'Security Management Tabs',
+          message:
+              'This screen has 5 security management tabs: Dashboard, Roles, Permissions, Settings, and Access Logs. Use the navigation hint to move between them.',
+          category: 'Execution',
+          description:
+              'Inner-page navigation guide for Security Management.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'ssher_stacked_nav',
+          pageId: 'ssher_stacked_nav',
+          pageLabel: 'SSHER',
+          title: 'SSHER Category Navigation',
+          message:
+              'Switch between 5 SSHER categories: Safety, Security, Health, Environment, and Regulatory using the navigation hint at the top.',
+          category: 'Execution',
+          description:
+              'Inner-page navigation guide for SSHER stacked screen.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
+        PageHintConfig(
+          id: 'cost_analysis_nav',
+          pageId: 'cost_analysis_nav',
+          pageLabel: 'Cost Analysis',
+          title: 'Benefit Categories Navigation',
+          message:
+              'This screen has 9 benefit categories. Use the compact navigation hint to quickly switch between Revenue, Cost Saving, Operational Efficiency, and more.',
+          category: 'Planning',
+          description:
+              'Inner-page navigation guide for Cost Analysis benefit categories.',
+          enabled: true,
+          createdAt: _seedTimestamp,
+          updatedAt: _seedTimestamp,
+        ),
       ];
 
   static List<PageHintConfig> _sidebarDefaults() {

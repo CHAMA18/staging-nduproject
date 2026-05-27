@@ -16,6 +16,7 @@ import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/utils/file_upload_helper.dart';
 class BackendDesignScreen extends StatefulWidget {
   const BackendDesignScreen({super.key});
 
@@ -793,9 +794,27 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                   ),
                   Expanded(
                     flex: 3,
-                    child: Text(
-                      _designDocuments[i].location,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    child: Row(
+                      children: [
+                        if (_designDocuments[i].hasUploadedFile) ...[
+                          const Icon(Icons.attach_file, size: 14, color: Color(0xFF10B981)),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            _designDocuments[i].hasUploadedFile
+                                ? _designDocuments[i].uploadedFileName!
+                                : _designDocuments[i].location,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _designDocuments[i].hasUploadedFile
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF64748B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(
@@ -1519,6 +1538,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
         ? existing!.owner
         : ownerOptions.first;
     String status = existing?.status ?? _documentStatuses.first;
+    String? uploadedFileName = existing?.uploadedFileName;
+    String? uploadedFileUrl = existing?.uploadedFileUrl;
+    String? uploadedStoragePath = existing?.uploadedStoragePath;
+    bool isUploading = false;
     final saved = await _showBackendDialog(
       title: existing == null ? 'Add design document' : 'Edit design document',
       content: StatefulBuilder(
@@ -1582,6 +1605,113 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 16),
+            // File upload area
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: uploadedFileName != null
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Column(
+                children: [
+                  if (uploadedFileName != null) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle,
+                            size: 20, color: Color(0xFF10B981)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(uploadedFileName!,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF111827)),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              size: 16, color: Color(0xFFEF4444)),
+                          onPressed: () => setDialogState(() {
+                            uploadedFileName = null;
+                            uploadedFileUrl = null;
+                            uploadedStoragePath = null;
+                          }),
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Icon(Icons.cloud_upload_outlined,
+                        size: 36, color: Colors.grey.shade400),
+                    const SizedBox(height: 8),
+                    Text('Click to upload a document',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey.shade600)),
+                    const SizedBox(height: 4),
+                    Text(
+                        'PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, PNG, JPG',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
+                  ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: isUploading
+                          ? null
+                          : () async {
+                              setDialogState(() => isUploading = true);
+                              final projectId = _projectId();
+                              if (projectId == null || projectId.isEmpty) {
+                                setDialogState(() => isUploading = false);
+                                return;
+                              }
+                              final result =
+                                  await FileUploadHelper.pickAndUpload(
+                                folder: 'backend-design-documents',
+                                projectId: projectId,
+                                allowedExtensions:
+                                    FileUploadHelper.documentExtensions,
+                              );
+                              if (result != null) {
+                                setDialogState(() {
+                                  uploadedFileName = result.fileName;
+                                  uploadedFileUrl = result.downloadUrl;
+                                  uploadedStoragePath = result.storagePath;
+                                  isUploading = false;
+                                });
+                              } else {
+                                setDialogState(() => isUploading = false);
+                              }
+                            },
+                      icon: isUploading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.attach_file, size: 18),
+                      label:
+                          Text(isUploading ? 'Uploading...' : 'Choose File'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF10B981),
+                        side: const BorderSide(color: Color(0xFF10B981)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -1596,6 +1726,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       owner: owner,
       status: status,
       location: locationController.text.trim(),
+      uploadedFileName: uploadedFileName,
+      uploadedFileUrl: uploadedFileUrl,
+      uploadedStoragePath: uploadedStoragePath,
     );
     setState(() {
       if (existing == null) {
@@ -3087,6 +3220,9 @@ class _DesignDocument {
     required this.owner,
     required this.status,
     required this.location,
+    this.uploadedFileName,
+    this.uploadedFileUrl,
+    this.uploadedStoragePath,
   });
 
   final String id;
@@ -3095,6 +3231,12 @@ class _DesignDocument {
   final String owner;
   final String status;
   final String location;
+  final String? uploadedFileName;
+  final String? uploadedFileUrl;
+  final String? uploadedStoragePath;
+
+  bool get hasUploadedFile =>
+      uploadedFileName != null && uploadedFileName!.isNotEmpty;
 
   _DesignDocument copyWith({
     String? title,
@@ -3102,6 +3244,9 @@ class _DesignDocument {
     String? owner,
     String? status,
     String? location,
+    String? uploadedFileName,
+    String? uploadedFileUrl,
+    String? uploadedStoragePath,
   }) {
     return _DesignDocument(
       id: id,
@@ -3110,6 +3255,10 @@ class _DesignDocument {
       owner: owner ?? this.owner,
       status: status ?? this.status,
       location: location ?? this.location,
+      uploadedFileName: uploadedFileName ?? this.uploadedFileName,
+      uploadedFileUrl: uploadedFileUrl ?? this.uploadedFileUrl,
+      uploadedStoragePath:
+          uploadedStoragePath ?? this.uploadedStoragePath,
     );
   }
 
@@ -3121,6 +3270,9 @@ class _DesignDocument {
       'owner': owner,
       'status': status,
       'location': location,
+      'uploadedFileName': uploadedFileName,
+      'uploadedFileUrl': uploadedFileUrl,
+      'uploadedStoragePath': uploadedStoragePath,
     };
   }
 
@@ -3136,6 +3288,9 @@ class _DesignDocument {
         owner: data['owner']?.toString() ?? '',
         status: data['status']?.toString() ?? 'Draft',
         location: data['location']?.toString() ?? '',
+        uploadedFileName: data['uploadedFileName']?.toString(),
+        uploadedFileUrl: data['uploadedFileUrl']?.toString(),
+        uploadedStoragePath: data['uploadedStoragePath']?.toString(),
       );
     }).toList();
   }

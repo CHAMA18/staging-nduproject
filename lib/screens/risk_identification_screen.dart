@@ -1226,17 +1226,23 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                   color: Colors.red.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Colors.red.withOpacity(0.3))),
-              child: Row(children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: Text(_error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis)),
-                TextButton(
-                    onPressed: _isGenerating ? null : _generateRisks,
-                    child: const Text('Retry')),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                      onPressed: _isGenerating ? null : _generateRisks,
+                      child: const Text('Retry')),
+                ),
               ]),
             ),
 
@@ -1245,50 +1251,57 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
+                  color: const Color(0xFFF5F7FB),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
               child: const Row(children: [
                 Expanded(
+                    flex: 2,
                     child: Center(
                         child: EditableContentText(
                             contentKey: 'risk_table_header_solution',
                             fallback: 'Potential Solution',
                             category: 'business_case',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
+                SizedBox(width: 8),
                 Expanded(
+                    flex: 3,
                     child: Center(
                         child: EditableContentText(
                             contentKey: 'risk_table_header_risk1',
                             fallback: 'Risk 1',
                             category: 'business_case',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
+                SizedBox(width: 8),
                 Expanded(
+                    flex: 3,
                     child: Center(
                         child: EditableContentText(
                             contentKey: 'risk_table_header_risk2',
                             fallback: 'Risk 2',
                             category: 'business_case',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
+                SizedBox(width: 8),
                 Expanded(
+                    flex: 3,
                     child: Center(
                         child: EditableContentText(
                             contentKey: 'risk_table_header_risk3',
                             fallback: 'Risk 3',
                             category: 'business_case',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
               ]),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
               child: Column(
                   children: List.generate(
                       _isAdmin
@@ -1359,11 +1372,13 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
   Widget _riskRow(int index) {
     final solution = _solutions[index];
     final isMobile = AppBreakpoints.isMobile(context);
+    final isStriped = index.isOdd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
+          color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
           border:
-              Border(top: BorderSide(color: Colors.grey.withOpacity(0.25)))),
+              Border(top: BorderSide(color: const Color(0xFFE4E7EC)))),
       child: isMobile
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1397,13 +1412,14 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Solution title cell
               Expanded(
+                flex: 2,
                 child: Align(
-                  alignment: Alignment.topCenter,
+                  alignment: Alignment.topLeft,
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _numberBadge(index + 1),
@@ -1413,18 +1429,18 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                                       solution.title.isEmpty
                                           ? 'Potential Solution'
                                           : solution.title,
-                                      textAlign: TextAlign.center,
+                                      textAlign: TextAlign.left,
                                       style: const TextStyle(
                                           fontSize: 13,
-                                          color: Colors.black87,
+                                          color: Color(0xFF1F2937),
                                           fontWeight: FontWeight.w600))),
                             ]),
                         if (solution.description.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(solution.description,
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.left,
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
+                                  fontSize: 12, color: Color(0xFF6B7280)),
                               maxLines: 5,
                               softWrap: true,
                               overflow: TextOverflow.ellipsis),
@@ -1432,19 +1448,22 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                       ]),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // Risk 1
               Expanded(
+                  flex: 3,
                   child: _riskTextAreaWithAI(
                       _riskControllers[index][0], index, 0, solution.title)),
               const SizedBox(width: 8),
               // Risk 2
               Expanded(
+                  flex: 3,
                   child: _riskTextAreaWithAI(
                       _riskControllers[index][1], index, 1, solution.title)),
               const SizedBox(width: 8),
               // Risk 3
               Expanded(
+                  flex: 3,
                   child: _riskTextAreaWithAI(
                       _riskControllers[index][2], index, 2, solution.title)),
             ]),

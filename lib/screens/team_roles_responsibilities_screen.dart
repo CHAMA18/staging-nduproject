@@ -2351,7 +2351,7 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
           },
           {'role': 'user', 'content': prompt},
         ],
-        'max_tokens': 60,
+        'max_completion_tokens': 60,
         'temperature': 0.7,
       })),
     );

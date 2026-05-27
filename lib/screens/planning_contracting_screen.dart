@@ -20,6 +20,7 @@ import 'package:ndu_project/models/procurement/procurement_models.dart'
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 
 const Color _kBrandYellow = Color(0xFFFFC812);
 const Color _kFabYellow = Color(0xFFFBBF24);
@@ -161,6 +162,23 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
                                     setState(() => _selectedTab = i),
                               ),
                               SizedBox(height: isMobile ? 18 : 28),
+                              InnerPageNavigationHint(
+                                pageId: 'planning_contracting',
+                                pageTitle: 'Contract Planning',
+                                sections: List.generate(_tabLabels.length, (i) => InnerPageSection(
+                                  id: '$i',
+                                  label: _tabLabels[i],
+                                  status: i == _selectedTab
+                                      ? InnerPageSectionStatus.current
+                                      : InnerPageSectionStatus.available,
+                                  stepNumber: i + 1,
+                                )),
+                                currentSectionId: '$_selectedTab',
+                                onSectionTap: (sectionId) {
+                                  final index = int.parse(sectionId);
+                                  setState(() => _selectedTab = index);
+                                },
+                              ),
                               _buildTabContent(),
                               SizedBox(height: isMobile ? 60 : 100),
                             ],

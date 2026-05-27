@@ -379,9 +379,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
             showContentButton: false,
             showNavigationButtons: false,
           ),
-          const SizedBox(height: 16),
-          _buildHeader(isNarrow),
-            const SizedBox(height: 20),
+          const SizedBox(height: 20),
             _buildMethodologySelector(),
             const SizedBox(height: 20),
             _buildMetricsGrid(),
@@ -413,85 +411,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     );
   }
 
-  // ── HEADER ────────────────────────────────────────────────────
 
-  Widget _buildHeader(bool isNarrow) {
-    return ExecutionPageHeader(
-      badge: 'DESIGN PHASE',
-      title: 'Design Specifications',
-      description: _getMethodologyDescription(),
-      trailing: ExecutionActionBar(
-        actions: [
-          ExecutionActionItem(
-            label: 'Add Specification',
-            icon: Icons.add_rounded,
-            tone: ExecutionActionTone.primary,
-            onPressed: () => _showAddComponentDialog(context),
-          ),
-          ExecutionActionItem(
-            label: 'Export Bundle',
-            icon: Icons.file_download_outlined,
-            tone: ExecutionActionTone.secondary,
-            onPressed: () {},
-          ),
-        ],
-      ),
-      metadata: [
-        _buildHeaderMetaChip(
-          Icons.layers_outlined,
-          '${_components.length} specifications',
-          const Color(0xFF2563EB),
-        ),
-        _buildHeaderMetaChip(
-          Icons.shield_outlined,
-          '${_securityControls.where((s) => s.status == 'Defined').length}/${_securityControls.length} controls',
-          const Color(0xFFDC2626),
-        ),
-        _buildHeaderMetaChip(
-          Icons.speed_outlined,
-          '${_nfrItems.where((n) => n.status == 'Specified').length}/${_nfrItems.length} NFRs',
-          const Color(0xFFD97706),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeaderMetaChip(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getMethodologyDescription() {
-    return switch (_methodology) {
-      'Waterfall' =>
-          'Comprehensive upfront design specification aligned with sequential delivery. All design elements are fully specified before construction begins, following IEEE 1016 decomposition views and ISO 12207 design processes.',
-      'Agile' =>
-          'Iterative and evolutionary design specification. Architecture decisions and interface contracts are established as enablers; detailed specifications emerge sprint-by-sprint, guided by YAGNI and just-in-time design principles.',
-      _ =>
-          'Balanced design specification combining architecture baseline (waterfall rigor) with iterative detail (agile flexibility). Core interfaces and security controls are specified upfront; component details evolve through iterations.',
-    };
-  }
 
   // ── METHODOLOGY SELECTOR ──────────────────────────────────────
 

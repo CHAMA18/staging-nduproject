@@ -489,7 +489,7 @@ class OpenAiServiceSecure {
       final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': temperature,
-        'max_tokens': maxTokens,
+        'max_completion_tokens': maxTokens,
         'messages': [
           {
             'role': 'system',
@@ -544,7 +544,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -620,7 +620,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -965,7 +965,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1028,7 +1028,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1113,7 +1113,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1217,7 +1217,7 @@ class OpenAiServiceSecure {
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1313,7 +1313,7 @@ Rules:
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1402,7 +1402,7 @@ Return ONLY valid JSON: {"objective": "..." }
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1477,7 +1477,7 @@ $trimmedContext
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1882,7 +1882,7 @@ $trimmedContext
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -1971,7 +1971,7 @@ Use concise professional language. Status should use In progress, Pending, In re
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2030,7 +2030,7 @@ Use concise professional language. Status must be one of: Approved, Aligned, Rea
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2233,7 +2233,7 @@ Return JSON with:
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2300,7 +2300,7 @@ Return JSON with:
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.55,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2562,7 +2562,7 @@ $c
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.35,
-      'max_tokens': 300,
+      'max_completion_tokens': 300,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2823,7 +2823,7 @@ $scaleConstraints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -2912,7 +2912,7 @@ $scaleConstraints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -3190,7 +3190,7 @@ $domainHints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.7,
-      'max_tokens': 1000,
+      'max_completion_tokens': 1000,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -3254,7 +3254,7 @@ $domainHints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -3432,7 +3432,7 @@ $domainHints
     final payload = {
       'model': OpenAiConfig.model,
       'temperature': 0.7,
-      'max_tokens': 2000,
+      'max_completion_tokens': 2000,
       'messages': [
         {
           'role': 'system',
@@ -3604,7 +3604,7 @@ $domainHints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -3697,7 +3697,7 @@ $domainHints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.45,
-      'max_tokens': 1400,
+      'max_completion_tokens': 1400,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -4987,7 +4987,7 @@ Domain guardrail: $guardrails
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.4,
-      'max_tokens': 900,
+      'max_completion_tokens': 900,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -5337,7 +5337,7 @@ $domainHints
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'messages': [
         {
           'role': 'system',
@@ -5408,7 +5408,7 @@ Return plain text only.'''
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -5783,7 +5783,7 @@ Return ONLY JSON.
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.4,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -5998,7 +5998,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6185,7 +6185,7 @@ Context notes (optional): $notes
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 2000,
+      'max_completion_tokens': 2000,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6565,7 +6565,7 @@ Context notes (optional): $notes
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.7,
-      'max_tokens': 600,
+      'max_completion_tokens': 600,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6694,7 +6694,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6758,7 +6758,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6805,7 +6805,7 @@ $escaped
     required String context,
     required Map<String, String> sections,
     int itemsPerSection = 2,
-    int maxTokens = 900,
+    int maxTokens = 1600,
     double temperature = 0.5,
   }) async {
     final trimmedContext = context.trim();
@@ -6823,7 +6823,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -6897,7 +6897,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -7019,7 +7019,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -7237,7 +7237,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -7423,7 +7423,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -7643,7 +7643,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -7877,21 +7877,26 @@ $escaped
     return '''
 You are a senior project management analyst preparing Launch Phase deliverables.
 The project has progressed through Initiation → Front End Planning → Planning → Design → Execution → Launch.
-Use ALL the prior phase data below to generate entries that are specific, realistic, and consistent with the project context.
 
-Rules:
-- Reference actual project names, team members, vendors, contracts, milestones, and risks wherever possible.
-- Derive entries from prior phase outputs (e.g., if a contract exists in Execution, reference it in Contract Close Out).
-- Generate $itemsPerSection entries per section.
-- Each entry must include a concise title, relevant details, and a realistic status.
+CRITICAL CONTINUITY RULES:
+1. CONTINUITY IS KEY: Every entry MUST directly reference and derive from actual prior-phase data provided below.
+   - If the context mentions specific team members, vendors, contracts, milestones, or risks, those EXACT names and details MUST appear in your generated entries.
+   - Do NOT invent new names, vendors, or team members that are not mentioned in the context.
+   - If a contract exists in Execution Phase, reference THAT EXACT contract in Contract Close Out.
+   - If team members are listed in Execution staffing, use THOSE EXACT names in Demobilize Team and Transition to Production.
+   - If budget figures exist, carry those EXACT figures forward into Gap Analysis and Commerce Viability.
+2. NO FABRICATION: If the context does not contain enough specific data for a section, generate fewer entries rather than fabricating content. It is better to return 1 accurate entry than 3 generic ones.
+3. SPECIFIC OVER GENERIC: Every "title" and "details" field must contain specific references to actual data from the context — project names, person names, contract names, dollar amounts, dates, risk titles, etc.
+4. DERIVE, DON'T CREATE: Your job is to carry forward and restructure existing project data into the Launch Phase format, not to create new project content from scratch.
+5. Generate up to $itemsPerSection entries per section (fewer is acceptable if context is thin).
 
 Return ONLY valid JSON with this exact structure:
 {
   "sections": {
     "section_key": [
       {
-        "title": "Short item title",
-        "details": "Supporting details referencing prior phase data",
+        "title": "Short item title referencing actual prior-phase data",
+        "details": "Supporting details that trace back to specific prior-phase entries",
         "status": "Realistic status value"
       }
     ]
@@ -7903,7 +7908,7 @@ Sections:
   $sectionJson
 }
 
-Project context (includes data from ALL prior phases):
+Project context (includes data from ALL prior phases — USE THIS DATA DIRECTLY):
 """
 $escaped
 """
@@ -9004,7 +9009,7 @@ Context notes (optional): $notes
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 2000,
+      'max_completion_tokens': 2000,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -9107,7 +9112,7 @@ Return JSON in this format:
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1500,
+      'max_completion_tokens': 1500,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -9272,7 +9277,7 @@ Additional Context: $contextNotes
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -9399,7 +9404,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 800,
+      'max_completion_tokens': 800,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -9544,7 +9549,7 @@ Return ONLY valid JSON.
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.6,
-      'max_tokens': 1000,
+      'max_completion_tokens': 1000,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -9726,7 +9731,7 @@ Return ONLY valid JSON.
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.45,
-      'max_tokens': 2200,
+      'max_completion_tokens': 2200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10215,7 +10220,7 @@ Return ONLY valid JSON in this exact structure:
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10273,7 +10278,7 @@ Return ONLY JSON: {"items":[...]}'''
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_completion_tokens': 1200,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10331,7 +10336,7 @@ Return ONLY JSON: {"items":[...]}'''
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1400,
+      'max_completion_tokens': 1400,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10469,7 +10474,7 @@ Return ONLY JSON: {"items":[...]}'''
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10646,7 +10651,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10774,7 +10779,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10873,7 +10878,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -10978,7 +10983,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11084,7 +11089,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11193,7 +11198,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11300,7 +11305,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11414,7 +11419,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11524,7 +11529,7 @@ $escaped
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
@@ -11678,7 +11683,7 @@ Return only the title, no additional text.''';
     final body = jsonEncode(OpenAiConfig.wrapBody({
       'model': OpenAiConfig.model,
       'temperature': temperature,
-      'max_tokens': maxTokens,
+      'max_completion_tokens': maxTokens,
       'messages': [
         {
           'role': 'system',
@@ -11775,7 +11780,7 @@ IMPORTANT RULES:
       final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': 0.5,
-        'max_tokens': maxTokens,
+        'max_completion_tokens': maxTokens,
         'response_format': {'type': 'json_object'},
         'messages': [
           {

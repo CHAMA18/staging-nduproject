@@ -1,4 +1,9 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
@@ -11,7 +16,6 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class TransitionToProdTeamScreen extends StatefulWidget {
@@ -37,8 +41,10 @@ class _TransitionToProdTeamScreenState
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
+  String _selectedView = 'full'; // 'full' or 'summary'
 
   @override
   void initState() {
@@ -106,6 +112,21 @@ class _TransitionToProdTeamScreenState
       trailing: ExecutionActionBar(
         actions: [
           ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
+          ExecutionActionItem(
+            label: _selectedView == 'full' ? 'Summary View' : 'Full View',
+            icon: _selectedView == 'full' ? Icons.summarize_outlined : Icons.list_alt,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () => setState(() {
+              _selectedView = _selectedView == 'full' ? 'summary' : 'full';
+            }),
+          ),
+          ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
             tone: ExecutionActionTone.ai,
@@ -164,28 +185,18 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Production Team Roster',
       subtitle: 'Members receiving the handover from the project team.',
-      columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Start Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Name', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Contact', width: 120, fieldType: LaunchFieldType.text, hint: 'Contact'), LaunchColumn(label: 'Start Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Start'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Transitioning', 'Released'])],
       rowCount: _teamRoster.length,
-      onAdd: _addMember,
-      csvColumns: const [
-        CsvColumnSpec(key: 'name', label: 'Name', sampleValue: 'Jane Smith'),
-        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Ops Lead'),
-        CsvColumnSpec(key: 'contact', label: 'Contact', sampleValue: 'jane@example.com'),
-        CsvColumnSpec(key: 'startDate', label: 'Start Date', sampleValue: '2025-01-15'),
-        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Transitioning', 'Released']),
-      ],
-      onCsvImport: (rows) async {
-        for (final row in rows) {
-          setState(() {
-            _teamRoster.add(LaunchTeamMember(
-              name: row['name'] ?? '',
-              role: row['role'] ?? '',
-              contact: row['contact'] ?? '',
-              startDate: row['startDate'] ?? '',
-              releaseStatus: row['status'] ?? 'Active',
-            ));
-          });
-        }
+      onAddValues: (values) {
+        setState(() {
+          _teamRoster.add(LaunchTeamMember(
+            name: values['Name'] ?? '',
+            role: values['Role'] ?? '',
+            contact: values['Contact'] ?? '',
+            startDate: values['Start Date'] ?? '',
+            releaseStatus: values['Status'] ?? 'Active',
+          ));
+        });
         _scheduleSave();
       },
       importLabel: 'Import from Staffing',
@@ -254,28 +265,18 @@ class _TransitionToProdTeamScreenState
       title: 'Handover Checklist',
       subtitle:
           'Structured items to transfer to production: docs, access, monitoring, training, runbooks.',
-      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Due', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Category', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchHandoverItem.categories), LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete'])],
       rowCount: _handoverChecklist.length,
-      onAdd: _addHandoverItem,
-      csvColumns: const [
-        CsvColumnSpec(key: 'category', label: 'Category', sampleValue: 'Documentation', allowedValues: ['Documentation', 'System Access', 'Monitoring', 'Training', 'Runbooks', 'Other']),
-        CsvColumnSpec(key: 'item', label: 'Item', sampleValue: 'Operations runbook'),
-        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Ops Lead'),
-        CsvColumnSpec(key: 'due', label: 'Due', sampleValue: '2025-01-20'),
-        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
-      ],
-      onCsvImport: (rows) async {
-        for (final row in rows) {
-          setState(() {
-            _handoverChecklist.add(LaunchHandoverItem(
-              category: row['category'] ?? '',
-              item: row['item'] ?? '',
-              owner: row['owner'] ?? '',
-              dueDate: row['due'] ?? '',
-              status: row['status'] ?? 'Pending',
-            ));
-          });
-        }
+      onAddValues: (values) {
+        setState(() {
+          _handoverChecklist.add(LaunchHandoverItem(
+            category: values['Category'] ?? 'Documentation',
+            item: values['Item'] ?? '',
+            owner: values['Owner'] ?? '',
+            dueDate: values['Due'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage:
@@ -342,28 +343,18 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Knowledge Transfer',
       subtitle: 'Track sessions, artifacts, and owners for knowledge capture.',
-      columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Topic', flexible: true, fieldType: LaunchFieldType.text, hint: 'Topic'), LaunchColumn(label: 'From', width: 110, fieldType: LaunchFieldType.text, hint: 'From'), LaunchColumn(label: 'To', width: 110, fieldType: LaunchFieldType.text, hint: 'To'), LaunchColumn(label: 'Method', width: 100, fieldType: LaunchFieldType.text, hint: 'Method'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete'])],
       rowCount: _knowledgeTransfers.length,
-      onAdd: _addKnowledgeTransfer,
-      csvColumns: const [
-        CsvColumnSpec(key: 'topic', label: 'Topic', sampleValue: 'System architecture'),
-        CsvColumnSpec(key: 'from', label: 'From', sampleValue: 'Alice'),
-        CsvColumnSpec(key: 'to', label: 'To', sampleValue: 'Bob'),
-        CsvColumnSpec(key: 'method', label: 'Method', sampleValue: 'Workshop'),
-        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Scheduled', 'Complete']),
-      ],
-      onCsvImport: (rows) async {
-        for (final row in rows) {
-          setState(() {
-            _knowledgeTransfers.add(LaunchKnowledgeTransfer(
-              topic: row['topic'] ?? '',
-              fromPerson: row['from'] ?? '',
-              toPerson: row['to'] ?? '',
-              method: row['method'] ?? '',
-              status: row['status'] ?? 'Pending',
-            ));
-          });
-        }
+      onAddValues: (values) {
+        setState(() {
+          _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+            topic: values['Topic'] ?? '',
+            fromPerson: values['From'] ?? '',
+            toPerson: values['To'] ?? '',
+            method: values['Method'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage:
@@ -430,28 +421,18 @@ class _TransitionToProdTeamScreenState
     return LaunchDataTable(
       title: 'Ops & Client Sign-Offs',
       subtitle: 'Track who needs to approve the handover and their status.',
-      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _signOffs.length,
-      onAdd: _addApproval,
-      csvColumns: const [
-        CsvColumnSpec(key: 'stakeholder', label: 'Stakeholder', sampleValue: 'Jane Smith'),
-        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Business Owner'),
-        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Approved', 'Rejected']),
-        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: '2025-01-15'),
-        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Awaiting review'),
-      ],
-      onCsvImport: (rows) async {
-        for (final row in rows) {
-          setState(() {
-            _signOffs.add(LaunchApproval(
-              stakeholder: row['stakeholder'] ?? '',
-              role: row['role'] ?? '',
-              status: row['status'] ?? 'Pending',
-              date: row['date'] ?? '',
-              notes: row['notes'] ?? '',
-            ));
-          });
-        }
+      onAddValues: (values) {
+        setState(() {
+          _signOffs.add(LaunchApproval(
+            stakeholder: values['Stakeholder'] ?? '',
+            role: values['Role'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            date: values['Date'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _scheduleSave();
       },
       emptyMessage:
@@ -511,26 +492,6 @@ class _TransitionToProdTeamScreenState
         );
       },
     );
-  }
-
-  void _addMember() {
-    setState(() => _teamRoster.add(LaunchTeamMember()));
-    _scheduleSave();
-  }
-
-  void _addHandoverItem() {
-    setState(() => _handoverChecklist.add(LaunchHandoverItem()));
-    _scheduleSave();
-  }
-
-  void _addKnowledgeTransfer() {
-    setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
-    _scheduleSave();
-  }
-
-  void _addApproval() {
-    setState(() => _signOffs.add(LaunchApproval()));
-    _scheduleSave();
   }
 
   Future<void> _deleteTeamMember(int idx) async {
@@ -728,9 +689,9 @@ class _TransitionToProdTeamScreenState
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> generated = {};
+    LaunchAiResult? result;
     try {
-      generated = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Transition to Production Team',
         sections: const {
@@ -748,6 +709,19 @@ class _TransitionToProdTeamScreenState
     }
 
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasExisting = _teamRoster.isNotEmpty ||
         _handoverChecklist.isNotEmpty ||
         _knowledgeTransfers.isNotEmpty ||
@@ -765,6 +739,121 @@ class _TransitionToProdTeamScreenState
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'transition_to_prod_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Transition to Production Team', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Team Roster
+            _pdfSectionTitle('Production Team Roster'),
+            pw.SizedBox(height: 6),
+            if (_teamRoster.isEmpty)
+              _pdfCell('No team members recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Name', 'Role', 'Contact', 'Status'],
+                data: _teamRoster.map((m) => [m.name, m.role, m.contact, m.releaseStatus]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Handover Checklist
+            _pdfSectionTitle('Handover Checklist'),
+            pw.SizedBox(height: 6),
+            if (_handoverChecklist.isEmpty)
+              _pdfCell('No handover items recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Category', 'Item', 'Owner', 'Status'],
+                data: _handoverChecklist.map((h) => [h.category, h.item, h.owner, h.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Knowledge Transfers
+            _pdfSectionTitle('Knowledge Transfer'),
+            pw.SizedBox(height: 6),
+            if (_knowledgeTransfers.isEmpty)
+              _pdfCell('No knowledge transfers recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Topic', 'From', 'To', 'Method', 'Status'],
+                data: _knowledgeTransfers.map((k) => [k.topic, k.fromPerson, k.toPerson, k.method, k.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Sign-Offs
+            _pdfSectionTitle('Ops & Client Sign-Offs'),
+            pw.SizedBox(height: 6),
+            if (_signOffs.isEmpty)
+              _pdfCell('No sign-offs recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Stakeholder', 'Role', 'Status'],
+                data: _signOffs.map((s) => [s.stakeholder, s.role, s.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   List<LaunchTeamMember> _mapMembers(List<Map<String, dynamic>>? raw) {

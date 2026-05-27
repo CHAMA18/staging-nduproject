@@ -4967,59 +4967,68 @@ class _ReconciliationWorkflowCardState
                   color: Color(0xFF111827)),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: _columns.map((column) {
-                final items =
-                    _grouped[column.keyName] ?? const <_WorkflowStep>[];
-                return SizedBox(
-                  width: isMobile ? double.infinity : 260,
-                  child: _WorkflowBoardColumn(
-                    label: column.label,
-                    accent: column.accent,
-                    items: items,
-                    onAccept: (step) {
-                      setState(() {
-                        for (final list in _grouped.values) {
-                          list.removeWhere((item) =>
-                              item.label == step.label &&
-                              item.description == step.description);
-                        }
-                        final updated = _WorkflowStep(
-                          label: step.label,
-                          status: column.label,
-                          description: step.description,
-                        );
-                        _grouped
-                            .putIfAbsent(column.keyName, () => [])
-                            .add(updated);
-                      });
-                      final updatedList = <_WorkflowStep>[];
-                      for (final column in _columns) {
-                        updatedList
-                            .addAll(_grouped[column.keyName] ?? const []);
-                      }
-                      widget.onWorkflowUpdated(updatedList);
-                    },
-                    onDelete: (step) {
-                      setState(() {
-                        for (final list in _grouped.values) {
-                          list.removeWhere((item) =>
-                              item.label == step.label &&
-                              item.description == step.description);
-                        }
-                      });
-                      final updatedList = <_WorkflowStep>[];
-                      for (final column in _columns) {
-                        updatedList
-                            .addAll(_grouped[column.keyName] ?? const []);
-                      }
-                      widget.onWorkflowUpdated(updatedList);
-                    },
-                  ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final double availWidth = constraints.maxWidth;
+                final int colCount = _columns.length;
+                const double spacing = 12;
+                final double colWidth =
+                    (availWidth - (spacing * (colCount - 1))) / colCount;
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: _columns.map((column) {
+                    final items =
+                        _grouped[column.keyName] ?? const <_WorkflowStep>[];
+                    return SizedBox(
+                      width: isMobile ? double.infinity : colWidth,
+                      child: _WorkflowBoardColumn(
+                        label: column.label,
+                        accent: column.accent,
+                        items: items,
+                        onAccept: (step) {
+                          setState(() {
+                            for (final list in _grouped.values) {
+                              list.removeWhere((item) =>
+                                  item.label == step.label &&
+                                  item.description == step.description);
+                            }
+                            final updated = _WorkflowStep(
+                              label: step.label,
+                              status: column.label,
+                              description: step.description,
+                            );
+                            _grouped
+                                .putIfAbsent(column.keyName, () => [])
+                                .add(updated);
+                          });
+                          final updatedList = <_WorkflowStep>[];
+                          for (final column in _columns) {
+                            updatedList
+                                .addAll(_grouped[column.keyName] ?? const []);
+                          }
+                          widget.onWorkflowUpdated(updatedList);
+                        },
+                        onDelete: (step) {
+                          setState(() {
+                            for (final list in _grouped.values) {
+                              list.removeWhere((item) =>
+                                  item.label == step.label &&
+                                  item.description == step.description);
+                            }
+                          });
+                          final updatedList = <_WorkflowStep>[];
+                          for (final column in _columns) {
+                            updatedList
+                                .addAll(_grouped[column.keyName] ?? const []);
+                          }
+                          widget.onWorkflowUpdated(updatedList);
+                        },
+                      ),
+                    );
+                  }).toList(),
                 );
-              }).toList(),
+              },
             ),
             const SizedBox(height: 12),
           ],
@@ -5433,7 +5442,7 @@ class _SectionShell extends StatelessWidget {
 
     return Container(
       width: width,
-      constraints: BoxConstraints(minWidth: width),
+      constraints: BoxConstraints(minWidth: width, maxWidth: width),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,

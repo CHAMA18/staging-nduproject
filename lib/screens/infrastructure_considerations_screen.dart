@@ -1184,32 +1184,44 @@ class _InfrastructureConsiderationsScreenState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
+                  color: const Color(0xFFF5F7FB),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
               child: const Row(children: [
                 Expanded(
                     flex: 2,
                     child: Center(
                         child: Text('Potential Solution',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
+                SizedBox(width: 16),
                 Expanded(
                     flex: 3,
                     child: Center(
                         child: Text('Major Infrastructure',
                             style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)))),
+                                fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475467))))),
               ]),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.withOpacity(0.35))),
-              child: Column(
-                  children: List.generate(_solutions.length, (i) => _row(i))),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFFE4E7EC))),
+              child: _solutions.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No solutions added yet. Add solutions from the Potential Solutions page to generate infrastructure considerations.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: List.generate(_solutions.length, (i) => _row(i))),
             ),
           ],
           if (_canUseAdminControls) ...[
@@ -1655,6 +1667,7 @@ class _InfrastructureConsiderationsScreenState
 
   Widget _row(int index) {
     final isMobile = AppBreakpoints.isMobile(context);
+    final isStriped = index.isOdd;
     // Handle cases where we have more controllers than initial solutions (user added items)
     final s = index < _solutions.length
         ? _solutions[index]
@@ -1662,8 +1675,9 @@ class _InfrastructureConsiderationsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
+          color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
           border:
-              Border(top: BorderSide(color: Colors.grey.withOpacity(0.25)))),
+              Border(top: BorderSide(color: const Color(0xFFE4E7EC)))),
       child: isMobile
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
@@ -1699,7 +1713,7 @@ class _InfrastructureConsiderationsScreenState
                                       : s.title,
                                   style: const TextStyle(
                                       fontSize: 13,
-                                      color: Colors.black87,
+                                      color: Color(0xFF1F2937),
                                       fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -1708,7 +1722,7 @@ class _InfrastructureConsiderationsScreenState
                           const SizedBox(height: 6),
                           Text(s.description,
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
+                                  fontSize: 12, color: Color(0xFF6B7280)),
                               maxLines: 5,
                               softWrap: true,
                               overflow: TextOverflow.ellipsis),

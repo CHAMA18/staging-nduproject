@@ -24,6 +24,7 @@ class AccessPolicy {
     if (email == null || email.isEmpty) return false;
     final lower = email.toLowerCase();
     return lower.endsWith('@nduproject.com')
-        || lower == 'nduprogram@gmail.com';
+        || lower == 'nduprogram@gmail.com'
+        || lower == 'chungu424@gmail.com';
   }
 }

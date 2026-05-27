@@ -20,22 +20,22 @@ class SecureAPIConfig {
   static const String model = 'o3';
 
   /// Whether the current model is an OpenAI reasoning model (o1, o3, o4, etc.)
-  /// Reasoning models use `max_completion_tokens` instead of `max_tokens` and
-  /// may have different parameter support.
+  /// Reasoning models only support temperature=1 (default) and the wrapBody()
+  /// helper strips non-default temperature values automatically.
   static bool get isReasoningModel =>
       model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4');
 
   /// Returns model parameters for API requests.
-  /// Automatically uses the correct token parameter based on the model type:
-  /// - Reasoning models (o3, o4): `max_completion_tokens`
-  /// - Standard models (gpt-4o, etc.): `max_tokens`
+  /// The Chat Completions API now requires `max_completion_tokens` for
+  /// reasoning models (o3, o4). The legacy `max_tokens` parameter causes
+  /// a 400 error, so we always use `max_completion_tokens`.
   static Map<String, dynamic> modelParams({int? maxTokens, double? temperature}) {
     final params = <String, dynamic>{
       'model': model,
     };
     if (maxTokens != null) {
-      // o3 / o4 reasoning models require max_completion_tokens
-      params[isReasoningModel ? 'max_completion_tokens' : 'max_tokens'] = maxTokens;
+      // All models use max_completion_tokens (required for o3/o4 reasoning models)
+      params['max_completion_tokens'] = maxTokens;
     }
     // Reasoning models (o3, o4) only support temperature=1; omit it for them.
     // The wrapBody() helper handles this automatically, but we avoid adding

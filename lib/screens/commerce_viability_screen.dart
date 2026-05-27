@@ -1,4 +1,9 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
@@ -38,8 +43,10 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
+  String _selectedView = 'full'; // 'full' or 'summary'
 
   @override
   void initState() {
@@ -109,6 +116,21 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       trailing: ExecutionActionBar(
         actions: [
           ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
+          ExecutionActionItem(
+            label: _selectedView == 'full' ? 'Summary View' : 'Full View',
+            icon: _selectedView == 'full' ? Icons.summarize_outlined : Icons.list_alt,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () => setState(() {
+              _selectedView = _selectedView == 'full' ? 'summary' : 'full';
+            }),
+          ),
+          ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
             tone: ExecutionActionTone.ai,
@@ -161,13 +183,19 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Financial Metrics',
       subtitle: 'ROI, payback period, total investment, and projected returns.',
       columns: const [
-        LaunchColumn(label: 'Metric', flexible: true),
-        LaunchColumn(label: 'Value', width: 120),
-        LaunchColumn(label: 'Notes', flexible: true),
+        LaunchColumn(label: 'Metric', flexible: true, fieldType: LaunchFieldType.text, hint: 'Metric'),
+        LaunchColumn(label: 'Value', width: 120, fieldType: LaunchFieldType.text, hint: 'Value'),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _financialMetrics.length,
-      onAdd: () {
-        setState(() => _financialMetrics.add(LaunchFinancialMetric()));
+      onAddValues: (values) {
+        setState(() {
+          _financialMetrics.add(LaunchFinancialMetric(
+            label: values['Metric'] ?? '',
+            value: values['Value'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -240,16 +268,25 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       subtitle:
           'Track warranty coverage for deliverables, equipment, and services.',
       columns: const [
-        LaunchColumn(label: 'Item', flexible: true),
-        LaunchColumn(label: 'Vendor', width: 110),
-        LaunchColumn(label: 'Type', width: 100),
-        LaunchColumn(label: 'Start', width: 100),
-        LaunchColumn(label: 'Expiry', width: 100),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'),
+        LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'),
+        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Start', width: 100, fieldType: LaunchFieldType.date, hint: 'Start'),
+        LaunchColumn(label: 'Expiry', width: 100, fieldType: LaunchFieldType.date, hint: 'Expiry'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Expiring Soon', 'Expired', 'Claimed']),
       ],
       rowCount: _warranties.length,
-      onAdd: () {
-        setState(() => _warranties.add(LaunchWarrantyItem()));
+      onAddValues: (values) {
+        setState(() {
+          _warranties.add(LaunchWarrantyItem(
+            item: values['Item'] ?? '',
+            vendor: values['Vendor'] ?? '',
+            warrantyType: values['Type'] ?? '',
+            startDate: values['Start'] ?? '',
+            expiryDate: values['Expiry'] ?? '',
+            status: values['Status'] ?? 'Active',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -355,14 +392,21 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Operations Cost Projection',
       subtitle: 'Monthly and annual ongoing costs post-launch.',
       columns: const [
-        LaunchColumn(label: 'Category', flexible: true),
-        LaunchColumn(label: 'Monthly', width: 100),
-        LaunchColumn(label: 'Annual', width: 100),
-        LaunchColumn(label: 'Notes', flexible: true),
+        LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'),
+        LaunchColumn(label: 'Monthly', width: 100, fieldType: LaunchFieldType.text, hint: 'Monthly'),
+        LaunchColumn(label: 'Annual', width: 100, fieldType: LaunchFieldType.text, hint: 'Annual'),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _opsCosts.length,
-      onAdd: () {
-        setState(() => _opsCosts.add(LaunchOpsCostItem()));
+      onAddValues: (values) {
+        setState(() {
+          _opsCosts.add(LaunchOpsCostItem(
+            category: values['Category'] ?? '',
+            monthlyCost: values['Monthly'] ?? '',
+            annualCost: values['Annual'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -481,13 +525,19 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Recommendations',
       subtitle: 'Key actions for commercial sustainability.',
       columns: const [
-        LaunchColumn(label: 'Recommendation', flexible: true),
-        LaunchColumn(label: 'Details', flexible: true),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Recommendation', flexible: true, fieldType: LaunchFieldType.text, hint: 'Title'),
+        LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Complete']),
       ],
       rowCount: _recommendations.length,
-      onAdd: () {
-        setState(() => _recommendations.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _recommendations.add(LaunchFollowUpItem(
+            title: values['Recommendation'] ?? '',
+            details: values['Details'] ?? '',
+            status: values['Status'] ?? 'Open',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -724,9 +774,9 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+    LaunchAiResult? result;
     try {
-      gen = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Commerce Viability',
         sections: const {
@@ -744,6 +794,19 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       debugPrint('Commerce AI error: $e');
     }
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasData = _warranties.isNotEmpty ||
         _opsCosts.isNotEmpty ||
         _financialMetrics.isNotEmpty ||
@@ -753,24 +816,24 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       return;
     }
     setState(() {
-      _financialMetrics = (gen['financial_metrics'] ?? [])
+      _financialMetrics = (generated['financial_metrics'] ?? [])
           .map((m) => LaunchFinancialMetric(
               label: _s(m['title']), value: _s(m['details'])))
           .where((i) => i.label.isNotEmpty)
           .toList();
-      _warranties = (gen['warranties'] ?? [])
+      _warranties = (generated['warranties'] ?? [])
           .map((m) => LaunchWarrantyItem(
               item: _s(m['title']),
               vendor: _s(m['details']),
               status: _ns(m['status'], 'Active')))
           .where((i) => i.item.isNotEmpty)
           .toList();
-      _opsCosts = (gen['ops_costs'] ?? [])
+      _opsCosts = (generated['ops_costs'] ?? [])
           .map((m) => LaunchOpsCostItem(
               category: _s(m['title']), monthlyCost: _s(m['details'])))
           .where((i) => i.category.isNotEmpty)
           .toList();
-      _recommendations = (gen['recommendations'] ?? [])
+      _recommendations = (generated['recommendations'] ?? [])
           .map((m) => LaunchFollowUpItem(
               title: _s(m['title']),
               details: _s(m['details']),
@@ -780,6 +843,121 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       _isGenerating = false;
     });
     await _persistData();
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName ?? 'Project';
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename = 'commerce_viability_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text('Warranties & Operations Support', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.Text('$projectName — Generated ${now.toLocal().toIso8601String()}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 16),
+
+            // Financial Metrics
+            _pdfSectionTitle('Financial Metrics'),
+            pw.SizedBox(height: 6),
+            if (_financialMetrics.isEmpty)
+              _pdfCell('No financial metrics recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Metric', 'Value', 'Notes'],
+                data: _financialMetrics.map((m) => [m.label, m.value, m.notes]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Warranties
+            _pdfSectionTitle('Warranty Tracker'),
+            pw.SizedBox(height: 6),
+            if (_warranties.isEmpty)
+              _pdfCell('No warranties recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Item', 'Vendor', 'Type', 'Status'],
+                data: _warranties.map((w) => [w.item, w.vendor, w.warrantyType, w.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Ops Costs
+            _pdfSectionTitle('Operations Cost Projection'),
+            pw.SizedBox(height: 6),
+            if (_opsCosts.isEmpty)
+              _pdfCell('No ops costs recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Category', 'Monthly', 'Annual', 'Notes'],
+                data: _opsCosts.map((c) => [c.category, c.monthlyCost, c.annualCost, c.notes]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Recommendations
+            _pdfSectionTitle('Recommendations'),
+            pw.SizedBox(height: 6),
+            if (_recommendations.isEmpty)
+              _pdfCell('No recommendations recorded.')
+            else
+              pw.Table.fromTextArray(
+                headers: ['Recommendation', 'Details', 'Status'],
+                data: _recommendations.map((r) => [r.title, r.details, r.status]).toList(),
+                headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                cellPadding: const pw.EdgeInsets.all(6),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (!mounted) return;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)..setAttribute('download', filename)..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF export failed: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  }
+
+  pw.Widget _pdfHeaderCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)));
+  }
+
+  pw.Widget _pdfCell(String text) {
+    return pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)));
   }
 
   String _s(dynamic v) => (v ?? '').toString().trim();

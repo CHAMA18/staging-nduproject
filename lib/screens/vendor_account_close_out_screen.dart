@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/launch_phase_models.dart';
@@ -5,6 +6,7 @@ import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/utils/launch_phase_ai_seed.dart';
+import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
@@ -13,6 +15,9 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class VendorAccountCloseOutScreen extends StatefulWidget {
   const VendorAccountCloseOutScreen({super.key});
@@ -37,8 +42,10 @@ class _VendorAccountCloseOutScreenState
 
   bool _isLoading = true;
   bool _isGenerating = false;
+  bool _isExporting = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
+  String _selectedView = 'full'; // 'full' or 'summary'
 
   @override
   void initState() {
@@ -112,6 +119,21 @@ class _VendorAccountCloseOutScreenState
             onPressed: _importVendors,
           ),
           ExecutionActionItem(
+            label: _isExporting ? 'Exporting…' : 'Export PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            tone: ExecutionActionTone.secondary,
+            isLoading: _isExporting,
+            onPressed: _isExporting ? null : _exportPdf,
+          ),
+          ExecutionActionItem(
+            label: _selectedView == 'full' ? 'Summary View' : 'Full View',
+            icon: _selectedView == 'full' ? Icons.summarize_outlined : Icons.list_alt,
+            tone: ExecutionActionTone.secondary,
+            onPressed: () => setState(() {
+              _selectedView = _selectedView == 'full' ? 'summary' : 'full';
+            }),
+          ),
+          ExecutionActionItem(
             label: _isGenerating ? 'Generating…' : 'AI Assist',
             icon: Icons.auto_awesome_outlined,
             tone: ExecutionActionTone.ai,
@@ -172,10 +194,18 @@ class _VendorAccountCloseOutScreenState
     return LaunchDataTable(
       title: 'Vendor Close-Out Table',
       subtitle: 'Track each vendor\'s account status and outstanding items.',
-      columns: const [LaunchColumn(label: 'Vendor', flexible: true), LaunchColumn(label: 'Contract Ref', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Outstanding', flexible: true), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Vendor', flexible: true, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Contract Ref', width: 120, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Closing', 'Closed']), LaunchColumn(label: 'Outstanding', flexible: true, fieldType: LaunchFieldType.text, hint: 'Items'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _vendors.length,
-      onAdd: () {
-        setState(() => _vendors.add(LaunchVendorItem()));
+      onAddValues: (values) {
+        setState(() {
+          _vendors.add(LaunchVendorItem(
+            vendorName: values['Vendor'] ?? '',
+            contractRef: values['Contract Ref'] ?? '',
+            accountStatus: values['Status'] ?? 'Active',
+            outstandingItems: values['Outstanding'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -273,10 +303,18 @@ class _VendorAccountCloseOutScreenState
       title: 'Access Revocation',
       subtitle:
           'Track system/tool access that needs to be revoked for each vendor.',
-      columns: const [LaunchColumn(label: 'System', flexible: true), LaunchColumn(label: 'Vendor', width: 110), LaunchColumn(label: 'Access Level', width: 120), LaunchColumn(label: 'Revoked Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'System', flexible: true, fieldType: LaunchFieldType.text, hint: 'System'), LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Access Level', width: 120, fieldType: LaunchFieldType.text, hint: 'Level'), LaunchColumn(label: 'Revoked Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Revoked', 'Confirmed'])],
       rowCount: _accessItems.length,
-      onAdd: () {
-        setState(() => _accessItems.add(LaunchAccessItem()));
+      onAddValues: (values) {
+        setState(() {
+          _accessItems.add(LaunchAccessItem(
+            system: values['System'] ?? '',
+            vendor: values['Vendor'] ?? '',
+            accessLevel: values['Access Level'] ?? '',
+            revokedDate: values['Revoked Date'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -372,10 +410,17 @@ class _VendorAccountCloseOutScreenState
       title: 'Outstanding Obligations',
       subtitle:
           'Pending payments, deliverables, SLAs, or warranties requiring resolution.',
-      columns: const [LaunchColumn(label: 'Obligation', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Obligation', flexible: true, fieldType: LaunchFieldType.text, hint: 'Title'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Open', 'In Progress', 'Complete'])],
       rowCount: _obligations.length,
-      onAdd: () {
-        setState(() => _obligations.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _obligations.add(LaunchFollowUpItem(
+            title: values['Obligation'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Open',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -459,10 +504,17 @@ class _VendorAccountCloseOutScreenState
       title: 'Account Closure Checklist',
       subtitle:
           'Standardized steps to verify each vendor account is fully closed.',
-      columns: const [LaunchColumn(label: 'Task', flexible: true), LaunchColumn(label: 'Details', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Status', width: 120)],
+      columns: const [LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'), LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'), LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete'])],
       rowCount: _closureChecklist.length,
-      onAdd: () {
-        setState(() => _closureChecklist.add(LaunchFollowUpItem()));
+      onAddValues: (values) {
+        setState(() {
+          _closureChecklist.add(LaunchFollowUpItem(
+            title: values['Task'] ?? '',
+            details: values['Details'] ?? '',
+            owner: values['Owner'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -691,9 +743,9 @@ class _VendorAccountCloseOutScreenState
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+    LaunchAiResult? result;
     try {
-      gen = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Vendor Account Close Out',
         sections: const {
@@ -711,6 +763,19 @@ class _VendorAccountCloseOutScreenState
       debugPrint('Vendor AI error: $e');
     }
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasData = _vendors.isNotEmpty ||
         _accessItems.isNotEmpty ||
         _obligations.isNotEmpty ||
@@ -720,28 +785,28 @@ class _VendorAccountCloseOutScreenState
       return;
     }
     setState(() {
-      _vendors = (gen['vendors'] ?? [])
+      _vendors = (generated['vendors'] ?? [])
           .map((m) => LaunchVendorItem(
               vendorName: _s(m['title']),
               outstandingItems: _s(m['details']),
               accountStatus: _ns(m['status'], 'Active')))
           .where((i) => i.vendorName.isNotEmpty)
           .toList();
-      _accessItems = (gen['access_items'] ?? [])
+      _accessItems = (generated['access_items'] ?? [])
           .map((m) => LaunchAccessItem(
               system: _s(m['title']),
               vendor: _s(m['details']),
               status: _ns(m['status'], 'Pending')))
           .where((i) => i.system.isNotEmpty)
           .toList();
-      _obligations = (gen['obligations'] ?? [])
+      _obligations = (generated['obligations'] ?? [])
           .map((m) => LaunchFollowUpItem(
               title: _s(m['title']),
               details: _s(m['details']),
               status: _ns(m['status'], 'Open')))
           .where((i) => i.title.isNotEmpty)
           .toList();
-      _closureChecklist = (gen['closure_checklist'] ?? [])
+      _closureChecklist = (generated['closure_checklist'] ?? [])
           .map((m) => LaunchFollowUpItem(
               title: _s(m['title']),
               details: _s(m['details']),
@@ -755,4 +820,208 @@ class _VendorAccountCloseOutScreenState
 
   String _s(dynamic v) => (v ?? '').toString().trim();
   String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
+
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      final projectData = ProjectDataHelper.getData(context);
+      final projectName = projectData.projectName;
+      final now = DateTime.now();
+      final stamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final filename =
+          'vendor_account_close_out_${projectName.replaceAll(' ', '_')}_$stamp.pdf';
+
+      final doc = pw.Document();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (_) => [
+            pw.Text(
+              'Vendor Account Close Out',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '$projectName — Generated ${now.toLocal().toIso8601String()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfSectionTitle('Vendor Close-Out Table'),
+            pw.SizedBox(height: 6),
+            if (_vendors.isEmpty)
+              pw.Text('No vendors.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Vendor',
+                  'Contract Ref',
+                  'Status',
+                  'Outstanding',
+                  'Notes'
+                ],
+                data: _vendors
+                    .map((v) => [
+                          _pc(v.vendorName),
+                          _pc(v.contractRef),
+                          _pc(v.accountStatus),
+                          _pc(v.outstandingItems),
+                          _pc(v.notes),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Access Revocation'),
+            pw.SizedBox(height: 6),
+            if (_accessItems.isEmpty)
+              pw.Text('No access items.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'System',
+                  'Vendor',
+                  'Access Level',
+                  'Revoked Date',
+                  'Status'
+                ],
+                data: _accessItems
+                    .map((a) => [
+                          _pc(a.system),
+                          _pc(a.vendor),
+                          _pc(a.accessLevel),
+                          _pc(a.revokedDate),
+                          _pc(a.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Outstanding Obligations'),
+            pw.SizedBox(height: 6),
+            if (_obligations.isEmpty)
+              pw.Text('No obligations.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const [
+                  'Obligation',
+                  'Details',
+                  'Owner',
+                  'Status'
+                ],
+                data: _obligations
+                    .map((o) => [
+                          _pc(o.title),
+                          _pc(o.details),
+                          _pc(o.owner),
+                          _pc(o.status),
+                        ])
+                    .toList(),
+              ),
+            pw.SizedBox(height: 20),
+            _pdfSectionTitle('Account Closure Checklist'),
+            pw.SizedBox(height: 6),
+            if (_closureChecklist.isEmpty)
+              pw.Text('No checklist items.',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey500))
+            else
+              pw.TableHelper.fromTextArray(
+                headerStyle:
+                    pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColor(0.93, 0.95, 0.98)),
+                cellStyle: const pw.TextStyle(fontSize: 8.5),
+                cellAlignment: pw.Alignment.topLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                headers: const ['Task', 'Details', 'Owner', 'Status'],
+                data: _closureChecklist
+                    .map((c) => [
+                          _pc(c.title),
+                          _pc(c.details),
+                          _pc(c.owner),
+                          _pc(c.status),
+                        ])
+                    .toList(),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      if (kIsWeb) {
+        download_helper.downloadFile(bytes, filename,
+            mimeType: 'application/pdf');
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF exported: $filename')),
+        );
+      }
+    } catch (e) {
+      debugPrint('PDF export error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _isExporting = false);
+  }
+
+  pw.Widget _pdfSectionTitle(String title) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: const pw.BoxDecoration(
+        color: PdfColor(0.06, 0.27, 0.45),
+        borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+      ),
+      child: pw.Text(title,
+          style: pw.TextStyle(
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white)),
+    );
+  }
+
+  String _pc(String v) => v.trim().isEmpty ? '-' : v.trim();
 }

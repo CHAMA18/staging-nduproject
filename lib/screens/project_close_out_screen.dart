@@ -208,10 +208,17 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Close-Out Checklist',
       subtitle:
           'Verify all items are addressed before formally closing the project.',
-      columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Category', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchCloseOutCheckItem.categories), LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _closeOutChecklist.length,
-      onAdd: () {
-        setState(() => _closeOutChecklist.add(LaunchCloseOutCheckItem()));
+      onAddValues: (values) {
+        setState(() {
+          _closeOutChecklist.add(LaunchCloseOutCheckItem(
+            category: values['Category'] ?? 'Deliverables',
+            item: values['Item'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -297,10 +304,18 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Final Approvals',
       subtitle:
           'Stakeholders who must sign off before the project is formally closed.',
-      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _approvals.length,
-      onAdd: () {
-        setState(() => _approvals.add(LaunchApproval()));
+      onAddValues: (values) {
+        setState(() {
+          _approvals.add(LaunchApproval(
+            stakeholder: values['Stakeholder'] ?? '',
+            role: values['Role'] ?? '',
+            status: values['Status'] ?? 'Pending',
+            date: values['Date'] ?? '',
+            notes: values['Notes'] ?? '',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -396,15 +411,23 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       subtitle:
           'Document repositories, code, and access changes required for closure.',
       columns: const [
-        LaunchColumn(label: 'Repository', flexible: true),
-        LaunchColumn(label: 'Type', width: 100),
-        LaunchColumn(label: 'Retention', width: 100),
-        LaunchColumn(label: 'Access Change', width: 120),
-        LaunchColumn(label: 'Status', width: 120),
+        LaunchColumn(label: 'Repository', flexible: true, fieldType: LaunchFieldType.text, hint: 'Repository'),
+        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Retention', width: 100, fieldType: LaunchFieldType.text, hint: 'Retention'),
+        LaunchColumn(label: 'Access Change', width: 120, fieldType: LaunchFieldType.text, hint: 'Access'),
+        LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
       ],
       rowCount: _archive.length,
-      onAdd: () {
-        setState(() => _archive.add(LaunchArchiveItem()));
+      onAddValues: (values) {
+        setState(() {
+          _archive.add(LaunchArchiveItem(
+            repository: values['Repository'] ?? '',
+            documentType: values['Type'] ?? '',
+            retentionPeriod: values['Retention'] ?? '',
+            accessChange: values['Access Change'] ?? '',
+            status: values['Status'] ?? 'Pending',
+          ));
+        });
         _save();
       },
       csvColumns: const [
@@ -806,9 +829,9 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+    LaunchAiResult? result;
     try {
-      gen = await LaunchPhaseAiSeed.generateEntries(
+      result = await LaunchPhaseAiSeed.generateEntries(
         context: context,
         sectionLabel: 'Project Close Out',
         sections: const {
@@ -824,6 +847,19 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       debugPrint('Close-out AI error: $e');
     }
     if (!mounted) return;
+
+    // Show insufficient context dialog if context is insufficient
+    if (result != null && !result.isContextSufficient) {
+      setState(() => _isGenerating = false);
+      await LaunchPhaseAiSeed.showInsufficientContextDialog(
+        context,
+        missingAreas: result.missingAreas,
+      );
+      return;
+    }
+
+    final generated = result?.entries ?? {};
+
     final hasData = _closeOutChecklist.isNotEmpty ||
         _approvals.isNotEmpty ||
         _archive.isNotEmpty;
@@ -832,21 +868,21 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       return;
     }
     setState(() {
-      _closeOutChecklist = (gen['checklist'] ?? [])
+      _closeOutChecklist = (generated['checklist'] ?? [])
           .map((m) => LaunchCloseOutCheckItem(
               item: _s(m['title']),
               notes: _s(m['details']),
               status: _ns(m['status'], 'Pending')))
           .where((i) => i.item.isNotEmpty)
           .toList();
-      _approvals = (gen['approvals'] ?? [])
+      _approvals = (generated['approvals'] ?? [])
           .map((m) => LaunchApproval(
               stakeholder: _s(m['title']),
               role: _s(m['details']),
               status: _ns(m['status'], 'Pending')))
           .where((i) => i.stakeholder.isNotEmpty)
           .toList();
-      _archive = (gen['archive'] ?? [])
+      _archive = (generated['archive'] ?? [])
           .map((m) => LaunchArchiveItem(
               repository: _s(m['title']),
               documentType: _s(m['details']),

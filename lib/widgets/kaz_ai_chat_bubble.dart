@@ -555,7 +555,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
       final body = jsonEncode(OpenAiConfig.wrapBody({
         'model': OpenAiConfig.model,
         'temperature': 0.7,
-        'max_tokens': 800,
+        'max_completion_tokens': 800,
         'messages': messages,
       }));
 
@@ -1040,7 +1040,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
             SizedBox(
               width: 28,
               height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF7C3AED)),
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFFABD00)),
             ),
             SizedBox(height: 16),
             Text('Loading support history...', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
@@ -1055,9 +1055,9 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
         if (_activeTicket != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5F3FF),
-              border: Border(bottom: BorderSide(color: Color(0xFFE9D5FF))),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFABD00).withOpacity(0.06),
+              border: Border(bottom: BorderSide(color: const Color(0xFFFABD00).withOpacity(0.2))),
             ),
             child: Row(
               children: [
@@ -1071,7 +1071,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
                   ),
                   child: Text(
                     _activeTicket!.status.toUpperCase(),
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF7C3AED)),
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFB8860B)),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1112,7 +1112,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
             hintText: 'Type a message to support...',
             scheme: scheme,
             theme: theme,
-            accentColor: const Color(0xFF7C3AED),
+            accentColor: const Color(0xFFFABD00),
           ),
       ],
     );
@@ -1133,19 +1133,19 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFFA78BFA)],
+                  colors: [Color(0xFFFABD00), Color(0xFFFFD54F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C3AED).withOpacity(0.2),
+                    color: Color(0xFFFABD00).withOpacity(0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
+              child: const Icon(Icons.support_agent_rounded, color: Color(0xFF1A1A1A), size: 28),
             ),
           ),
           const SizedBox(height: 16),
@@ -1185,7 +1185,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 1.5),
+                borderSide: const BorderSide(color: Color(0xFFFABD00), width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
@@ -1214,7 +1214,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 1.5),
+                borderSide: const BorderSide(color: Color(0xFFFABD00), width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
@@ -1229,9 +1229,9 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
             child: FilledButton.icon(
               onPressed: _createSupportTicket,
               icon: const Icon(Icons.send_rounded, size: 18),
-              label: const Text('Create Ticket & Start Chat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              label: const Text('Create Ticket & Start Chat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1A1A1A))),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
+                backgroundColor: const Color(0xFFFABD00),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
@@ -1242,19 +1242,19 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F3FF),
+              color: Color(0xFFFABD00).withOpacity(0.06),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE9D5FF)),
+              border: Border.all(color: Color(0xFFFABD00).withOpacity(0.2)),
             ),
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, size: 18, color: Color(0xFF7C3AED)),
+                Icon(Icons.info_outline, size: 18, color: Color(0xFFB8860B)),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Your conversation with support agents is fully persisted. You can close and return to it at any time. Average response time is under 5 minutes.',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6D28D9), height: 1.5),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF92650B), height: 1.5),
                   ),
                 ),
               ],
@@ -1285,7 +1285,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
                   icon: const Icon(Icons.add_circle_outline, size: 16),
                   label: const Text('New Ticket', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: const Color(0xFFFABD00),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   ),
                 ),
@@ -1329,7 +1329,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup>
 
         // Typing indicator for support
         if (_isSupportLoading)
-          _buildTypingIndicator(theme, scheme, 'Support Agent', color: const Color(0xFF7C3AED)),
+          _buildTypingIndicator(theme, scheme, 'Support Agent', color: const Color(0xFFFABD00)),
       ],
     );
   }
@@ -1654,7 +1654,7 @@ class _ChatBubble extends StatelessWidget {
 
     // AI or Support avatar
     final isSupport = message.isSupportAgent;
-    final bgColor = isSupport ? const Color(0xFF7C3AED) : const Color(0xFFFFC812);
+    final bgColor = isSupport ? const Color(0xFFFABD00) : const Color(0xFFFFC812);
     final icon = isSupport ? Icons.support_agent_rounded : Icons.auto_awesome_rounded;
 
     return Container(
@@ -1663,7 +1663,7 @@ class _ChatBubble extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: isSupport
-            ? LinearGradient(colors: [const Color(0xFF7C3AED), const Color(0xFFA78BFA)])
+            ? LinearGradient(colors: [const Color(0xFFFABD00), const Color(0xFFFFD54F)])
             : LinearGradient(colors: [const Color(0xFFFFC812), const Color(0xFFFF9800)]),
         boxShadow: [
           BoxShadow(
@@ -1679,7 +1679,7 @@ class _ChatBubble extends StatelessWidget {
 
   Color _bubbleColor() {
     if (message.isUser) return const Color(0xFF2563EB).withOpacity(0.1);
-    if (message.isSupportAgent) return const Color(0xFF7C3AED).withOpacity(0.06);
+    if (message.isSupportAgent) return Color(0xFFFABD00).withOpacity(0.06);
     return const Color(0xFFF8FAFC);
   }
 

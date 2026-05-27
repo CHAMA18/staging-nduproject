@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
+import 'package:ndu_project/widgets/csv_import_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 const double _defaultColumnWidth = 160;
 const double _tableHorizontalPadding = 20;
@@ -85,6 +87,8 @@ class LaunchDataTable extends StatelessWidget {
     this.addLabel = 'Add item',
     this.importLabel,
     this.onImport,
+    this.csvColumns,
+    this.onCsvImport,
     this.emptyMessage = 'No entries yet. Add details to get started.',
   }) : _columns = columns
             .map((c) => c is LaunchColumn
@@ -102,6 +106,13 @@ class LaunchDataTable extends StatelessWidget {
   final String addLabel;
   final String? importLabel;
   final VoidCallback? onImport;
+
+  /// CSV import column specifications — enables the "Import CSV" button
+  final List<CsvColumnSpec>? csvColumns;
+
+  /// Callback when CSV rows are imported
+  final ValueChanged<List<Map<String, String>>>? onCsvImport;
+
   final String emptyMessage;
 
   List<LaunchColumn> get columns => _columns;
@@ -165,6 +176,22 @@ class LaunchDataTable extends StatelessWidget {
               ],
             ),
           ),
+          if (csvColumns != null && onCsvImport != null) ...[
+            OutlinedButton.icon(
+              onPressed: () => _showCsvImportDialog(context),
+              icon: const Icon(Icons.upload_file_outlined, size: 16),
+              label: const Text('Import CSV'),
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                foregroundColor: const Color(0xFF2563EB),
+                side: const BorderSide(color: Color(0xFF93C5FD)),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           if (onImport != null && importLabel != null) ...[
             OutlinedButton.icon(
               onPressed: onImport,
@@ -205,6 +232,18 @@ class LaunchDataTable extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showCsvImportDialog(BuildContext context) async {
+    if (csvColumns == null || onCsvImport == null) return;
+    final result = await showCsvImportDialog(
+      context,
+      tableTitle: title,
+      columns: csvColumns!,
+    );
+    if (result != null && result.isNotEmpty) {
+      onCsvImport!(result);
+    }
   }
 
   Future<void> _showAddDialog(BuildContext context) async {

@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class TransitionToProdTeamScreen extends StatefulWidget {
@@ -166,6 +167,27 @@ class _TransitionToProdTeamScreenState
       columns: const [LaunchColumn(label: 'Name', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Contact', width: 120), LaunchColumn(label: 'Start Date', width: 110), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _teamRoster.length,
       onAdd: _addMember,
+      csvColumns: const [
+        CsvColumnSpec(key: 'name', label: 'Name', sampleValue: 'Jane Smith'),
+        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Ops Lead'),
+        CsvColumnSpec(key: 'contact', label: 'Contact', sampleValue: 'jane@example.com'),
+        CsvColumnSpec(key: 'startDate', label: 'Start Date', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Transitioning', 'Released']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _teamRoster.add(LaunchTeamMember(
+              name: row['name'] ?? '',
+              role: row['role'] ?? '',
+              contact: row['contact'] ?? '',
+              startDate: row['startDate'] ?? '',
+              releaseStatus: row['status'] ?? 'Active',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       importLabel: 'Import from Staffing',
       onImport: _importStaffing,
       emptyMessage:
@@ -235,6 +257,27 @@ class _TransitionToProdTeamScreenState
       columns: const [LaunchColumn(label: 'Category', width: 120), LaunchColumn(label: 'Item', flexible: true), LaunchColumn(label: 'Owner', width: 120), LaunchColumn(label: 'Due', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _handoverChecklist.length,
       onAdd: _addHandoverItem,
+      csvColumns: const [
+        CsvColumnSpec(key: 'category', label: 'Category', sampleValue: 'Documentation', allowedValues: ['Documentation', 'System Access', 'Monitoring', 'Training', 'Runbooks', 'Other']),
+        CsvColumnSpec(key: 'item', label: 'Item', sampleValue: 'Operations runbook'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Ops Lead'),
+        CsvColumnSpec(key: 'due', label: 'Due', sampleValue: '2025-01-20'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _handoverChecklist.add(LaunchHandoverItem(
+              category: row['category'] ?? '',
+              item: row['item'] ?? '',
+              owner: row['owner'] ?? '',
+              dueDate: row['due'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No handover items. Add items to track the production handover.',
       cellBuilder: (context, idx) {
@@ -302,6 +345,27 @@ class _TransitionToProdTeamScreenState
       columns: const [LaunchColumn(label: 'Topic', flexible: true), LaunchColumn(label: 'From', width: 110), LaunchColumn(label: 'To', width: 110), LaunchColumn(label: 'Method', width: 100), LaunchColumn(label: 'Status', width: 120)],
       rowCount: _knowledgeTransfers.length,
       onAdd: _addKnowledgeTransfer,
+      csvColumns: const [
+        CsvColumnSpec(key: 'topic', label: 'Topic', sampleValue: 'System architecture'),
+        CsvColumnSpec(key: 'from', label: 'From', sampleValue: 'Alice'),
+        CsvColumnSpec(key: 'to', label: 'To', sampleValue: 'Bob'),
+        CsvColumnSpec(key: 'method', label: 'Method', sampleValue: 'Workshop'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Scheduled', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+              topic: row['topic'] ?? '',
+              fromPerson: row['from'] ?? '',
+              toPerson: row['to'] ?? '',
+              method: row['method'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No knowledge transfers. Track knowledge handoff from project team to operations.',
       cellBuilder: (context, idx) {
@@ -369,6 +433,27 @@ class _TransitionToProdTeamScreenState
       columns: const [LaunchColumn(label: 'Stakeholder', flexible: true), LaunchColumn(label: 'Role', width: 120), LaunchColumn(label: 'Status', width: 120), LaunchColumn(label: 'Date', width: 100), LaunchColumn(label: 'Notes', flexible: true)],
       rowCount: _signOffs.length,
       onAdd: _addApproval,
+      csvColumns: const [
+        CsvColumnSpec(key: 'stakeholder', label: 'Stakeholder', sampleValue: 'Jane Smith'),
+        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Business Owner'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Approved', 'Rejected']),
+        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Awaiting review'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _signOffs.add(LaunchApproval(
+              stakeholder: row['stakeholder'] ?? '',
+              role: row['role'] ?? '',
+              status: row['status'] ?? 'Pending',
+              date: row['date'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No sign-offs yet. Capture who needs to approve the handover.',
       cellBuilder: (context, idx) {

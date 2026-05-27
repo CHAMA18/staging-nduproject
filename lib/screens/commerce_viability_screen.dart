@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class CommerceViabilityScreen extends StatefulWidget {
   const CommerceViabilityScreen({super.key});
@@ -169,6 +170,23 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
         setState(() => _financialMetrics.add(LaunchFinancialMetric()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'metric', label: 'Metric', sampleValue: 'ROI'),
+        CsvColumnSpec(key: 'value', label: 'Value', sampleValue: '150%'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: '3-year projection'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _financialMetrics.add(LaunchFinancialMetric(
+              label: row['metric'] ?? '',
+              value: row['value'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage:
           'Track total investment, projected return, ROI, payback period.',
       cellBuilder: (context, i) {
@@ -232,6 +250,29 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       rowCount: _warranties.length,
       onAdd: () {
         setState(() => _warranties.add(LaunchWarrantyItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'item', label: 'Item', sampleValue: 'Server hardware'),
+        CsvColumnSpec(key: 'vendor', label: 'Vendor', sampleValue: 'Dell'),
+        CsvColumnSpec(key: 'type', label: 'Type', sampleValue: 'Standard'),
+        CsvColumnSpec(key: 'start', label: 'Start', sampleValue: '2025-01-01'),
+        CsvColumnSpec(key: 'expiry', label: 'Expiry', sampleValue: '2028-01-01'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Expiring Soon', 'Expired', 'Claimed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _warranties.add(LaunchWarrantyItem(
+              item: row['item'] ?? '',
+              vendor: row['vendor'] ?? '',
+              warrantyType: row['type'] ?? '',
+              startDate: row['start'] ?? '',
+              expiryDate: row['expiry'] ?? '',
+              status: row['status'] ?? 'Active',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Add warranty items with vendor, type, and expiry.',
@@ -322,6 +363,25 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       rowCount: _opsCosts.length,
       onAdd: () {
         setState(() => _opsCosts.add(LaunchOpsCostItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'category', label: 'Category', sampleValue: 'Cloud Hosting'),
+        CsvColumnSpec(key: 'monthly', label: 'Monthly', sampleValue: '\$5,000'),
+        CsvColumnSpec(key: 'annual', label: 'Annual', sampleValue: '\$60,000'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'AWS production environment'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _opsCosts.add(LaunchOpsCostItem(
+              category: row['category'] ?? '',
+              monthlyCost: row['monthly'] ?? '',
+              annualCost: row['annual'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage:
@@ -428,6 +488,23 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       rowCount: _recommendations.length,
       onAdd: () {
         setState(() => _recommendations.add(LaunchFollowUpItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'recommendation', label: 'Recommendation', sampleValue: 'Negotiate extended warranty'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Extend server warranty by 2 years'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _recommendations.add(LaunchFollowUpItem(
+              title: row['recommendation'] ?? '',
+              details: row['details'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Add actions to ensure commercial viability.',

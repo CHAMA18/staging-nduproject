@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class DemobilizeTeamScreen extends StatefulWidget {
   const DemobilizeTeamScreen({super.key});
@@ -184,6 +185,25 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       },
       onImport: _importTeam,
       importLabel: 'Import',
+      csvColumns: const [
+        CsvColumnSpec(key: 'name', label: 'Name', sampleValue: 'John Doe'),
+        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Developer'),
+        CsvColumnSpec(key: 'contact', label: 'Contact', sampleValue: 'john@example.com'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Transitioning', 'Released']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _teamRoster.add(LaunchTeamMember(
+              name: row['name'] ?? '',
+              role: row['role'] ?? '',
+              contact: row['contact'] ?? '',
+              releaseStatus: row['status'] ?? 'Active',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'No team members. Add or import from staffing.',
       cellBuilder: (context, i) {
         final m = _teamRoster[i];
@@ -248,6 +268,27 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       rowCount: _knowledgeTransfers.length,
       onAdd: () {
         setState(() => _knowledgeTransfers.add(LaunchKnowledgeTransfer()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'topic', label: 'Topic', sampleValue: 'API Documentation'),
+        CsvColumnSpec(key: 'from', label: 'From', sampleValue: 'Alice'),
+        CsvColumnSpec(key: 'to', label: 'To', sampleValue: 'Bob'),
+        CsvColumnSpec(key: 'method', label: 'Method', sampleValue: 'Workshop'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Scheduled', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _knowledgeTransfers.add(LaunchKnowledgeTransfer(
+              topic: row['topic'] ?? '',
+              fromPerson: row['from'] ?? '',
+              toPerson: row['to'] ?? '',
+              method: row['method'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'No transfers. Track knowledge handoff sessions.',
@@ -326,6 +367,25 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         setState(() => _vendorOffboarding.add(LaunchFollowUpItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'task', label: 'Task', sampleValue: 'Revoke system access'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Remove VPN and email'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'IT Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _vendorOffboarding.add(LaunchFollowUpItem(
+              title: row['task'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'No vendor items. Track vendor offboarding tasks.',
       cellBuilder: (context, i) {
         final v = _vendorOffboarding[i];
@@ -391,6 +451,27 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       rowCount: _communications.length,
       onAdd: () {
         setState(() => _communications.add(LaunchCommunicationItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'audience', label: 'Audience', sampleValue: 'All Team Members'),
+        CsvColumnSpec(key: 'message', label: 'Message', sampleValue: 'Project wrap-up notification'),
+        CsvColumnSpec(key: 'channel', label: 'Channel', sampleValue: 'Email'),
+        CsvColumnSpec(key: 'sendDate', label: 'Send Date', sampleValue: '2025-01-20'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Planned', allowedValues: ['Planned', 'Sent', 'Cancelled']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _communications.add(LaunchCommunicationItem(
+              audience: row['audience'] ?? '',
+              message: row['message'] ?? '',
+              channel: row['channel'] ?? '',
+              sendDate: row['sendDate'] ?? '',
+              status: row['status'] ?? 'Planned',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage:

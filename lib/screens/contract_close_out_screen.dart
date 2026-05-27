@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ContractCloseOutScreen extends StatefulWidget {
@@ -175,6 +176,23 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
         setState(() => _financialSummary.add(LaunchFinancialMetric()));
         _scheduleSave();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'metric', label: 'Metric', sampleValue: 'Total Contract Value'),
+        CsvColumnSpec(key: 'value', label: 'Value', sampleValue: '\$500,000'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'From execution contracts'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _financialSummary.add(LaunchFinancialMetric(
+              label: row['metric'] ?? '',
+              value: row['value'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'Track total contract value, payments, and pending amounts.',
       cellBuilder: (context, idx) {
@@ -231,6 +249,27 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       rowCount: _contracts.length,
       onAdd: () {
         setState(() => _contracts.add(LaunchContractItem()));
+        _scheduleSave();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'contract', label: 'Contract', sampleValue: 'Cloud Services Agreement'),
+        CsvColumnSpec(key: 'vendor', label: 'Vendor', sampleValue: 'Acme Corp'),
+        CsvColumnSpec(key: 'ref', label: 'Ref', sampleValue: 'CTR-001'),
+        CsvColumnSpec(key: 'value', label: 'Value', sampleValue: '\$100,000'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Closed', 'Disputed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _contracts.add(LaunchContractItem(
+              contractName: row['contract'] ?? '',
+              vendor: row['vendor'] ?? '',
+              contractRef: row['ref'] ?? '',
+              value: row['value'] ?? '',
+              closeOutStatus: row['status'] ?? 'Open',
+            ));
+          });
+        }
         _scheduleSave();
       },
       importLabel: 'Import',
@@ -309,6 +348,25 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
         setState(() => _closeOutSteps.add(LaunchCloseOutStep()));
         _scheduleSave();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'step', label: 'Step', sampleValue: 'Verify deliverables accepted'),
+        CsvColumnSpec(key: 'contractRef', label: 'Contract Ref', sampleValue: 'CTR-001'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Awaiting vendor confirmation'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _closeOutSteps.add(LaunchCloseOutStep(
+              step: row['step'] ?? '',
+              contractRef: row['contractRef'] ?? '',
+              status: row['status'] ?? 'Pending',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'Add steps like: final deliverable accepted, payments settled, warranties confirmed.',
       cellBuilder: (context, idx) {
@@ -374,6 +432,27 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       rowCount: _signOffs.length,
       onAdd: () {
         setState(() => _signOffs.add(LaunchApproval()));
+        _scheduleSave();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'approver', label: 'Approver', sampleValue: 'Jane Smith'),
+        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Finance Director'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Approved', 'Rejected']),
+        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Under review'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _signOffs.add(LaunchApproval(
+              stakeholder: row['approver'] ?? '',
+              role: row['role'] ?? '',
+              status: row['status'] ?? 'Pending',
+              date: row['date'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
         _scheduleSave();
       },
       emptyMessage: 'Track finance and compliance approval status.',

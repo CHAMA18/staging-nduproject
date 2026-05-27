@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class LaunchChecklistScreen extends StatefulWidget {
@@ -536,6 +537,27 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             )));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'task', label: 'Task', sampleValue: 'Cutover rehearsals signed off'),
+        CsvColumnSpec(key: 'detail', label: 'Detail', sampleValue: 'Dry run #2 captured follow-up items'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Operations lead'),
+        CsvColumnSpec(key: 'due', label: 'Due', sampleValue: 'Aug 12'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Complete', 'On track', 'At risk', 'In review', 'Pending']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _checklistItems.add(_ChecklistItemData(
+              title: row['task'] ?? '',
+              detail: row['detail'] ?? '',
+              owner: row['owner'] ?? '',
+              due: row['due'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage:
           'No checklist items yet. Add critical action items before go-live.',
       cellBuilder: (context, i) {
@@ -631,6 +653,25 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             )));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'approval', label: 'Approval', sampleValue: 'Cutover sign-off'),
+        CsvColumnSpec(key: 'detail', label: 'Detail', sampleValue: 'Delivery and ops leads approved'),
+        CsvColumnSpec(key: 'approver', label: 'Approver', sampleValue: 'Ops Director'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Complete', 'In review', 'Pending']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _approvals.add(_ApprovalData(
+              label: row['approval'] ?? '',
+              detail: row['detail'] ?? '',
+              status: row['status'] ?? 'Pending',
+              approver: row['approver'] ?? '',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage:
           'No approvals yet. Track required sign-offs before launch.',
       cellBuilder: (context, i) {
@@ -711,6 +752,25 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             )));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'milestone', label: 'Milestone', sampleValue: 'Go / no-go rehearsal'),
+        CsvColumnSpec(key: 'detail', label: 'Detail', sampleValue: 'Dry run with scenario walk-through'),
+        CsvColumnSpec(key: 'due', label: 'Due', sampleValue: 'Aug 11'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Upcoming', allowedValues: ['Complete', 'Upcoming', 'In progress', 'Delayed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _milestones.add(_MilestoneData(
+              title: row['milestone'] ?? '',
+              detail: row['detail'] ?? '',
+              due: row['due'] ?? '',
+              status: row['status'] ?? 'Upcoming',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage:
           'No milestones yet. Add key milestones leading to go-live.',
       cellBuilder: (context, i) {
@@ -789,6 +849,25 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               date: '',
               status: 'Upcoming',
             )));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'stage', label: 'Stage', sampleValue: 'Final readiness review'),
+        CsvColumnSpec(key: 'detail', label: 'Detail', sampleValue: 'All cutover artefacts verified'),
+        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: 'Aug 10'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Upcoming', allowedValues: ['Complete', 'In progress', 'Upcoming', 'Delayed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _timelineStages.add(_TimelineStage(
+              label: row['stage'] ?? '',
+              detail: row['detail'] ?? '',
+              date: row['date'] ?? '',
+              status: row['status'] ?? 'Upcoming',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage:

@@ -18,6 +18,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class ProjectCloseOutScreen extends StatefulWidget {
   const ProjectCloseOutScreen({
@@ -213,6 +214,25 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         setState(() => _closeOutChecklist.add(LaunchCloseOutCheckItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'category', label: 'Category', sampleValue: 'Deliverables', allowedValues: ['Deliverables', 'Contracts', 'Vendors', 'Team', 'Documentation', 'Finance']),
+        CsvColumnSpec(key: 'item', label: 'Item', sampleValue: 'Verify final deliverables'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'On track'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _closeOutChecklist.add(LaunchCloseOutCheckItem(
+              category: row['category'] ?? '',
+              item: row['item'] ?? '',
+              status: row['status'] ?? 'Pending',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'Add close-out verification tasks by category.',
       cellBuilder: (context, i) {
         final c = _closeOutChecklist[i];
@@ -281,6 +301,27 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       rowCount: _approvals.length,
       onAdd: () {
         setState(() => _approvals.add(LaunchApproval()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'stakeholder', label: 'Stakeholder', sampleValue: 'Jane Smith'),
+        CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Project Sponsor'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Approved', 'Rejected']),
+        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Awaiting review'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _approvals.add(LaunchApproval(
+              stakeholder: row['stakeholder'] ?? '',
+              role: row['role'] ?? '',
+              status: row['status'] ?? 'Pending',
+              date: row['date'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Add stakeholders who need to sign off.',
@@ -364,6 +405,27 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       rowCount: _archive.length,
       onAdd: () {
         setState(() => _archive.add(LaunchArchiveItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'repository', label: 'Repository', sampleValue: 'GitHub Repo'),
+        CsvColumnSpec(key: 'documentType', label: 'Type', sampleValue: 'Source Code'),
+        CsvColumnSpec(key: 'retentionPeriod', label: 'Retention', sampleValue: '5 years'),
+        CsvColumnSpec(key: 'accessChange', label: 'Access Change', sampleValue: 'Read-only'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _archive.add(LaunchArchiveItem(
+              repository: row['repository'] ?? '',
+              documentType: row['documentType'] ?? '',
+              retentionPeriod: row['retentionPeriod'] ?? '',
+              accessChange: row['accessChange'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'List repositories and documents for archival.',

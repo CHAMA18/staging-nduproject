@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class SummarizeAccountRisksScreen extends StatefulWidget {
   const SummarizeAccountRisksScreen({super.key});
@@ -222,6 +223,21 @@ class _SummarizeAccountRisksScreenState
         setState(() => _highlights.add(LaunchHighlightItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'highlight', label: 'Highlight', sampleValue: 'On-time delivery'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'All milestones delivered on schedule'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _highlights.add(LaunchHighlightItem(
+              title: row['highlight'] ?? '',
+              details: row['details'] ?? '',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'Capture wins and achievements.',
       cellBuilder: (context, i) {
         final h = _highlights[i];
@@ -267,6 +283,25 @@ class _SummarizeAccountRisksScreenState
       rowCount: _topRisks.length,
       onAdd: () {
         setState(() => _topRisks.add(LaunchFollowUpItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'risk', label: 'Risk', sampleValue: 'Budget overrun'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Actual spend exceeded plan by 15%'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Finance Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'Mitigated', 'Closed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _topRisks.add(LaunchFollowUpItem(
+              title: row['risk'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Document key delivery risks and mitigation plans.',
@@ -334,6 +369,25 @@ class _SummarizeAccountRisksScreenState
       rowCount: _next90Days.length,
       onAdd: () {
         setState(() => _next90Days.add(LaunchFollowUpItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'priority', label: 'Priority', sampleValue: 'Complete UAT'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Finish user acceptance testing'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'QA Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Planned', allowedValues: ['Planned', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _next90Days.add(LaunchFollowUpItem(
+              title: row['priority'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Planned',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'List immediate priorities for the next 90 days.',

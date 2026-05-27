@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
+import 'package:ndu_project/widgets/csv_import_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 const double _defaultColumnWidth = 160;
 const double _tableHorizontalPadding = 20;
@@ -56,6 +58,8 @@ class LaunchDataTable extends StatelessWidget {
     this.addLabel = 'Add',
     this.importLabel,
     this.onImport,
+    this.csvColumns,
+    this.onCsvImport,
     this.emptyMessage = 'No entries yet. Add details to get started.',
   }) : _columns = columns is List<LaunchColumn>
             ? columns
@@ -72,9 +76,29 @@ class LaunchDataTable extends StatelessWidget {
   final String addLabel;
   final String? importLabel;
   final VoidCallback? onImport;
+
+  /// CSV column specs for the import dialog. When provided, a CSV import
+  /// button appears in the table header.
+  final List<CsvColumnSpec>? csvColumns;
+
+  /// Callback invoked with the list of row maps parsed from CSV.
+  /// Each map key matches a [CsvColumnSpec.key].
+  final Future<void> Function(List<Map<String, String>> rows)? onCsvImport;
+
   final String emptyMessage;
 
   List<LaunchColumn> get columns => _columns;
+
+  Future<void> _openCsvImport(BuildContext context) async {
+    final rows = await showCsvImportDialog(
+      context,
+      tableTitle: title,
+      columns: csvColumns!,
+    );
+    if (rows != null && rows.isNotEmpty && onCsvImport != null) {
+      await onCsvImport!(rows);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +119,7 @@ class LaunchDataTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           if (rowCount == 0) _buildEmpty() else _buildRows(context),
         ],
@@ -103,7 +127,7 @@ class LaunchDataTable extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -145,6 +169,22 @@ class LaunchDataTable extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12)),
                 foregroundColor: const Color(0xFF4B5563),
                 side: const BorderSide(color: Color(0xFFD1D5DB)),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (csvColumns != null && onCsvImport != null) ...[
+            OutlinedButton.icon(
+              onPressed: () => _openCsvImport(context),
+              icon: const Icon(Icons.upload_file, size: 16),
+              label: const Text('Import CSV'),
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                foregroundColor: const Color(0xFF059669),
+                side: const BorderSide(color: Color(0xFF6EE7B7)),
               ),
             ),
             const SizedBox(width: 8),

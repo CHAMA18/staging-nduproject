@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class VendorAccountCloseOutScreen extends StatefulWidget {
@@ -177,6 +178,27 @@ class _VendorAccountCloseOutScreenState
         setState(() => _vendors.add(LaunchVendorItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'vendor', label: 'Vendor', sampleValue: 'Acme Corp'),
+        CsvColumnSpec(key: 'contractRef', label: 'Contract Ref', sampleValue: 'CTR-001'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Closing', 'Closed']),
+        CsvColumnSpec(key: 'outstanding', label: 'Outstanding', sampleValue: 'Pending invoice'),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Final payment pending'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _vendors.add(LaunchVendorItem(
+              vendorName: row['vendor'] ?? '',
+              contractRef: row['contractRef'] ?? '',
+              accountStatus: row['status'] ?? 'Active',
+              outstandingItems: row['outstanding'] ?? '',
+              notes: row['notes'] ?? '',
+            ));
+          });
+        }
+        _save();
+      },
       importLabel: 'Import Vendors',
       onImport: _importVendors,
       emptyMessage:
@@ -257,6 +279,27 @@ class _VendorAccountCloseOutScreenState
         setState(() => _accessItems.add(LaunchAccessItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'system', label: 'System', sampleValue: 'AWS Console'),
+        CsvColumnSpec(key: 'vendor', label: 'Vendor', sampleValue: 'Acme Corp'),
+        CsvColumnSpec(key: 'accessLevel', label: 'Access Level', sampleValue: 'Admin'),
+        CsvColumnSpec(key: 'revokedDate', label: 'Revoked Date', sampleValue: '2025-01-20'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Revoked', 'Confirmed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _accessItems.add(LaunchAccessItem(
+              system: row['system'] ?? '',
+              vendor: row['vendor'] ?? '',
+              accessLevel: row['accessLevel'] ?? '',
+              revokedDate: row['revokedDate'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage:
           'No access items. Track vendor access that needs revocation.',
       cellBuilder: (context, i) {
@@ -335,6 +378,25 @@ class _VendorAccountCloseOutScreenState
         setState(() => _obligations.add(LaunchFollowUpItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'obligation', label: 'Obligation', sampleValue: 'Final payment'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Outstanding invoice \$50K'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Finance Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _obligations.add(LaunchFollowUpItem(
+              title: row['obligation'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'No obligations. Track pending vendor obligations.',
       cellBuilder: (context, i) {
         final o = _obligations[i];
@@ -401,6 +463,25 @@ class _VendorAccountCloseOutScreenState
       rowCount: _closureChecklist.length,
       onAdd: () {
         setState(() => _closureChecklist.add(LaunchFollowUpItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'task', label: 'Task', sampleValue: 'Revoke all vendor access'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Remove VPN, email, and system accounts'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'IT Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _closureChecklist.add(LaunchFollowUpItem(
+              title: row['task'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'No checklist items. Add closure verification tasks.',

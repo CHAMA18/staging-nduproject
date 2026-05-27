@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ActualVsPlannedGapAnalysisScreen extends StatefulWidget {
@@ -170,6 +171,25 @@ class _ActualVsPlannedGapAnalysisScreenState
         setState(() => _scopeGaps.add(LaunchGapItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'planned', label: 'Planned', sampleValue: 'User portal deployment'),
+        CsvColumnSpec(key: 'actual', label: 'Actual', sampleValue: 'Deployed with minor gaps'),
+        CsvColumnSpec(key: 'gap', label: 'Gap', sampleValue: 'Missing SSO integration'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Partial', allowedValues: ['Met', 'Partial', 'Missed', 'Exceeded']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _scopeGaps.add(LaunchGapItem(
+              planned: row['planned'] ?? '',
+              actual: row['actual'] ?? '',
+              gapDescription: row['gap'] ?? '',
+              gapStatus: row['status'] ?? 'Missed',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'Add items to compare planned vs actual.',
       cellBuilder: (context, i) {
         final g = _scopeGaps[i];
@@ -234,6 +254,27 @@ class _ActualVsPlannedGapAnalysisScreenState
       rowCount: _milestoneVariances.length,
       onAdd: () {
         setState(() => _milestoneVariances.add(LaunchMilestoneVariance()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'milestone', label: 'Milestone', sampleValue: 'Go-live'),
+        CsvColumnSpec(key: 'planned', label: 'Planned', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'actual', label: 'Actual', sampleValue: '2025-01-18'),
+        CsvColumnSpec(key: 'variance', label: 'Variance', sampleValue: '+3 days'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'On Track', allowedValues: ['On Track', 'Delayed', 'Missed', 'Early']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _milestoneVariances.add(LaunchMilestoneVariance(
+              milestone: row['milestone'] ?? '',
+              plannedDate: row['planned'] ?? '',
+              actualDate: row['actual'] ?? '',
+              varianceDays: row['variance'] ?? '',
+              status: row['status'] ?? 'On Track',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Track planned vs actual milestone dates.',
@@ -307,6 +348,27 @@ class _ActualVsPlannedGapAnalysisScreenState
       rowCount: _budgetVariances.length,
       onAdd: () {
         setState(() => _budgetVariances.add(LaunchBudgetVariance()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'category', label: 'Category', sampleValue: 'Infrastructure'),
+        CsvColumnSpec(key: 'planned', label: 'Planned', sampleValue: '\$100,000'),
+        CsvColumnSpec(key: 'actual', label: 'Actual', sampleValue: '\$115,000'),
+        CsvColumnSpec(key: 'variance', label: 'Variance', sampleValue: '-\$15,000'),
+        CsvColumnSpec(key: 'percent', label: '%', sampleValue: '15%'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _budgetVariances.add(LaunchBudgetVariance(
+              category: row['category'] ?? '',
+              plannedAmount: row['planned'] ?? '',
+              actualAmount: row['actual'] ?? '',
+              variance: row['variance'] ?? '',
+              variancePercent: row['percent'] ?? '',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'Track planned vs actual budget by category.',
@@ -384,6 +446,27 @@ class _ActualVsPlannedGapAnalysisScreenState
         setState(() => _rootCauses.add(LaunchRootCauseItem()));
         _save();
       },
+      csvColumns: const [
+        CsvColumnSpec(key: 'gap', label: 'Gap', sampleValue: 'Budget overrun'),
+        CsvColumnSpec(key: 'rootCause', label: 'Root Cause', sampleValue: 'Scope creep'),
+        CsvColumnSpec(key: 'impact', label: 'Impact', sampleValue: 'High'),
+        CsvColumnSpec(key: 'action', label: 'Action', sampleValue: 'Rebase budget'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Resolved']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _rootCauses.add(LaunchRootCauseItem(
+              gap: row['gap'] ?? '',
+              rootCause: row['rootCause'] ?? '',
+              impact: row['impact'] ?? '',
+              correctiveAction: row['action'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
+        _save();
+      },
       emptyMessage: 'Analyze why major gaps occurred.',
       cellBuilder: (context, i) {
         final r = _rootCauses[i];
@@ -457,6 +540,25 @@ class _ActualVsPlannedGapAnalysisScreenState
       rowCount: _followUpActions.length,
       onAdd: () {
         setState(() => _followUpActions.add(LaunchFollowUpItem()));
+        _save();
+      },
+      csvColumns: const [
+        CsvColumnSpec(key: 'action', label: 'Action', sampleValue: 'Monitor SLA compliance'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Track vendor SLA adherence'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Ops Manager'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Complete']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _followUpActions.add(LaunchFollowUpItem(
+              title: row['action'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
         _save();
       },
       emptyMessage: 'List items requiring attention after project closure.',

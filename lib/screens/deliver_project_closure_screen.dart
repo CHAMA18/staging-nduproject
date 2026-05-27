@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
+import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class DeliverProjectClosureScreen extends StatefulWidget {
   const DeliverProjectClosureScreen({super.key});
@@ -181,6 +182,25 @@ class _DeliverProjectClosureScreenState
       ],
       rowCount: _scopeItems.length,
       onAdd: () => _addScopeItem(),
+      csvColumns: const [
+        CsvColumnSpec(key: 'deliverable', label: 'Deliverable', sampleValue: 'User Portal'),
+        CsvColumnSpec(key: 'criteria', label: 'Criteria', sampleValue: 'All acceptance tests pass'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Accepted', 'Partial', 'Rejected']),
+        CsvColumnSpec(key: 'date', label: 'Date', sampleValue: '2025-01-15'),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _scopeItems.add(LaunchScopeItem(
+              deliverable: row['deliverable'] ?? '',
+              acceptanceCriteria: row['criteria'] ?? '',
+              status: row['status'] ?? 'Pending',
+              acceptanceDate: row['date'] ?? '',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       importLabel: 'Import Scope',
       onImport: _importScope,
       emptyMessage:
@@ -244,6 +264,25 @@ class _DeliverProjectClosureScreenState
       ],
       rowCount: _milestones.length,
       onAdd: () => _addMilestone(),
+      csvColumns: const [
+        CsvColumnSpec(key: 'milestone', label: 'Milestone', sampleValue: 'Go-live'),
+        CsvColumnSpec(key: 'planned', label: 'Planned', sampleValue: '2025-01-15'),
+        CsvColumnSpec(key: 'actual', label: 'Actual', sampleValue: '2025-01-18'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete', 'Delayed']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _milestones.add(LaunchMilestone(
+              title: row['milestone'] ?? '',
+              plannedDate: row['planned'] ?? '',
+              actualDate: row['actual'] ?? '',
+              status: row['status'] ?? 'Pending',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No milestones yet. Add delivery milestones to track progress.',
       cellBuilder: (ctx, i) => LaunchDataRow(
@@ -303,6 +342,25 @@ class _DeliverProjectClosureScreenState
       ],
       rowCount: _outstandingItems.length,
       onAdd: () => _addFollowUp(_outstandingItems),
+      csvColumns: const [
+        CsvColumnSpec(key: 'title', label: 'Title', sampleValue: 'Pending bug fix'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Critical UI bug in production'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Tech Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Complete', 'Deferred']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _outstandingItems.add(LaunchFollowUpItem(
+              title: row['title'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No outstanding items. All clear, or add items that need resolution.',
       cellBuilder: (ctx, i) => LaunchDataRow(
@@ -364,6 +422,25 @@ class _DeliverProjectClosureScreenState
       ],
       rowCount: _riskFollowUps.length,
       onAdd: () => _addFollowUp(_riskFollowUps),
+      csvColumns: const [
+        CsvColumnSpec(key: 'title', label: 'Title', sampleValue: 'Performance degradation'),
+        CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'API latency above threshold'),
+        CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'Ops Lead'),
+        CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Open', allowedValues: ['Open', 'In Progress', 'Complete', 'Deferred']),
+      ],
+      onCsvImport: (rows) async {
+        for (final row in rows) {
+          setState(() {
+            _riskFollowUps.add(LaunchFollowUpItem(
+              title: row['title'] ?? '',
+              details: row['details'] ?? '',
+              owner: row['owner'] ?? '',
+              status: row['status'] ?? 'Open',
+            ));
+          });
+        }
+        _scheduleSave();
+      },
       emptyMessage:
           'No post-delivery risks. Document risks that need monitoring post-delivery.',
       cellBuilder: (ctx, i) => LaunchDataRow(

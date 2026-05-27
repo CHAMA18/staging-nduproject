@@ -351,6 +351,7 @@ class ExecutionMetricsGrid extends StatelessWidget {
               .map(
                 (metric) => SizedBox(
                   width: tileWidth.clamp(minTileWidth, width).toDouble(),
+                  height: 110,
                   child: ExecutionMetricCard(metric: metric),
                 ),
               )
@@ -386,7 +387,7 @@ class ExecutionMetricCard extends StatelessWidget {
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(10),

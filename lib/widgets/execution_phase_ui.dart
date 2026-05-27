@@ -421,19 +421,20 @@ class ExecutionMetricCard extends StatelessWidget {
                     height: 1.0,
                   ),
                 ),
-                if (metric.helper != null && metric.helper!.trim().isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      metric.helper!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B7280),
-                        height: 1.4,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    (metric.helper != null && metric.helper!.trim().isNotEmpty)
+                        ? metric.helper!
+                        : '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6B7280),
+                      height: 1.4,
                     ),
                   ),
+                ),
               ],
             ),
           ),

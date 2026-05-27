@@ -256,6 +256,8 @@ class _AgileEpicsFeaturesScreenState
                   children: [
                     PlanningPhaseHeader(
                       title: 'Epics & Features Planning',
+                      showImportButton: false,
+                      showContentButton: false,
                       onBack: () => PlanningPhaseNavigation.goToPrevious(
                           context, 'agile_epics_features'),
                       onForward: () => PlanningPhaseNavigation.goToNext(

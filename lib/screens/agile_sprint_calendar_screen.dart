@@ -165,6 +165,8 @@ class _AgileSprintCalendarScreenState
                   children: [
                     PlanningPhaseHeader(
                       title: 'Sprint Cadence & Calendar',
+                      showImportButton: false,
+                      showContentButton: false,
                       onBack: () => PlanningPhaseNavigation.goToPrevious(
                           context, 'agile_sprint_calendar'),
                       onForward: () => PlanningPhaseNavigation.goToNext(

@@ -270,6 +270,8 @@ class _AgileTeamStructureScreenState
                       children: [
                         PlanningPhaseHeader(
                           title: 'Agile Team Structure',
+                          showImportButton: false,
+                          showContentButton: false,
                           onBack: () => PlanningPhaseNavigation.goToPrevious(
                               context, 'agile_team_structure'),
                           onForward: () => PlanningPhaseNavigation.goToNext(

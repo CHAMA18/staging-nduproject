@@ -1213,6 +1213,7 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
   final disciplineCtrl = TextEditingController();
   String contractType = 'Not Sure';
   String paymentType = 'TBD';
+  bool isSaving = false;
 
   showDialog(
     context: context,
@@ -1317,28 +1318,55 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
+              if (isSaving) return;
               if (nameCtrl.text.trim().isEmpty) return;
-              final user = FirebaseAuth.instance.currentUser;
-              await ContractService.createContract(
-                projectId: projectId,
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim(),
-                contractType: contractType,
-                paymentType: paymentType,
-                status: 'Not Started',
-                estimatedValue: double.tryParse(valueCtrl.text) ?? 0.0,
-                scope: scopeCtrl.text.trim(),
-                discipline: disciplineCtrl.text.trim(),
-                createdById: user?.uid ?? '',
-                createdByEmail: user?.email ?? '',
-                createdByName: user?.displayName ?? '',
-              );
-              if (dCtx.mounted) Navigator.pop(dCtx);
+              setDialog(() => isSaving = true);
+              try {
+                final user = FirebaseAuth.instance.currentUser;
+                await ContractService.createContract(
+                  projectId: projectId,
+                  name: nameCtrl.text.trim(),
+                  description: descCtrl.text.trim(),
+                  contractType: contractType,
+                  paymentType: paymentType,
+                  status: 'Not Started',
+                  estimatedValue: double.tryParse(valueCtrl.text) ?? 0.0,
+                  scope: scopeCtrl.text.trim(),
+                  discipline: disciplineCtrl.text.trim(),
+                  createdById: user?.uid ?? '',
+                  createdByEmail: user?.email ?? '',
+                  createdByName: user?.displayName ?? '',
+                );
+                if (dCtx.mounted) Navigator.pop(dCtx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Contract created successfully.'),
+                      backgroundColor: Color(0xFF16A34A),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (dCtx.mounted) {
+                  setDialog(() => isSaving = false);
+                  ScaffoldMessenger.of(dCtx).showSnackBar(
+                    SnackBar(
+                      content: Text('Unable to create contract: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: _kFabYellow, foregroundColor: _kFabOnYellow),
-            child: const Text('Create',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            child: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _kFabOnYellow))
+                : const Text('Create',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -2481,6 +2509,8 @@ void _showRfpDialog(
           EvaluationCriteria(name: 'Delivery Plan', weight: 25, category: 'Commercial'),
         ];
 
+  bool isSaving = false;
+
   showDialog(
     context: context,
     builder: (dCtx) => StatefulBuilder(
@@ -2633,6 +2663,8 @@ void _showRfpDialog(
                 );
                 return;
               }
+              if (isSaving) return;
+              setDialog(() => isSaving = true);
               try {
                 final now = DateTime.now();
                 final invited = vendorsCtrl.text
@@ -2727,6 +2759,7 @@ void _showRfpDialog(
                   ),
                 );
               } catch (e) {
+                if (dCtx.mounted) setDialog(() => isSaving = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Unable to save RFP: $e'),
@@ -2738,8 +2771,13 @@ void _showRfpDialog(
             style: ElevatedButton.styleFrom(
                 backgroundColor: _kBrandYellow,
                 foregroundColor: Colors.white),
-            child: Text(existingRfq == null ? 'Create' : 'Save',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            child: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(existingRfq == null ? 'Create' : 'Save',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),

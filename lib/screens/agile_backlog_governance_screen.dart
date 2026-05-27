@@ -247,6 +247,8 @@ class _AgileBacklogGovernanceScreenState
                       children: [
                         PlanningPhaseHeader(
                           title: 'Backlog Governance',
+                          showImportButton: false,
+                          showContentButton: false,
                           onBack: () => PlanningPhaseNavigation.goToPrevious(
                               context, 'agile_backlog_governance'),
                           onForward: () => PlanningPhaseNavigation.goToNext(

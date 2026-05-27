@@ -92,6 +92,9 @@ service cloud.firestore {
       match /rfqs/{rfqId} {
         allow read, write: if isProjectMember();
       }
+      match /planning_rfqs/{docId} {
+        allow read, write: if isAuthenticated();
+      }
       match /purchase_orders/{poId} {
         allow read, write: if isProjectMember();
       }

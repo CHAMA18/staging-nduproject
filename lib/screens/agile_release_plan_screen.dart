@@ -142,6 +142,8 @@ class _AgileReleasePlanScreenState extends State<AgileReleasePlanScreen> {
                   children: [
                     PlanningPhaseHeader(
                       title: 'Release Plan',
+                      showImportButton: false,
+                      showContentButton: false,
                       onBack: () => PlanningPhaseNavigation.goToPrevious(
                           context, 'agile_release_plan'),
                       onForward: () => PlanningPhaseNavigation.goToNext(

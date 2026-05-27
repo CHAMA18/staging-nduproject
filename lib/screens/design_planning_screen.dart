@@ -4720,7 +4720,7 @@ class _WbsWorkPackageOption {
   }
 }
 
-class _RequirementMultiSelectField extends StatelessWidget {
+class _RequirementMultiSelectField extends StatefulWidget {
   const _RequirementMultiSelectField({
     required this.label,
     required this.options,
@@ -4733,8 +4733,29 @@ class _RequirementMultiSelectField extends StatelessWidget {
   final List<String> selectedIds;
   final ValueChanged<List<String>> onChanged;
 
-  Future<void> _openSelector(BuildContext context) async {
-    final selected = {...selectedIds};
+  @override
+  State<_RequirementMultiSelectField> createState() =>
+      _RequirementMultiSelectFieldState();
+}
+
+class _RequirementMultiSelectFieldState
+    extends State<_RequirementMultiSelectField> {
+  late List<String> _localSelection;
+
+  @override
+  void initState() {
+    super.initState();
+    _localSelection = List.of(widget.selectedIds);
+  }
+
+  @override
+  void didUpdateWidget(_RequirementMultiSelectField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _localSelection = List.of(widget.selectedIds);
+  }
+
+  Future<void> _openSelector() async {
+    final selected = {..._localSelection};
     final searchController = TextEditingController();
     String query = '';
 
@@ -4748,7 +4769,7 @@ class _RequirementMultiSelectField extends StatelessWidget {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final filtered = options.where((option) {
+            final filtered = widget.options.where((option) {
               return option.label.toLowerCase().contains(query.toLowerCase());
             }).toList(growable: false);
 
@@ -4761,7 +4782,7 @@ class _RequirementMultiSelectField extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          label,
+                          widget.label,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -4831,7 +4852,10 @@ class _RequirementMultiSelectField extends StatelessWidget {
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: () {
-                          onChanged(selected.toList(growable: false));
+                          final newSelection =
+                              selected.toList(growable: false);
+                          widget.onChanged(newSelection);
+                          setState(() => _localSelection = newSelection);
                           Navigator.of(context).pop();
                         },
                         child: const Text('Apply selection'),
@@ -4851,9 +4875,9 @@ class _RequirementMultiSelectField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labelsById = {
-      for (final option in options) option.id: option.label,
+      for (final option in widget.options) option.id: option.label,
     };
-    final selectedLabels = selectedIds
+    final selectedLabels = _localSelection
         .where((id) => id.trim().isNotEmpty)
         .map((id) => labelsById[id] ?? 'Requirement (unavailable)')
         .toList(growable: false);
@@ -4864,7 +4888,7 @@ class _RequirementMultiSelectField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          widget.label,
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -4873,11 +4897,11 @@ class _RequirementMultiSelectField extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         InkWell(
-          onTap: options.isEmpty ? null : () => _openSelector(context),
+          onTap: widget.options.isEmpty ? null : _openSelector,
           borderRadius: BorderRadius.circular(12),
           child: InputDecorator(
             decoration: _inputDecoration(
-              options.isEmpty ? 'No requirements available' : '',
+              widget.options.isEmpty ? 'No requirements available' : '',
             ),
             child: Row(
               children: [

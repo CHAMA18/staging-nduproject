@@ -236,6 +236,8 @@ class _AgileDeliveryModelScreenState extends State<AgileDeliveryModelScreen> {
                       children: [
                         PlanningPhaseHeader(
                           title: 'Agile Delivery Model',
+                          showImportButton: false,
+                          showContentButton: false,
                           onBack: () => PlanningPhaseNavigation.goToPrevious(
                               context, 'agile_delivery_model'),
                           onForward: () => PlanningPhaseNavigation.goToNext(

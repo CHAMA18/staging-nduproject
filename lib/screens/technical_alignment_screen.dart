@@ -838,19 +838,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       return;
     }
 
-    setState(() {
-      _readinessGateItems.add(
-        _ReadinessGateItem(
-          domain: '',
-          standard: '',
-          evidence: '',
-          owner: '',
-          decision: 'Pending',
-        ),
-      );
-      _editingReadinessRows.add(_readinessGateItems.length - 1);
-      _scheduleSave();
-    });
+    _showReadinessGateDialog();
   }
 
   void _addTraceabilityItem() {
@@ -1273,192 +1261,351 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Widget _buildStableReadinessGateTable() {
-    final decisionOptions = const ['Go', 'Conditional', 'No-go', 'Pending'];
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+    return _DeliveryModelPanelShell(
+      title: 'Technical Readiness Gate',
+      subtitle:
+          'Track control domains, readiness criteria, required evidence, ownership, and gate decisions.',
+      icon: Icons.fact_check_outlined,
+      accent: const Color(0xFFD97706),
+      trailing: TextButton.icon(
+        onPressed: _addReadinessGateItem,
+        icon: const Icon(Icons.add_rounded, size: 16),
+        label: const Text('Add gate item'),
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFD97706),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            icon: Icons.fact_check_outlined,
-            color: const Color(0xFFD97706),
-            title: 'Technical Readiness Gate',
-            subtitle:
-                'Track control domains, readiness criteria, required evidence, ownership, and gate decisions.',
-            actionLabel: 'Add gate item',
-            onAction: _addReadinessGateItem,
-          ),
-          const SizedBox(height: 16),
-          _buildScrollableTableHeader(
-            columns: const [
-              _TableColumn(label: 'Control Domain', flex: 2, minWidth: 160),
-              _TableColumn(label: 'What Must Be True', flex: 3, minWidth: 240),
-              _TableColumn(label: 'Evidence To Attach', flex: 3, minWidth: 240),
-              _TableColumn(label: 'Owner', flex: 2, minWidth: 130),
-              _TableColumn(label: 'Decision', flex: 2, minWidth: 130),
-              _TableColumn(
-                  label: 'Actions',
-                  flex: 1,
-                  minWidth: _technicalAlignmentActionColumnWidth,
-                  alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_readinessGateItems.isEmpty)
-            _buildEmptyTableState(
-              message:
-                  'No readiness gate items yet. Add the first control domain.',
-              actionLabel: 'Add gate item',
-              onAction: _addReadinessGateItem,
-            )
-          else
-            _buildScrollableTableBody(
-              columns: const [
-                _TableColumn(label: 'Control Domain', flex: 2, minWidth: 160),
-                _TableColumn(
-                    label: 'What Must Be True', flex: 3, minWidth: 240),
-                _TableColumn(
-                    label: 'Evidence To Attach', flex: 3, minWidth: 240),
-                _TableColumn(label: 'Owner', flex: 2, minWidth: 130),
-                _TableColumn(label: 'Decision', flex: 2, minWidth: 130),
-                _TableColumn(
-                    label: 'Actions',
-                    flex: 1,
-                    minWidth: _technicalAlignmentActionColumnWidth,
-                    alignment: Alignment.center),
-              ],
-              rowCount: _readinessGateItems.length,
-              rowBuilder: (i) => _buildReadinessGateRow(
-                _readinessGateItems[i],
-                index: i,
-                isStriped: i.isOdd,
-                decisionOptions: decisionOptions,
+      child: _readinessGateItems.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fact_check_outlined,
+                        size: 36,
+                        color: const Color(0xFF9CA3AF).withOpacity(0.6)),
+                    const SizedBox(height: 8),
+                    const Text('No readiness gate items yet',
+                        style: TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    const Text(
+                        'Add the first control domain to begin tracking readiness.',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                  ],
+                ),
               ),
+            )
+          : Column(
+              children: [
+                // Dark table header
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1F2937),
+                    borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(flex: 2, child: Text('Control Domain', style: _dmHeaderStyle)),
+                      Expanded(flex: 3, child: Text('What Must Be True', style: _dmHeaderStyle)),
+                      Expanded(flex: 3, child: Text('Evidence To Attach', style: _dmHeaderStyle)),
+                      Expanded(flex: 2, child: Text('Owner', style: _dmHeaderStyle)),
+                      Expanded(flex: 1, child: Text('Decision', style: _dmHeaderStyle)),
+                      Expanded(flex: 1, child: Text('', style: _dmHeaderStyle)),
+                    ],
+                  ),
+                ),
+                // Data rows
+                ..._readinessGateItems.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final row = entry.value;
+                  final decisionColor = _readinessDecisionColor(row.decision);
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: idx.isEven
+                          ? Colors.white
+                          : const Color(0xFFFAFBFD),
+                      borderRadius: BorderRadius.circular(6),
+                      border:
+                          Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.domain,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(row.standard,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(row.evidence,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.owner,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF6B7280))),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 3),
+                            decoration: BoxDecoration(
+                                color: decisionColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4)),
+                            child: Text(row.decision,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: decisionColor),
+                                textAlign: TextAlign.center),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => _showReadinessGateDialog(
+                                    existing: row, index: idx),
+                                child: const Icon(Icons.edit_outlined,
+                                    size: 14,
+                                    color: Color(0xFF6B7280)),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () async {
+                                  final confirmed =
+                                      await _confirmDelete(
+                                          'readiness gate item');
+                                  if (!confirmed) return;
+                                  setState(() {
+                                    _readinessGateItems
+                                        .removeAt(idx);
+                                    _shiftEditingRowsAfterDelete(
+                                        _editingReadinessRows,
+                                        idx);
+                                    _scheduleSave();
+                                  });
+                                },
+                                child: const Icon(
+                                    Icons.delete_outline,
+                                    size: 14,
+                                    color: Color(0xFFEF4444)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                      '${_readinessGateItems.length} gate item${_readinessGateItems.length != 1 ? 's' : ''}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF9CA3AF))),
+                ),
+              ],
             ),
-        ],
-      ),
     );
   }
 
-  Widget _buildReadinessGateRow(
-    _ReadinessGateItem row, {
-    required int index,
-    required bool isStriped,
-    required List<String> decisionOptions,
-  }) {
-    final isEditing = _editingReadinessRows.contains(index);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 160,
-            child: _buildTableField(
-              initialValue: row.domain,
-              hintText: 'Control Domain',
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.domain = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 240,
-            child: _buildTableField(
-              initialValue: row.standard,
-              hintText: 'What Must Be True',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.standard = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 240,
-            child: _buildTableField(
-              initialValue: row.evidence,
-              hintText: 'Evidence To Attach',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.evidence = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 130,
-            child: _buildTableField(
-              initialValue: row.owner,
-              hintText: 'Owner',
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.owner = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 130,
-            child: _buildDecisionDropdown(
-              value: row.decision,
-              options: decisionOptions,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                setState(() => _readinessGateItems[index].decision = value);
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: _technicalAlignmentActionColumnWidth,
-            child: Align(
-              alignment: Alignment.center,
-              child: _buildRowActions(
-                isEditing: isEditing,
-                onToggleEdit: () =>
-                    _toggleEditingRow(_editingReadinessRows, index),
-                onDelete: () async {
-                  final confirmed = await _confirmDelete('readiness gate item');
-                  if (!confirmed) return;
-                  setState(() {
-                    _readinessGateItems.removeAt(index);
-                    _shiftEditingRowsAfterDelete(_editingReadinessRows, index);
-                    _scheduleSave();
-                  });
-                },
+  Color _readinessDecisionColor(String decision) {
+    switch (decision.toLowerCase()) {
+      case 'go':
+        return const Color(0xFF059669);
+      case 'conditional':
+        return const Color(0xFFD97706);
+      case 'no-go':
+        return const Color(0xFFDC2626);
+      case 'pending':
+        return const Color(0xFF6366F1);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  void _showReadinessGateDialog(
+      {_ReadinessGateItem? existing, int? index}) {
+    final isEdit = existing != null;
+    if (isEdit && !_canEditAlignment) {
+      _showPermissionSnackBar('edit readiness gate items');
+      return;
+    }
+    final domainCtl =
+        TextEditingController(text: existing?.domain ?? '');
+    final standardCtl =
+        TextEditingController(text: existing?.standard ?? '');
+    final evidenceCtl =
+        TextEditingController(text: existing?.evidence ?? '');
+    final ownerCtl =
+        TextEditingController(text: existing?.owner ?? '');
+    String decision = existing?.decision ?? 'Pending';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDState) => AlertDialog(
+          title: Row(children: [
+            Icon(
+                isEdit
+                    ? Icons.edit_outlined
+                    : Icons.add_circle_outline,
+                size: 20,
+                color: const Color(0xFFD97706)),
+            const SizedBox(width: 8),
+            Text(
+                isEdit
+                    ? 'Edit Gate Item'
+                    : 'Add Gate Item',
+                style: const TextStyle(fontSize: 16)),
+          ]),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  VoiceTextField(
+                    controller: domainCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Control Domain',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  VoiceTextField(
+                    controller: standardCtl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'What Must Be True',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  VoiceTextField(
+                    controller: evidenceCtl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Evidence To Attach',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                      child: VoiceTextField(
+                        controller: ownerCtl,
+                        decoration: const InputDecoration(
+                          labelText: 'Owner',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: decision,
+                        decoration: const InputDecoration(
+                          labelText: 'Decision',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: ['Go', 'Conditional', 'No-go', 'Pending']
+                            .map((s) => DropdownMenuItem(
+                                value: s, child: Text(s)))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null)
+                            setDState(() => decision = v);
+                        },
+                      ),
+                    ),
+                  ]),
+                ],
               ),
             ),
           ),
-        ],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (isEdit && index != null) {
+                  setState(() {
+                    _readinessGateItems[index] = _ReadinessGateItem(
+                      domain: domainCtl.text.trim(),
+                      standard: standardCtl.text.trim(),
+                      evidence: evidenceCtl.text.trim(),
+                      owner: ownerCtl.text.trim(),
+                      decision: decision,
+                    );
+                    _scheduleSave();
+                  });
+                } else {
+                  setState(() {
+                    _readinessGateItems.add(_ReadinessGateItem(
+                      domain: domainCtl.text.trim(),
+                      standard: standardCtl.text.trim(),
+                      evidence: evidenceCtl.text.trim(),
+                      owner: ownerCtl.text.trim(),
+                      decision: decision,
+                    ));
+                    _scheduleSave();
+                  });
+                }
+                Navigator.of(ctx).pop();
+              },
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFD97706),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8))),
+              child: Text(isEdit ? 'Save' : 'Add'),
+            ),
+          ],
+        ),
       ),
     );
   }

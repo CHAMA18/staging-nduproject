@@ -689,20 +689,11 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _buildStableSectionCard(
-            title: 'Constraint And Guardrail Register',
-            child: _buildStableConstraintTable(),
-          ),
+          _buildStableConstraintPanel(ownerOptions),
           const SizedBox(height: 24),
-          _buildStableSectionCard(
-            title: 'Requirement To Solution Mapping',
-            child: _buildStableMappingTable(),
-          ),
+          _buildStableMappingPanel(),
           const SizedBox(height: 24),
-          _buildStableSectionCard(
-            title: 'Dependency And Decision Watchlist',
-            child: _buildStableDependencyTable(),
-          ),
+          _buildStableDependencyPanel(ownerOptions),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),
@@ -1620,198 +1611,227 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
   }
 
-  Widget _buildStableConstraintTable() {
-    return _buildStableDataTable(
-      columns: const [
-        _StableTableColumn('Constraint', 260),
-        _StableTableColumn('Guardrail', 520),
-        _StableTableColumn('Owner', 180),
-        _StableTableColumn('Status', 150),
-      ],
-      rows: _constraints
-          .map(
-            (row) => [
-              row.constraint,
-              row.guardrail,
-              row.owner,
-              row.status,
-            ],
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildStableMappingTable() {
-    return _buildStableDataTable(
-      columns: const [
-        _StableTableColumn('Requirement Area', 280),
-        _StableTableColumn('Technical Approach', 620),
-        _StableTableColumn('Status', 150),
-      ],
-      rows: _mappings
-          .map(
-            (row) => [
-              row.requirement,
-              row.approach,
-              row.status,
-            ],
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildStableDependencyTable() {
-    return _buildStableDataTable(
-      columns: const [
-        _StableTableColumn('Dependency / Decision', 280),
-        _StableTableColumn('Detail', 560),
-        _StableTableColumn('Owner', 180),
-        _StableTableColumn('Status', 150),
-      ],
-      rows: _dependencies
-          .map(
-            (row) => [
-              row.item,
-              row.detail,
-              row.owner,
-              row.status,
-            ],
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildStableDataTable({
-    required List<_StableTableColumn> columns,
-    required List<List<String>> rows,
-  }) {
-    final tableWidth = columns.fold<double>(
-      0,
-      (total, column) => total + column.width,
-    );
-
-    return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: tableWidth,
-          child: Column(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    for (final column in columns)
-                      SizedBox(
-                        width: column.width,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          child: Text(
-                            column.label.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              for (int rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
-                Container(
-                  decoration: BoxDecoration(
-                    color: rowIndex.isEven
-                        ? Colors.white
-                        : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (int cellIndex = 0;
-                          cellIndex < columns.length;
-                          cellIndex++)
-                        SizedBox(
-                          width: columns[cellIndex].width,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            child: cellIndex == columns.length - 1 &&
-                                    _looksLikeStatus(rows[rowIndex][cellIndex])
-                                ? Align(
-                                    alignment: Alignment.topLeft,
-                                    child: _buildStatusBadge(
-                                      rows[rowIndex][cellIndex],
-                                      _stableStatusColor(
-                                        rows[rowIndex][cellIndex],
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    rows[rowIndex][cellIndex].trim().isEmpty
-                                        ? 'Not assigned'
-                                        : rows[rowIndex][cellIndex],
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      height: 1.45,
-                                      fontWeight: cellIndex == 0
-                                          ? FontWeight.w800
-                                          : FontWeight.w500,
-                                      color: cellIndex == 0
-                                          ? const Color(0xFF0F172A)
-                                          : const Color(0xFF475569),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (rowIndex != rows.length - 1) const SizedBox(height: 8),
-              ],
+  Widget _buildStableConstraintPanel(List<String> ownerOptions) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.shield_outlined,
+            color: const Color(0xFF1D4ED8),
+            title: 'Constraint And Guardrail Register',
+            subtitle:
+                'Define architectural constraints, guardrails, ownership, and approval status for design governance.',
+            actionLabel: 'Add constraint',
+            onAction: _addConstraintRow,
+          ),
+          const SizedBox(height: 16),
+          _buildScrollableTableHeader(
+            columns: const [
+              _TableColumn(label: 'Constraint', flex: 3, minWidth: 260),
+              _TableColumn(label: 'Guardrail', flex: 5, minWidth: 400),
+              _TableColumn(label: 'Owner', flex: 2, minWidth: 150),
+              _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+              _TableColumn(
+                  label: 'Actions',
+                  flex: 1,
+                  minWidth: _technicalAlignmentActionColumnWidth,
+                  alignment: Alignment.center),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          if (_constraints.isEmpty)
+            _buildEmptyTableState(
+              message: 'No constraints yet. Add the first constraint.',
+              actionLabel: 'Add constraint',
+              onAction: _addConstraintRow,
+            )
+          else
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(label: 'Constraint', flex: 3, minWidth: 260),
+                _TableColumn(label: 'Guardrail', flex: 5, minWidth: 400),
+                _TableColumn(label: 'Owner', flex: 2, minWidth: 150),
+                _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+                _TableColumn(
+                    label: 'Actions',
+                    flex: 1,
+                    minWidth: _technicalAlignmentActionColumnWidth,
+                    alignment: Alignment.center),
+              ],
+              rowCount: _constraints.length,
+              rowBuilder: (i) => _buildConstraintRow(
+                _constraints[i],
+                index: i,
+                isStriped: i.isOdd,
+                ownerOptions: ownerOptions,
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  bool _looksLikeStatus(String value) {
-    return _statusOptions.contains(value) ||
-        const ['Go', 'Conditional', 'No-go'].contains(value);
+  Widget _buildStableMappingPanel() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.swap_horiz,
+            color: const Color(0xFF0F766E),
+            title: 'Requirement To Solution Mapping',
+            subtitle:
+                'Map requirements to technical approaches and track alignment status across delivery models.',
+            actionLabel: 'Add mapping',
+            onAction: _addMappingRow,
+          ),
+          const SizedBox(height: 16),
+          _buildScrollableTableHeader(
+            columns: const [
+              _TableColumn(label: 'Requirement Area', flex: 3, minWidth: 260),
+              _TableColumn(
+                  label: 'Technical Approach', flex: 5, minWidth: 460),
+              _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+              _TableColumn(
+                  label: 'Actions',
+                  flex: 1,
+                  minWidth: _technicalAlignmentActionColumnWidth,
+                  alignment: Alignment.center),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_mappings.isEmpty)
+            _buildEmptyTableState(
+              message: 'No requirement mappings yet. Add the first mapping.',
+              actionLabel: 'Add mapping',
+              onAction: _addMappingRow,
+            )
+          else
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(label: 'Requirement Area', flex: 3, minWidth: 260),
+                _TableColumn(
+                    label: 'Technical Approach', flex: 5, minWidth: 460),
+                _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+                _TableColumn(
+                    label: 'Actions',
+                    flex: 1,
+                    minWidth: _technicalAlignmentActionColumnWidth,
+                    alignment: Alignment.center),
+              ],
+              rowCount: _mappings.length,
+              rowBuilder: (i) => _buildMappingRow(
+                _mappings[i],
+                index: i,
+                isStriped: i.isOdd,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
-  Color _stableStatusColor(String status) {
-    switch (status) {
-      case 'Approved':
-      case 'Aligned':
-      case 'Ready':
-      case 'Go':
-        return AppSemanticColors.success;
-      case 'At risk':
-      case 'No-go':
-        return const Color(0xFFDC2626);
-      case 'Pending':
-      case 'Conditional':
-        return AppSemanticColors.warning;
-      default:
-        return AppSemanticColors.info;
-    }
+  Widget _buildStableDependencyPanel(List<String> ownerOptions) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            icon: Icons.account_tree_outlined,
+            color: const Color(0xFF9333EA),
+            title: 'Dependency And Decision Watchlist',
+            subtitle:
+                'Track critical dependencies, decisions, ownership, and resolution status that affect design alignment.',
+            actionLabel: 'Add dependency',
+            onAction: _addDependencyRow,
+          ),
+          const SizedBox(height: 16),
+          _buildScrollableTableHeader(
+            columns: const [
+              _TableColumn(
+                  label: 'Dependency / Decision', flex: 3, minWidth: 260),
+              _TableColumn(label: 'Detail', flex: 4, minWidth: 380),
+              _TableColumn(label: 'Owner', flex: 2, minWidth: 150),
+              _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+              _TableColumn(
+                  label: 'Actions',
+                  flex: 1,
+                  minWidth: _technicalAlignmentActionColumnWidth,
+                  alignment: Alignment.center),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_dependencies.isEmpty)
+            _buildEmptyTableState(
+              message: 'No dependencies yet. Add the first dependency.',
+              actionLabel: 'Add dependency',
+              onAction: _addDependencyRow,
+            )
+          else
+            _buildScrollableTableBody(
+              columns: const [
+                _TableColumn(
+                    label: 'Dependency / Decision', flex: 3, minWidth: 260),
+                _TableColumn(label: 'Detail', flex: 4, minWidth: 380),
+                _TableColumn(label: 'Owner', flex: 2, minWidth: 150),
+                _TableColumn(label: 'Status', flex: 2, minWidth: 140),
+                _TableColumn(
+                    label: 'Actions',
+                    flex: 1,
+                    minWidth: _technicalAlignmentActionColumnWidth,
+                    alignment: Alignment.center),
+              ],
+              rowCount: _dependencies.length,
+              rowBuilder: (i) => _buildDependencyRow(
+                _dependencies[i],
+                index: i,
+                isStriped: i.isOdd,
+                ownerOptions: ownerOptions,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _openStableDesignItem(String label) {
@@ -3762,8 +3782,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.constraint,
               hintText: 'Constraint',
@@ -3775,8 +3795,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 5,
+          SizedBox(
+            width: 400,
             child: _buildTableField(
               initialValue: row.guardrail,
               hintText: 'Guardrail',
@@ -3790,8 +3810,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 150,
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
@@ -3803,8 +3823,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 140,
             child: _buildStatusDropdown(
               value: row.status,
               onChanged: (value) {
@@ -3816,8 +3836,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _technicalAlignmentActionColumnWidth,
             child: Align(
               alignment: Alignment.center,
               child: _buildRowActions(
@@ -3853,8 +3873,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.requirement,
               hintText: 'Requirement',
@@ -3866,8 +3886,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 5,
+          SizedBox(
+            width: 460,
             child: _buildTableField(
               initialValue: row.approach,
               hintText: 'Technical approach',
@@ -3881,8 +3901,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 140,
             child: _buildStatusDropdown(
               value: row.status,
               onChanged: (value) {
@@ -3894,8 +3914,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _technicalAlignmentActionColumnWidth,
             child: Align(
               alignment: Alignment.center,
               child: _buildRowActions(
@@ -3935,8 +3955,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 4,
+          SizedBox(
+            width: 260,
             child: _buildTableField(
               initialValue: row.item,
               hintText: 'Dependency or decision',
@@ -3948,8 +3968,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 5,
+          SizedBox(
+            width: 380,
             child: _buildTableField(
               initialValue: row.detail,
               hintText: 'Detail',
@@ -3963,8 +3983,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 150,
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
@@ -3976,8 +3996,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 140,
             child: _buildStatusDropdown(
               value: row.status,
               onChanged: (value) {
@@ -3989,8 +4009,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _technicalAlignmentActionColumnWidth,
             child: Align(
               alignment: Alignment.center,
               child: _buildRowActions(
@@ -4893,13 +4913,6 @@ class _DebtDashboardItem {
   final String workaround;
   final String owner;
   final String severity;
-}
-
-class _StableTableColumn {
-  const _StableTableColumn(this.label, this.width);
-
-  final String label;
-  final double width;
 }
 
 class _MethodologyStandard {

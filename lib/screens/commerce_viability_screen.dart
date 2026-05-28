@@ -269,10 +269,10 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
           'Track warranty coverage for deliverables, equipment, and services.',
       columns: const [
         LaunchColumn(label: 'Item', flexible: true, fieldType: LaunchFieldType.text, hint: 'Item'),
-        LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'),
-        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
-        LaunchColumn(label: 'Start', width: 100, fieldType: LaunchFieldType.date, hint: 'Start'),
-        LaunchColumn(label: 'Expiry', width: 100, fieldType: LaunchFieldType.date, hint: 'Expiry'),
+        LaunchColumn(label: 'Vendor', width: 130, fieldType: LaunchFieldType.text, hint: 'Vendor'),
+        LaunchColumn(label: 'Type', width: 130, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Start', width: 130, fieldType: LaunchFieldType.date, hint: 'Start'),
+        LaunchColumn(label: 'Expiry', width: 130, fieldType: LaunchFieldType.date, hint: 'Expiry'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Expiring Soon', 'Expired', 'Claimed']),
       ],
       rowCount: _warranties.length,
@@ -337,7 +337,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchEditableCell(
               value: w.vendor,
               hint: 'Vendor',
-              width: 110,
+              width: 130,
               onChanged: (s) {
                 _warranties[i] = w.copyWith(vendor: s);
                 _save();
@@ -346,7 +346,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchEditableCell(
               value: w.warrantyType,
               hint: 'Type',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _warranties[i] = w.copyWith(warrantyType: s);
                 _save();
@@ -355,7 +355,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchDateCell(
               value: w.startDate,
               hint: 'Start',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _warranties[i] = w.copyWith(startDate: s);
                 _save();
@@ -364,7 +364,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchDateCell(
               value: w.expiryDate,
               hint: 'Expiry',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _warranties[i] = w.copyWith(expiryDate: s);
                 _save();
@@ -393,8 +393,8 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       subtitle: 'Monthly and annual ongoing costs post-launch.',
       columns: const [
         LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'),
-        LaunchColumn(label: 'Monthly', width: 100, fieldType: LaunchFieldType.text, hint: 'Monthly'),
-        LaunchColumn(label: 'Annual', width: 100, fieldType: LaunchFieldType.text, hint: 'Annual'),
+        LaunchColumn(label: 'Monthly', width: 130, fieldType: LaunchFieldType.text, hint: 'Monthly'),
+        LaunchColumn(label: 'Annual', width: 130, fieldType: LaunchFieldType.text, hint: 'Annual'),
         LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _opsCosts.length,
@@ -454,7 +454,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchEditableCell(
               value: c.monthlyCost,
               hint: 'Monthly',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _opsCosts[i] = c.copyWith(monthlyCost: s);
                 _save();
@@ -463,7 +463,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             LaunchEditableCell(
               value: c.annualCost,
               hint: 'Annual',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _opsCosts[i] = c.copyWith(annualCost: s);
                 _save();

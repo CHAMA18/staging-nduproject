@@ -584,7 +584,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   Expanded(flex: 3, child: Text(row.pattern, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
                   Expanded(flex: 5, child: Text(row.decision, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
                   SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  SizedBox(width: 130, child: _buildStatusTag(row.status)),
                   _crudButtons(() => _showSecurityDialog(existing: row), () => _confirmDelete(() { setState(() => _securityRows.remove(row)); _scheduleSave(); })),
                 ]);
               }),
@@ -643,7 +643,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   Expanded(flex: 3, child: Text(row.hotspot, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
                   Expanded(flex: 5, child: Text(row.focus, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
                   SizedBox(width: 130, child: Text(row.sla, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0EA5E9)))),
-                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  SizedBox(width: 130, child: _buildStatusTag(row.status)),
                   _crudButtons(() => _showPerformanceDialog(existing: row), () => _confirmDelete(() { setState(() => _performanceRows.remove(row)); _scheduleSave(); })),
                 ]);
               }),
@@ -702,7 +702,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   Expanded(flex: 4, child: Text(row.flow, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
                   SizedBox(width: 150, child: Text(row.system, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
                   SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-                  SizedBox(width: 100, child: _buildStatusTag(row.status)),
+                  SizedBox(width: 130, child: _buildStatusTag(row.status)),
                   _crudButtons(() => _showIntegrationDialog(existing: row), () => _confirmDelete(() { setState(() => _integrationRows.remove(row)); _scheduleSave(); })),
                 ]);
               }),
@@ -763,7 +763,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   Expanded(flex: 3, child: Text(row.standard, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)))),
                   Expanded(flex: 4, child: Text(row.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4))),
                   SizedBox(width: 120, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-                  SizedBox(width: 110, child: _buildComplianceStatusTag(row.status)),
+                  SizedBox(width: 130, child: _buildComplianceStatusTag(row.status)),
                   _crudButtons(() => _showComplianceDialog(existing: row), () => _confirmDelete(() { setState(() => _complianceRows.removeWhere((r) => r.id == row.id)); _scheduleSave(); })),
                 ]);
               }),
@@ -832,8 +832,8 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                     Text(row.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4)),
                   ])),
                   SizedBox(width: 130, child: Text(row.approver, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-                  SizedBox(width: 80, child: _buildPriorityTag(row.priority)),
-                  SizedBox(width: 100, child: _buildReviewGateStatusTag(row.status)),
+                  SizedBox(width: 110, child: _buildPriorityTag(row.priority)),
+                  SizedBox(width: 130, child: _buildReviewGateStatusTag(row.status)),
                   _crudButtons(() => _showReviewGateDialog(existing: row), () => _confirmDelete(() { setState(() => _reviewGates.removeWhere((g) => g.id == row.id)); _scheduleSave(); })),
                 ]);
               }),

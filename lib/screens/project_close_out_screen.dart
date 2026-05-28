@@ -304,7 +304,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       title: 'Final Approvals',
       subtitle:
           'Stakeholders who must sign off before the project is formally closed.',
-      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
+      columns: const [LaunchColumn(label: 'Stakeholder', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _approvals.length,
       onAddValues: (values) {
         setState(() {
@@ -384,7 +384,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
             LaunchDateCell(
               value: a.date,
               hint: 'Date',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _approvals[i] = a.copyWith(date: s);
                 _save();
@@ -412,8 +412,8 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
           'Document repositories, code, and access changes required for closure.',
       columns: const [
         LaunchColumn(label: 'Repository', flexible: true, fieldType: LaunchFieldType.text, hint: 'Repository'),
-        LaunchColumn(label: 'Type', width: 100, fieldType: LaunchFieldType.text, hint: 'Type'),
-        LaunchColumn(label: 'Retention', width: 100, fieldType: LaunchFieldType.text, hint: 'Retention'),
+        LaunchColumn(label: 'Type', width: 130, fieldType: LaunchFieldType.text, hint: 'Type'),
+        LaunchColumn(label: 'Retention', width: 130, fieldType: LaunchFieldType.text, hint: 'Retention'),
         LaunchColumn(label: 'Access Change', width: 120, fieldType: LaunchFieldType.text, hint: 'Access'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
       ],
@@ -485,7 +485,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
             LaunchEditableCell(
               value: a.retentionPeriod,
               hint: 'Retention',
-              width: 90,
+              width: 130,
               onChanged: (s) {
                 _archive[i] = a.copyWith(retentionPeriod: s);
                 _save();
@@ -494,7 +494,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
             LaunchEditableCell(
               value: a.accessChange,
               hint: 'Access',
-              width: 110,
+              width: 130,
               onChanged: (s) {
                 _archive[i] = a.copyWith(accessChange: s);
                 _save();

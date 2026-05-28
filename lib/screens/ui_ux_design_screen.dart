@@ -1003,9 +1003,9 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         ),
                       )),
                       _CellDef(SizedBox(width: 130, child: Text(row.touchpoints, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 110, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 90, child: _buildPriorityTag(row.priority))),
-                      _CellDef(SizedBox(width: 100, child: _buildStatusTag(row.status))),
+                      _CellDef(SizedBox(width: 130, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
+                      _CellDef(SizedBox(width: 120, child: _buildPriorityTag(row.priority))),
+                      _CellDef(SizedBox(width: 130, child: _buildStatusTag(row.status))),
                       _CellDef(SizedBox(
                         width: 60,
                         child: Row(
@@ -1103,9 +1103,9 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                           ],
                         ),
                       )),
-                      _CellDef(SizedBox(width: 90, child: _buildFidelityTag(row.fidelity))),
-                      _CellDef(SizedBox(width: 110, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 110, child: _buildInterfaceStateTag(row.status))),
+                      _CellDef(SizedBox(width: 120, child: _buildFidelityTag(row.fidelity))),
+                      _CellDef(SizedBox(width: 130, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
+                      _CellDef(SizedBox(width: 130, child: _buildInterfaceStateTag(row.status))),
                       _CellDef(SizedBox(
                         width: 60,
                         child: Row(
@@ -1203,9 +1203,9 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                           ],
                         ),
                       )),
-                      _CellDef(SizedBox(width: 110, child: _buildCategoryTag(row.category))),
+                      _CellDef(SizedBox(width: 130, child: _buildCategoryTag(row.category))),
                       _CellDef(SizedBox(width: 130, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 90, child: _buildTokenStatusTag(row.status))),
+                      _CellDef(SizedBox(width: 120, child: _buildTokenStatusTag(row.status))),
                       _CellDef(SizedBox(
                         width: 60,
                         child: Row(
@@ -1306,8 +1306,8 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         ),
                       )),
                       _CellDef(SizedBox(width: 120, child: Text(row.standard, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 100, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 100, child: _buildUsabilityStatusTag(row.status))),
+                      _CellDef(SizedBox(width: 130, child: Text(row.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
+                      _CellDef(SizedBox(width: 130, child: _buildUsabilityStatusTag(row.status))),
                       _CellDef(SizedBox(
                         width: 60,
                         child: Row(
@@ -1411,8 +1411,8 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         ),
                       )),
                       _CellDef(SizedBox(width: 120, child: Text(row.approver, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))))),
-                      _CellDef(SizedBox(width: 80, child: _buildPriorityTag(row.priority))),
-                      _CellDef(SizedBox(width: 100, child: _buildReviewGateStatusTag(row.status))),
+                      _CellDef(SizedBox(width: 110, child: _buildPriorityTag(row.priority))),
+                      _CellDef(SizedBox(width: 130, child: _buildReviewGateStatusTag(row.status))),
                       _CellDef(SizedBox(
                         width: 60,
                         child: Row(

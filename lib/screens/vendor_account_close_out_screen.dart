@@ -303,7 +303,7 @@ class _VendorAccountCloseOutScreenState
       title: 'Access Revocation',
       subtitle:
           'Track system/tool access that needs to be revoked for each vendor.',
-      columns: const [LaunchColumn(label: 'System', flexible: true, fieldType: LaunchFieldType.text, hint: 'System'), LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Access Level', width: 120, fieldType: LaunchFieldType.text, hint: 'Level'), LaunchColumn(label: 'Revoked Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Revoked', 'Confirmed'])],
+      columns: const [LaunchColumn(label: 'System', flexible: true, fieldType: LaunchFieldType.text, hint: 'System'), LaunchColumn(label: 'Vendor', width: 130, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Access Level', width: 120, fieldType: LaunchFieldType.text, hint: 'Level'), LaunchColumn(label: 'Revoked Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Revoked', 'Confirmed'])],
       rowCount: _accessItems.length,
       onAddValues: (values) {
         setState(() {

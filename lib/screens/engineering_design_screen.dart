@@ -2160,7 +2160,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 _tableColHeader('LAYER', flex: 3),
                 _tableColHeader('DESCRIPTION', flex: 4),
                 _tableColHeader('SPECIFICATION', flex: 3),
-                _tableColHeader('STATUS', width: 100),
+                _tableColHeader('STATUS', width: 130),
                 _tableColHeader('OWNER', flex: 2),
                 const SizedBox(width: 60, child: Text('')),
               ],
@@ -2208,7 +2208,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF475569))),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: _buildStatusTag(
                               item.status, _statusColor(item.status)),
                         ),
@@ -2329,7 +2329,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 _tableColHeader('COMPONENT', flex: 3),
                 _tableColHeader('RESPONSIBILITY', flex: 4),
                 _tableColHeader('INTERFACE TYPE', flex: 2),
-                _tableColHeader('STATUS', width: 100),
+                _tableColHeader('STATUS', width: 130),
                 _tableColHeader('OWNER', flex: 2),
                 const SizedBox(width: 60, child: Text('')),
               ],
@@ -2378,7 +2378,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF475569))),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: _buildStatusTag(
                               item.status, _statusColor(item.status)),
                         ),
@@ -2499,10 +2499,10 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             child: Row(
               children: [
                 _tableColHeader('CALCULATION', flex: 3),
-                _tableColHeader('TYPE', width: 100),
-                _tableColHeader('STANDARD', width: 110),
-                _tableColHeader('STATUS', width: 100),
-                _tableColHeader('PE STAMP', width: 80),
+                _tableColHeader('TYPE', width: 130),
+                _tableColHeader('STANDARD', width: 130),
+                _tableColHeader('STATUS', width: 130),
+                _tableColHeader('PE STAMP', width: 110),
                 _tableColHeader('REVIEWER', flex: 2),
                 const SizedBox(width: 60, child: Text('')),
               ],
@@ -2535,14 +2535,14 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF111827))),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: Text(item.type,
                               style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF475569))),
                         ),
                         SizedBox(
-                          width: 110,
+                          width: 130,
                           child: Text(item.standard,
                               style: const TextStyle(
                                   fontSize: 12,
@@ -2550,12 +2550,12 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF475569))),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: _buildStatusTag(
                               item.status, _statusColor(item.status)),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildStatusTag(
                               item.peStamp,
                               item.peStamp == 'Yes'
@@ -2683,7 +2683,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 _tableColHeader('STANDARD', flex: 2),
                 _tableColHeader('SCOPE', flex: 2),
                 _tableColHeader('APPLICABILITY', flex: 2),
-                _tableColHeader('COMPLIANCE', width: 100),
+                _tableColHeader('COMPLIANCE', width: 130),
                 _tableColHeader('EVIDENCE', flex: 2),
                 _tableColHeader('OWNER', flex: 2),
                 const SizedBox(width: 60, child: Text('')),
@@ -2731,7 +2731,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF64748B))),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: _buildStatusTag(
                               item.complianceStatus,
                               _statusColor(item.complianceStatus)),
@@ -2861,13 +2861,13 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 const BoxDecoration(color: Color(0xFFF8FAFC)),
             child: Row(
               children: [
-                _tableColHeader('ECN ID', width: 80),
+                _tableColHeader('ECN ID', width: 110),
                 _tableColHeader('TITLE', flex: 3),
-                _tableColHeader('PRIORITY', width: 80),
-                _tableColHeader('STATUS', width: 100),
+                _tableColHeader('PRIORITY', width: 110),
+                _tableColHeader('STATUS', width: 130),
                 _tableColHeader('ORIGINATOR', flex: 2),
                 _tableColHeader('APPROVER', flex: 2),
-                _tableColHeader('DATE', width: 90),
+                _tableColHeader('DATE', width: 120),
                 const SizedBox(width: 60, child: Text('')),
               ],
             ),
@@ -2890,7 +2890,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 80,
+                          width: 130,
                           child: Text(item.ecnId,
                               style: const TextStyle(
                                   fontSize: 13,
@@ -2906,12 +2906,12 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                                   color: Color(0xFF1F2937))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildStatusTag(
                               item.priority, _priorityColor(item.priority)),
                         ),
                         SizedBox(
-                          width: 100,
+                          width: 130,
                           child: _buildStatusTag(
                               item.status, _statusColor(item.status)),
                         ),
@@ -2932,7 +2932,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                               textAlign: TextAlign.center),
                         ),
                         SizedBox(
-                          width: 90,
+                          width: 120,
                           child: Text(item.date,
                               style: const TextStyle(
                                   fontSize: 12,

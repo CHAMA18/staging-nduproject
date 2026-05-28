@@ -372,7 +372,7 @@ class _SummarizeAccountRisksScreenState
             LaunchEditableCell(
               value: r.owner,
               hint: 'Owner',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _topRisks[i] = r.copyWith(owner: s);
                 _save();
@@ -465,7 +465,7 @@ class _SummarizeAccountRisksScreenState
             LaunchEditableCell(
               value: f.owner,
               hint: 'Owner',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _next90Days[i] = f.copyWith(owner: s);
                 _save();

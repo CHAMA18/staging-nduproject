@@ -185,7 +185,7 @@ class _DeliverProjectClosureScreenState
         LaunchColumn(label: 'Deliverable', flexible: true),
         LaunchColumn(label: 'Criteria', flexible: true),
         LaunchColumn(label: 'Status', width: 120),
-        LaunchColumn(label: 'Date', width: 100),
+        LaunchColumn(label: 'Date', width: 130),
       ],
       rowCount: _scopeItems.length,
       onAdd: () => _addScopeItem(),
@@ -248,7 +248,7 @@ class _DeliverProjectClosureScreenState
           LaunchDateCell(
             value: _scopeItems[i].acceptanceDate,
             hint: 'Date',
-            width: 100,
+            width: 130,
             onChanged: (v) {
               _scopeItems[i] = _scopeItems[i].copyWith(acceptanceDate: v);
               _scheduleSave();

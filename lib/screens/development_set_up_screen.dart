@@ -1052,11 +1052,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             child: const Row(
               children: [
                 Expanded(flex: 4, child: Text('ENVIRONMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 Expanded(flex: 3, child: Text('ACCESS URL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
               ],
             ),
@@ -1078,11 +1078,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       child: Row(
         children: [
           Expanded(flex: 4, child: Text(item.environment, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
-          SizedBox(width: 80, child: Text(item.type, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 90, child: _buildStatusTag(item.status, color)),
+          SizedBox(width: 110, child: Text(item.type, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 120, child: _buildStatusTag(item.status, color)),
           Expanded(flex: 3, child: Text(item.accessUrl, style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF2563EB)), overflow: TextOverflow.ellipsis)),
-          SizedBox(width: 90, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
-          SizedBox(width: 80, child: Text(item.targetDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+          SizedBox(width: 120, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+          SizedBox(width: 110, child: Text(item.targetDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
           SizedBox(
             width: 60,
             child: Row(
@@ -1170,11 +1170,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             child: const Row(
               children: [
                 Expanded(flex: 3, child: Text('STAGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 100, child: Text('TOOL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 130, child: Text('TOOL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 Expanded(flex: 3, child: Text('TRIGGER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 Expanded(flex: 3, child: Text('GATE CRITERIA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 100, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 130, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
               ],
             ),
@@ -1196,11 +1196,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       child: Row(
         children: [
           Expanded(flex: 3, child: Text(item.stage, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
-          SizedBox(width: 100, child: Text(item.tool, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 90, child: _buildStatusTag(item.status, color)),
+          SizedBox(width: 130, child: Text(item.tool, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 120, child: _buildStatusTag(item.status, color)),
           Expanded(flex: 3, child: Text(item.trigger, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis)),
           Expanded(flex: 3, child: Text(item.gateCriteria, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis)),
-          SizedBox(width: 100, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+          SizedBox(width: 130, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
           SizedBox(
             width: 60,
             child: Row(
@@ -1285,12 +1285,12 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             child: const Row(
               children: [
                 Expanded(flex: 3, child: Text('TOOL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('LICENSE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('USERS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('LICENSE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('USERS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 70, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('EXPIRY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('EXPIRY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
               ],
             ),
@@ -1312,12 +1312,12 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       child: Row(
         children: [
           Expanded(flex: 3, child: Text(item.tool, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
-          SizedBox(width: 90, child: Text(item.category, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 80, child: Text(item.license, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 80, child: Text(item.assignedUsers, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 120, child: Text(item.category, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 110, child: Text(item.license, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 110, child: Text(item.assignedUsers, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
           SizedBox(width: 70, child: _buildStatusTag(item.status, color)),
-          SizedBox(width: 80, child: Text(item.expiry, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
-          SizedBox(width: 90, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+          SizedBox(width: 110, child: Text(item.expiry, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+          SizedBox(width: 120, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
           SizedBox(
             width: 60,
             child: Row(
@@ -1406,10 +1406,10 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
               children: [
                 Expanded(flex: 3, child: Text('GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 Expanded(flex: 4, child: Text('CRITERIA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('METHOD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 110, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('METHOD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 130, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
               ],
             ),
@@ -1432,10 +1432,10 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
         children: [
           Expanded(flex: 3, child: Text(item.gate, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
           Expanded(flex: 4, child: Text(item.criteria, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis)),
-          SizedBox(width: 90, child: Text(item.methodology, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 80, child: _buildStatusTag(item.status, color)),
-          SizedBox(width: 110, child: Text(item.approver, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
-          SizedBox(width: 90, child: Text(item.targetDate, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+          SizedBox(width: 120, child: Text(item.methodology, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 110, child: _buildStatusTag(item.status, color)),
+          SizedBox(width: 130, child: Text(item.approver, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+          SizedBox(width: 120, child: Text(item.targetDate, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
           SizedBox(
             width: 60,
             child: Row(
@@ -1520,11 +1520,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
             child: const Row(
               children: [
                 Expanded(flex: 3, child: Text('CONTROL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('FRAMEWORK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 90, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('FRAMEWORK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 120, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 Expanded(flex: 3, child: Text('EVIDENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 110, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                SizedBox(width: 80, child: Text('REVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 130, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                SizedBox(width: 110, child: Text('REVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                 SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
               ],
             ),
@@ -1546,11 +1546,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       child: Row(
         children: [
           Expanded(flex: 3, child: Text(item.control, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
-          SizedBox(width: 90, child: Text(item.framework, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-          SizedBox(width: 90, child: _buildStatusTag(item.status, color)),
+          SizedBox(width: 120, child: Text(item.framework, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
+          SizedBox(width: 120, child: _buildStatusTag(item.status, color)),
           Expanded(flex: 3, child: Text(item.evidence, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis)),
-          SizedBox(width: 110, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
-          SizedBox(width: 80, child: Text(item.reviewDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+          SizedBox(width: 130, child: Text(item.owner, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+          SizedBox(width: 110, child: Text(item.reviewDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
           SizedBox(
             width: 60,
             child: Row(

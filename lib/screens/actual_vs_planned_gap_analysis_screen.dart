@@ -234,7 +234,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Milestone Variance',
       subtitle: 'Compare planned vs actual milestone dates.',
-      columns: const [LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'), LaunchColumn(label: 'Planned', width: 110, fieldType: LaunchFieldType.date, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 110, fieldType: LaunchFieldType.date, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 100, fieldType: LaunchFieldType.text, hint: 'Days'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['On Track', 'Delayed', 'Missed', 'Early'], hint: 'Status')],
+      columns: const [LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'), LaunchColumn(label: 'Planned', width: 130, fieldType: LaunchFieldType.date, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 130, fieldType: LaunchFieldType.date, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 130, fieldType: LaunchFieldType.text, hint: 'Days'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['On Track', 'Delayed', 'Missed', 'Early'], hint: 'Status')],
       rowCount: _milestoneVariances.length,
       onAddValues: (values) {
         setState(() => _milestoneVariances.add(LaunchMilestoneVariance(
@@ -334,7 +334,7 @@ class _ActualVsPlannedGapAnalysisScreenState
     return LaunchDataTable(
       title: 'Budget Variance',
       subtitle: 'Compare planned vs actual costs by category.',
-      columns: const [LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'), LaunchColumn(label: 'Planned', width: 100, fieldType: LaunchFieldType.text, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 100, fieldType: LaunchFieldType.text, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 100, fieldType: LaunchFieldType.text, hint: 'Variance'), LaunchColumn(label: '%', width: 80, fieldType: LaunchFieldType.text, hint: '%')],
+      columns: const [LaunchColumn(label: 'Category', flexible: true, fieldType: LaunchFieldType.text, hint: 'Category'), LaunchColumn(label: 'Planned', width: 130, fieldType: LaunchFieldType.text, hint: 'Planned'), LaunchColumn(label: 'Actual', width: 130, fieldType: LaunchFieldType.text, hint: 'Actual'), LaunchColumn(label: 'Variance', width: 130, fieldType: LaunchFieldType.text, hint: 'Variance'), LaunchColumn(label: '%', width: 110, fieldType: LaunchFieldType.text, hint: '%')],
       rowCount: _budgetVariances.length,
       onAddValues: (values) {
         setState(() => _budgetVariances.add(LaunchBudgetVariance(
@@ -392,7 +392,7 @@ class _ActualVsPlannedGapAnalysisScreenState
             LaunchEditableCell(
               value: b.plannedAmount,
               hint: 'Planned',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _budgetVariances[i] = b.copyWith(plannedAmount: s);
                 _save();
@@ -401,7 +401,7 @@ class _ActualVsPlannedGapAnalysisScreenState
             LaunchEditableCell(
               value: b.actualAmount,
               hint: 'Actual',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _budgetVariances[i] = b.copyWith(actualAmount: s);
                 _save();
@@ -410,7 +410,7 @@ class _ActualVsPlannedGapAnalysisScreenState
             LaunchEditableCell(
               value: b.variance,
               hint: 'Variance',
-              width: 90,
+              width: 120,
               onChanged: (s) {
                 _budgetVariances[i] = b.copyWith(variance: s);
                 _save();
@@ -602,7 +602,7 @@ class _ActualVsPlannedGapAnalysisScreenState
             LaunchEditableCell(
               value: f.owner,
               hint: 'Owner',
-              width: 100,
+              width: 130,
               onChanged: (s) {
                 _followUpActions[i] = f.copyWith(owner: s);
                 _save();

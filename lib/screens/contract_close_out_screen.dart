@@ -230,7 +230,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
       title: 'Contracts Status',
       subtitle:
           'All contracts requiring close-out. Import from execution or add manually.',
-      columns: const [LaunchColumn(label: 'Contract', flexible: true, fieldType: LaunchFieldType.text, hint: 'Contract'), LaunchColumn(label: 'Vendor', width: 110, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Ref', width: 100, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Value', width: 100, fieldType: LaunchFieldType.text, hint: 'Value'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchContractItem.closeOutStatuses)],
+      columns: const [LaunchColumn(label: 'Contract', flexible: true, fieldType: LaunchFieldType.text, hint: 'Contract'), LaunchColumn(label: 'Vendor', width: 130, fieldType: LaunchFieldType.text, hint: 'Vendor'), LaunchColumn(label: 'Ref', width: 130, fieldType: LaunchFieldType.text, hint: 'Ref'), LaunchColumn(label: 'Value', width: 130, fieldType: LaunchFieldType.text, hint: 'Value'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: LaunchContractItem.closeOutStatuses)],
       rowCount: _contracts.length,
       onAddValues: (values) {
         setState(() {
@@ -300,7 +300,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
             LaunchEditableCell(
               value: item.contractRef,
               hint: 'Ref',
-              width: 80,
+              width: 130,
               onChanged: (v) {
                 _contracts[idx] = item.copyWith(contractRef: v);
                 _scheduleSave();
@@ -309,7 +309,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
             LaunchEditableCell(
               value: item.value,
               hint: 'Value',
-              width: 80,
+              width: 130,
               onChanged: (v) {
                 _contracts[idx] = item.copyWith(value: v);
                 _scheduleSave();
@@ -393,7 +393,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
             LaunchEditableCell(
               value: item.contractRef,
               hint: 'Ref',
-              width: 100,
+              width: 130,
               onChanged: (v) {
                 _closeOutSteps[idx] = item.copyWith(contractRef: v);
                 _scheduleSave();
@@ -428,7 +428,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
     return LaunchDataTable(
       title: 'Financial & Compliance Sign-Off',
       subtitle: 'Track approvals from finance, legal, and compliance.',
-      columns: const [LaunchColumn(label: 'Approver', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
+      columns: const [LaunchColumn(label: 'Approver', flexible: true, fieldType: LaunchFieldType.text, hint: 'Name'), LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'), LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Approved', 'Rejected']), LaunchColumn(label: 'Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Date'), LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes')],
       rowCount: _signOffs.length,
       onAddValues: (values) {
         setState(() {
@@ -506,7 +506,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
             LaunchDateCell(
               value: item.date,
               hint: 'Date',
-              width: 90,
+              width: 130,
               onChanged: (v) {
                 _signOffs[idx] = item.copyWith(date: v);
                 _scheduleSave();

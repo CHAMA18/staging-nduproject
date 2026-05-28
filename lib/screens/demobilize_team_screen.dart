@@ -296,9 +296,9 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       subtitle: 'Sessions and artifacts being handed off before team release.',
       columns: const [
         LaunchColumn(label: 'Topic', flexible: true, fieldType: LaunchFieldType.text, hint: 'Topic'),
-        LaunchColumn(label: 'From', width: 110, fieldType: LaunchFieldType.text, hint: 'From'),
-        LaunchColumn(label: 'To', width: 110, fieldType: LaunchFieldType.text, hint: 'To'),
-        LaunchColumn(label: 'Method', width: 100, fieldType: LaunchFieldType.text, hint: 'Method'),
+        LaunchColumn(label: 'From', width: 130, fieldType: LaunchFieldType.text, hint: 'From'),
+        LaunchColumn(label: 'To', width: 130, fieldType: LaunchFieldType.text, hint: 'To'),
+        LaunchColumn(label: 'Method', width: 130, fieldType: LaunchFieldType.text, hint: 'Method'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete']),
       ],
       rowCount: _knowledgeTransfers.length,
@@ -502,8 +502,8 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       columns: const [
         LaunchColumn(label: 'Audience', flexible: true, fieldType: LaunchFieldType.text, hint: 'Audience'),
         LaunchColumn(label: 'Message', flexible: true, fieldType: LaunchFieldType.text, hint: 'Message'),
-        LaunchColumn(label: 'Channel', width: 100, fieldType: LaunchFieldType.text, hint: 'Channel'),
-        LaunchColumn(label: 'Send Date', width: 110, fieldType: LaunchFieldType.date, hint: 'Send Date'),
+        LaunchColumn(label: 'Channel', width: 130, fieldType: LaunchFieldType.text, hint: 'Channel'),
+        LaunchColumn(label: 'Send Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Send Date'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Planned', 'Sent', 'Cancelled']),
       ],
       rowCount: _communications.length,

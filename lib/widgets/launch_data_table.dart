@@ -559,8 +559,11 @@ class _CellSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 38,
+    final tableLayout = _TableLayoutInherited.of(context);
+    // Use a constrained height with padding so dropdowns and status pills
+    // never clip vertically, but still keep rows compact.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 44),
       child: Align(
         alignment: Alignment.centerLeft,
         child: child,
@@ -631,6 +634,8 @@ class _LaunchEditableCellState extends State<LaunchEditableCell> {
         child: Text(
           widget.value.isEmpty ? '—' : widget.value,
           overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          softWrap: false,
           style: TextStyle(
             fontSize: 13,
             color: widget.value.isEmpty
@@ -752,7 +757,7 @@ class _LaunchDateCellState extends State<LaunchDateCell> {
 
     return SizedBox(
       width: widget.width,
-      height: 38,
+      height: 40,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
@@ -849,7 +854,7 @@ class LaunchStatusDropdown extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
-    this.width = 120,
+    this.width = 140,
   });
 
   final String value;
@@ -866,16 +871,18 @@ class LaunchStatusDropdown extends StatelessWidget {
 
     if (!isEditing) {
       final label = effective ?? 'Not set';
-      return Align(
-        alignment: Alignment.centerLeft,
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: width),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: statusColor.withOpacity(0.08),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             label,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -889,7 +896,7 @@ class LaunchStatusDropdown extends StatelessWidget {
     if (menuItems.isEmpty || effective == null) {
       return SizedBox(
         width: width,
-        height: 38,
+        height: 40,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -913,7 +920,7 @@ class LaunchStatusDropdown extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      height: 38,
+      height: 40,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: statusColor.withOpacity(0.08),

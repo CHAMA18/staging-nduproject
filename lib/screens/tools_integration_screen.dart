@@ -1396,9 +1396,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     children: [
                       Expanded(flex: 3, child: Text('SIGNAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
                       Expanded(flex: 3, child: Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('SEVERITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('SEVERITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       Expanded(flex: 2, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
                     ],
                   ),
@@ -1426,7 +1426,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(sig.description, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildSeverityBadge(sig.severity),
                         ),
                         Expanded(
@@ -1434,7 +1434,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(sig.owner, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildStatusBadge(sig.status),
                         ),
                         SizedBox(
@@ -1540,10 +1540,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   child: const Row(
                     children: [
                       Expanded(flex: 4, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
-                      SizedBox(width: 80, child: Text('DUE DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('DUE DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       Expanded(flex: 2, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 90, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 120, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
                     ],
                   ),
@@ -1567,11 +1567,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(act.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildSeverityBadge(act.priority),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: Text(act.dueDate, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), textAlign: TextAlign.center),
                         ),
                         Expanded(
@@ -1579,7 +1579,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(act.owner, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                         ),
                         SizedBox(
-                          width: 90,
+                          width: 120,
                           child: _buildStatusBadge(act.status),
                         ),
                         SizedBox(
@@ -2079,9 +2079,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       Expanded(flex: 3, child: Text('GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
                       Expanded(flex: 4, child: Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
                       Expanded(flex: 2, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 72, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
-                      SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 72, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
                     ],
@@ -2114,7 +2114,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(gate.approver, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: Text(gate.department, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151)), textAlign: TextAlign.center),
                         ),
                         SizedBox(
@@ -2122,7 +2122,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: _buildSeverityBadge(gate.priority),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildStatusBadge(gate.status),
                         ),
                         SizedBox(
@@ -2208,9 +2208,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       Expanded(flex: 2, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
                       Expanded(flex: 2, child: Text('DATA TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
                       Expanded(flex: 2, child: Text('API METHOD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('FREQUENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('FREQUENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       Expanded(flex: 3, child: Text('TRANSFORMATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
-                      SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
                       SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
                     ],
                   ),
@@ -2246,7 +2246,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(flow.apiMethod, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151))),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: Text(flow.frequency, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), textAlign: TextAlign.center),
                         ),
                         Expanded(
@@ -2254,7 +2254,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           child: Text(flow.transformation, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), maxLines: 2, overflow: TextOverflow.ellipsis),
                         ),
                         SizedBox(
-                          width: 80,
+                          width: 110,
                           child: _buildStatusBadge(flow.status),
                         ),
                         SizedBox(

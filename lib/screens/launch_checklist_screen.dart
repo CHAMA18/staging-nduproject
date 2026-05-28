@@ -673,7 +673,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         LaunchColumn(label: 'Task', flexible: true, fieldType: LaunchFieldType.text, hint: 'Task'),
         LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
         LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
-        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Due', width: 130, fieldType: LaunchFieldType.date, hint: 'Due'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'On track', 'At risk', 'In review', 'Pending'], hint: 'Status'),
       ],
       rowCount: _checklistItems.length,
@@ -752,7 +752,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             LaunchEditableCell(
               value: item.due,
               hint: 'Due',
-              width: 100,
+              width: 130,
               onChanged: (v) {
                 _checklistItems[i] = item.copyWith(due: v);
                 _save();
@@ -889,7 +889,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       columns: const [
         LaunchColumn(label: 'Milestone', flexible: true, fieldType: LaunchFieldType.text, hint: 'Milestone'),
         LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
-        LaunchColumn(label: 'Due', width: 100, fieldType: LaunchFieldType.date, hint: 'Due'),
+        LaunchColumn(label: 'Due', width: 130, fieldType: LaunchFieldType.date, hint: 'Due'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'Upcoming', 'In progress', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _milestones.length,
@@ -956,7 +956,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             LaunchEditableCell(
               value: item.due,
               hint: 'Due',
-              width: 100,
+              width: 130,
               onChanged: (v) {
                 _milestones[i] = item.copyWith(due: v);
                 _save();
@@ -988,7 +988,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       columns: const [
         LaunchColumn(label: 'Stage', flexible: true, fieldType: LaunchFieldType.text, hint: 'Stage'),
         LaunchColumn(label: 'Detail', flexible: true, fieldType: LaunchFieldType.text, hint: 'Detail'),
-        LaunchColumn(label: 'Date', width: 100, fieldType: LaunchFieldType.date, hint: 'Date'),
+        LaunchColumn(label: 'Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Date'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Complete', 'In progress', 'Upcoming', 'Delayed'], hint: 'Status'),
       ],
       rowCount: _timelineStages.length,
@@ -1055,7 +1055,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             LaunchEditableCell(
               value: stage.date,
               hint: 'Date',
-              width: 100,
+              width: 130,
               onChanged: (v) {
                 _timelineStages[i] = stage.copyWith(date: v);
                 _save();

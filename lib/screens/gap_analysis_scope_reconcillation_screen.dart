@@ -1103,7 +1103,7 @@ class _GapRegisterCard extends StatelessWidget {
                                             color: Color(0xFF6B7280),
                                             letterSpacing: 0.8))),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('CATEGORY',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1112,7 +1112,7 @@ class _GapRegisterCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('SEVERITY',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1121,7 +1121,7 @@ class _GapRegisterCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('PRIORITY',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1130,7 +1130,7 @@ class _GapRegisterCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('OWNER',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1139,7 +1139,7 @@ class _GapRegisterCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('TARGET',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1511,7 +1511,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             color: Color(0xFF6B7280),
                                             letterSpacing: 0.8))),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('CATEGORY',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1520,7 +1520,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('METHOD',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1529,7 +1529,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 80,
+                                    width: 130,
                                     child: Text('IMPACT',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1538,7 +1538,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 110,
+                                    width: 130,
                                     child: Text('STATUS',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1617,7 +1617,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             color: Color(0xFF6B7280),
                                             letterSpacing: 0.8))),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('IMPACT',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -1626,7 +1626,7 @@ class _GapAnalysisRootCauseCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 110,
+                                    width: 130,
                                     child: Text('STATUS',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2066,7 +2066,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                 ),
                 // Category
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2089,7 +2089,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                 ),
                 // Severity
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2117,7 +2117,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                 ),
                 // Priority
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2144,7 +2144,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                 ),
                 // Owner
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Text(
                       e.owner.trim().isEmpty ? 'Unassigned' : e.owner,
@@ -2158,7 +2158,7 @@ class _GapEntryRowState extends State<_GapEntryRow> {
                 ),
                 // Target date
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       e.targetDate.trim().isEmpty ? '—' : e.targetDate,
@@ -2351,7 +2351,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                 ),
                 // Category
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2374,7 +2374,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                 ),
                 // Method
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Text(
                       item.methodology,
@@ -2389,7 +2389,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                 ),
                 // Impact
                 SizedBox(
-                  width: 80,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2420,7 +2420,7 @@ class _RootCauseRowState extends State<_RootCauseRow> {
                 ),
                 // Status
                 SizedBox(
-                  width: 110,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -2566,7 +2566,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             color: Color(0xFF6B7280),
                                             letterSpacing: 0.8))),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('PHASE',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2575,7 +2575,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('GAP REF',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2584,7 +2584,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('OWNER',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2593,7 +2593,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('DUE',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2602,7 +2602,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 80,
+                                    width: 130,
                                     child: Text('PROGRESS',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2611,7 +2611,7 @@ class _ReconciliationPlanningCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 110,
+                                    width: 130,
                                     child: Text('STATUS',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2977,7 +2977,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                                             color: Color(0xFF6B7280),
                                             letterSpacing: 0.8))),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('DOMAIN',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2986,7 +2986,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 80,
+                                    width: 130,
                                     child: Text('RATING',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -2995,7 +2995,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 100,
+                                    width: 130,
                                     child: Text('TREND',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -3004,7 +3004,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('OWNER',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -3013,7 +3013,7 @@ class _ImpactAssessmentCard extends StatelessWidget {
                                             letterSpacing: 0.8),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
-                                    width: 90,
+                                    width: 120,
                                     child: Text('EXPOSURE',
                                         style: TextStyle(
                                             fontSize: 10,
@@ -3417,7 +3417,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Phase
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3440,7 +3440,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Gap reference
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       p.gapReference.trim().isEmpty ? '—' : p.gapReference,
@@ -3456,7 +3456,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Owner
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       p.owner.trim().isEmpty ? 'Unassigned' : p.owner,
@@ -3472,7 +3472,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Due
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       p.due.trim().isEmpty ? '—' : p.due,
@@ -3486,7 +3486,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Progress
                 SizedBox(
-                  width: 80,
+                  width: 130,
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -3515,7 +3515,7 @@ class _ReconPlanRowState extends State<_ReconPlanRow> {
                 ),
                 // Status
                 SizedBox(
-                  width: 110,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -3749,7 +3749,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                 ),
                 // Domain
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3772,7 +3772,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                 ),
                 // Rating
                 SizedBox(
-                  width: 80,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3799,7 +3799,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                 ),
                 // Trend
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3826,7 +3826,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                 ),
                 // Owner
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       i.owner.trim().isEmpty ? 'Unassigned' : i.owner,
@@ -3842,7 +3842,7 @@ class _ImpactAssessmentRowState extends State<_ImpactAssessmentRow> {
                 ),
                 // Financial exposure
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       i.financialExposure.trim().isEmpty ? '—' : i.financialExposure,
@@ -4236,7 +4236,7 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
                   child: Row(
                     children: [
                       SizedBox(
-                          width: 110,
+                          width: 130,
                           child: _AxisHeader(
                               label: impactLabels[row], isVertical: true)),
                       for (int col = 0; col < 3; col++)

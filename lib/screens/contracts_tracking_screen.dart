@@ -717,13 +717,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               child: const Row(
                 children: [
                   Expanded(flex: 4, child: Text('CONTRACT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                  SizedBox(width: 100, child: Text('TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 100, child: Text('EXPIRY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 110, child: Text('URGENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 100, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('EXPIRY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('URGENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
                   Expanded(flex: 2, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 90, child: Text('VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 120, child: Text('VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
                   SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
                 ],
               ),
@@ -897,10 +897,10 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 children: [
                   Expanded(flex: 5, child: Text('APPROVAL GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
                   Expanded(flex: 3, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
-                  SizedBox(width: 100, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 90, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
-                  SizedBox(width: 100, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 120, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 130, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
                   SizedBox(width: 60, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
                 ],
               ),
@@ -2466,7 +2466,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                 ),
                 // Department
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2489,7 +2489,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                 ),
                 // Priority
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2524,7 +2524,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                 ),
                 // Status
                 SizedBox(
-                  width: 110,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -2555,7 +2555,7 @@ class _ApprovalGateRowState extends State<_ApprovalGateRow> {
                 ),
                 // Target date
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Text(
                       c.targetDate.trim().isEmpty ? '—' : c.targetDate,
@@ -2754,7 +2754,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Type
                 SizedBox(
-                  width: 80,
+                  width: 110,
                   child: Center(
                     child: Container(
                       padding:
@@ -2779,7 +2779,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Expiry date
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       e.expiryDate.trim().isEmpty ? '—' : e.expiryDate,
@@ -2793,7 +2793,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Urgency window
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding:
@@ -2832,7 +2832,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Action
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding:
@@ -2855,7 +2855,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Status
                 SizedBox(
-                  width: 100,
+                  width: 130,
                   child: Center(
                     child: Container(
                       padding:
@@ -2888,7 +2888,7 @@ class _RenewalEntryRowState extends State<_RenewalEntryRow> {
                 ),
                 // Owner
                 SizedBox(
-                  width: 90,
+                  width: 120,
                   child: Center(
                     child: Text(
                       e.owner.trim().isEmpty ? 'Unassigned' : e.owner,

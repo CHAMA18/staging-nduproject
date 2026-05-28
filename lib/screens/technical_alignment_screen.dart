@@ -668,8 +668,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       child: ListView(
         padding: EdgeInsets.all(padding),
         children: [
-          _buildStableHeaderCard(snapshot),
-          const SizedBox(height: 24),
           _buildStableMethodologyMatrix(),
           const SizedBox(height: 24),
           _buildStableReadinessGateTable(),
@@ -748,45 +746,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           ),
           const SizedBox(height: 24),
           _buildDetailedRegistersPanel(ownerOptions),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStableHeaderCard(_TechnicalAlignmentDashboardSnapshot snapshot) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: _navigateToRequirementsImplementation,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            tooltip: 'Back',
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Technical Alignment: ${snapshot.projectLabel}',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827),
-              ),
-            ),
-          ),
         ],
       ),
     );

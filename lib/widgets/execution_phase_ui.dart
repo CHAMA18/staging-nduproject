@@ -329,18 +329,19 @@ class ExecutionMetricsGrid extends StatelessWidget {
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
         final int count = metrics.length;
-        // Smart column calculation: prefer fitting all metrics in one row
-        // when possible, only wrap on very narrow screens.
+        // Smart column calculation: fit all metrics in one row on wide screens
         int columns;
-        if (width >= 600) {
-          // Wide enough: fit all metrics in a single row (up to 5)
-          columns = count.clamp(1, 5);
+        if (width >= 900) {
+          // Wide enough: fit all metrics in a single row
+          columns = count.clamp(1, 8);
+        } else if (width >= 600) {
+          columns = (count / 2).ceil().clamp(1, 4);
         } else if (width >= 400) {
           columns = 2;
         } else {
           columns = 1;
         }
-        final double spacing = 16;
+        final double spacing = 12;
         final double tileWidth =
             (width - (spacing * (columns - 1))) / columns;
 
@@ -351,7 +352,6 @@ class ExecutionMetricsGrid extends StatelessWidget {
               .map(
                 (metric) => SizedBox(
                   width: tileWidth.clamp(minTileWidth, width).toDouble(),
-                  height: 110,
                   child: ExecutionMetricCard(metric: metric),
                 ),
               )
@@ -373,16 +373,16 @@ class ExecutionMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 10),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -390,51 +390,55 @@ class ExecutionMetricCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: metric.emphasisColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(metric.icon, size: 20, color: metric.emphasisColor),
+            child: Icon(metric.icon, size: 18, color: metric.emphasisColor),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   metric.label,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF64748B),
                     letterSpacing: 0.2,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
                   metric.value,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF111827),
                     height: 1.0,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    (metric.helper != null && metric.helper!.trim().isNotEmpty)
-                        ? metric.helper!
-                        : '',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF6B7280),
-                      height: 1.4,
+                if (metric.helper != null && metric.helper!.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      metric.helper!,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                        height: 1.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
-                ),
               ],
             ),
           ),

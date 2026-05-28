@@ -627,7 +627,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
       ),
     ];
 
-    return ExecutionMetricsGrid(metrics: metrics, minTileWidth: 200);
+    return ExecutionMetricsGrid(metrics: metrics, minTileWidth: 140);
   }
 
   // ── FILTER CHIPS ──────────────────────────────────────────────

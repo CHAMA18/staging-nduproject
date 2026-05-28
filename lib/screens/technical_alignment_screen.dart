@@ -847,19 +847,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       return;
     }
 
-    setState(() {
-      _traceabilityItems.add(
-        _TraceabilityItem(
-          object: '',
-          question: '',
-          verification: '',
-          waterfallEvidence: '',
-          agileEvidence: '',
-        ),
-      );
-      _editingTraceabilityRows.add(_traceabilityItems.length - 1);
-      _scheduleSave();
-    });
+    _showTraceabilityDialog();
   }
 
   void _addConstraintRow() {
@@ -1673,200 +1661,314 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Widget _buildStableTraceabilityTable() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+    return _DeliveryModelPanelShell(
+      title: 'Traceability And Verification Matrix',
+      subtitle:
+          'Map traceability objects to verification methods and evidence for waterfall and agile/hybrid delivery.',
+      icon: Icons.link_outlined,
+      accent: const Color(0xFF0F766E),
+      trailing: TextButton.icon(
+        onPressed: _addTraceabilityItem,
+        icon: const Icon(Icons.add_rounded, size: 16),
+        label: const Text('Add trace item'),
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF0F766E),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            icon: Icons.link_outlined,
-            color: const Color(0xFF0F766E),
-            title: 'Traceability And Verification Matrix',
-            subtitle:
-                'Map traceability objects to verification methods and evidence for waterfall and agile/hybrid delivery.',
-            actionLabel: 'Add trace item',
-            onAction: _addTraceabilityItem,
-          ),
-          const SizedBox(height: 16),
-          _buildScrollableTableHeader(
-            columns: const [
-              _TableColumn(label: 'Trace Object', flex: 2, minWidth: 160),
-              _TableColumn(
-                  label: 'Technical Alignment Question',
-                  flex: 3,
-                  minWidth: 260),
-              _TableColumn(
-                  label: 'Verification Method', flex: 2, minWidth: 180),
-              _TableColumn(label: 'Waterfall Evidence', flex: 2, minWidth: 200),
-              _TableColumn(
-                  label: 'Agile / Hybrid Evidence', flex: 2, minWidth: 200),
-              _TableColumn(
-                  label: 'Actions',
-                  flex: 1,
-                  minWidth: _technicalAlignmentActionColumnWidth,
-                  alignment: Alignment.center),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_traceabilityItems.isEmpty)
-            _buildEmptyTableState(
-              message: 'No traceability items yet. Add the first trace object.',
-              actionLabel: 'Add trace item',
-              onAction: _addTraceabilityItem,
-            )
-          else
-            _buildScrollableTableBody(
-              columns: const [
-                _TableColumn(label: 'Trace Object', flex: 2, minWidth: 160),
-                _TableColumn(
-                    label: 'Technical Alignment Question',
-                    flex: 3,
-                    minWidth: 260),
-                _TableColumn(
-                    label: 'Verification Method', flex: 2, minWidth: 180),
-                _TableColumn(
-                    label: 'Waterfall Evidence', flex: 2, minWidth: 200),
-                _TableColumn(
-                    label: 'Agile / Hybrid Evidence', flex: 2, minWidth: 200),
-                _TableColumn(
-                    label: 'Actions',
-                    flex: 1,
-                    minWidth: _technicalAlignmentActionColumnWidth,
-                    alignment: Alignment.center),
-              ],
-              rowCount: _traceabilityItems.length,
-              rowBuilder: (i) => _buildTraceabilityRow(
-                _traceabilityItems[i],
-                index: i,
-                isStriped: i.isOdd,
+      child: _traceabilityItems.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.link_outlined,
+                        size: 36,
+                        color: const Color(0xFF9CA3AF).withOpacity(0.6)),
+                    const SizedBox(height: 8),
+                    const Text('No traceability items yet',
+                        style: TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    const Text(
+                        'Add the first trace object to begin mapping verification evidence.',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                  ],
+                ),
               ),
+            )
+          : Column(
+              children: [
+                // Dark table header
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1F2937),
+                    borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(flex: 2, child: Text('Trace Object', style: _dmHeaderStyle)),
+                      Expanded(flex: 3, child: Text('Alignment Question', style: _dmHeaderStyle)),
+                      Expanded(flex: 2, child: Text('Verification', style: _dmHeaderStyle)),
+                      Expanded(flex: 2, child: Text('Waterfall Evidence', style: _dmHeaderStyle)),
+                      Expanded(flex: 2, child: Text('Agile / Hybrid Evidence', style: _dmHeaderStyle)),
+                      Expanded(flex: 1, child: Text('', style: _dmHeaderStyle)),
+                    ],
+                  ),
+                ),
+                // Data rows
+                ..._traceabilityItems.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final row = entry.value;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: idx.isEven
+                          ? Colors.white
+                          : const Color(0xFFFAFBFD),
+                      borderRadius: BorderRadius.circular(6),
+                      border:
+                          Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.object,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(row.question,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.verification,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.waterfallEvidence,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(row.agileEvidence,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF374151)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => _showTraceabilityDialog(
+                                    existing: row, index: idx),
+                                child: const Icon(Icons.edit_outlined,
+                                    size: 14,
+                                    color: Color(0xFF6B7280)),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () async {
+                                  final confirmed =
+                                      await _confirmDelete(
+                                          'traceability item');
+                                  if (!confirmed) return;
+                                  setState(() {
+                                    _traceabilityItems
+                                        .removeAt(idx);
+                                    _shiftEditingRowsAfterDelete(
+                                        _editingTraceabilityRows,
+                                        idx);
+                                    _scheduleSave();
+                                  });
+                                },
+                                child: const Icon(
+                                    Icons.delete_outline,
+                                    size: 14,
+                                    color: Color(0xFFEF4444)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                      '${_traceabilityItems.length} trace item${_traceabilityItems.length != 1 ? 's' : ''}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF9CA3AF))),
+                ),
+              ],
             ),
-        ],
-      ),
     );
   }
 
-  Widget _buildTraceabilityRow(
-    _TraceabilityItem row, {
-    required int index,
-    required bool isStriped,
-  }) {
-    final isEditing = _editingTraceabilityRows.contains(index);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 160,
-            child: _buildTableField(
-              initialValue: row.object,
-              hintText: 'Trace Object',
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.object = value;
-                _scheduleSave();
-              },
+  void _showTraceabilityDialog({_TraceabilityItem? existing, int? index}) {
+    final isEdit = existing != null;
+    if (isEdit && !_canEditAlignment) {
+      _showPermissionSnackBar('edit traceability items');
+      return;
+    }
+    final objectCtl =
+        TextEditingController(text: existing?.object ?? '');
+    final questionCtl =
+        TextEditingController(text: existing?.question ?? '');
+    final verificationCtl =
+        TextEditingController(text: existing?.verification ?? '');
+    final waterfallCtl =
+        TextEditingController(text: existing?.waterfallEvidence ?? '');
+    final agileCtl =
+        TextEditingController(text: existing?.agileEvidence ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(
+              isEdit
+                  ? Icons.edit_outlined
+                  : Icons.add_circle_outline,
+              size: 20,
+              color: const Color(0xFF0F766E)),
+          const SizedBox(width: 8),
+          Text(
+              isEdit
+                  ? 'Edit Trace Item'
+                  : 'Add Trace Item',
+              style: const TextStyle(fontSize: 16)),
+        ]),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                VoiceTextField(
+                  controller: objectCtl,
+                  decoration: const InputDecoration(
+                    labelText: 'Trace Object',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                VoiceTextField(
+                  controller: questionCtl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Technical Alignment Question',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                VoiceTextField(
+                  controller: verificationCtl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Verification Method',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                VoiceTextField(
+                  controller: waterfallCtl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Waterfall Evidence',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                VoiceTextField(
+                  controller: agileCtl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Agile / Hybrid Evidence',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 260,
-            child: _buildTableField(
-              initialValue: row.question,
-              hintText: 'Technical Alignment Question',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.question = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 180,
-            child: _buildTableField(
-              initialValue: row.verification,
-              hintText: 'Verification Method',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.verification = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 200,
-            child: _buildTableField(
-              initialValue: row.waterfallEvidence,
-              hintText: 'Waterfall Evidence',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.waterfallEvidence = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 200,
-            child: _buildTableField(
-              initialValue: row.agileEvidence,
-              hintText: 'Agile / Hybrid Evidence',
-              maxLines: null,
-              minLines: 1,
-              enabled: _canEditAlignment && isEditing,
-              onChanged: (value) {
-                row.agileEvidence = value;
-                _scheduleSave();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: _technicalAlignmentActionColumnWidth,
-            child: Align(
-              alignment: Alignment.center,
-              child: _buildRowActions(
-                isEditing: isEditing,
-                onToggleEdit: () =>
-                    _toggleEditingRow(_editingTraceabilityRows, index),
-                onDelete: () async {
-                  final confirmed = await _confirmDelete('traceability item');
-                  if (!confirmed) return;
-                  setState(() {
-                    _traceabilityItems.removeAt(index);
-                    _shiftEditingRowsAfterDelete(
-                        _editingTraceabilityRows, index);
-                    _scheduleSave();
-                  });
-                },
-              ),
-            ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              if (isEdit && index != null) {
+                setState(() {
+                  _traceabilityItems[index] = _TraceabilityItem(
+                    object: objectCtl.text.trim(),
+                    question: questionCtl.text.trim(),
+                    verification: verificationCtl.text.trim(),
+                    waterfallEvidence: waterfallCtl.text.trim(),
+                    agileEvidence: agileCtl.text.trim(),
+                  );
+                  _scheduleSave();
+                });
+              } else {
+                setState(() {
+                  _traceabilityItems.add(_TraceabilityItem(
+                    object: objectCtl.text.trim(),
+                    question: questionCtl.text.trim(),
+                    verification: verificationCtl.text.trim(),
+                    waterfallEvidence: waterfallCtl.text.trim(),
+                    agileEvidence: agileCtl.text.trim(),
+                  ));
+                  _scheduleSave();
+                });
+              }
+              Navigator.of(ctx).pop();
+            },
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF0F766E),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
+            child: Text(isEdit ? 'Save' : 'Add'),
           ),
         ],
       ),

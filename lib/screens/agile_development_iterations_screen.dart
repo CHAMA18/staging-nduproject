@@ -167,7 +167,6 @@ class _AgileDevelopmentIterationsScreenState
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 18 : 32;
-    final isNarrow = MediaQuery.sizeOf(context).width < 980;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
@@ -202,8 +201,6 @@ class _AgileDevelopmentIterationsScreenState
           _buildPageHeader(context),
                         const SizedBox(height: 20),
                         _buildFilterChips(context),
-                        const SizedBox(height: 24),
-                        _buildStatsRow(isNarrow),
                         const SizedBox(height: 24),
                         _buildIterationTable(),
                         const SizedBox(height: 24),

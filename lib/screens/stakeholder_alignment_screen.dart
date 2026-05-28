@@ -33,7 +33,6 @@ class StakeholderAlignmentScreen extends StatefulWidget {
 
 class _StakeholderAlignmentScreenState
     extends State<StakeholderAlignmentScreen> {
-  final Set<String> _selectedFilters = {'All'};
   List<StakeholderAlignmentItem> _items = [];
   List<Map<String, String>> _coreStakeholders = [];
   bool _isLoading = false;
@@ -151,7 +150,6 @@ class _StakeholderAlignmentScreenState
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 18 : 32;
-    final isNarrow = MediaQuery.sizeOf(context).width < 980;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
@@ -185,10 +183,6 @@ class _StakeholderAlignmentScreenState
           const SizedBox(height: 16),
           _buildPageHeader(context),
                         const SizedBox(height: 20),
-                        _buildFilterChips(context),
-                        const SizedBox(height: 24),
-                        _buildStatsRow(isNarrow),
-                        const SizedBox(height: 24),
                         _buildStakeholderTable(),
                         const SizedBox(height: 24),
                         _buildFooterNavigation(context),
@@ -288,139 +282,8 @@ class _StakeholderAlignmentScreenState
     );
   }
 
-  Widget _buildFilterChips(BuildContext context) {
-    const filters = ['All', 'Aligned', 'Neutral', 'Concerned', 'Resistent'];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedFilters.clear();
-              _selectedFilters.add(filter);
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFF111827) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Text(
-              filter,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF475569),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildStatsRow(bool isNarrow) {
-    // Calculate metrics
-    final totalItems = _items.length;
-    final alignedCount =
-        _items.where((item) => item.alignmentStatus == 'Aligned').length;
-    final consensusScore =
-        totalItems > 0 ? ((alignedCount / totalItems) * 100).round() : 0;
-
-    // Engagement rate: stakeholders with feedback or engagement date
-    final engagedCount = _items
-        .where((item) =>
-            item.feedbackSummary.isNotEmpty || item.lastEngagementDate != null)
-        .length;
-    final engagementRate =
-        totalItems > 0 ? ((engagedCount / totalItems) * 100).round() : 0;
-
-    // Open concerns: Concerned or Resistent stakeholders
-    final openConcerns = _items
-        .where((item) =>
-            item.alignmentStatus == 'Concerned' ||
-            item.alignmentStatus == 'Resistent')
-        .length;
-
-    final stats = [
-      _StatCardData(
-        'Consensus Score',
-        '$consensusScore%',
-        '$alignedCount of $totalItems aligned',
-        const Color(0xFF10B981),
-      ),
-      _StatCardData(
-        'Engagement Rate',
-        '$engagementRate%',
-        '$engagedCount stakeholders engaged',
-        const Color(0xFF2563EB),
-      ),
-      _StatCardData(
-        'Open Concerns',
-        '$openConcerns',
-        'Require attention',
-        const Color(0xFFF59E0B),
-      ),
-    ];
-
-    if (isNarrow) {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: stats.map((stat) => _buildStatCard(stat)).toList(),
-      );
-    }
-    return Row(
-      children: stats
-          .map((stat) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: _buildStatCard(stat),
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            data.value,
-            style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.w700, color: data.color),
-          ),
-          const SizedBox(height: 6),
-          Text(data.label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-          const SizedBox(height: 6),
-          Text(data.supporting,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: data.color)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStakeholderTable() {
-    final filteredItems = _items.where((item) {
-      if (_selectedFilters.contains('All')) return true;
-      return _selectedFilters.contains(item.alignmentStatus);
-    }).toList();
+    final allItems = _items;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -440,7 +303,7 @@ class _StakeholderAlignmentScreenState
               style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 16),
           StakeholderAlignmentTableWidget(
-            items: filteredItems,
+            items: allItems,
             onUpdated: (item) {
               setState(() {
                 final index = _items.indexWhere((i) => i.id == item.id);
@@ -732,11 +595,3 @@ class _StakeholderAlignmentScreenState
   }
 }
 
-class _StatCardData {
-  const _StatCardData(this.label, this.value, this.supporting, this.color);
-
-  final String label;
-  final String value;
-  final String supporting;
-  final Color color;
-}

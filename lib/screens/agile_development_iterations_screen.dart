@@ -203,8 +203,6 @@ class _AgileDevelopmentIterationsScreenState
                         _buildFilterChips(context),
                         const SizedBox(height: 24),
                         _buildIterationTable(),
-                        const SizedBox(height: 24),
-                        _buildFooterNavigation(context),
                         const SizedBox(height: 48),
                       ],
                     ),

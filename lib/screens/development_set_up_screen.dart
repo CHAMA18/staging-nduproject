@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
@@ -35,6 +36,14 @@ class DevelopmentSetUpScreen extends StatefulWidget {
 class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
   // ── Methodology selection ──────────────────────────────────────────────
   String _selectedMethodology = 'Hybrid';
+
+  static const List<String> _methodologyOptions = [
+    'Hybrid', 'Agile', 'Waterfall',
+  ];
+
+  static const List<String> _qualityStatusOptions = [
+    'Planned', 'Not Started', 'In Progress', 'Active', 'Completed', 'Waived',
+  ];
 
   // ── Filter chips ───────────────────────────────────────────────────────
   final Set<String> _selectedFilters = {'All registers'};
@@ -1454,46 +1463,127 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     final isEdit = existing != null;
     final gateCtrl = TextEditingController(text: existing?.gate ?? '');
     final critCtrl = TextEditingController(text: existing?.criteria ?? '');
-    final methCtrl = TextEditingController(text: existing?.methodology ?? 'Hybrid');
-    final statusCtrl = TextEditingController(text: existing?.status ?? 'Planned');
+    var selectedMethodology = _methodologyOptions.contains(existing?.methodology)
+        ? existing!.methodology
+        : _methodologyOptions.first;
+    var selectedStatus = _qualityStatusOptions.contains(existing?.status)
+        ? existing!.status
+        : _qualityStatusOptions.first;
     final apprCtrl = TextEditingController(text: existing?.approver ?? '');
-    final dateCtrl = TextEditingController(text: existing?.targetDate ?? '');
+    DateTime? selectedTargetDate;
+    if (existing?.targetDate != null && existing!.targetDate.isNotEmpty) {
+      selectedTargetDate = DateFormat('MMM dd, yyyy').tryParse(existing.targetDate) ??
+          DateFormat('yyyy-MM-dd').tryParse(existing.targetDate);
+    }
+
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Edit Quality Gate' : 'Add Quality Gate'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _dialogField('Gate', gateCtrl),
-          _dialogField('Criteria', critCtrl),
-          _dialogField('Methodology', methCtrl, hint: 'Agile / Waterfall / Hybrid'),
-          _dialogField('Status', statusCtrl, hint: 'Active / Planned / Not Started'),
-          _dialogField('Approver', apprCtrl),
-          _dialogField('Target Date', dateCtrl),
-        ])),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () {
-            final item = _QualityGateItem(
-              id: existing?.id ?? _newId(),
-              gate: gateCtrl.text.trim(),
-              criteria: critCtrl.text.trim(),
-              methodology: methCtrl.text.trim(),
-              status: statusCtrl.text.trim(),
-              approver: apprCtrl.text.trim(),
-              targetDate: dateCtrl.text.trim(),
-            );
-            setState(() {
-              if (isEdit) {
-                final idx = _qualityItems.indexWhere((e) => e.id == item.id);
-                if (idx >= 0) _qualityItems[idx] = item;
-              } else {
-                _qualityItems.add(item);
-              }
-            });
-            _scheduleSave();
-            Navigator.pop(ctx);
-          }, child: Text(isEdit ? 'Save' : 'Add')),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Quality Gate' : 'Add Quality Gate'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _dialogField('Gate', gateCtrl, hint: 'e.g. Sprint Review Gate'),
+              const SizedBox(height: 4),
+              _dialogField('Criteria', critCtrl, hint: 'e.g. All acceptance tests pass'),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                value: selectedMethodology,
+                decoration: const InputDecoration(
+                  labelText: 'Methodology',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: _methodologyOptions
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 12))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setDialogState(() => selectedMethodology = value);
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Status',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: _qualityStatusOptions
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setDialogState(() => selectedStatus = value);
+                },
+              ),
+              const SizedBox(height: 16),
+              _dialogField('Approver', apprCtrl, hint: 'e.g. QA Lead'),
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedTargetDate ?? DateTime.now().add(const Duration(days: 30)),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2040),
+                  );
+                  if (picked != null) {
+                    setDialogState(() => selectedTargetDate = picked);
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Target Date',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    suffixIcon: Icon(Icons.calendar_today, size: 18),
+                  ),
+                  child: Text(
+                    selectedTargetDate != null
+                        ? DateFormat('MMM dd, yyyy').format(selectedTargetDate!)
+                        : 'Select date',
+                    style: TextStyle(
+                      color: selectedTargetDate != null ? null : Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ])),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () {
+              final item = _QualityGateItem(
+                id: existing?.id ?? _newId(),
+                gate: gateCtrl.text.trim(),
+                criteria: critCtrl.text.trim(),
+                methodology: selectedMethodology,
+                status: selectedStatus,
+                approver: apprCtrl.text.trim(),
+                targetDate: selectedTargetDate != null
+                    ? DateFormat('MMM dd, yyyy').format(selectedTargetDate!)
+                    : '',
+              );
+              setState(() {
+                if (isEdit) {
+                  final idx = _qualityItems.indexWhere((e) => e.id == item.id);
+                  if (idx >= 0) _qualityItems[idx] = item;
+                } else {
+                  _qualityItems.add(item);
+                }
+              });
+              _scheduleSave();
+              Navigator.pop(ctx);
+            }, child: Text(isEdit ? 'Save' : 'Add')),
+          ],
+        ),
       ),
     );
   }

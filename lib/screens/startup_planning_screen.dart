@@ -563,7 +563,6 @@ class _StartUpPlanningScreenState extends State<StartUpPlanningScreen> {
   }
 }
 
-<<<<<<< HEAD
 // ── Data model classes ──
 
 class _ChecklistItem {

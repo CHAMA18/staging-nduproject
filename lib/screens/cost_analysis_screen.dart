@@ -8464,7 +8464,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       if (!mounted) return;
       debugPrint('Failed to regenerate project value: $e');
       if (showFeedback && mounted) {
-        showAiErrorDialog(context, error: e, onRetry: () => _generateProjectValue(forSolution: forSolution, showFeedback: showFeedback));
+        showAiErrorDialog(context, error: e, onRetry: () => _generateProjectValue(solutionIndex: targetIndex, showFeedback: showFeedback));
       }
     } finally {
       if (mounted) {

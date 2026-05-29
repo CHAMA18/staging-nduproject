@@ -256,7 +256,7 @@ class _InfrastructureConsiderationsScreenState
     } catch (e) {
       debugPrint('Error generating infrastructure considerations: $e');
       if (mounted) {
-        showAiErrorDialog(context, error: e, onRetry: _generateInfrastructure);
+        showAiErrorDialog(context, error: e, onRetry: _generateInfrastructureIfNeeded);
       }
     } finally {
       if (mounted) setState(() => _isGeneratingInfra = false);

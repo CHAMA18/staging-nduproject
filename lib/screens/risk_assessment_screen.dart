@@ -667,7 +667,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
         showAiErrorDialog(
           context,
           error: e,
-          onRetry: () => _maybeSeedMitigationPlans(_riskEntries, ProjectDataHelper.getData(context)),
+          onRetry: () => _maybeSeedMitigationPlans(_entries, ProjectDataHelper.getData(context)),
         );
       }
     } finally {

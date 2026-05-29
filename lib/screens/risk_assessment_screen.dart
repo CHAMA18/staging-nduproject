@@ -664,6 +664,11 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _mitigationSuggestionError = e.toString());
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: () => _maybeSeedMitigationPlans(_riskEntries, ProjectDataHelper.getData(context)),
+        );
       }
     } finally {
       if (mounted) {

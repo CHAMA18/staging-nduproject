@@ -2136,7 +2136,10 @@ class _FrontEndPlanningProcurementScreenState
         await ProcurementService.createPo(po);
       }
     } catch (e) {
-      debugPrint('$e');
+      debugPrint('Error seeding purchase orders: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () => _seedPurchaseOrders(projectId, projectName, solutionTitle, notes));
+      }
     }
   }
 

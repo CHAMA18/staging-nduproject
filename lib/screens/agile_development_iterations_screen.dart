@@ -20,6 +20,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
@@ -159,6 +160,9 @@ class _AgileDevelopmentIterationsScreenState
       }
     } catch (e) {
       debugPrint('Error auto-generating agile tasks: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }

@@ -40,6 +40,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 class PreferredSolutionAnalysisScreen extends StatefulWidget {
   final String notes;
@@ -73,7 +74,6 @@ class _PreferredSolutionAnalysisScreenState
   late final OpenAiServiceSecure _openAi;
   late TabController _tabController;
   bool _isLoading = true;
-  String? _error;
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   List<_SolutionAnalysisData> _analysis = const [];
@@ -250,7 +250,6 @@ class _PreferredSolutionAnalysisScreenState
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -337,9 +336,8 @@ class _PreferredSolutionAnalysisScreenState
       _enrichAnalysisFromProjectData();
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-      });
+      debugPrint('Error loading analysis: $e');
+      showAiErrorDialog(context, error: e, onRetry: _loadAnalysis);
     } finally {
       if (mounted) {
         setState(() {
@@ -1122,10 +1120,7 @@ class _PreferredSolutionAnalysisScreenState
             if (_isUserAuthorizedToFinalize()) _buildAuthorizedBanner(),
             if (_isUserAuthorizedToFinalize()) const SizedBox(height: 12),
             if (_isLoading) _buildLoadingBlock(),
-            if (!_isLoading && _error != null) ...[
-              _buildErrorBanner(),
-              const SizedBox(height: 16),
-            ],
+
             if (!_isLoading) ...[
               _buildCardBasedView(),
               const SizedBox(height: 16),
@@ -1468,9 +1463,8 @@ class _PreferredSolutionAnalysisScreenState
       await _persistPreferredSelection(index: selectedIndex);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save preferred solution: $e')),
-        );
+        debugPrint('Failed to save preferred solution: $e');
+        showAiErrorDialog(context, error: e, onRetry: _handleBottomSelectPreferred);
       }
     } finally {
       if (mounted) {
@@ -1716,9 +1710,8 @@ class _PreferredSolutionAnalysisScreenState
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save preferred solution: $e')),
-        );
+        debugPrint('Failed to save preferred solution: $e');
+        showAiErrorDialog(context, error: e, onRetry: () => _showFinalPreferredConfirmation(index: index));
       }
     } finally {
       if (mounted) {
@@ -1847,9 +1840,8 @@ class _PreferredSolutionAnalysisScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate: $e')),
-        );
+        debugPrint('Failed to regenerate: $e');
+        showAiErrorDialog(context, error: e, onRetry: _regenerateAllAnalysis);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -2038,27 +2030,7 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
-  Widget _buildErrorBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.red.withOpacity(0.2))),
-      child: Row(children: [
-        const Icon(Icons.error_outline, color: Colors.red, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(
-                _error ?? 'Unable to refresh analysis details right now.',
-                style: const TextStyle(fontSize: 13, color: Colors.red))),
-        TextButton(
-            onPressed: _isLoading ? null : _loadAnalysis,
-            child: const Text('Retry')),
-      ]),
-    );
-  }
+
 
   // ignore: unused_element
   Widget _buildTabSection() {
@@ -3924,9 +3896,8 @@ class _PreferredSolutionAnalysisScreenState
       await _openPreferredSelectionPage(preferredIndex: index);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to select solution: $e')),
-      );
+      debugPrint('Failed to select solution: $e');
+      showAiErrorDialog(context, error: e, onRetry: () => _selectPreferredAndContinue(index: index));
     } finally {
       if (mounted) {
         setState(() {
@@ -4652,12 +4623,7 @@ class _PreferredSolutionAnalysisScreenState
                 Text('Hold on while we finish preparing the comparison.')));
         return;
       }
-      if (_error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'Comparison data is incomplete right now. Opening anyway so you can continue.')));
-      }
-      if (_error == null && _analysis.isEmpty) {
+      if (_analysis.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Opening comparison without completed analysis. You can fill this in later.')));
@@ -5714,7 +5680,6 @@ class _ProjectSelectionDialog extends StatefulWidget {
 class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
   int? _selectedIndex;
   late final TextEditingController _nameController;
-  String? _error;
   bool _nameManuallyEdited = false;
   bool _suppressNameChange = false;
 
@@ -5790,7 +5755,6 @@ class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
                   if (_suppressNameChange) return;
                   setState(() {
                     _nameManuallyEdited = true;
-                    if (_error != null) _error = null;
                   });
                 },
                 decoration: InputDecoration(
@@ -5799,7 +5763,6 @@ class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
                       'e.g. ${_selectedIndex != null ? widget.solutions[_selectedIndex!].title : 'People Operations Transformation'}',
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
-                  errorText: _error,
                 ),
               ),
               const SizedBox(height: 24),
@@ -5838,7 +5801,6 @@ class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
   void _onSelect(int index) {
     setState(() {
       _selectedIndex = index;
-      _error = null;
       if (!_nameManuallyEdited || _nameController.text.trim().isEmpty) {
         _suppressNameChange = true;
         _nameController
@@ -5854,13 +5816,13 @@ class _ProjectSelectionDialogState extends State<_ProjectSelectionDialog> {
   void _confirmSelection() {
     final index = _selectedIndex;
     if (index == null) {
-      setState(() => _error = 'Select a project first.');
+      showAiErrorDialog(context, error: Exception('Select a project first.'), customMessage: 'Select a project first.');
       return;
     }
 
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Give your project a name to continue.');
+      showAiErrorDialog(context, error: Exception('Give your project a name to continue.'), customMessage: 'Give your project a name to continue.');
       return;
     }
 

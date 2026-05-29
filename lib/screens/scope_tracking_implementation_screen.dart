@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 class ScopeTrackingImplementationScreen extends StatefulWidget {
   const ScopeTrackingImplementationScreen({super.key});
 
@@ -169,6 +170,7 @@ class _ScopeTrackingImplementationScreenState
       }
     } catch (e) {
       debugPrint('Error auto-generating scope items: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: _autoGenerateScopeItemsFromAi);
     } finally {
       _isAutoGenerating = false;
     }
@@ -208,6 +210,7 @@ class _ScopeTrackingImplementationScreenState
       }
     } catch (e) {
       debugPrint('Error auto-populating scope items: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _autoPopulateScopeItems(_scopeStatementDeliverables));
     }
   }
 
@@ -249,6 +252,7 @@ class _ScopeTrackingImplementationScreenState
       }
     } catch (e) {
       debugPrint('Error auto-generating verification steps: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _autoGenerateVerificationSteps(item));
     }
   }
 

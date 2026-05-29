@@ -26,6 +26,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 /// Front End Planning - Project Requirements page
 /// Implements the layout from the provided screenshot exactly:
 /// - Top notes field
@@ -62,7 +63,6 @@ class _FrontEndPlanningRequirementsScreenState
   DateTime? _lastAutoSaveSnackAt;
   bool _didInitialGenerationCheck = false;
   bool _showInitialGenerationSpinner = false;
-  String? _initialGenerationError;
   bool _showHorizontalScrollHint = false;
   bool _showVerticalScrollHint = false;
   List<_AssignableMember> _memberOptions = const <_AssignableMember>[];
@@ -215,7 +215,6 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
     if (mounted) {
       setState(() {
         _showInitialGenerationSpinner = true;
-        _initialGenerationError = null;
       });
     }
 
@@ -224,29 +223,26 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
     );
     if (!mounted) return;
 
-    if (generated) {
-      setState(() {
-        _showInitialGenerationSpinner = false;
-        _initialGenerationError = null;
-      });
-      return;
-    }
-
     setState(() {
       _showInitialGenerationSpinner = false;
-      _initialGenerationError =
-          'Could not auto-generate requirements. You can retry manually.';
-      if (_rows.isEmpty) {
-        _rows.add(_createRow(1, expanded: true));
-      }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Requirements generation failed. Please use "Generate with AI" to retry.',
-        ),
-      ),
-    );
+
+    if (!generated) {
+      if (_rows.isEmpty) {
+        setState(() {
+          _rows.add(_createRow(1, expanded: true));
+        });
+      }
+      if (mounted) {
+        showAiErrorDialog(
+          context,
+          error: Exception('Requirements generation failed'),
+          customMessage:
+              'Could not auto-generate requirements. You can retry manually.',
+          onRetry: () => _generateRequirementsFromContext(),
+        );
+      }
+    }
   }
 
   void _updateScrollHints() {
@@ -319,7 +315,6 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
     if (_isGeneratingRequirements) return false;
     setState(() {
       _isGeneratingRequirements = true;
-      _initialGenerationError = null;
     });
     try {
       final data = ProjectDataHelper.getData(context);
@@ -433,28 +428,36 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
         return true;
       }
       if (mounted) {
-        setState(() {
-          _initialGenerationError =
-              'AI returned no requirements. Please add a few manually or retry.';
-        });
+        showAiErrorDialog(
+          context,
+          error: Exception('No requirements returned'),
+          customMessage:
+              'AI returned no requirements. Please add a few manually or retry.',
+          onRetry: () => _generateRequirementsFromContext(),
+        );
       }
     } catch (e) {
       debugPrint('AI requirements suggestion failed: $e');
       if (mounted) {
         final message = e.toString();
-        setState(() {
-          if (message.contains('OpenAI API key') ||
-              message.contains('not configured')) {
-            _initialGenerationError =
-                'OpenAI API key is not configured. Please add a valid key in Settings to use AI.';
-          } else if (message.contains('response_format')) {
-            _initialGenerationError =
-                'AI response formatting failed. Please retry or check your OpenAI proxy configuration.';
-          } else {
-            _initialGenerationError =
-                'AI requirements suggestion failed. Please try again.';
-          }
-        });
+        String customMessage;
+        if (message.contains('OpenAI API key') ||
+            message.contains('not configured')) {
+          customMessage =
+              'OpenAI API key is not configured. Please add a valid key in Settings to use AI.';
+        } else if (message.contains('response_format')) {
+          customMessage =
+              'AI response formatting failed. Please retry or check your OpenAI proxy configuration.';
+        } else {
+          customMessage =
+              'AI requirements suggestion failed. Please try again.';
+        }
+        showAiErrorDialog(
+          context,
+          error: e,
+          customMessage: customMessage,
+          onRetry: () => _generateRequirementsFromContext(),
+        );
       }
     }
     if (mounted) {
@@ -500,8 +503,11 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
           : (picked?['requirement'] ?? '').toString().trim();
       if (nextText.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('AI returned no requirement text.')),
+          showAiErrorDialog(
+            context,
+            error: Exception('No requirement text'),
+            customMessage: 'AI returned no requirement text.',
+            onRetry: () => _regenerateRequirementRow(index),
           );
         }
         return;
@@ -560,12 +566,12 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
     } catch (e) {
       debugPrint('Row requirement regenerate failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        showAiErrorDialog(
+          context,
+          error: e,
+          customMessage:
               'Unable to regenerate this requirement right now. Please try again.',
-            ),
-          ),
+          onRetry: () => _regenerateRequirementRow(index),
         );
       }
     } finally {
@@ -842,24 +848,6 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
       );
     }
 
-    if ((_initialGenerationError ?? '').isNotEmpty && !hasAnyRowData) {
-      return _buildRequirementsEmptyState(
-        context,
-        message: _initialGenerationError!,
-        actionLabel: 'Generate with AI',
-        onAction: _isGeneratingRequirements
-            ? null
-            : () async {
-                final generated = await _generateRequirementsFromContext();
-                if (!mounted) return;
-                setState(() {
-                  _initialGenerationError =
-                      generated ? null : _initialGenerationError;
-                });
-              },
-      );
-    }
-
     if (_rows.isEmpty) {
       return _buildRequirementsEmptyState(
         context,
@@ -872,17 +860,9 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
       );
     }
 
-    final showErrorBanner =
-        (_initialGenerationError ?? '').trim().isNotEmpty && hasAnyRowData;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showErrorBanner)
-          _buildGenerationErrorBanner(
-            context,
-            message: _initialGenerationError!,
-          ),
         ..._rows.asMap().entries.map((entry) {
           final index = entry.key;
           final row = entry.value;
@@ -907,51 +887,6 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
           );
         }),
       ],
-    );
-  }
-
-  Widget _buildGenerationErrorBanner(
-    BuildContext context, {
-    required String message,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF92400E),
-                height: 1.35,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed:
-                _isGeneratingRequirements ? null : _generateRequirementsFromContext,
-            child: const Text('Retry'),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() => _initialGenerationError = null);
-            },
-            icon: const Icon(Icons.close_rounded, size: 18),
-            tooltip: 'Dismiss',
-          ),
-        ],
-      ),
     );
   }
 
@@ -1128,33 +1063,6 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
                               ),
                             ],
                           ),
-                        ),
-                      )
-                    else if ((_initialGenerationError ?? '').isNotEmpty &&
-                        _rows.every((row) =>
-                            row.descriptionController.text.trim().isEmpty))
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: Column(
-                          children: [
-                            Text(
-                              _initialGenerationError!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: Color(0xFFB91C1C),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: _isGeneratingRequirements
-                                  ? null
-                                  : () => _generateRequirementsFromContext(),
-                              icon: const Icon(Icons.auto_awesome_rounded,
-                                  size: 16),
-                              label: const Text('Generate with AI'),
-                            ),
-                          ],
                         ),
                       )
                     else ...[
@@ -1740,10 +1648,10 @@ _RequirementRow _createRow(int number, {bool expanded = false}) {
 
     final requirementItems = _buildRequirementItems();
     if (requirementItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add at least one requirement before submitting.'),
-        ),
+      showAiErrorDialog(
+        context,
+        error: Exception('Validation'),
+        customMessage: 'Add at least one requirement before submitting.',
       );
       return;
     }

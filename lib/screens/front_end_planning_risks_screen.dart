@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Project Risks page
@@ -411,6 +412,7 @@ bool get _hasAnyDefinedRisk => _rows.any((row) => row.risk.trim().isNotEmpty);
     } catch (e) {
       if (!mounted) return;
       debugPrint('Risk generation failed: $e');
+      showAiErrorDialog(context, error: e, onRetry: _generateRequirementsFromBusinessCase);
       final fallbackRows = _buildFallbackRows(
         requirements: requirements,
         preferredRiskSeeds: preferredRiskSeeds,

@@ -4,6 +4,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'dart:async';
 
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 class StaffTeamResourceGrid extends StatefulWidget {
   const StaffTeamResourceGrid({
@@ -23,7 +24,6 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
   List<StaffingRow> get _rows => widget.rows;
   List<String> _aiSuggestions = [];
   bool _loadingSuggestions = false;
-  String? _suggestionError;
 
   @override
   void initState() {
@@ -34,7 +34,6 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
   Future<void> _loadAiSuggestions() async {
     setState(() {
       _loadingSuggestions = true;
-      _suggestionError = null;
     });
 
     try {
@@ -67,10 +66,10 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _suggestionError = e.toString();
           _loadingSuggestions = false;
           _aiSuggestions = [];
         });
+        showAiErrorDialog(context, error: e, onRetry: _loadAiSuggestions);
       }
     }
   }
@@ -240,29 +239,6 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
             SizedBox(width: 12),
             Text('Loading AI suggestions...',
                 style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-          ],
-        ),
-      );
-    }
-
-    if (_suggestionError != null) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF3CD),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFFC107)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.warning_amber, color: Color(0xFFFF9800), size: 18),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Could not load AI suggestions: $_suggestionError',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF856404)),
-              ),
-            ),
           ],
         ),
       );

@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_intelligence_service.dart';
+import 'package:ndu_project/services/scope_traceability_service.dart';
 
 /// Provider that manages project data state across the entire application
 class ProjectDataProvider extends ChangeNotifier {
@@ -111,6 +112,14 @@ class ProjectDataProvider extends ChangeNotifier {
     _lastError = null;
 
     try {
+      // G2 Fix: Before saving, recompute aggregate EVM metrics from control
+      // accounts so the project document always has up-to-date rollup values.
+      // This is a safety net — ControlAccountProvider also calls this, but
+      // there may be code paths that modify control accounts directly.
+      if (_projectData.controlAccounts.isNotEmpty) {
+        _projectData = _projectData.computeAggregateEvm();
+      }
+
       _projectData =
           ProjectIntelligenceService.rebuildActivityLog(_projectData);
       final user = FirebaseAuth.instance.currentUser;
@@ -630,6 +639,33 @@ class ProjectDataProvider extends ChangeNotifier {
   /// Update cost benefit currency
   void updateCostBenefitCurrency(String currency) {
     _projectData = _projectData.copyWith(costBenefitCurrency: currency);
+    notifyListeners();
+    _markDirty();
+  }
+
+  /// G4 Fix: Run scope traceability auto-link and persist the results.
+  ///
+  /// Links [ScopeTrackingItem]s to their corresponding WBS, CBS, OBS, and
+  /// control account elements based on matching rules. The updated items
+  /// with populated cross-references are written back to [ProjectDataModel]
+  /// and persisted to Firestore.
+  void autoLinkScopeTraceability() {
+    final scopeItems = _projectData.scopeTrackingItems;
+    if (scopeItems.isEmpty) return;
+
+    // Import and use the service inline to avoid top-level import cycle
+    // (ScopeTraceabilityService is a pure static service, no DI needed).
+    final updatedItems = ScopeTraceabilityService.autoLink(
+      scopeItems: scopeItems,
+      activities: _projectData.scheduleActivities,
+      workPackages: _projectData.workPackages,
+      controlAccounts: _projectData.controlAccounts,
+      cbsElements: _projectData.cbsElements,
+      obsElements: _projectData.obsElements,
+      wbsTree: _projectData.wbsTree,
+    );
+
+    _projectData = _projectData.copyWith(scopeTrackingItems: updatedItems);
     notifyListeners();
     _markDirty();
   }

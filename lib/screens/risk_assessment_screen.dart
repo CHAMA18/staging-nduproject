@@ -15,6 +15,7 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'dart:math' as math;
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
@@ -731,21 +732,19 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
         await _persistMitigationPlans();
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('AI did not return a mitigation plan.'),
-              backgroundColor: Colors.orange,
-            ),
+          showAiErrorDialog(
+            context,
+            error: Exception('AI did not return a mitigation plan'),
+            customMessage: 'AI did not return a mitigation plan.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to regenerate mitigation plan: $e'),
-            backgroundColor: Colors.red,
-          ),
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: () => _regenerateMitigationForEntry(entry),
         );
       }
     } finally {

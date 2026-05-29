@@ -22,6 +22,7 @@ import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Project Opportunities page
@@ -512,12 +513,7 @@ Opportunity generation constraints:
       // On error, use fallback opportunities
       _useFallbackOpportunities();
       if (!autoTriggered && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Opportunity generation failed. Using fallback suggestions.'),
-          ),
-        );
+        showAiErrorDialog(context, error: e, onRetry: () => _generateOpportunitiesFromContext(autoTriggered: false));
       }
     } finally {
       if (mounted) {

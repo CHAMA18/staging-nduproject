@@ -12,6 +12,7 @@ import 'package:ndu_project/screens/scope_completion_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
@@ -320,6 +321,9 @@ class _RiskTrackingWorkspaceScreenState
       _saveToFirestore();
     } catch (e) {
       debugPrint('AI generation failed: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () => _generateAiDrafts());
+      }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }

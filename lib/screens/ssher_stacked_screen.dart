@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/unified_phase_header.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/ssher_export_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -186,6 +187,9 @@ class _SsherStackedScreenState extends State<SsherStackedScreen>
           .generateSsherEntries(context: contextText, itemsPerCategory: 2);
     } catch (error) {
       debugPrint('SSHER entries AI call failed: $error');
+      if (mounted) {
+        showAiErrorDialog(context, error: error, onRetry: _populateSsherEntriesFromAi);
+      }
     }
 
     if (!mounted) return;
@@ -261,6 +265,9 @@ class _SsherStackedScreenState extends State<SsherStackedScreen>
           .generateSsherPlanSummary(context: contextText);
     } catch (error) {
       debugPrint('SSHER summary AI call failed: $error');
+      if (mounted) {
+        showAiErrorDialog(context, error: error, onRetry: _populateSsherSummaryFromAi);
+      }
     }
 
     if (!mounted) return;
@@ -1576,7 +1583,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'AI-generated SSHER Summary Unavailable',
+                    'SSHER Summary',
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

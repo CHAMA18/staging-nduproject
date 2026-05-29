@@ -43,6 +43,7 @@ import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 class CostAnalysisScreen extends StatefulWidget {
   final String notes;
@@ -262,8 +263,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   ];
   // Basis frequency for tracker table (Annual vs Monthly)
   String _trackerBasisFrequency = 'Annual';
-  String? _error;
-  String? _projectValueError;
   int _npvHorizon = 5;
   double _discountRate = 0.10; // Default 10% discount rate for NPV calculations
   static const List<double> _discountRateOptions = [0.08, 0.10, 0.12];
@@ -2002,10 +2001,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     switch (index) {
       case 0:
-        if (_projectValueError != null) {
-          children.add(_errorBanner(_projectValueError!,
-              onRetry: _isGeneratingValue ? null : _generateProjectValue));
-        }
         children.add(_stepHeading(
             title: stepDefinition.title, subtitle: stepDefinition.subtitle));
         children.add(_buildProjectValueSection());
@@ -2015,10 +2010,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         // Initial Cost Estimate as Step 2
         children.add(_stepHeading(
             title: stepDefinition.title, subtitle: stepDefinition.subtitle));
-        if (_error != null) {
-          children.add(_errorBanner(_error!,
-              onRetry: _isGenerating ? null : _generateCostBreakdown));
-        }
         if (_isGenerating) {
           children.add(const LinearProgressIndicator(minHeight: 2));
           children.add(const SizedBox(height: 12));
@@ -7161,30 +7152,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
-  Widget _errorBanner(String message, {VoidCallback? onRetry}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
-      ),
-      child: Row(children: [
-        const Icon(Icons.error_outline, color: Colors.red, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(message,
-                style: const TextStyle(color: Colors.red, fontSize: 12))),
-        if (onRetry != null)
-          TextButton(
-              onPressed: onRetry,
-              child: const Text('Retry', style: TextStyle(fontSize: 12))),
-      ]),
-    );
-  }
-
   String _formatCurrencyValue(double value) {
     final prefix = value < 0 ? '-' : '';
     final formatted = _formatNumber(value.abs());
@@ -7835,7 +7802,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (!mounted) return;
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
     try {
       final scopedSolutions = targetSolution == null
@@ -7875,9 +7841,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-      });
+      debugPrint('AI cost population failed: $e');
+      showAiErrorDialog(context, error: e, onRetry: () => _populateCategoriesFromAi(targetSolution: targetSolution));
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
@@ -8398,7 +8363,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (!mounted) return;
     setState(() {
       _isGeneratingValue = true;
-      _projectValueError = null;
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
@@ -8498,13 +8462,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       _markDirty();
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _projectValueError = e.toString();
-      });
+      debugPrint('Failed to regenerate project value: $e');
       if (showFeedback && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate project value: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: () => _generateProjectValue(forSolution: forSolution, showFeedback: showFeedback));
       }
     } finally {
       if (mounted) {
@@ -8633,11 +8593,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       return null;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate suggestion: ${e.toString()}'),
-          ),
-        );
+        showAiErrorDialog(context, error: e);
       }
       return null;
     }
@@ -8665,7 +8621,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (!mounted) return;
     setState(() {
       _solutionLoading.add(index);
-      _error = null;
     });
     try {
       final map = await _openAi.generateCostBreakdownForSolutions(
@@ -8700,9 +8655,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
         _solutionLoading.remove(index);
       });
+      showAiErrorDialog(context, error: e, onRetry: () => _generateCostBreakdownForSolution(index, showFeedback: showFeedback, persist: persist));
     }
   }
 
@@ -8711,7 +8666,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (!mounted) return;
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
     try {
       for (int i = 0; i < _rowsPerSolution.length; i++) {

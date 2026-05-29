@@ -17,6 +17,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Allowance screen
 /// Refactored to support structured "Program-Aware Financial Inputs".
@@ -215,11 +216,8 @@ class _FrontEndPlanningAllowanceScreenState
         _syncItemsToProvider();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating allowances: $e')),
-        );
-      }
+      debugPrint('Error generating allowances: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: _generateDefaultAllowances);
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

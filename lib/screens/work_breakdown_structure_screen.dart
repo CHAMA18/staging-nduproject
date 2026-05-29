@@ -21,6 +21,7 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 const Color _kSurfaceBackground = Color(0xFFFCFCFC);
 const Color _kAccentColor = Color(0xFFFFC107);
 const Color _kPrimaryText = Color(0xFF212529);
@@ -502,10 +503,9 @@ void _migrateFromGoalsToTree(List<List<WorkItem>> goalWorkItems) {
         }
       }
     } catch (e) {
+      debugPrint('AI WBS generation failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate suggest structure: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _handleGenerateWbsAi);
       }
     } finally {
       if (mounted) {

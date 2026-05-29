@@ -7,6 +7,7 @@ import 'package:ndu_project/services/voice_input_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Debouncer utility to limit API calls while typing
@@ -352,11 +353,14 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        final warning = OpenAiConfig.configurationWarning();
-        _error = warning ??
-            'Unable to auto-generate right now. You can continue typing or use AI suggest.';
-      });
+      final warning = OpenAiConfig.configurationWarning();
+      if (warning != null) {
+        // Configuration hint — keep as gentle inline message
+        setState(() { _error = warning; });
+      } else {
+        // Actual AI exception — show error dialog
+        showAiErrorDialog(context, error: e, onRetry: _maybeAutoGenerate);
+      }
     } finally {
       if (!mounted) {
         _autoGenerating = false;
@@ -434,21 +438,26 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       _recordAiUsage();
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        // Check if OpenAI is configured
-        if (!OpenAiConfig.isConfigured) {
+      // Configuration hints — keep as gentle inline messages
+      if (!OpenAiConfig.isConfigured) {
+        setState(() {
           _error =
               'OpenAI API key not configured. Please add your API key to enable AI suggestions.';
-        } else {
-          final warn = OpenAiConfig.configurationWarning();
-          if (warn != null) {
+          _loading = false;
+        });
+      } else {
+        final warn = OpenAiConfig.configurationWarning();
+        if (warn != null) {
+          setState(() {
             _error = warn;
-          } else {
-            _error = 'AI suggestions unavailable. Please try again.';
-          }
+            _loading = false;
+          });
+        } else {
+          // Actual AI exception — show error dialog
+          setState(() { _loading = false; });
+          showAiErrorDialog(context, error: e, onRetry: _fetchSuggestions);
         }
-        _loading = false;
-      });
+      }
     }
   }
 

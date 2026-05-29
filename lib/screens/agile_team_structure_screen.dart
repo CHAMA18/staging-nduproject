@@ -14,6 +14,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
@@ -52,6 +53,7 @@ class _AgileTeamStructureScreenState
   final Map<String, List<TextEditingController>> _teamControllers = {};
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _pendingSave = false;
   bool _isGenerating = false;
   Timer? _autoSaveDebounce;
 
@@ -131,7 +133,7 @@ class _AgileTeamStructureScreenState
   }
 
   Future<void> _performSave() async {
-    if (_isSaving) return;
+    if (_isSaving) { _pendingSave = true; return; }
     setState(() => _isSaving = true);
     try {
       await _saveData();
@@ -143,6 +145,7 @@ class _AgileTeamStructureScreenState
       }
     } catch (e) { debugPrint('Error: $e'); }
     if (mounted) setState(() => _isSaving = false);
+    if (_pendingSave) { _pendingSave = false; _performSave(); }
   }
 
   Future<void> _saveData() async {
@@ -204,16 +207,16 @@ class _AgileTeamStructureScreenState
         _performSave();
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('AI did not return valid team data. Try again.')),
+          showAiErrorDialog(
+            context,
+            error: Exception('AI did not return valid team data'),
+            customMessage: 'AI did not return valid team data. Try again.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI generation failed: ${e.toString()}')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateWithAI);
       }
     }
     if (mounted) setState(() => _isGenerating = false);

@@ -7,6 +7,7 @@ import 'package:ndu_project/models/cbs_element_model.dart';
 import 'package:ndu_project/models/obs_element_model.dart';
 import 'package:ndu_project/models/scope_tracking_item.dart';
 import 'package:ndu_project/services/control_account_service.dart';
+import 'package:ndu_project/services/evm_snapshot_service.dart';
 
 class BaselineManagementService {
   static CollectionReference<Map<String, dynamic>>? _tryCollection() {
@@ -320,6 +321,20 @@ class BaselineManagementService {
       'projectId': projectId,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // G3 Fix: Capture an EVM snapshot alongside every baseline for trend charts.
+    // This ensures the evm_snapshots collection is populated whenever a
+    // baseline is captured, enabling S-curve and CPI/SPI trend analysis.
+    try {
+      await EvmSnapshotService.captureSnapshot(
+        projectId: projectId,
+        data: projectData,
+        source: 'baseline_v$versionNumber',
+      );
+    } catch (e) {
+      debugPrint('EvmSnapshotService.captureSnapshot failed during baseline capture: $e');
+      // Non-critical — don't fail the baseline capture if snapshot fails
+    }
 
     return baseline.id;
   }

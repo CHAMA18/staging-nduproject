@@ -19,6 +19,7 @@ import 'package:ndu_project/utils/csv_import_helper.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 /// ────────────────────────────────────────────────────────────────
 /// Design Specifications Screen
 ///
@@ -322,6 +323,9 @@ Future<void> _loadComponents() async {
       }
     } catch (e) {
       debugPrint('Error auto-generating design components: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }

@@ -19,6 +19,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Security screen
 /// Mirrors the provided layout with shared workspace chrome,
@@ -159,6 +160,7 @@ Future<void> _triggerAutoSecurityGenerationIfMissing() async {
           }
         } catch (e) {
           debugPrint('Error generating security content: $e');
+          if (mounted) showAiErrorDialog(context, error: e, onRetry: _generateSecurityContent);
           // Use fallback content
           if (mounted) {
             setState(() {
@@ -180,6 +182,7 @@ Future<void> _triggerAutoSecurityGenerationIfMissing() async {
       await _triggerAutoSecurityRolesPermissionsIfMissing();
     } catch (e) {
       debugPrint('Error in security generation: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: _generateSecurityContent);
       // Use fallback content
       if (mounted) {
         final data = ProjectDataHelper.getData(context);
@@ -254,6 +257,7 @@ Future<void> _triggerAutoSecurityGenerationIfMissing() async {
       }
     } catch (e) {
       debugPrint('Error generating security roles/permissions: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: _generateSecurityRolesPermissions);
     } finally {
       _isGeneratingRolesPermissions = false;
     }

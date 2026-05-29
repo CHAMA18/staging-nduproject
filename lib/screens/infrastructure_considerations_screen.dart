@@ -37,6 +37,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 enum _MissingInfrastructureAction { manual, autoFill, skip }
 
@@ -255,9 +256,7 @@ class _InfrastructureConsiderationsScreenState
     } catch (e) {
       debugPrint('Error generating infrastructure considerations: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate infrastructure: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateInfrastructure);
       }
     } finally {
       if (mounted) setState(() => _isGeneratingInfra = false);
@@ -304,9 +303,7 @@ class _InfrastructureConsiderationsScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _regenerateAllInfrastructure);
       }
     } finally {
       if (mounted) setState(() => _isGeneratingInfra = false);
@@ -1555,9 +1552,7 @@ class _InfrastructureConsiderationsScreenState
       return true;
     } catch (e) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI autofill failed: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _autoFillInfrastructureWithConfirmation);
       return false;
     } finally {
       if (mounted) setState(() => _isGeneratingInfra = false);
@@ -1935,9 +1930,7 @@ class _InfrastructureConsiderationsScreenState
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Failed to regenerate: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: () => _regenerateSingleInfraField(controller, index));
       }
     }
   }

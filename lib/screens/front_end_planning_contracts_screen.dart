@@ -17,6 +17,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 const String _contractingCollection = 'contracting';
@@ -1380,6 +1381,7 @@ class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
       );
     } catch (error) {
       debugPrint('Strategy AI call failed: $error');
+      if (mounted) showAiErrorDialog(context, error: error, onRetry: _populateStrategyFromAi);
     }
 
     if (!mounted) return;
@@ -2898,9 +2900,7 @@ class _CollapsibleAiTextCardState extends State<_CollapsibleAiTextCard> {
       _handleChanged(_controller.text);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to regenerate: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _handleRegenerate);
     } finally {
       if (mounted) setState(() => _isRegenerating = false);
     }
@@ -4166,6 +4166,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
       );
     } catch (error) {
       debugPrint('Details AI call failed: $error');
+      if (mounted) showAiErrorDialog(context, error: error, onRetry: _populateDetailsFromAi);
     }
 
     if (!mounted) return;
@@ -4620,6 +4621,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
       );
     } catch (error) {
       debugPrint('Status AI call failed: $error');
+      if (mounted) showAiErrorDialog(context, error: error, onRetry: _populateStatusFromAi);
     }
 
     if (!mounted) return;
@@ -5209,6 +5211,7 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
       );
     } catch (error) {
       debugPrint('Summary AI call failed: $error');
+      if (mounted) showAiErrorDialog(context, error: error, onRetry: _populateSummaryFromAi);
     }
 
     if (!mounted) return;

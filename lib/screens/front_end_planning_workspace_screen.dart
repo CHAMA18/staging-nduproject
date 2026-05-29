@@ -19,6 +19,7 @@ import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Details (Scope, Assumptions, Constraints)
 ///
@@ -406,11 +407,8 @@ class _FrontEndPlanningWorkspaceScreenState
         await _showAiGeneratedNotice();
       }
     } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Error generating items: $e')),
-        );
-      }
+      debugPrint('Error generating items: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _generateList(type, sectionLabel));
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

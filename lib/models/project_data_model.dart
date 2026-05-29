@@ -5,6 +5,7 @@ import 'package:ndu_project/models/staffing_row.dart';
 import 'package:ndu_project/models/control_account_model.dart';
 import 'package:ndu_project/models/obs_element_model.dart';
 import 'package:ndu_project/models/cbs_element_model.dart';
+import 'package:ndu_project/models/scope_tracking_item.dart';
 
 /// Comprehensive project data model that captures all information across the application flow
 class ProjectDataModel {
@@ -188,6 +189,9 @@ class ProjectDataModel {
   List<ObsElement> obsElements;
   List<CbsElement> cbsElements;
 
+  // Scope Tracking Items (populated by ScopeTraceabilityService.autoLink)
+  List<ScopeTrackingItem> scopeTrackingItems;
+
   // ── P2.5: Project-level EVM aggregate fields ──
   /// Aggregate Budget at Completion (sum of all control account BACs).
   double aggregateBac;
@@ -336,6 +340,7 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    List<ScopeTrackingItem>? scopeTrackingItems,
     this.aggregateBac = 0,
     this.aggregatePlannedValue = 0,
     this.aggregateEarnedValue = 0,
@@ -387,6 +392,7 @@ class ProjectDataModel {
         controlAccounts = controlAccounts ?? [],
         obsElements = obsElements ?? [],
         cbsElements = cbsElements ?? [],
+        scopeTrackingItems = scopeTrackingItems ?? [],
         designDeliverablesData =
             designDeliverablesData ?? DesignDeliverablesData(),
         projectRoles = projectRoles ?? [],
@@ -512,6 +518,7 @@ class ProjectDataModel {
     List<ControlAccount>? controlAccounts,
     List<ObsElement>? obsElements,
     List<CbsElement>? cbsElements,
+    List<ScopeTrackingItem>? scopeTrackingItems,
     double? aggregateBac,
     double? aggregatePlannedValue,
     double? aggregateEarnedValue,
@@ -665,6 +672,7 @@ class ProjectDataModel {
       controlAccounts: controlAccounts ?? this.controlAccounts,
       obsElements: obsElements ?? this.obsElements,
       cbsElements: cbsElements ?? this.cbsElements,
+      scopeTrackingItems: scopeTrackingItems ?? this.scopeTrackingItems,
       aggregateBac: aggregateBac ?? this.aggregateBac,
       aggregatePlannedValue: aggregatePlannedValue ?? this.aggregatePlannedValue,
       aggregateEarnedValue: aggregateEarnedValue ?? this.aggregateEarnedValue,
@@ -831,6 +839,7 @@ class ProjectDataModel {
       'controlAccounts': controlAccounts.map((ca) => ca.toJson()).toList(),
       'obsElements': obsElements.map((o) => o.toJson()).toList(),
       'cbsElements': cbsElements.map((c) => c.toJson()).toList(),
+      'scopeTrackingItems': scopeTrackingItems.map((s) => s.toJson()).toList(),
       'aggregateBac': aggregateBac,
       'aggregatePlannedValue': aggregatePlannedValue,
       'aggregateEarnedValue': aggregateEarnedValue,
@@ -1163,6 +1172,7 @@ class ProjectDataModel {
           safeParseList('controlAccounts', ControlAccount.fromJson),
       obsElements: safeParseList('obsElements', ObsElement.fromJson),
       cbsElements: safeParseList('cbsElements', CbsElement.fromJson),
+      scopeTrackingItems: safeParseList('scopeTrackingItems', ScopeTrackingItem.fromJson),
       aggregateBac: (json['aggregateBac'] is num) ? (json['aggregateBac'] as num).toDouble() : 0.0,
       aggregatePlannedValue: (json['aggregatePlannedValue'] is num) ? (json['aggregatePlannedValue'] as num).toDouble() : 0.0,
       aggregateEarnedValue: (json['aggregateEarnedValue'] is num) ? (json['aggregateEarnedValue'] as num).toDouble() : 0.0,

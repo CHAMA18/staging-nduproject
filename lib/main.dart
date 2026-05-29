@@ -11,6 +11,7 @@ import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/user_preferences_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
+import 'package:ndu_project/providers/control_account_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/platform/webview_platform_setup.dart';
@@ -137,6 +138,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProjectDataProvider()),
+        ChangeNotifierProvider(create: (_) => ControlAccountProvider()),
         ChangeNotifierProvider(
             create: (_) => AppContentProvider()
               ..watchContent()
@@ -146,6 +148,12 @@ class MyApp extends StatelessWidget {
         builder: (context) {
           final projectProvider =
               Provider.of<ProjectDataProvider>(context, listen: false);
+          // Wire ControlAccountProvider to ProjectDataProvider for persistence
+          final controlAccountProvider =
+              Provider.of<ControlAccountProvider>(context, listen: false);
+          controlAccountProvider.setProjectDataProvider(projectProvider);
+          // Load control accounts from project data
+          controlAccountProvider.loadFromProjectData(projectProvider.projectData);
           return ProjectDataInherited(
             provider: projectProvider,
             child: MaterialApp.router(

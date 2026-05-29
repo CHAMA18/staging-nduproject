@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/utils/csv_import_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class LaunchChecklistScreen extends StatefulWidget {
@@ -225,6 +226,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       }
     } catch (e) {
       debugPrint('Launch checklist auto-populate error: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoPopulateFromPriorPhases);
+      }
     }
   }
 
@@ -252,6 +256,11 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       );
     } catch (e) {
       debugPrint('Launch checklist AI error: $e');
+      if (mounted) {
+        setState(() => _isGenerating = false);
+        await showAiErrorDialog(context, error: e, onRetry: _populateFromAi);
+        return;
+      }
     }
     if (!mounted) return;
 

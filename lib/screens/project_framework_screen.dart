@@ -25,6 +25,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 class _Tokens {
@@ -295,6 +296,12 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       );
     } catch (e) {
       debugPrint('Error generating project objective summary: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () {
+          _objectiveGenerationAttempted = false;
+          _ensureProjectObjectiveSummary(ProjectDataHelper.getData(context));
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isGeneratingObjective = false);
@@ -389,6 +396,12 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       );
     } catch (e) {
       debugPrint('Error generating project goals: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () {
+          _goalsGenerationAttempted = false;
+          _ensureProjectGoalsFromContext(ProjectDataHelper.getData(context));
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isGeneratingGoals = false);

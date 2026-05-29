@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 const Color _kBackground = Color(0xFFF9FAFC);
 const Color _kBorder = Color(0xFFE5E7EB);
@@ -162,8 +163,10 @@ class _AgileEpicsFeaturesScreenState
       final parsed = _parseEpicGeneration(result);
       if (parsed.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('AI did not return valid epics. Try again.')),
+          showAiErrorDialog(
+            context,
+            error: Exception('AI did not return valid epics'),
+            customMessage: 'AI did not return valid epics. Try again.',
           );
         }
       } else {
@@ -174,9 +177,7 @@ class _AgileEpicsFeaturesScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI generation failed: ${e.toString()}')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateEpics);
       }
     }
     if (mounted) setState(() => _isGenerating = false);

@@ -7,6 +7,7 @@ import 'package:ndu_project/screens/progress_tracking_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -167,6 +168,9 @@ class _TeamMeetingsScreenState extends State<TeamMeetingsScreen> {
       await _persistChanges();
     } catch (e) {
       debugPrint('Error auto-generating team meetings data: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }

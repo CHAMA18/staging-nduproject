@@ -12,6 +12,7 @@ import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_data_table.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
@@ -264,6 +265,9 @@ class _IdentifyStaffOpsTeamScreenState
       );
     } catch (error) {
       debugPrint('Ops team AI call failed: $error');
+      if (mounted) {
+        showAiErrorDialog(context, error: error, onRetry: _autoPopulateIfNeeded);
+      }
     }
 
     if (!mounted) return;

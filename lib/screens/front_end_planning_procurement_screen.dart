@@ -32,6 +32,7 @@ import 'package:ndu_project/widgets/procurement/procurement_items_list_view.dart
 import 'package:ndu_project/widgets/procurement/procurement_vendor_management.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 enum ProcurementScreenMode { fep, planning }
@@ -1613,6 +1614,7 @@ class _FrontEndPlanningProcurementScreenState
       // Trackable items are just items with status. No need to seed separately if items cover it.
     } catch (e) {
       debugPrint('Error seeding procurement data: $e');
+      if (mounted) showAiErrorDialog(context, error: e);
     } finally {
       if (mounted) {
         setState(() => _isGeneratingData = false);
@@ -1757,6 +1759,7 @@ class _FrontEndPlanningProcurementScreenState
         }
       } catch (e) {
         debugPrint('AI generation failed, using fallback: $e');
+        if (mounted) showAiErrorDialog(context, error: e);
         // Fallback
         for (int i = 0; i < categories.length; i++) {
           resultList.add(ProcurementItemModel(
@@ -1788,6 +1791,7 @@ class _FrontEndPlanningProcurementScreenState
       }
     } catch (e) {
       debugPrint('Error seeding items: $e');
+      if (mounted) showAiErrorDialog(context, error: e);
     }
   }
 
@@ -1932,6 +1936,7 @@ class _FrontEndPlanningProcurementScreenState
       }
     } catch (e) {
       debugPrint('Error seeding vendors: $e');
+      if (mounted) showAiErrorDialog(context, error: e);
     }
   }
 

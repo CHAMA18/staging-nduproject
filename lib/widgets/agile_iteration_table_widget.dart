@@ -6,6 +6,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/inline_editable_text.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
 /// Custom Agile Iteration Table with inline editing, CRUD actions, and AI capabilities
@@ -386,6 +387,9 @@ class _AgileTaskRowWidgetState extends State<_AgileTaskRowWidget> {
       }
     } catch (e) {
       debugPrint('Error regenerating task description: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _regenerateTaskDescription);
+      }
     } finally {
       if (mounted) {
         setState(() => _isRegenerating = false);

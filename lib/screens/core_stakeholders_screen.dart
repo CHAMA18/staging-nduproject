@@ -36,6 +36,7 @@ import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 
@@ -74,7 +75,6 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   late final List<AiSolutionItem> _solutions; // Local mutable list
   late final OpenAiServiceSecure _openAi;
   bool _isGenerating = false;
-  String? _error;
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _isAdmin = false;
@@ -841,36 +841,6 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Error display
-                      if (_error != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                  color: Colors.red.withOpacity(0.3))),
-                          child: Row(children: [
-                            const Icon(Icons.error_outline,
-                                color: Colors.red, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: Text(_error!,
-                                    style: const TextStyle(
-                                        color: Colors.red, fontSize: 12),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis)),
-                            TextButton(
-                                onPressed: _isGenerating
-                                    ? null
-                                    : _generateStakeholders,
-                                child: const Text('Retry')),
-                          ]),
-                        ),
-                      ],
                       if (_isGenerating)
                         const LinearProgressIndicator(minHeight: 2),
 
@@ -1331,20 +1301,19 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     if (_isGenerating) return false;
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
 
     try {
       final previewRows = await _buildStakeholderAutofillPreview();
       if (!mounted) return false;
       if (previewRows.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'AI could not generate stakeholder suggestions. Add an entry manually or try again.',
-            ),
-          ),
-        );
+        if (mounted) {
+          showAiErrorDialog(
+            context,
+            error: Exception('AI could not generate stakeholder suggestions.'),
+            customMessage: 'AI could not generate stakeholder suggestions. Add an entry manually or try again.',
+          );
+        }
         return false;
       }
 
@@ -1400,11 +1369,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI autofill failed: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _autoFillStakeholdersWithConfirmation);
       return false;
     } finally {
       if (mounted) {
@@ -1862,8 +1828,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      messenger
-          .showSnackBar(SnackBar(content: Text('Failed to regenerate: $e')));
+      showAiErrorDialog(context, error: e, onRetry: () => _regenerateSingleStakeholderField(controller, index, isInternal));
     }
   }
 
@@ -1872,7 +1837,6 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
@@ -1920,11 +1884,14 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       }
 
       if (solutionsToUse.isEmpty) {
-        setState(() {
-          _error =
-              'Please add at least one solution or project name to generate stakeholders.';
-          _isGenerating = false;
-        });
+        if (mounted) {
+          showAiErrorDialog(
+            context,
+            error: Exception('Please add at least one solution or project name to generate stakeholders.'),
+            customMessage: 'Please add at least one solution or project name to generate stakeholders.',
+          );
+        }
+        setState(() => _isGenerating = false);
         return;
       }
 
@@ -1973,11 +1940,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         const SnackBar(content: Text('Stakeholders regenerated successfully')),
       );
     } catch (e) {
-      _error = e.toString();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to regenerate stakeholders: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _generateStakeholders);
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

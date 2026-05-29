@@ -23,6 +23,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 class CostEstimateScreen extends StatefulWidget {
   const CostEstimateScreen({super.key});
 
@@ -7427,7 +7428,6 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
   bool _loading = false;
   List<CostEstimateItem> _suggestions = [];
   final Set<int> _selectedIndices = {};
-  String? _error;
 
   @override
   void initState() {
@@ -7438,7 +7438,6 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
   Future<void> _fetchSuggestions() async {
     setState(() {
       _loading = true;
-      _error = null;
       _suggestions = [];
       _selectedIndices.clear();
     });
@@ -7456,10 +7455,8 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception:', '').trim();
-          _loading = false;
-        });
+        setState(() { _loading = false; });
+        showAiErrorDialog(context, error: e, onRetry: _fetchSuggestions);
       }
     }
   }
@@ -7557,34 +7554,7 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
                         ),
                       ),
                     )
-                  : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.error_outline,
-                                    size: 48, color: Color(0xFFEF4444)),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _error!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      color: Color(0xFF1E293B),
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(height: 24),
-                                FilledButton.icon(
-                                  onPressed: _fetchSuggestions,
-                                  icon: const Icon(Icons.refresh),
-                                  label: const Text('Try Again'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : _suggestions.isEmpty
+                  : _suggestions.isEmpty
                           ? const Center(
                               child: Padding(
                                 padding: EdgeInsets.all(40),

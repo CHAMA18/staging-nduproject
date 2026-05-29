@@ -83,7 +83,7 @@ class _StartUpPlanningDetailScreenState
 
   @override
   void dispose() {
-    _debouncer.dispose();
+    _debouncer.flush(); // G5 Fix: persist pending changes before disposal
     super.dispose();
   }
 
@@ -1584,4 +1584,4 @@ class _RegisterRow extends StatelessWidget {
 Widget _registerField(String label, String initialValue, ValueChanged<String> onChanged) => SizedBox(width: 180, child: VoiceTextFormField(initialValue: initialValue, decoration: _fieldDecoration(label), onChanged: onChanged));
 InputDecoration _fieldDecoration(String hintText)=>InputDecoration(hintText:hintText,isDense:true,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:const BorderSide(color:Color(0xFFE5E7EB))),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:const BorderSide(color:Color(0xFFE5E7EB))));
 class _StatusChip extends StatelessWidget { const _StatusChip({required this.label,required this.color,this.background}); final String label; final Color color; final Color? background; @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),decoration:BoxDecoration(color:background??color.withOpacity(0.12),borderRadius:BorderRadius.circular(999)),child:Text(label,style:TextStyle(fontSize:11,fontWeight:FontWeight.w600,color:color))); }
-class _Debouncer { _Debouncer({Duration? delay}):delay=delay??const Duration(milliseconds:700); final Duration delay; Timer? _timer; void run(void Function() action){_timer?.cancel();_timer=Timer(delay,action);} void dispose(){_timer?.cancel();} }
+class _Debouncer { _Debouncer({Duration? delay}):delay=delay??const Duration(milliseconds:700); final Duration delay; Timer? _timer; void Function()? _pendingAction; void run(void Function() action){_timer?.cancel();_pendingAction=action;_timer=Timer(delay,(){_pendingAction=null;action();});} void flush(){final action=_pendingAction;_timer?.cancel();_timer=null;_pendingAction=null;if(action!=null)action();} void dispose(){_timer?.cancel();_timer=null;_pendingAction=null;} }

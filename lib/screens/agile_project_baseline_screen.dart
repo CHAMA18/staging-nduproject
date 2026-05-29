@@ -121,7 +121,7 @@ class _AgileProjectBaselineScreenState
 
   @override
   void dispose() {
-    _saveDebouncer.dispose();
+    _saveDebouncer.flush(); // G5 Fix: persist pending changes before disposal
     _approverFocusNode.dispose();
     for (final controller in _allControllers) {
       controller.dispose();
@@ -2001,13 +2001,31 @@ class _Debouncer {
   static const Duration _duration = Duration(milliseconds: 700);
 
   Timer? _timer;
+  Future<void> Function()? _pendingAction;
 
   void run(Future<void> Function() action) {
     _timer?.cancel();
-    _timer = Timer(_duration, () => action());
+    _pendingAction = action;
+    _timer = Timer(_duration, () {
+      _pendingAction = null;
+      action();
+    });
+  }
+
+  /// G5 Fix: Execute any pending debounced action immediately.
+  /// Call this in dispose() to ensure in-flight edits are persisted
+  /// before the widget is removed from the tree.
+  void flush() {
+    final action = _pendingAction;
+    _timer?.cancel();
+    _timer = null;
+    _pendingAction = null;
+    if (action != null) action();
   }
 
   void dispose() {
     _timer?.cancel();
+    _timer = null;
+    _pendingAction = null;
   }
 }

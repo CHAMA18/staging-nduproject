@@ -38,6 +38,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 enum _MissingItConsiderationsAction { manual, autoFill, skip }
 
@@ -70,7 +71,6 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
   late final List<AiSolutionItem> _solutions; // Local mutable list
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
   bool _isGenerating = false;
-  String? _error;
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _frontEndExpanded = true;
@@ -236,7 +236,6 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     if (_isGenerating) return;
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
@@ -274,11 +273,14 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       }
 
       if (solutionsToUse.isEmpty) {
-        setState(() {
-          _error =
-              'Please add at least one solution or project name to generate IT considerations.';
-          _isGenerating = false;
-        });
+        if (mounted) {
+          showAiErrorDialog(
+            context,
+            error: Exception('Please add at least one solution or project name to generate IT considerations.'),
+            customMessage: 'Please add at least one solution or project name to generate IT considerations.',
+          );
+        }
+        setState(() => _isGenerating = false);
         return;
       }
 
@@ -317,11 +319,8 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         );
       }
     } catch (e) {
-      _error = e.toString();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate IT considerations: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateTechnologies);
       }
     } finally {
       if (mounted) {
@@ -1232,7 +1231,6 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     if (_isGenerating) return false;
     setState(() {
       _isGenerating = true;
-      _error = null;
     });
 
     try {
@@ -1240,13 +1238,13 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       if (!mounted) return false;
 
       if (previewRows.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'AI could not generate IT suggestions. Add an entry manually or try again.',
-            ),
-          ),
-        );
+        if (mounted) {
+          showAiErrorDialog(
+            context,
+            error: Exception('AI could not generate IT suggestions.'),
+            customMessage: 'AI could not generate IT suggestions. Add an entry manually or try again.',
+          );
+        }
         return false;
       }
 
@@ -1292,11 +1290,8 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI autofill failed: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _autoFillItWithConfirmation);
       return false;
     } finally {
       if (mounted) {
@@ -1553,34 +1548,6 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          if (_error != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.red.withOpacity(0.3))),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(_error!,
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                          maxLines: 5,
-                          overflow: TextOverflow.ellipsis)),
-                ]),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                      onPressed: _isGenerating ? null : _generateTechnologies,
-                      child: const Text('Retry')),
-                ),
-              ]),
-            ),
           const SizedBox(height: 8),
           const Text('IT Considerations for each potential solution',
               style: TextStyle(
@@ -1886,9 +1853,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Failed to regenerate: $e')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: () => _regenerateSingleTechField(controller, index));
       }
     }
   }

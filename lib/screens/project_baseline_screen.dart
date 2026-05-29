@@ -14,6 +14,7 @@ import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 class ProjectBaselineScreen extends StatefulWidget {
@@ -620,9 +621,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI generation failed: ${e.toString()}')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _regenerateNotes);
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }

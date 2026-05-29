@@ -16,6 +16,7 @@ import 'package:ndu_project/widgets/inner_page_navigation_hint.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 enum _TechnologyTab {
   inventory('Technology Inventory'),
   aiIntegrations('AI Integrations'),
@@ -247,9 +248,7 @@ class _PlanningTechnologyScreenState extends State<PlanningTechnologyScreen> {
       await _save();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Regenerate failed: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _regenerateCurrentTab);
     } finally {
       if (mounted) setState(() => _regenerating = false);
     }

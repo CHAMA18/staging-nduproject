@@ -21,6 +21,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 enum _ScopeTab { overview, registry, traceability, baseline }
 
 const List<String> _tabLabels = [
@@ -189,12 +190,7 @@ class _ScopeTrackingPlanScreenState extends State<ScopeTrackingPlanScreen> {
     } catch (e) {
       debugPrint('ScopeTrackingPlanScreen._regenerateAll error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI generation failed: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _regenerateAllFromAi);
       }
     } finally {
       if (mounted) setState(() => _isAutoGenerating = false);

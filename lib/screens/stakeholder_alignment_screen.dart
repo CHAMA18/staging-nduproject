@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 class StakeholderAlignmentScreen extends StatefulWidget {
   const StakeholderAlignmentScreen({super.key});
 
@@ -142,6 +143,7 @@ class _StakeholderAlignmentScreenState
       }
     } catch (e) {
       debugPrint('Error auto-generating stakeholders: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: _autoGenerateStakeholdersFromAi);
     } finally {
       _isAutoGenerating = false;
     }
@@ -529,6 +531,7 @@ class _StakeholderAlignmentScreenState
       }
     } catch (e) {
       debugPrint('Error auto-populating stakeholders: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _autoPopulateStakeholders(_coreStakeholders));
     }
   }
 
@@ -568,6 +571,7 @@ class _StakeholderAlignmentScreenState
       }
     } catch (e) {
       debugPrint('Error auto-generating engagement strategy: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _autoGenerateEngagementStrategy(item));
     }
   }
 

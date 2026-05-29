@@ -19,6 +19,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 class ProjectPlanLevel1ScheduleScreen extends StatefulWidget {
   const ProjectPlanLevel1ScheduleScreen({super.key});
@@ -3538,9 +3539,7 @@ class _CondensedSummaryState extends State<ProjectPlanCondensedSummaryScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI generation failed: ${e.toString()}')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _regenerateSummary);
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }

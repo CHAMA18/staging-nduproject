@@ -21,6 +21,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 class PlanningRequirementsScreen extends StatefulWidget {
   const PlanningRequirementsScreen({super.key});
 
@@ -297,6 +298,9 @@ class _PlanningRequirementsScreenState
       _schedulePlanRegenerate();
     } catch (e) {
       debugPrint('AI requirements suggestion failed: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _generateRequirementsFromContext);
+      }
     } finally {
       if (mounted) {
         setState(() => _isGeneratingRequirements = false);
@@ -398,9 +402,7 @@ $requirementsList
     } catch (e) {
       debugPrint('AI requirements plan generation failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate plan: ${e.toString()}')),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateRequirementsPlan);
       }
     } finally {
       if (mounted) {
@@ -485,6 +487,9 @@ $requirementsList
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Row requirement regenerate failed: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () => _regenerateRequirementRow(index));
+      }
     } finally {
       if (mounted) {
         setState(() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
@@ -76,6 +77,7 @@ class _InfrastructureConsiderationsScreenState
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
   bool _isGeneratingInfra = false;
   bool _reviewConfirmed = false;
+  Timer? _autoSaveTimer;
 
   void _addNewItem() {
     if (!_canUseAdminControls) return;
@@ -83,6 +85,21 @@ class _InfrastructureConsiderationsScreenState
       _solutions.add(AiSolutionItem(title: '', description: ''));
       _infraControllers.add(RichTextEditingController());
     });
+  }
+
+  void _onNotesChanged() {
+    _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
+    if (!mounted) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(seconds: 2), _autoSave);
+  }
+
+  Future<void> _autoSave() async {
+    if (!mounted) return;
+    await _saveInfrastructureConsiderationsData();
   }
 
   Future<void> _exportPdf() async {
@@ -113,6 +130,7 @@ class _InfrastructureConsiderationsScreenState
   void initState() {
     super.initState();
     _notesController = RichTextEditingController(text: widget.notes);
+    _notesController.addListener(_onNotesChanged);
     _solutions = List.from(widget.solutions); // Create mutable copy
     // Initialize with at least one empty item if solutions list is empty
     if (_solutions.isEmpty) {
@@ -131,6 +149,8 @@ class _InfrastructureConsiderationsScreenState
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final provider = ProjectDataHelper.getProvider(context);
+      provider.onBeforeNavigate = _saveNow;
       _loadExistingData();
       PageHintDialog.showIfNeeded(
         context: context,
@@ -295,12 +315,22 @@ class _InfrastructureConsiderationsScreenState
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    try {
+      ProjectDataHelper.getProvider(context).onBeforeNavigate = null;
+    } catch (_) {}
     _reviewScrollController.dispose();
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
     for (final controller in _infraControllers) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _saveNow() async {
+    _autoSaveTimer?.cancel();
+    await _saveInfrastructureConsiderationsData();
   }
 
   @override
@@ -656,6 +686,7 @@ class _InfrastructureConsiderationsScreenState
                   controller: _infraControllers[index],
                   minLines: 4,
                   maxLines: null,
+                  onChanged: (_) => _scheduleAutoSave(),
                   style: const TextStyle(
                     fontSize: 12.2,
                     color: Color(0xFF334155),
@@ -1853,6 +1884,7 @@ class _InfrastructureConsiderationsScreenState
               onChanged: (value) {
                 provider.addFieldToHistory(fieldKey, value,
                     isAiGenerated: true);
+                _scheduleAutoSave();
               },
               decoration: InputDecoration(
                 border: InputBorder.none,

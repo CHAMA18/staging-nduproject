@@ -135,6 +135,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
 
   Timer? _notesDebounce;
   Timer? _businessDebounce;
+  Timer? _autoSaveTimer;
 
   bool _notesSuggestLoading = false;
   bool _businessSuggestLoading = false;
@@ -170,6 +171,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       if (projectData.businessCase.isNotEmpty) {
         _businessCaseController.text = projectData.businessCase;
       }
+
+      final provider = ProjectDataHelper.getProvider(context);
+      provider.onBeforeNavigate = _saveNow;
 
       // Show hint on first visit
       if (mounted) {
@@ -214,6 +218,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     // Update provider state immediately for persistence
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateInitiationData(notes: value.trim());
+    _scheduleAutoSave();
   }
 
   void _onBusinessChanged(String value) {
@@ -226,6 +231,23 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     provider.updateInitiationData(businessCase: value.trim());
     // Also rebuild so sidebar enable/disable state reflects current input
     setState(() {});
+    _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
+    if (!mounted) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(seconds: 2), _autoSave);
+  }
+
+  Future<void> _autoSave() async {
+    if (!mounted) return;
+    try {
+      final provider = ProjectDataHelper.getProvider(context);
+      await provider.saveToFirebase(checkpoint: 'business_case');
+    } catch (e) {
+      debugPrint('❌ Auto-save error: $e');
+    }
   }
 
   void _saveBeforeUndo() {
@@ -2207,6 +2229,10 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   void dispose() {
     _notesDebounce?.cancel();
     _businessDebounce?.cancel();
+    _autoSaveTimer?.cancel();
+    try {
+      ProjectDataHelper.getProvider(context).onBeforeNavigate = null;
+    } catch (_) {}
     _reviewScrollController.dispose();
     _notesFocusNode
       ..removeListener(_handleNotesFocusChange)
@@ -2217,6 +2243,12 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     _notesController.dispose();
     _businessCaseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveNow() async {
+    _autoSaveTimer?.cancel();
+    final provider = ProjectDataHelper.getProvider(context);
+    await provider.saveToFirebase(checkpoint: 'business_case');
   }
 
   void _scrollToBusinessCase() {

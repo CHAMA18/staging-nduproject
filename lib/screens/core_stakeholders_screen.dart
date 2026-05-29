@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -81,6 +82,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   bool _reviewConfirmed = false;
   bool get _canUseAdminControls =>
       _isAdmin && AccessPolicy.isRestrictedAdminHost();
+  Timer? _autoSaveTimer;
 
   TextEditingController _createStakeholderController({String text = ''}) {
     return RichAutoBulletTextController(text: text);
@@ -119,6 +121,21 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     );
   }
 
+  void _onNotesChanged() {
+    _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
+    if (!mounted) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(seconds: 2), _autoSave);
+  }
+
+  Future<void> _autoSave() async {
+    if (!mounted) return;
+    await _saveCoreStakeholdersData();
+  }
+
   // ignore: unused_field
   static const List<_SidebarEntry> _navItems = [
     _SidebarEntry(icon: Icons.home_outlined, title: 'Home'),
@@ -140,6 +157,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     // IMPORTANT: don't read inherited widgets in initState (causes dependOnInheritedWidget errors).
     // We'll hydrate from provider in didChangeDependencies.
     _notesController = RichTextEditingController(text: widget.notes);
+    _notesController.addListener(_onNotesChanged);
     // Notes = prose; no auto-bullet
 
     _solutions = List.from(widget.solutions); // Create mutable copy
@@ -168,6 +186,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final provider = ProjectDataHelper.getProvider(context);
+      provider.onBeforeNavigate = _saveNow;
       _loadExistingData();
       PageHintDialog.showIfNeeded(
         context: context,
@@ -1783,6 +1803,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
               onChanged: (value) {
                 provider.addFieldToHistory(fieldKey, value,
                     isAiGenerated: true);
+                _scheduleAutoSave();
               },
               decoration: InputDecoration(
                 hintText: hintText,
@@ -1972,7 +1993,12 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    try {
+      ProjectDataHelper.getProvider(context).onBeforeNavigate = null;
+    } catch (_) {}
     _reviewScrollController.dispose();
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
     for (final c in _internalStakeholderControllers) {
       c.dispose();
@@ -1981,6 +2007,11 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _saveNow() async {
+    _autoSaveTimer?.cancel();
+    await _saveCoreStakeholdersData();
   }
 }
 

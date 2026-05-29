@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -76,6 +77,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
   bool _isAdmin = false;
   bool _didInitFromProvider = false;
   bool _reviewConfirmed = false;
+  Timer? _autoSaveTimer;
 
   // ignore: unused_element
   void _addNewItem() {
@@ -87,6 +89,21 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       newController.enableAutoBullet(); // Enable auto-bullet for new field
       _techControllers.add(newController); // Add a new controller
     });
+  }
+
+  void _onNotesChanged() {
+    _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
+    if (!mounted) return;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(seconds: 2), _autoSave);
+  }
+
+  Future<void> _autoSave() async {
+    if (!mounted) return;
+    await _saveITConsiderationsData();
   }
 
   Future<void> _exportPdf() async {
@@ -120,6 +137,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     // IMPORTANT: don't read inherited widgets in initState (causes dependOnInheritedWidget errors).
     // We'll hydrate from provider in didChangeDependencies.
     _notesController = RichTextEditingController(text: widget.notes);
+    _notesController.addListener(_onNotesChanged);
     // Notes = prose; no auto-bullet
 
     _solutions = List.from(widget.solutions); // Create mutable copy
@@ -141,6 +159,8 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final provider = ProjectDataHelper.getProvider(context);
+      provider.onBeforeNavigate = _saveNow;
       _loadExistingData();
       PageHintDialog.showIfNeeded(
         context: context,
@@ -669,6 +689,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                   controller: _techControllers[index],
                   minLines: 4,
                   maxLines: null,
+                  onChanged: (_) => _scheduleAutoSave(),
                   style: const TextStyle(
                     fontSize: 12.2,
                     color: Color(0xFF334155),
@@ -1818,6 +1839,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
               onChanged: (value) {
                 provider.addFieldToHistory(fieldKey, value,
                     isAiGenerated: true);
+                _scheduleAutoSave();
               },
               decoration: InputDecoration(
                 border: InputBorder.none,
@@ -1873,11 +1895,21 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    try {
+      ProjectDataHelper.getProvider(context).onBeforeNavigate = null;
+    } catch (_) {}
     _reviewScrollController.dispose();
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
     for (final c in _techControllers) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _saveNow() async {
+    _autoSaveTimer?.cancel();
+    await _saveITConsiderationsData();
   }
 }

@@ -20,6 +20,10 @@ class ProjectDataProvider extends ChangeNotifier {
   String? _queuedCheckpoint;
   Timer? _autoSaveDebounce;
 
+  /// Callback invoked before sidebar navigation so the current screen can
+  /// persist pending data before being disposed.
+  Future<void> Function()? onBeforeNavigate;
+
   ProjectDataModel get projectData => _projectData;
   bool get isSaving => _isSaving;
   String? get lastError => _lastError;

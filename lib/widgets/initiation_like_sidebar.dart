@@ -625,11 +625,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
-  // Navigation helper.
-  //
-  // Goal: keep navigation responsive by not blocking route transitions on
-  // network writes. We still persist data/checkpoint in the background.
-  void _navigateWithCheckpoint(String checkpoint, Widget screen) {
+  /// Save pending data before navigating, then navigate.
+  Future<void> _navigateWithCheckpoint(
+      String checkpoint, Widget screen) async {
     // Validate Planning Phase requirements for Planning Phase checkpoints
     final planningPhaseCheckpoints = [
       'work_breakdown_structure',
@@ -676,7 +674,15 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       _notifyPlanningPhaseRequirements();
     }
 
+    // Give the current screen a chance to persist pending data before
+    // it is disposed by the route transition.
     final provider = ProjectDataInherited.maybeOf(context);
+    if (provider?.onBeforeNavigate != null) {
+      await provider!.onBeforeNavigate!();
+      provider.onBeforeNavigate = null;
+    }
+    await provider?.flushAutoSave();
+
     final currentCheckpoint = provider?.projectData.currentCheckpoint;
 
     if (!mounted) return;
@@ -712,21 +718,21 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   // Navigation helpers (lightweight routes, pass empty data where required)
-  void _openBusinessCase() {
-    _navigateWithCheckpoint(
+  Future<void> _openBusinessCase() async {
+    await _navigateWithCheckpoint(
       'business_case',
       const InitiationPhaseScreen(scrollToBusinessCase: true),
     );
   }
 
-  void _openPotentialSolutions() {
-    _navigateWithCheckpoint(
+  Future<void> _openPotentialSolutions() async {
+    await _navigateWithCheckpoint(
         'potential_solutions', const PotentialSolutionsScreen());
   }
 
-  void _openRiskIdentification() {
+  Future<void> _openRiskIdentification() async {
     final data = ProjectDataInherited.of(context).projectData;
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
       'risk_identification',
       RiskIdentificationScreen(
         notes: data.notes,
@@ -736,9 +742,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openITConsiderations() {
+  Future<void> _openITConsiderations() async {
     final data = ProjectDataInherited.of(context).projectData;
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
       'it_considerations',
       ITConsiderationsScreen(
         notes: data.itConsiderationsData?.notes ?? data.notes,
@@ -747,9 +753,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openInfrastructureConsiderations() {
+  Future<void> _openInfrastructureConsiderations() async {
     final data = ProjectDataInherited.of(context).projectData;
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
       'infrastructure_considerations',
       InfrastructureConsiderationsScreen(
         notes: data.infrastructureConsiderationsData?.notes ?? data.notes,
@@ -758,9 +764,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openCoreStakeholders() {
+  Future<void> _openCoreStakeholders() async {
     final data = ProjectDataInherited.of(context).projectData;
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
       'core_stakeholders',
       CoreStakeholdersScreen(
         notes: data.coreStakeholdersData?.notes ?? data.notes,
@@ -769,9 +775,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openCostAnalysis() {
+  Future<void> _openCostAnalysis() async {
     final data = ProjectDataInherited.of(context).projectData;
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
       'cost_analysis',
       CostAnalysisScreen(
         notes: data.notes,
@@ -808,56 +814,56 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     return [];
   }
 
-  void _openFrontEndRequirements() {
-    _navigateWithCheckpoint(
+  Future<void> _openFrontEndRequirements() async {
+    await _navigateWithCheckpoint(
         'fep_requirements', const FrontEndPlanningRequirementsScreen());
   }
 
-  void _openPlanningRequirements() {
-    _navigateWithCheckpoint('requirements', PlanningRequirementsScreen());
+  Future<void> _openPlanningRequirements() async {
+    await _navigateWithCheckpoint('requirements', PlanningRequirementsScreen());
   }
 
-  void _openFrontEndRisks() {
-    _navigateWithCheckpoint('fep_risks', const FrontEndPlanningRisksScreen());
+  Future<void> _openFrontEndRisks() async {
+    await _navigateWithCheckpoint('fep_risks', const FrontEndPlanningRisksScreen());
   }
 
-  void _openFrontEndOpportunities() {
-    _navigateWithCheckpoint(
+  Future<void> _openFrontEndOpportunities() async {
+    await _navigateWithCheckpoint(
         'fep_opportunities', const FrontEndPlanningOpportunitiesScreen());
   }
 
-  void _openContractVendorQuotes() {
+  Future<void> _openContractVendorQuotes() async {
     // Security check: prevent navigation if item is locked
     if (_isBasicPlanLocked('Contracting')) {
       _showLockedItemMessage('Contracting');
       return;
     }
-    _navigateWithCheckpoint('fep_contract_vendor_quotes',
+    await _navigateWithCheckpoint('fep_contract_vendor_quotes',
         const FrontEndPlanningContractVendorQuotesScreen());
   }
 
-  void _openSecurity() {
+  Future<void> _openSecurity() async {
     // Security check: prevent navigation if item is locked
     if (_isBasicPlanLocked('Security')) {
       _showLockedItemMessage('Security');
       return;
     }
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
         'fep_security', const FrontEndPlanningSecurityScreen());
   }
 
-  void _openAllowance() {
+  Future<void> _openAllowance() async {
     // Security check: prevent navigation if item is locked
     if (_isBasicPlanLocked('Allowance')) {
       _showLockedItemMessage('Allowance');
       return;
     }
-    _navigateWithCheckpoint(
+    await _navigateWithCheckpoint(
         'fep_allowance', const FrontEndPlanningAllowanceScreen());
   }
 
-  void _openMilestone() {
-    _navigateWithCheckpoint(
+  Future<void> _openMilestone() async {
+    await _navigateWithCheckpoint(
         'fep_milestone', const FrontEndPlanningMilestoneScreen());
   }
 
@@ -919,42 +925,42 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
-  void _openProcurement() {
-    _navigateWithCheckpoint(
+  Future<void> _openProcurement() async {
+    await _navigateWithCheckpoint(
         'fep_procurement', const FrontEndPlanningProcurementScreen());
   }
 
-  void _openPlanningProcurement() {
-    _navigateWithCheckpoint('procurement', const PlanningProcurementScreen());
+  Future<void> _openPlanningProcurement() async {
+    await _navigateWithCheckpoint('procurement', const PlanningProcurementScreen());
   }
 
-  void _openSSHER() {
-    _navigateWithCheckpoint('ssher', const SsherStackedScreen());
+  Future<void> _openSSHER() async {
+    await _navigateWithCheckpoint('ssher', const SsherStackedScreen());
   }
 
-  void _openDesign() {
-    _navigateWithCheckpoint('design', const DesignPlanningScreen());
+  Future<void> _openDesign() async {
+    await _navigateWithCheckpoint('design', const DesignPlanningScreen());
   }
 
-  void _openDesignManagement() {
-    _navigateWithCheckpoint('design_management',
+  Future<void> _openDesignManagement() async {
+    await _navigateWithCheckpoint('design_management',
         const DesignPhaseScreen(activeItemLabel: 'Design Management'));
   }
 
   // ignore: unused_element
-  void _openExecutionPlan() {
-    _navigateWithCheckpoint('execution_plan', const ExecutionPlanScreen());
+  Future<void> _openExecutionPlan() async {
+    await _navigateWithCheckpoint('execution_plan', const ExecutionPlanScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanStrategy() {
-    _navigateWithCheckpoint(
+  Future<void> _openExecutionPlanStrategy() async {
+    await _navigateWithCheckpoint(
         'execution_plan_strategy', const ExecutionPlanSolutionsScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanDetails() {
-    _navigateWithCheckpoint(
+  Future<void> _openExecutionPlanDetails() async {
+    await _navigateWithCheckpoint(
       'execution_plan_details',
       const ExecutionPlanDetailsScreen(
         activeItemLabel: 'Execution Plan Details',
@@ -965,8 +971,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   // ignore: unused_element
-  void _openExecutionEarlyWorks() {
-    _navigateWithCheckpoint(
+  Future<void> _openExecutionEarlyWorks() async {
+    await _navigateWithCheckpoint(
       'execution_early_works',
       const ExecutionPlanDetailsScreen(
         activeItemLabel: 'Execution Early Works',
@@ -977,366 +983,366 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   // ignore: unused_element
-  void _openExecutionEnablingWorkPlan() {
-    _navigateWithCheckpoint('execution_enabling_work_plan',
+  Future<void> _openExecutionEnablingWorkPlan() async {
+    await _navigateWithCheckpoint('execution_enabling_work_plan',
         const ExecutionEnablingWorkPlanScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionIssueManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openExecutionIssueManagement() async {
+    await _navigateWithCheckpoint(
         'execution_issue_management', const ExecutionIssueManagementScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanLessonsLearned() {
-    _navigateWithCheckpoint('execution_plan_lessons_learned',
+  Future<void> _openExecutionPlanLessonsLearned() async {
+    await _navigateWithCheckpoint('execution_plan_lessons_learned',
         const ExecutionPlanLessonsLearnedScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanBestPractices() {
-    _navigateWithCheckpoint('execution_plan_best_practices',
+  Future<void> _openExecutionPlanBestPractices() async {
+    await _navigateWithCheckpoint('execution_plan_best_practices',
         const ExecutionPlanBestPracticesScreen());
   }
 
-  void _openExecutionPlanConstructionPlan() {
-    _navigateWithCheckpoint('execution_plan_construction_plan',
+  Future<void> _openExecutionPlanConstructionPlan() async {
+    await _navigateWithCheckpoint('execution_plan_construction_plan',
         const ExecutionPlanConstructionPlanScreen());
   }
 
-  void _openExecutionPlanInfrastructurePlan() {
-    _navigateWithCheckpoint('execution_plan_infrastructure_plan',
+  Future<void> _openExecutionPlanInfrastructurePlan() async {
+    await _navigateWithCheckpoint('execution_plan_infrastructure_plan',
         const ExecutionPlanInfrastructurePlanScreen());
   }
 
-  void _openExecutionPlanAgileDeliveryPlan() {
-    _navigateWithCheckpoint('execution_plan_agile_delivery_plan',
+  Future<void> _openExecutionPlanAgileDeliveryPlan() async {
+    await _navigateWithCheckpoint('execution_plan_agile_delivery_plan',
         const ExecutionPlanAgileDeliveryPlanScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanInterfaceManagement() {
-    _navigateWithCheckpoint('execution_plan_interface_management',
+  Future<void> _openExecutionPlanInterfaceManagement() async {
+    await _navigateWithCheckpoint('execution_plan_interface_management',
         const ExecutionPlanInterfaceManagementScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanCommunicationPlan() {
-    _navigateWithCheckpoint('execution_plan_communication_plan',
+  Future<void> _openExecutionPlanCommunicationPlan() async {
+    await _navigateWithCheckpoint('execution_plan_communication_plan',
         const ExecutionPlanCommunicationPlanScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanInterfaceManagementPlan() {
-    _navigateWithCheckpoint('execution_plan_interface_management_plan',
+  Future<void> _openExecutionPlanInterfaceManagementPlan() async {
+    await _navigateWithCheckpoint('execution_plan_interface_management_plan',
         const ExecutionPlanInterfaceManagementPlanScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanInterfaceManagementOverview() {
-    _navigateWithCheckpoint('execution_plan_interface_management_overview',
+  Future<void> _openExecutionPlanInterfaceManagementOverview() async {
+    await _navigateWithCheckpoint('execution_plan_interface_management_overview',
         const ExecutionPlanInterfaceManagementOverviewScreen());
   }
 
   // ignore: unused_element
-  void _openExecutionPlanStakeholderIdentification() {
-    _navigateWithCheckpoint('execution_plan_stakeholder_identification',
+  Future<void> _openExecutionPlanStakeholderIdentification() async {
+    await _navigateWithCheckpoint('execution_plan_stakeholder_identification',
         const ExecutionPlanStakeholderIdentificationScreen());
   }
 
-  void _openTechnology() {
-    _navigateWithCheckpoint('technology', const PlanningTechnologyScreen());
+  Future<void> _openTechnology() async {
+    await _navigateWithCheckpoint('technology', const PlanningTechnologyScreen());
   }
 
-  void _openInterfaceManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openInterfaceManagement() async {
+    await _navigateWithCheckpoint(
         'interface_management', const InterfaceManagementScreen());
   }
 
-  void _openAgileDeliveryModel() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileDeliveryModel() async {
+    await _navigateWithCheckpoint(
         'agile_delivery_model', const AgileDeliveryModelScreen());
   }
 
-  void _openAgileTeamStructure() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileTeamStructure() async {
+    await _navigateWithCheckpoint(
         'agile_team_structure', const AgileTeamStructureScreen());
   }
 
-  void _openAgileEpicsFeatures() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileEpicsFeatures() async {
+    await _navigateWithCheckpoint(
         'agile_epics_features', const AgileEpicsFeaturesScreen());
   }
 
-  void _openAgileSprintCalendar() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileSprintCalendar() async {
+    await _navigateWithCheckpoint(
         'agile_sprint_calendar', const AgileSprintCalendarScreen());
   }
 
-  void _openAgileMapOut() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileMapOut() async {
+    await _navigateWithCheckpoint(
         'agile_map_out', const DeliverableRoadmapAgileMapOutScreen());
   }
 
-  void _openAgileReleasePlan() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileReleasePlan() async {
+    await _navigateWithCheckpoint(
         'agile_release_plan', const AgileReleasePlanScreen());
   }
 
-  void _openAgileBacklogGovernance() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileBacklogGovernance() async {
+    await _navigateWithCheckpoint(
         'agile_backlog_governance', const AgileBacklogGovernanceScreen());
   }
 
-  void _openStartUpPlanning() {
-    _navigateWithCheckpoint('startup_planning', const StartUpPlanningScreen());
+  Future<void> _openStartUpPlanning() async {
+    await _navigateWithCheckpoint('startup_planning', const StartUpPlanningScreen());
   }
 
-  void _openStartUpPlanningOperations() {
-    _navigateWithCheckpoint(
+  Future<void> _openStartUpPlanningOperations() async {
+    await _navigateWithCheckpoint(
       'startup_planning_operations',
       const StartUpPlanningOperationsScreen(),
     );
   }
 
-  void _openStartUpPlanningHypercare() {
-    _navigateWithCheckpoint(
+  Future<void> _openStartUpPlanningHypercare() async {
+    await _navigateWithCheckpoint(
       'startup_planning_hypercare',
       const StartUpPlanningHypercareScreen(),
     );
   }
 
-  void _openStartUpPlanningDevOps() {
-    _navigateWithCheckpoint(
+  Future<void> _openStartUpPlanningDevOps() async {
+    await _navigateWithCheckpoint(
       'startup_planning_devops',
       const StartUpPlanningDevOpsScreen(),
     );
   }
 
-  void _openStartUpPlanningCloseOut() {
-    _navigateWithCheckpoint(
+  Future<void> _openStartUpPlanningCloseOut() async {
+    await _navigateWithCheckpoint(
       'startup_planning_closeout',
       const StartUpPlanningCloseOutPlanScreen(),
     );
   }
 
-  void _openTeamManagement() {
-    _navigateWithCheckpoint('team_management', const TeamManagementScreen());
+  Future<void> _openTeamManagement() async {
+    await _navigateWithCheckpoint('team_management', const TeamManagementScreen());
   }
 
-  void _openSecurityManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openSecurityManagement() async {
+    await _navigateWithCheckpoint(
         'security_management', const SecurityManagementScreen());
   }
 
-  void _openQualityManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openQualityManagement() async {
+    await _navigateWithCheckpoint(
         'quality_management', const QualityManagementScreen());
   }
 
-  void _openContract() {
-    _navigateWithCheckpoint('contracts', const PlanningContractingScreen());
+  Future<void> _openContract() async {
+    await _navigateWithCheckpoint('contracts', const PlanningContractingScreen());
   }
 
-  void _openSchedule() {
-    _navigateWithCheckpoint('schedule', const ScheduleScreen());
+  Future<void> _openSchedule() async {
+    await _navigateWithCheckpoint('schedule', const ScheduleScreen());
   }
 
-  void _openCostEstimate() {
-    _navigateWithCheckpoint('cost_estimate', const CostEstimateScreen());
+  Future<void> _openCostEstimate() async {
+    await _navigateWithCheckpoint('cost_estimate', const CostEstimateScreen());
   }
 
-  void _openScopeTrackingPlan() {
-    _navigateWithCheckpoint(
+  Future<void> _openScopeTrackingPlan() async {
+    await _navigateWithCheckpoint(
         'scope_tracking_plan', const ScopeTrackingPlanScreen());
   }
 
-  void _openChangeManagement() {
-    _navigateWithCheckpoint('change_management', ChangeManagementScreen());
+  Future<void> _openChangeManagement() async {
+    await _navigateWithCheckpoint('change_management', ChangeManagementScreen());
   }
 
-  void _openProjectPlan() {
-    _navigateWithCheckpoint('project_plan', const ProjectPlanScreen());
+  Future<void> _openProjectPlan() async {
+    await _navigateWithCheckpoint('project_plan', const ProjectPlanScreen());
   }
 
-  void _openProjectPlanLevel1Schedule() {
-    _navigateWithCheckpoint('project_plan_level1_schedule',
+  Future<void> _openProjectPlanLevel1Schedule() async {
+    await _navigateWithCheckpoint('project_plan_level1_schedule',
         const ProjectPlanLevel1ScheduleScreen());
   }
 
-  void _openProjectPlanDetailedSchedule() {
-    _navigateWithCheckpoint('project_plan_detailed_schedule',
+  Future<void> _openProjectPlanDetailedSchedule() async {
+    await _navigateWithCheckpoint('project_plan_detailed_schedule',
         const ProjectPlanDetailedScheduleScreen());
   }
 
-  void _openProjectPlanCondensedSummary() {
-    _navigateWithCheckpoint('project_plan_condensed_summary',
+  Future<void> _openProjectPlanCondensedSummary() async {
+    await _navigateWithCheckpoint('project_plan_condensed_summary',
         const ProjectPlanCondensedSummaryScreen());
   }
 
-  void _openProjectBaseline() {
-    _navigateWithCheckpoint('project_baseline', const ProjectBaselineScreen());
+  Future<void> _openProjectBaseline() async {
+    await _navigateWithCheckpoint('project_baseline', const ProjectBaselineScreen());
   }
 
-  void _openAgileProjectBaseline() {
-    _navigateWithCheckpoint(
+  Future<void> _openAgileProjectBaseline() async {
+    await _navigateWithCheckpoint(
         'agile_project_baseline', const AgileProjectBaselineScreen());
   }
 
-  void _openStakeholderManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openStakeholderManagement() async {
+    await _navigateWithCheckpoint(
         'stakeholder_management', const StakeholderManagementScreen());
   }
 
-  void _openRiskAssessment() {
-    _navigateWithCheckpoint('risk_assessment', const RiskAssessmentScreen());
+  Future<void> _openRiskAssessment() async {
+    await _navigateWithCheckpoint('risk_assessment', const RiskAssessmentScreen());
   }
 
-  void _openIssueManagement() {
-    _navigateWithCheckpoint('issue_management', const IssueManagementScreen());
+  Future<void> _openIssueManagement() async {
+    await _navigateWithCheckpoint('issue_management', const IssueManagementScreen());
   }
 
-  void _openLessonsLearned() {
-    _navigateWithCheckpoint('lessons_learned', const LessonsLearnedScreen());
+  Future<void> _openLessonsLearned() async {
+    await _navigateWithCheckpoint('lessons_learned', const LessonsLearnedScreen());
   }
 
-  void _openTeamTraining() {
-    _navigateWithCheckpoint(
+  Future<void> _openTeamTraining() async {
+    await _navigateWithCheckpoint(
         'team_training', const TeamTrainingAndBuildingScreen());
   }
 
-  void _openOrganizationRolesResponsibilities() {
-    _navigateWithCheckpoint('organization_roles_responsibilities',
+  Future<void> _openOrganizationRolesResponsibilities() async {
+    await _navigateWithCheckpoint('organization_roles_responsibilities',
         const OrganizationRolesResponsibilitiesScreen());
   }
 
-  void _openOrganizationStaffingPlan() {
-    _navigateWithCheckpoint(
+  Future<void> _openOrganizationStaffingPlan() async {
+    await _navigateWithCheckpoint(
         'organization_staffing_plan', const OrganizationStaffingPlanScreen());
   }
 
-  void _openStaffTeam() {
-    _navigateWithCheckpoint('staff_team', const StaffTeamScreen());
+  Future<void> _openStaffTeam() async {
+    await _navigateWithCheckpoint('staff_team', const StaffTeamScreen());
   }
 
-  void _openTeamMeetings() {
-    _navigateWithCheckpoint('team_meetings', const TeamMeetingsScreen());
+  Future<void> _openTeamMeetings() async {
+    await _navigateWithCheckpoint('team_meetings', const TeamMeetingsScreen());
   }
 
-  void _openProgressTracking() {
-    _navigateWithCheckpoint(
+  Future<void> _openProgressTracking() async {
+    await _navigateWithCheckpoint(
         'progress_tracking', const ProgressTrackingScreen());
   }
 
-  void _openDeliverableStatusUpdates() {
-    _navigateWithCheckpoint(
+  Future<void> _openDeliverableStatusUpdates() async {
+    await _navigateWithCheckpoint(
         'deliverable_status_updates', const DeliverableStatusUpdatesScreen());
   }
 
-  void _openRecurringDeliverables() {
-    _navigateWithCheckpoint(
+  Future<void> _openRecurringDeliverables() async {
+    await _navigateWithCheckpoint(
         'recurring_deliverables', const RecurringDeliverablesScreen());
   }
 
-  void _openStatusReports() {
-    _navigateWithCheckpoint('status_reports', const StatusReportsScreen());
+  Future<void> _openStatusReports() async {
+    await _navigateWithCheckpoint('status_reports', const StatusReportsScreen());
   }
 
-  void _openGapAnalysisAndScopeReconcillation() {
-    _navigateWithCheckpoint('gap_analysis_scope_reconcillation',
+  Future<void> _openGapAnalysisAndScopeReconcillation() async {
+    await _navigateWithCheckpoint('gap_analysis_scope_reconcillation',
         const GapAnalysisScopeReconcillationScreen());
   }
 
-  void _openLaunchChecklist() {
-    _navigateWithCheckpoint('launch_checklist', const LaunchChecklistScreen());
+  Future<void> _openLaunchChecklist() async {
+    await _navigateWithCheckpoint('launch_checklist', const LaunchChecklistScreen());
   }
 
-  void _openPunchlistActions() {
-    _navigateWithCheckpoint(
+  Future<void> _openPunchlistActions() async {
+    await _navigateWithCheckpoint(
         'punchlist_actions', const PunchlistActionsScreen());
   }
 
-  void _openToolsIntegration() {
-    _navigateWithCheckpoint(
+  Future<void> _openToolsIntegration() async {
+    await _navigateWithCheckpoint(
         'tools_integration', const ToolsIntegrationScreen());
   }
 
-  void _openSalvageDisposalTeam() {
-    _navigateWithCheckpoint(
+  Future<void> _openSalvageDisposalTeam() async {
+    await _navigateWithCheckpoint(
         'salvage_disposal_team', const SalvageDisposalTeamScreen());
   }
 
-  void _openDeliverProjectClosure() {
-    _navigateWithCheckpoint(
+  Future<void> _openDeliverProjectClosure() async {
+    await _navigateWithCheckpoint(
         'deliver_project_closure', const DeliverProjectClosureScreen());
   }
 
-  void _openTransitionToProdTeam() {
-    _navigateWithCheckpoint(
+  Future<void> _openTransitionToProdTeam() async {
+    await _navigateWithCheckpoint(
         'transition_to_prod_team', const TransitionToProdTeamScreen());
   }
 
-  void _openContractCloseOut() {
-    _navigateWithCheckpoint(
+  Future<void> _openContractCloseOut() async {
+    await _navigateWithCheckpoint(
         'contract_close_out', const ContractCloseOutScreen());
   }
 
-  void _openVendorAccountCloseOut() {
-    _navigateWithCheckpoint(
+  Future<void> _openVendorAccountCloseOut() async {
+    await _navigateWithCheckpoint(
         'vendor_account_close_out', const VendorAccountCloseOutScreen());
   }
 
-  void _openUiUxDesign() {
-    _navigateWithCheckpoint('ui_ux_design', const UiUxDesignScreen());
+  Future<void> _openUiUxDesign() async {
+    await _navigateWithCheckpoint('ui_ux_design', const UiUxDesignScreen());
   }
 
-  void _openTechnicalAlignment() {
-    _navigateWithCheckpoint(
+  Future<void> _openTechnicalAlignment() async {
+    await _navigateWithCheckpoint(
         'technical_alignment', const TechnicalAlignmentScreen());
   }
 
-  void _openDevelopmentSetUp() {
-    _navigateWithCheckpoint(
+  Future<void> _openDevelopmentSetUp() async {
+    await _navigateWithCheckpoint(
         'development_set_up', const DevelopmentSetUpScreen());
   }
 
-  void _openDesignDeliverables() {
-    _navigateWithCheckpoint(
+  Future<void> _openDesignDeliverables() async {
+    await _navigateWithCheckpoint(
         'design_deliverables', const DesignDeliverablesScreen());
   }
 
-  void _openLongLeadEquipmentOrdering() {
-    _navigateWithCheckpoint('long_lead_equipment_ordering',
+  Future<void> _openLongLeadEquipmentOrdering() async {
+    await _navigateWithCheckpoint('long_lead_equipment_ordering',
         const LongLeadEquipmentOrderingScreen());
   }
 
-  void _openSpecializedDesign() {
-    _navigateWithCheckpoint(
+  Future<void> _openSpecializedDesign() async {
+    await _navigateWithCheckpoint(
         'specialized_design', const SpecializedDesignScreen());
   }
 
-  void _openTechnicalDevelopment() {
-    _navigateWithCheckpoint(
+  Future<void> _openTechnicalDevelopment() async {
+    await _navigateWithCheckpoint(
         'technical_development', const TechnicalDevelopmentScreen());
   }
 
-  void _openBackendDesign() {
-    _navigateWithCheckpoint('backend_design', const BackendDesignScreen());
+  Future<void> _openBackendDesign() async {
+    await _navigateWithCheckpoint('backend_design', const BackendDesignScreen());
   }
 
-  void _openEngineeringDesign() {
-    _navigateWithCheckpoint(
+  Future<void> _openEngineeringDesign() async {
+    await _navigateWithCheckpoint(
         'engineering_design', const EngineeringDesignScreen());
   }
 
   // ignore: unused_element
-  void _openProjectCloseOut() {
-    _navigateWithCheckpoint('project_close_out', const ProjectCloseOutScreen());
+  Future<void> _openProjectCloseOut() async {
+    await _navigateWithCheckpoint('project_close_out', const ProjectCloseOutScreen());
   }
 
-  void _openProjectCloseOutLongForm() {
-    _navigateWithCheckpoint(
+  Future<void> _openProjectCloseOutLongForm() async {
+    await _navigateWithCheckpoint(
       'project_close_out',
       const ProjectCloseOutScreen(
         summarized: false,
@@ -1345,8 +1351,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openProjectCloseOutSummarized() {
-    _navigateWithCheckpoint(
+  Future<void> _openProjectCloseOutSummarized() async {
+    await _navigateWithCheckpoint(
       'project_close_out',
       const ProjectCloseOutScreen(
         summarized: true,
@@ -1355,17 +1361,17 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openDemobilizeTeam() {
-    _navigateWithCheckpoint('demobilize_team', const DemobilizeTeamScreen());
+  Future<void> _openDemobilizeTeam() async {
+    await _navigateWithCheckpoint('demobilize_team', const DemobilizeTeamScreen());
   }
 
-  void _openActualVsPlannedGapAnalysis() {
-    _navigateWithCheckpoint('actual_vs_planned_gap_analysis',
+  Future<void> _openActualVsPlannedGapAnalysis() async {
+    await _navigateWithCheckpoint('actual_vs_planned_gap_analysis',
         const ActualVsPlannedGapAnalysisScreen());
   }
 
-  void _openActualVsPlannedScopeReconcillation() {
-    _navigateWithCheckpoint(
+  Future<void> _openActualVsPlannedScopeReconcillation() async {
+    await _navigateWithCheckpoint(
       'actual_vs_planned_gap_analysis',
       const GapAnalysisScopeReconcillationScreen(
         activeItemLabel: 'Project Financial Review - Scope Reconcillation',
@@ -1373,83 +1379,83 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  void _openCommerceViability() {
-    _navigateWithCheckpoint(
+  Future<void> _openCommerceViability() async {
+    await _navigateWithCheckpoint(
         'commerce_viability', const CommerceViabilityScreen());
   }
 
-  void _openSummarizeAccountRisks() {
-    _navigateWithCheckpoint(
+  Future<void> _openSummarizeAccountRisks() async {
+    await _navigateWithCheckpoint(
         'summarize_account_risks', const SummarizeAccountRisksScreen());
   }
 
-  void _openAgileDevelopmentIterations() {
-    _navigateWithCheckpoint('agile_development_iterations',
+  Future<void> _openAgileDevelopmentIterations() async {
+    await _navigateWithCheckpoint('agile_development_iterations',
         const AgileDevelopmentIterationsScreen());
   }
 
-  void _openScopeCompletion() {
-    _navigateWithCheckpoint('scope_completion', const ScopeCompletionScreen());
+  Future<void> _openScopeCompletion() async {
+    await _navigateWithCheckpoint('scope_completion', const ScopeCompletionScreen());
   }
 
-  void _openTechnicalDebtManagement() {
-    _navigateWithCheckpoint(
+  Future<void> _openTechnicalDebtManagement() async {
+    await _navigateWithCheckpoint(
         'technical_debt_management', const TechnicalDebtManagementScreen());
   }
 
-  void _openRiskTracking() {
-    _navigateWithCheckpoint('risk_tracking', const RiskTrackingScreen());
+  Future<void> _openRiskTracking() async {
+    await _navigateWithCheckpoint('risk_tracking', const RiskTrackingScreen());
   }
 
-  void _openIdentifyStaffOpsTeam() {
-    _navigateWithCheckpoint(
+  Future<void> _openIdentifyStaffOpsTeam() async {
+    await _navigateWithCheckpoint(
         'identify_staff_ops_team', const IdentifyStaffOpsTeamScreen());
   }
 
-  void _openFinalizeProject() {
-    _navigateWithCheckpoint('finalize_project', const FinalizeProjectScreen());
+  Future<void> _openFinalizeProject() async {
+    await _navigateWithCheckpoint('finalize_project', const FinalizeProjectScreen());
   }
 
-  void _openContractsTracking() {
-    _navigateWithCheckpoint(
+  Future<void> _openContractsTracking() async {
+    await _navigateWithCheckpoint(
         'contracts_tracking', const ContractsTrackingScreen());
   }
 
-  void _openVendorTracking() {
-    _navigateWithCheckpoint('vendor_tracking', const VendorTrackingScreen());
+  Future<void> _openVendorTracking() async {
+    await _navigateWithCheckpoint('vendor_tracking', const VendorTrackingScreen());
   }
 
-  void _openDetailedDesign() {
-    _navigateWithCheckpoint('detailed_design', const DetailedDesignScreen());
+  Future<void> _openDetailedDesign() async {
+    await _navigateWithCheckpoint('detailed_design', const DetailedDesignScreen());
   }
 
-  void _openScopeTrackingImplementation() {
-    _navigateWithCheckpoint('scope_tracking_implementation',
+  Future<void> _openScopeTrackingImplementation() async {
+    await _navigateWithCheckpoint('scope_tracking_implementation',
         const ScopeTrackingImplementationScreen());
   }
 
-  void _openStakeholderAlignment() {
-    _navigateWithCheckpoint(
+  Future<void> _openStakeholderAlignment() async {
+    await _navigateWithCheckpoint(
         'stakeholder_alignment', const StakeholderAlignmentScreen());
   }
 
-  void _openUpdateOpsMaintenancePlans() {
-    _navigateWithCheckpoint('update_ops_maintenance_plans',
+  Future<void> _openUpdateOpsMaintenancePlans() async {
+    await _navigateWithCheckpoint('update_ops_maintenance_plans',
         const UpdateOpsMaintenancePlansScreen());
   }
 
-  void _openRequirementsImplementation() {
-    _navigateWithCheckpoint('requirements_implementation',
+  Future<void> _openRequirementsImplementation() async {
+    await _navigateWithCheckpoint('requirements_implementation',
         const RequirementsImplementationScreen());
   }
 
-  void _openDeliverableRoadmap() {
-    _navigateWithCheckpoint(
+  Future<void> _openDeliverableRoadmap() async {
+    await _navigateWithCheckpoint(
         'deliverable_roadmap', const DeliverablesRoadmapScreen());
   }
 
-  void _openDeliverableRoadmapAgileMapOut() {
-    _navigateWithCheckpoint(
+  Future<void> _openDeliverableRoadmapAgileMapOut() async {
+    await _navigateWithCheckpoint(
         'agile_map_out', const DeliverableRoadmapAgileMapOutScreen());
   }
 
@@ -1521,7 +1527,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
-  void _openPreferredSolutionAnalysis() {
+  Future<void> _openPreferredSolutionAnalysis() async {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       final projectData = provider?.projectData;
@@ -1546,7 +1552,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
-  void _openPreferredSolutionsComparison() {
+  Future<void> _openPreferredSolutionsComparison() async {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       final projectData = provider?.projectData;
@@ -1589,18 +1595,18 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
-  void _openWorkBreakdownStructure() {
-    _navigateWithCheckpoint(
+  Future<void> _openWorkBreakdownStructure() async {
+    await _navigateWithCheckpoint(
         'work_breakdown_structure', const WorkBreakdownStructureScreen());
   }
 
-  void _openProjectFramework() {
-    _navigateWithCheckpoint(
+  Future<void> _openProjectFramework() async {
+    await _navigateWithCheckpoint(
         'project_framework', const ProjectFrameworkScreen());
   }
 
-  void _openProjectGoalsMilestones() {
-    _navigateWithCheckpoint(
+  Future<void> _openProjectGoalsMilestones() async {
+    await _navigateWithCheckpoint(
         'project_goals_milestones', const ProjectFrameworkNextScreen());
   }
 

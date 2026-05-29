@@ -12,6 +12,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
@@ -339,9 +340,7 @@ class _TechnicalDebtManagementScreenState
               );
             } catch (e) {
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('AI auto-populate failed: $e')),
-              );
+              showAiErrorDialog(context, error: e, onRetry: () {});
             }
           },
           icon: const Icon(Icons.auto_fix_high, size: 16),
@@ -976,6 +975,9 @@ class _TechnicalDebtManagementScreenState
       );
     } catch (error) {
       debugPrint('Technical debt AI call failed: $error');
+      if (mounted) {
+        showAiErrorDialog(context, error: error, onRetry: _autoPopulateIfNeeded);
+      }
     }
 
     if (!mounted) return;

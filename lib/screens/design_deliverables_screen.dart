@@ -19,6 +19,7 @@ import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 // firebase_auth removed - unused
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -44,7 +45,6 @@ class DesignDeliverablesScreen extends StatefulWidget {
 class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   DesignDeliverablesData _data = DesignDeliverablesData();
   bool _loading = false;
-  String? _error;
   final _saveDebouncer = _Debouncer();
   bool _saving = false;
   bool _frameworkGuideExpanded = false;
@@ -194,7 +194,6 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
 
     setState(() {
       _loading = true;
-      _error = null;
     });
 
     try {
@@ -229,8 +228,8 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'Failed to load data: $e';
         });
+        debugPrint('Failed to load deliverables data: $e');
       }
     }
   }
@@ -319,7 +318,6 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = null;
         });
       }
       if (!silentFallback) {
@@ -329,7 +327,6 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     }
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       final data = ProjectDataHelper.getData(context);
@@ -362,9 +359,9 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Unable to generate content. Please try again later.';
         _data = DesignDeliverablesData();
       });
+      showAiErrorDialog(context, error: e, onRetry: () => _generateFromAi());
     }
   }
 

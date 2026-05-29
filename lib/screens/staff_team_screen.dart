@@ -7,6 +7,7 @@ import 'package:ndu_project/screens/design_deliverables_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -226,6 +227,9 @@ Future<void> _loadData() async {
       await _persistChanges();
     } catch (e) {
       debugPrint('Error auto-generating staff team data: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }

@@ -1,4 +1,5 @@
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 // ignore_for_file: unused_element
 
 import 'dart:async';
@@ -552,12 +553,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     } catch (e) {
       debugPrint('Error generating alignment: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI Generation failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _generateAllAlignment);
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);

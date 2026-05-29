@@ -7,6 +7,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/inline_editable_text.dart';
 import 'package:intl/intl.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/responsive_table_widgets.dart';
 
 /// Custom Stakeholder Alignment Table with inline editing, CRUD actions, and AI capabilities
@@ -434,12 +435,7 @@ class _StakeholderAlignmentRowWidgetState
     } catch (e) {
       debugPrint('Error regenerating engagement strategy: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate engagement strategy: $e'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        showAiErrorDialog(context, error: e, onRetry: _regenerateEngagementStrategy);
       }
     } finally {
       if (mounted) {

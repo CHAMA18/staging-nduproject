@@ -22,6 +22,7 @@ import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/status_reports_widget.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
@@ -156,6 +157,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
       _persistChanges();
     } catch (e) {
       debugPrint('Error auto-generating progress tracking data: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }
@@ -291,9 +295,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to generate AI drafts: $e')),
-      );
+      showAiErrorDialog(context, error: e, onRetry: _addAiDraftsForActiveView);
     } finally {
       if (mounted) {
         setState(() => _isAutoGenerating = false);

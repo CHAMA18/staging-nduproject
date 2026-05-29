@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/front_end_planning_navigation.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
@@ -268,12 +269,12 @@ class _FrontEndPlanningContractVendorQuotesScreenState
         _autoGenerationError =
             'Unable to auto-generate contracting records. You can retry with "Generate with AI".';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+      showAiErrorDialog(
+        context,
+        error: Exception('Automatic contracting generation failed.'),
+        customMessage:
             'Automatic contracting generation failed. Please retry manually.',
-          ),
-        ),
+        onRetry: _regenerateAllContracts,
       );
     }
     setState(() => _showAutoGenerationSpinner = false);
@@ -4816,8 +4817,10 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     } catch (e) {
       debugPrint('Error regenerating contracts: $e');
       if (mounted && !silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating items: $e')),
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: _regenerateAllContracts,
         );
       }
       return false;

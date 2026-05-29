@@ -12,6 +12,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/screens/project_charter_sections.dart';
 import 'package:ndu_project/screens/charter_governance_section.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -135,6 +136,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
             }
           } catch (e) {
             debugPrint('Error generating charter overview: $e');
+            if (mounted) {
+              showAiErrorDialog(context, error: e, onRetry: _ensureCharterContent);
+            }
           }
         }
 
@@ -154,6 +158,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
               }
             } catch (e) {
               debugPrint('Error generating charter assumptions: $e');
+              if (mounted) {
+                showAiErrorDialog(context, error: e, onRetry: _ensureCharterContent);
+              }
             }
           }
           if (needsConstraints) {
@@ -169,6 +176,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
               }
             } catch (e) {
               debugPrint('Error generating charter constraints: $e');
+              if (mounted) {
+                showAiErrorDialog(context, error: e, onRetry: _ensureCharterContent);
+              }
             }
           }
           if (mounted) {
@@ -180,6 +190,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       }
     } catch (e) {
       debugPrint('Error ensuring charter content: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _ensureCharterContent);
+      }
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -262,8 +275,10 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     } catch (e) {
       debugPrint('Error generating $sectionType: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate $sectionType: $e')),
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: () => _generateSection(sectionType),
         );
       }
     } finally {

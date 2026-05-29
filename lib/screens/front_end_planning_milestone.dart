@@ -18,6 +18,7 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:intl/intl.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 /// Front End Planning – Milestone screen
 /// Allows users to define project start date, key milestones, and end date.
@@ -557,6 +558,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
     } catch (e) {
       // CRITICAL: Defensive error handling - fallback to defaults, never show error to user
       debugPrint('AI milestone generation failed: $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _generateMilestonesWithAI(silent: silent));
       _useDefaultMilestones(silent: silent);
     } finally {
       if (mounted) {
@@ -713,6 +715,7 @@ Consider typical project timelines and ensure end date is after start date.''';
     } catch (e) {
       // DEFENSIVE: Silent failure - dates are optional, no error to user
       debugPrint('AI date generation failed (non-critical): $e');
+      if (mounted) showAiErrorDialog(context, error: e, onRetry: () => _generateDatesWithAI(silent: silent));
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

@@ -24,6 +24,7 @@ import 'package:ndu_project/widgets/scroll_indicator_overlay.dart';
 
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 /// Front End Planning – Summary screen
 /// Mirrors the provided layout with shared workspace chrome,
 /// large notes area, summary text panel, and AI hint + Next controls.
@@ -1112,10 +1113,13 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
     } catch (e) {
       debugPrint('Error generating planning items: $e');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to generate items: $e'),
-              backgroundColor: Colors.red),
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: () => _handleGenerateAI(
+            context, sectionLabel, loadingKey, currentList,
+            listKey: listKey, showNotice: showNotice,
+          ),
         );
       }
     } finally {
@@ -1224,10 +1228,12 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
     } catch (e) {
       debugPrint('Error generating goals: $e');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to generate goals: $e'),
-              backgroundColor: Colors.red),
+        showAiErrorDialog(
+          context,
+          error: e,
+          onRetry: () => _handleGenerateGoalsAI(
+            context, sectionLabel, loadingKey, currentList,
+          ),
         );
       }
     } finally {

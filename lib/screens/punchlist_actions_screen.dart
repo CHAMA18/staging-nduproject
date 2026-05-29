@@ -5,6 +5,7 @@ import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dar
 import 'package:ndu_project/screens/technical_debt_management_screen.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -370,6 +371,9 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       );
     } catch (error) {
       debugPrint('Punchlist actions AI call failed: $error');
+      if (mounted) {
+        showAiErrorDialog(context, error: error, onRetry: _autoPopulateFromAi);
+      }
     }
 
     if (!mounted) return;

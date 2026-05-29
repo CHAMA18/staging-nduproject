@@ -350,6 +350,7 @@ class _AgileDevelopmentIterationsScreenState
       );
       final ai = OpenAiServiceSecure();
       final updated = <AgileTask>[];
+      var failedCount = 0;
       for (final task in _tasks) {
         try {
           final breakdown = await ai.breakDownUserStory(
@@ -359,7 +360,9 @@ class _AgileDevelopmentIterationsScreenState
           );
           updated.add(task.copyWith(taskDescription: breakdown));
         } catch (e) {
+          debugPrint('Failed to regenerate task "${task.userStory}": $e');
           updated.add(task);
+          failedCount++;
         }
       }
       if (!mounted) return;
@@ -368,6 +371,13 @@ class _AgileDevelopmentIterationsScreenState
         projectId: projectId,
         tasks: updated,
       );
+      if (failedCount > 0 && mounted) {
+        showAiErrorDialog(
+          context,
+          error: Exception('$failedCount task(s) could not be regenerated. The AI encountered errors for those items.'),
+          customMessage: '$failedCount out of ${_tasks.length} task descriptions could not be regenerated. Those tasks keep their original descriptions. You can retry individual tasks using the regenerate button on each row.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _isRegeneratingAll = false);
     }

@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/voice_text_field.dart';
 import 'package:ndu_project/utils/pdf_export_helper.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/ai_error_dialog.dart';
 class RiskTrackingScreen extends StatefulWidget {
   const RiskTrackingScreen({super.key});
 
@@ -283,6 +284,9 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       });
     } catch (e) {
       debugPrint('Error auto-generating risk tracking data: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: _autoGenerateIfNeeded);
+      }
     } finally {
       _isAutoGenerating = false;
     }

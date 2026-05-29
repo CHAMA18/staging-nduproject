@@ -4283,6 +4283,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   }
 
   Future<void> _suggestContractorsForScope(ProcurementItemModel item) async {
+    try {
     final data = ProjectDataHelper.getData(context);
     final projectName =
         data.projectName.trim().isEmpty ? 'Project' : data.projectName.trim();
@@ -4326,6 +4327,12 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     }
 
     await _savePotentialContractorsForScope(item, candidates.toList());
+    } catch (e) {
+      debugPrint('AI contractor suggestion failed: $e');
+      if (mounted) {
+        showAiErrorDialog(context, error: e, onRetry: () => _suggestContractorsForScope(item));
+      }
+    }
   }
 
   String _projectTypeFor(ProjectDataModel data) {
@@ -4816,7 +4823,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       return false;
     } catch (e) {
       debugPrint('Error regenerating contracts: $e');
-      if (mounted && !silent) {
+      if (mounted) {
         showAiErrorDialog(
           context,
           error: e,

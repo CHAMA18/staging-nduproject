@@ -164,6 +164,7 @@ class LaunchTeamMember {
   String contact;
   String startDate;
   String releaseStatus;
+  String notes;
 
   LaunchTeamMember({
     String? id,
@@ -172,6 +173,7 @@ class LaunchTeamMember {
     this.contact = '',
     this.startDate = '',
     this.releaseStatus = 'Active',
+    this.notes = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   LaunchTeamMember copyWith({
@@ -180,6 +182,7 @@ class LaunchTeamMember {
     String? contact,
     String? startDate,
     String? releaseStatus,
+    String? notes,
   }) {
     return LaunchTeamMember(
       id: id,
@@ -188,6 +191,7 @@ class LaunchTeamMember {
       contact: contact ?? this.contact,
       startDate: startDate ?? this.startDate,
       releaseStatus: releaseStatus ?? this.releaseStatus,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -198,6 +202,7 @@ class LaunchTeamMember {
         'contact': contact,
         'startDate': startDate,
         'releaseStatus': releaseStatus,
+        'notes': notes,
       };
 
   factory LaunchTeamMember.fromJson(Map<String, dynamic> json) {
@@ -208,6 +213,7 @@ class LaunchTeamMember {
       contact: json['contact']?.toString() ?? '',
       startDate: json['startDate']?.toString() ?? '',
       releaseStatus: json['releaseStatus']?.toString() ?? 'Active',
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }
@@ -284,6 +290,7 @@ class LaunchKnowledgeTransfer {
   String method;
   String status;
   String artifacts;
+  String notes;
 
   LaunchKnowledgeTransfer({
     String? id,
@@ -293,6 +300,7 @@ class LaunchKnowledgeTransfer {
     this.method = '',
     this.status = 'Pending',
     this.artifacts = '',
+    this.notes = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   LaunchKnowledgeTransfer copyWith({
@@ -302,6 +310,7 @@ class LaunchKnowledgeTransfer {
     String? method,
     String? status,
     String? artifacts,
+    String? notes,
   }) {
     return LaunchKnowledgeTransfer(
       id: id,
@@ -311,6 +320,7 @@ class LaunchKnowledgeTransfer {
       method: method ?? this.method,
       status: status ?? this.status,
       artifacts: artifacts ?? this.artifacts,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -322,6 +332,7 @@ class LaunchKnowledgeTransfer {
         'method': method,
         'status': status,
         'artifacts': artifacts,
+        'notes': notes,
       };
 
   factory LaunchKnowledgeTransfer.fromJson(Map<String, dynamic> json) {
@@ -333,6 +344,7 @@ class LaunchKnowledgeTransfer {
       method: json['method']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Pending',
       artifacts: json['artifacts']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }
@@ -930,6 +942,7 @@ class LaunchArchiveItem {
   String retentionPeriod;
   String accessChange;
   String status;
+  String notes;
 
   LaunchArchiveItem({
     String? id,
@@ -938,6 +951,7 @@ class LaunchArchiveItem {
     this.retentionPeriod = '',
     this.accessChange = '',
     this.status = 'Pending',
+    this.notes = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   LaunchArchiveItem copyWith({
@@ -946,6 +960,7 @@ class LaunchArchiveItem {
     String? retentionPeriod,
     String? accessChange,
     String? status,
+    String? notes,
   }) {
     return LaunchArchiveItem(
       id: id,
@@ -954,6 +969,7 @@ class LaunchArchiveItem {
       retentionPeriod: retentionPeriod ?? this.retentionPeriod,
       accessChange: accessChange ?? this.accessChange,
       status: status ?? this.status,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -964,6 +980,7 @@ class LaunchArchiveItem {
         'retentionPeriod': retentionPeriod,
         'accessChange': accessChange,
         'status': status,
+        'notes': notes,
       };
 
   factory LaunchArchiveItem.fromJson(Map<String, dynamic> json) {
@@ -974,6 +991,7 @@ class LaunchArchiveItem {
       retentionPeriod: json['retentionPeriod']?.toString() ?? '',
       accessChange: json['accessChange']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Pending',
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }
@@ -985,6 +1003,7 @@ class LaunchCommunicationItem {
   String channel;
   String sendDate;
   String status;
+  String notes;
 
   LaunchCommunicationItem({
     String? id,
@@ -993,6 +1012,7 @@ class LaunchCommunicationItem {
     this.channel = '',
     this.sendDate = '',
     this.status = 'Planned',
+    this.notes = '',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   LaunchCommunicationItem copyWith({
@@ -1001,6 +1021,7 @@ class LaunchCommunicationItem {
     String? channel,
     String? sendDate,
     String? status,
+    String? notes,
   }) {
     return LaunchCommunicationItem(
       id: id,
@@ -1009,6 +1030,7 @@ class LaunchCommunicationItem {
       channel: channel ?? this.channel,
       sendDate: sendDate ?? this.sendDate,
       status: status ?? this.status,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -1019,6 +1041,7 @@ class LaunchCommunicationItem {
         'channel': channel,
         'sendDate': sendDate,
         'status': status,
+        'notes': notes,
       };
 
   factory LaunchCommunicationItem.fromJson(Map<String, dynamic> json) {
@@ -1029,6 +1052,7 @@ class LaunchCommunicationItem {
       channel: json['channel']?.toString() ?? '',
       sendDate: json['sendDate']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Planned',
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }

@@ -241,6 +241,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       cellBuilder: (context, i) {
         final c = _closeOutChecklist[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed =
                 await launchConfirmDelete(context, itemName: 'checklist item');
@@ -340,6 +341,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       cellBuilder: (context, i) {
         final a = _approvals[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed =
                 await launchConfirmDelete(context, itemName: 'approval entry');
@@ -413,6 +415,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         LaunchColumn(label: 'Retention', width: 130, fieldType: LaunchFieldType.text, hint: 'Retention'),
         LaunchColumn(label: 'Access Change', width: 120, fieldType: LaunchFieldType.text, hint: 'Access'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _archive.length,
       onAddValues: (values) {
@@ -423,6 +426,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
             retentionPeriod: values['Retention'] ?? '',
             accessChange: values['Access Change'] ?? '',
             status: values['Status'] ?? 'Pending',
+            notes: values['Notes'] ?? '',
           ));
         });
         _save();
@@ -433,6 +437,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         CsvColumnSpec(key: 'retentionPeriod', label: 'Retention', sampleValue: '5 years'),
         CsvColumnSpec(key: 'accessChange', label: 'Access Change', sampleValue: 'Read-only'),
         CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Archived successfully'),
       ],
       onCsvImport: (rows) async {
         for (final row in rows) {
@@ -443,6 +448,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
               retentionPeriod: row['retentionPeriod'] ?? '',
               accessChange: row['accessChange'] ?? '',
               status: row['status'] ?? 'Pending',
+              notes: row['notes'] ?? '',
             ));
           });
         }
@@ -452,6 +458,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       cellBuilder: (context, i) {
         final a = _archive[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed =
                 await launchConfirmDelete(context, itemName: 'archive item');
@@ -506,6 +513,15 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
                 _archive[i] = a.copyWith(status: s);
                 _save();
                 setState(() {});
+              },
+            ),
+            LaunchEditableCell(
+              value: a.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _archive[i] = a.copyWith(notes: s);
+                _save();
               },
             ),
           ],
@@ -1012,7 +1028,8 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
                   'Document Type',
                   'Retention',
                   'Access Change',
-                  'Status'
+                  'Status',
+                  'Notes'
                 ],
                 data: _archive
                     .map((a) => [
@@ -1021,6 +1038,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
                           _pc(a.retentionPeriod),
                           _pc(a.accessChange),
                           _pc(a.status),
+                          _pc(a.notes),
                         ])
                     .toList(),
               ),

@@ -199,6 +199,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         LaunchColumn(label: 'Role', width: 120, fieldType: LaunchFieldType.text, hint: 'Role'),
         LaunchColumn(label: 'Contact', width: 120, fieldType: LaunchFieldType.text, hint: 'Contact'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Active', 'Transitioning', 'Released']),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _teamRoster.length,
       onAddValues: (values) {
@@ -207,6 +208,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           role: values['Role'] ?? '',
           contact: values['Contact'] ?? '',
           releaseStatus: values['Status'] ?? 'Active',
+          notes: values['Notes'] ?? '',
         )));
         _save();
       },
@@ -217,6 +219,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         CsvColumnSpec(key: 'role', label: 'Role', sampleValue: 'Developer'),
         CsvColumnSpec(key: 'contact', label: 'Contact', sampleValue: 'john@example.com'),
         CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Active', allowedValues: ['Active', 'Transitioning', 'Released']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Transitioning to BAU'),
       ],
       onCsvImport: (rows) async {
         for (final row in rows) {
@@ -226,6 +229,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
               role: row['role'] ?? '',
               contact: row['contact'] ?? '',
               releaseStatus: row['status'] ?? 'Active',
+              notes: row['notes'] ?? '',
             ));
           });
         }
@@ -235,6 +239,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       cellBuilder: (context, i) {
         final m = _teamRoster[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed =
                 await launchConfirmDelete(context, itemName: 'team member');
@@ -281,6 +286,15 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 setState(() {});
               },
             ),
+            LaunchEditableCell(
+              value: m.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _teamRoster[i] = m.copyWith(notes: s);
+                _save();
+              },
+            ),
           ],
         );
       },
@@ -297,6 +311,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         LaunchColumn(label: 'To', width: 130, fieldType: LaunchFieldType.text, hint: 'To'),
         LaunchColumn(label: 'Method', width: 130, fieldType: LaunchFieldType.text, hint: 'Method'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'Scheduled', 'Complete']),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _knowledgeTransfers.length,
       onAddValues: (values) {
@@ -306,6 +321,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           toPerson: values['To'] ?? '',
           method: values['Method'] ?? '',
           status: values['Status'] ?? 'Pending',
+          notes: values['Notes'] ?? '',
         )));
         _save();
       },
@@ -315,6 +331,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         CsvColumnSpec(key: 'to', label: 'To', sampleValue: 'Bob'),
         CsvColumnSpec(key: 'method', label: 'Method', sampleValue: 'Workshop'),
         CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'Scheduled', 'Complete']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Scheduled for next week'),
       ],
       onCsvImport: (rows) async {
         for (final row in rows) {
@@ -325,6 +342,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
               toPerson: row['to'] ?? '',
               method: row['method'] ?? '',
               status: row['status'] ?? 'Pending',
+              notes: row['notes'] ?? '',
             ));
           });
         }
@@ -334,6 +352,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       cellBuilder: (context, i) {
         final k = _knowledgeTransfers[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed = await launchConfirmDelete(context,
                 itemName: 'knowledge transfer');
@@ -389,6 +408,15 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 setState(() {});
               },
             ),
+            LaunchEditableCell(
+              value: k.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _knowledgeTransfers[i] = k.copyWith(notes: s);
+                _save();
+              },
+            ),
           ],
         );
       },
@@ -405,6 +433,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         LaunchColumn(label: 'Details', flexible: true, fieldType: LaunchFieldType.text, hint: 'Details'),
         LaunchColumn(label: 'Owner', width: 120, fieldType: LaunchFieldType.text, hint: 'Owner'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Pending', 'In Progress', 'Complete']),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _vendorOffboarding.length,
       onAddValues: (values) {
@@ -413,6 +442,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           details: values['Details'] ?? '',
           owner: values['Owner'] ?? '',
           status: values['Status'] ?? 'Pending',
+          notes: values['Notes'] ?? '',
         )));
         _save();
       },
@@ -421,6 +451,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         CsvColumnSpec(key: 'details', label: 'Details', sampleValue: 'Remove VPN and email'),
         CsvColumnSpec(key: 'owner', label: 'Owner', sampleValue: 'IT Lead'),
         CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Pending', allowedValues: ['Pending', 'In Progress', 'Complete']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Access revoked'),
       ],
       onCsvImport: (rows) async {
         for (final row in rows) {
@@ -430,6 +461,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
               details: row['details'] ?? '',
               owner: row['owner'] ?? '',
               status: row['status'] ?? 'Pending',
+              notes: row['notes'] ?? '',
             ));
           });
         }
@@ -439,6 +471,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       cellBuilder: (context, i) {
         final v = _vendorOffboarding[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed = await launchConfirmDelete(context,
                 itemName: 'vendor offboarding task');
@@ -485,6 +518,15 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 setState(() {});
               },
             ),
+            LaunchEditableCell(
+              value: v.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _vendorOffboarding[i] = v.copyWith(notes: s);
+                _save();
+              },
+            ),
           ],
         );
       },
@@ -502,6 +544,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         LaunchColumn(label: 'Channel', width: 130, fieldType: LaunchFieldType.text, hint: 'Channel'),
         LaunchColumn(label: 'Send Date', width: 130, fieldType: LaunchFieldType.date, hint: 'Send Date'),
         LaunchColumn(label: 'Status', width: 120, fieldType: LaunchFieldType.dropdown, dropdownItems: ['Planned', 'Sent', 'Cancelled']),
+        LaunchColumn(label: 'Notes', flexible: true, fieldType: LaunchFieldType.text, hint: 'Notes'),
       ],
       rowCount: _communications.length,
       onAddValues: (values) {
@@ -511,6 +554,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           channel: values['Channel'] ?? '',
           sendDate: values['Send Date'] ?? '',
           status: values['Status'] ?? 'Planned',
+          notes: values['Notes'] ?? '',
         )));
         _save();
       },
@@ -520,6 +564,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         CsvColumnSpec(key: 'channel', label: 'Channel', sampleValue: 'Email'),
         CsvColumnSpec(key: 'sendDate', label: 'Send Date', sampleValue: '2025-01-20'),
         CsvColumnSpec(key: 'status', label: 'Status', sampleValue: 'Planned', allowedValues: ['Planned', 'Sent', 'Cancelled']),
+        CsvColumnSpec(key: 'notes', label: 'Notes', sampleValue: 'Follow-up required'),
       ],
       onCsvImport: (rows) async {
         for (final row in rows) {
@@ -530,6 +575,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
               channel: row['channel'] ?? '',
               sendDate: row['sendDate'] ?? '',
               status: row['status'] ?? 'Planned',
+              notes: row['notes'] ?? '',
             ));
           });
         }
@@ -540,6 +586,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
       cellBuilder: (context, i) {
         final c = _communications[i];
         return LaunchDataRow(
+          onEdit: () => setState(() {}),
           onDelete: () async {
             final confirmed =
                 await launchConfirmDelete(context, itemName: 'communication');
@@ -592,6 +639,15 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 _communications[i] = c.copyWith(status: s);
                 _save();
                 setState(() {});
+              },
+            ),
+            LaunchEditableCell(
+              value: c.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _communications[i] = c.copyWith(notes: s);
+                _save();
               },
             ),
           ],
@@ -884,13 +940,14 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 headerAlignment: pw.Alignment.centerLeft,
                 cellPadding:
                     const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                headers: const ['Name', 'Role', 'Contact', 'Status'],
+                headers: const ['Name', 'Role', 'Contact', 'Status', 'Notes'],
                 data: _teamRoster
                     .map((m) => [
                           _pc(m.name),
                           _pc(m.role),
                           _pc(m.contact),
                           _pc(m.releaseStatus),
+                          _pc(m.notes),
                         ])
                     .toList(),
               ),
@@ -917,7 +974,8 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                   'From',
                   'To',
                   'Method',
-                  'Status'
+                  'Status',
+                  'Notes'
                 ],
                 data: _knowledgeTransfers
                     .map((k) => [
@@ -926,6 +984,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                           _pc(k.toPerson),
                           _pc(k.method),
                           _pc(k.status),
+                          _pc(k.notes),
                         ])
                     .toList(),
               ),
@@ -947,13 +1006,14 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 headerAlignment: pw.Alignment.centerLeft,
                 cellPadding:
                     const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                headers: const ['Task', 'Details', 'Owner', 'Status'],
+                headers: const ['Task', 'Details', 'Owner', 'Status', 'Notes'],
                 data: _vendorOffboarding
                     .map((v) => [
                           _pc(v.title),
                           _pc(v.details),
                           _pc(v.owner),
                           _pc(v.status),
+                          _pc(v.notes),
                         ])
                     .toList(),
               ),
@@ -980,7 +1040,8 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                   'Message',
                   'Channel',
                   'Send Date',
-                  'Status'
+                  'Status',
+                  'Notes'
                 ],
                 data: _communications
                     .map((c) => [
@@ -989,6 +1050,7 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                           _pc(c.channel),
                           _pc(c.sendDate),
                           _pc(c.status),
+                          _pc(c.notes),
                         ])
                     .toList(),
               ),
